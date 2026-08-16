@@ -323,7 +323,7 @@ function update(dt) {
   }
   playTime += dt;
   saveT += dt;
-  if (saveT > 10) { saveT = 0; saveGame(); }
+  if (saveT > 5) { saveT = 0; saveGame(); }
   const w = screenToIso(Input.mouseX + camX, Input.mouseY + camY);
   Input.worldX = w.x; Input.worldY = w.y;
 
@@ -457,8 +457,9 @@ function invAction(row) {
       player.hp = Math.min(player.maxHp, player.hp + 40);
       showMsg('Ate a snack bar  (+40 HP)');
       SFX.eat();
-    } else { showMsg('Already at full health', 1.5); SFX.deny(); }
+    } else { showMsg('Already at full health', 1.5); SFX.deny(); return; }
   }
+  saveGame();
 }
 
 // ---------- render ----------

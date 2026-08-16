@@ -5,6 +5,8 @@ const SAVE_KEY = 'coreshutdown_save_v1';
 let playerName = '';
 
 function saveGame() {
+  // only ever persist real gameplay — never menu/test/title states
+  if (typeof GameState !== 'undefined' && GameState !== 'playing') return;
   try {
     const d = {
       v: 1,
@@ -67,6 +69,10 @@ function applySave(d) {
   if (mission.state !== 'none') spawnScrapper();
 }
 
-window.addEventListener('beforeunload', () => {
-  if (typeof GameState !== 'undefined' && GameState === 'playing') saveGame();
+// three exit hooks — browsers don't reliably fire any single one of these,
+// but together they cover close, refresh, tab-switch and mobile kill
+window.addEventListener('beforeunload', () => saveGame());
+window.addEventListener('pagehide', () => saveGame());
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) saveGame();
 });

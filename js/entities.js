@@ -117,6 +117,7 @@ function updatePlayer(dt) {
     player.respawnX = 21.5; player.respawnY = 7.5;
     showMsg('Respawn point set — the shack', 2.5);
     SFX.chime();
+    saveGame();
   }
 
   let ix = 0, iy = 0;
@@ -263,6 +264,7 @@ function updateItems(dt) {
       if (extra) SFX.tech(); else SFX.loot();
       scrapper.looted = true;
       scrapper.respawn = Math.min(scrapper.respawn, 4);
+      saveGame();
       tutShow('loot',
         ['Dead machines can be looted for scrap', 'and rare tech components.', 'Press I to open your pack.'],
         ['KeyI', 'Tab'], 'PRESS I');
@@ -286,6 +288,7 @@ function updateItems(dt) {
       spawnSparks(best.x, best.y, 8, ['#ffd27a', '#fff2c0']);
       SFX.pickup();
       items.splice(items.indexOf(best), 1);
+      saveGame();
     }
   }
 }
@@ -301,6 +304,7 @@ function talkToNpc() {
     ]);
     mission.state = 'active';
     spawnScrapper();             // his warning is what wakes the yard up
+    saveGame();
   } else if (mission.state === 'active') {
     startDialog(["Smash the Scrappers. Bring me 5 scrap."]);
   } else if (mission.state === 'complete') {
@@ -319,6 +323,7 @@ function talkToNpc() {
     player.ammo += 6;
     player.inv.gateKey = true;
     showMsg('SCRAP PISTOL + YARD GATE KEY acquired', 3.5);
+    saveGame();
     tutShow('gun',
       ['Scroll the MOUSE WHEEL to switch', 'between pistol and melee.', 'LMB uses the selected weapon.'],
       'any', 'PRESS ANY KEY');
@@ -332,10 +337,10 @@ function tradeBuy(n) {
   const inv = player.inv;
   if (n === 1) {
     if (inv.scrap >= 4) { inv.scrap -= 4; inv.snack++; showMsg('Bought a snack bar  (H to eat)'); SFX.buy(); }
-    else { showMsg('Not enough scrap (need 4)', 1.5); SFX.deny(); }
+    else { showMsg('Not enough scrap (need 4)', 1.5); SFX.deny(); return; }
   } else if (n === 2) {
     if (inv.scrap >= 6) { inv.scrap -= 6; player.ammo += 6; showMsg('Bought 6 rounds'); SFX.buy(); }
-    else { showMsg('Not enough scrap (need 6)', 1.5); SFX.deny(); }
+    else { showMsg('Not enough scrap (need 6)', 1.5); SFX.deny(); return; }
   } else if (n === 3) {
     if (player.owned.knife) { showMsg('Already own the knife', 1.5); SFX.deny(); return; }
     if (inv.tech >= 2) {
@@ -344,8 +349,9 @@ function tradeBuy(n) {
       player.melee = 'knife';
       showMsg('PIERCING KNIFE acquired');
       SFX.buy();
-    } else { showMsg('Need 2 low-quality tech parts', 1.5); SFX.deny(); }
+    } else { showMsg('Need 2 low-quality tech parts', 1.5); SFX.deny(); return; }
   }
+  saveGame();                    // every purchase is committed instantly
 }
 
 function updateMission() {
@@ -353,6 +359,7 @@ function updateMission() {
     mission.state = 'complete';
     showMsg('Objective done — return to the survivor', 3);
     SFX.chime();
+    saveGame();
   }
 }
 
@@ -402,6 +409,7 @@ function explodeBarrel(b) {
       fuses.push({ barrel: ob, t: 0.15 + Math.random() * 0.12 });
     }
   }
+  saveGame();                    // destroyed barrels are permanent world state
 }
 
 function updateExplosions(dt) {
