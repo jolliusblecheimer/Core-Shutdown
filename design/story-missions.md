@@ -11,13 +11,14 @@
 - The survivor's dialogue tells you he trades if you bring more scrap — trading is introduced through him, not a menu tutorial.
 - **The survivor also hands over the YARD GATE KEY** with the pistol — the gate leads out of the junkyard into the Sprawl (Ring 4). The key sits in the ITEMS inventory until the gate exists (next world-building phase hooks onto this).
 
+## THE MAIN STORY IS WRITTEN — see [[main-story]] (design/main-story.md)
+Answered there: the antagonist (WARDEN / Director Elias Vann, uploaded), why the
+city fell (the Correction), the ending (the Sunset Command, the traveller's death,
+total shutdown), recurring characters (Marek, Ada), 11-quest main chain Q1–Q11.
+
 ## Open questions
-- **The AI antagonist:** does it have a name, a voice, a personality? Does it talk to you as you get closer? *(my lean: yes — it should notice you and start addressing you around Ring 3)*
-- **Why did the AI take over?** And is the ending a pure shutdown, or is there a choice at the Core?
-- **Who is the player?** A survivor? An ex-engineer who helped build the AI? Silent protagonist or voiced/dialogue?
-- **How did the city fall?** Told through environmental storytelling, found logs, survivor dialogue?
-- Named recurring characters (a rival scavenger, a camp leader, a robot that helps you?)
-- Multiple endings: yes/no?
+- Side quest lines per camp (feed the Q10 rally) — design when each ring is built.
+- Exact dialogue scripts per quest — written when each quest is implemented.
 
 ## Style notes
 - Tone: bleak world, but the camps are warm — hope lives in small pockets.
