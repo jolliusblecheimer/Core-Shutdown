@@ -772,24 +772,22 @@ function drawPlayer(x, y) {
 
   // gun shows only when it's the selected weapon (and not mid-swing)
   if (player.hasGun && player.active === 'gun' && player.swing <= 0) {
-    // small extended arm holding the pistol, flipped so the grip stays down
+    // extended arm holding a properly detailed pistol, flipped so the
+    // grip stays down when aiming left
     ctx.save();
     ctx.translate(x, y - 9);
     ctx.rotate(player.angle);
     if (Math.cos(player.angle) < 0) ctx.scale(1, -1);
     ctx.fillStyle = '#26262c';           // coat sleeve
     ctx.fillRect(1, -1, 4, 2);
-    ctx.fillStyle = '#0e0e12';           // glove
-    ctx.fillRect(5, -1, 2, 2);
-    ctx.fillStyle = '#8a8d96';           // slide
-    ctx.fillRect(6, -2, 6, 2);
-    ctx.fillStyle = '#3c3e46';           // grip
-    ctx.fillRect(7, 0, 2, 2);
+    ctx.drawImage(Sprites.pistolHeld, 5, -5);
+    ctx.fillStyle = '#0e0e12';           // gloved hand wrapping the grip
+    ctx.fillRect(7, -1, 3, 2);
     ctx.restore();
 
     if (player.muzzle > 0) {
-      const mx = x + Math.cos(player.angle) * 13;
-      const my = y - 9 + Math.sin(player.angle) * 7;
+      const mx = x + Math.cos(player.angle) * 16;
+      const my = y - 9 + Math.sin(player.angle) * 9;
       ctx.fillStyle = '#fff2c0';
       ctx.fillRect(Math.round(mx - 2), Math.round(my - 2), 4, 4);
       addLight(mx, my, 0, 22, '255,210,120', 0.5);

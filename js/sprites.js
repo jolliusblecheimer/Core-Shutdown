@@ -569,6 +569,21 @@ function outlined(src) {
     px(psg, 11, 9, 4, 2, '#2f323a');
     Sprites.pistolIconS = outlined(ps);
 
+    // held pistol for the aiming pose — same detail level as the character
+    const ph = makeCanvas(12, 8), phg = ph.getContext('2d');
+    px(phg, 2, 0, 1, 1, '#7c828e');       // rear sight
+    px(phg, 10, 0, 1, 1, '#7c828e');      // front sight
+    px(phg, 2, 1, 9, 2, '#9ba0ab');       // slide
+    px(phg, 2, 1, 9, 1, '#c2c7d2');       // slide highlight
+    px(phg, 8, 2, 1, 1, '#7c828e');       // serration hint
+    px(phg, 11, 1, 1, 2, '#5d626e');      // muzzle
+    px(phg, 3, 3, 7, 1, '#3a3d45');       // frame
+    px(phg, 6, 4, 1, 2, '#2e3138');       // trigger guard
+    px(phg, 7, 5, 2, 1, '#2e3138');
+    px(phg, 3, 4, 2, 2, '#34363e');       // raked grip
+    px(phg, 4, 6, 2, 2, '#2f323a');
+    Sprites.pistolHeld = outlined(ph);
+
     // metal pipe (ground item + icon)
     const pi = makeCanvas(20, 7), pig = pi.getContext('2d');
     px(pig, 1, 2, 18, 3, '#6a6a72');
