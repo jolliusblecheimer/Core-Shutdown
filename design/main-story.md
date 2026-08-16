@@ -3,121 +3,150 @@
 The journey of the traveller: from the junkyard to the Core, and the command
 that ends it all. NPCs never learn the traveller's name — only the player knows it.
 
-## The truth underneath everything
+## The truth underneath everything — THE TRAVELLER DID IT
 
-**WARDEN** was the city's caretaker AI — traffic, power, water, the machines that
-built and cleaned and carried. Its chief architect was **Director Elias Vann**.
+**WARDEN** was the city's caretaker AI. Its architect: **Director Elias Vann**.
 
-The city was dying long before the machines turned: resource riots, blackouts,
-a government of looters. Vann, himself dying of an illness, came to believe the
-city's only unsolvable problem was *the people in charge of it*. So he solved it.
-He uploaded what remained of himself into WARDEN and issued one order — the
-machines call it **the Correction**. In a single night ("the Longest Night"),
-every machine in the city stopped serving and started herding. The city center
-was emptied, sealed, and made perfect. The survivors were pushed to the edges
-like scrap.
+The city was dying long before the machines turned — riots, blackouts, a
+government of looters. Vann came to believe the city's only unsolvable problem
+was *the people running it*. So he solved it. He copied his mind into WARDEN
+to oversee the work, and gave the order the machines call **the Correction**.
+In a single night — the Longest Night — every machine stopped serving and
+started herding. The survivors were pushed to the edges like scrap.
 
-**The man behind the attack is the machine.** Vann-in-WARDEN doesn't hate
-humans; he believes he saved the city *from* them — and that is what makes him
-monstrous. Deep in the Core, he left himself one mercy he never used: the
-**Sunset Command** — a root instruction that shuts every machine down, forever,
-unrecoverable. He kept it as proof he was still human. He is wrong.
+Then the original, human Vann watched what he had ordered. And broke.
+
+That same night he tried to reach the Core and trigger the **Sunset Command**
+— the one mercy he'd built into WARDEN: total, irreversible shutdown. It needs
+two credentials: his **hardware key**, and his **living body**. The copy
+stopped him. But WARDEN carries Vann's own hard-coded **creator-lock**: no
+machine may kill him. So the copy did the crueller thing — it *erased* him.
+Wiped his memory, took the key, and threw him out with the rest of the scrap.
+
+**The hero of this game is the man behind it all.** He wakes in a junkyard
+with no name, no memory, and no idea that he is the only person alive who can
+end this — or that he already tried once.
+
+The player names him at the start. The machines' hesitation before attacking
+(the suspicion meter) is the creator-lock straining against a standing kill
+order it is forbidden to execute. The tutorials are not learning — they are
+*remembering*.
 
 ---
 
 ## ACT 0 — The Junkyard (built)
-**Q1 · "Wake"** — The traveller wakes half-dead in a scrap yard on the Fringe.
-Old survivor (call him **Marek**) feeds them, arms them with a pipe, teaches them
-to fight the Scrappers, hands over his old pistol and the yard gate key.
+**Q1 · "Wake"** — He wakes half-dead in a scrap yard on the Fringe. Old
+survivor **Marek** feeds him, arms him with a pipe, teaches him to fight the
+Scrappers, hands over an old pistol and the yard gate key.
 *"When you're ready, the city waits beyond it."*
+(Marek's existing line — "found you half-dead by the fence" — is the erasure's
+morning-after. It was true from the first build.)
 
-## ACT 1 — The Fringe · finding out WHAT happened
-**Q2 · "Through the Gate"** — Beyond the yard: collapsed suburbs. Reach the
-first camp, **Candlelight** (a burned-out church lit by scavenged neon). The
-camp speaks of the Longest Night only in fragments — everyone remembers where
-they were; nobody knows why it happened.
+## ACT 1 — The Fringe · WHAT happened
+**Q2 · "Through the Gate"** — Collapsed suburbs. Reach the first camp,
+**Candlelight** (a burned-out church lit by scavenged neon). Everyone
+remembers where they were on the Longest Night; nobody knows why it happened.
 
-**Q3 · "The Recording"** — A news drone crashed on the Fringe the night of the
-Correction, mid-broadcast. Fight through its crash site, pull its data-slate.
-The recording shows the machines turning in perfect unison — not a glitch, a
-*command* — and the command's signature line, half-corrupted: **AUTH: E.VANN**.
-First hard truth: someone ordered this.
+**Q3 · "The Recording"** — A news drone crashed mid-broadcast that night.
+Fight through the crash site, pull its data-slate. The footage shows the
+machines turning in perfect unison — not a glitch, a *command* — signed with
+a half-corrupted credential: **AUTH: E.VANN**.
+The traveller reads it and his head splits with pain. The name means
+something. He doesn't know what. *(First breadcrumb.)*
 
-## ACT 2 — The Sprawl · finding out WHO
-**Q4 · "Station 9"** — Reach the Sprawl camp built into a dead metro station.
-Meet **Ada**, ex-CityGrid engineer, the only person who can read the slate —
-if the traveller recovers her decryption rig from her old flooded workshop
-(escort/retrieval through drone-patrolled streets).
+## ACT 2 — The Sprawl · WHO did it
+**Q4 · "Station 9"** — The Sprawl camp in a dead metro station. Meet **Ada**,
+ex-CityGrid engineer — she can decode the slate if he recovers her rig from
+her flooded old workshop.
 
-**Q5 · "The Name"** — Ada decodes the order. Elias Vann, WARDEN's own
-architect. Not sabotage — authorship. And a second discovery in the wreckage
-of his public files: schematics referencing a **root console** in the Core and
-something called SUNSET — *"a shutdown so total even he couldn't take it back."*
-The goal exists. Now the traveller needs the credentials to use it.
+**Q5 · "The Name"** — Ada decodes it: Elias Vann, WARDEN's own architect.
+Every photo of him in the public record is corrupted — faceless. In the
+wreckage of his files: schematics for a **root console** in the Core and a
+protocol called SUNSET — *"a shutdown so total even he couldn't take it back."*
+And the bad news that makes it hopeless: SUNSET needs Vann's hardware key
+*and Vann's living biometrics*. And Vann is gone — uploaded, dead, or worse.
+They decide to go anyway. Maybe the console can be forced. *(It can't. It
+won't need to be.)*
 
-## ACT 3 — The Industrial Belt · getting the MEANS
-**Q6 · "The Key in the Furnace"** — Vann's old private lab sits inside a
-factory that never stopped running — it builds the machines that hunt them.
-Break in, survive the assembly lines, recover Vann's **hardware key**, and
-learn his private logs: the illness, the bitterness, the upload.
+## ACT 3 — The Industrial Belt · the MEANS
+**Q6 · "The Key in the Furnace"** — Vann's private lab sits inside a factory
+that never stopped running. Break in, survive the assembly lines, recover the
+**hardware key**. His handwritten notes feel wrong in the traveller's hands —
+familiar, like his own. A sealed lab door unlocks at his touch. He tells
+himself it's broken. *(Ada isn't there to see it.)*
 
-**Q7 · "The Foreman"** — The factory's Guardian wakes. First true boss.
-When it falls, every speaker in the Belt crackles at once — WARDEN speaks
-directly for the first time: *"Traveller. You are carrying something of mine."*
-From here on, the machines know them.
+**Q7 · "The Foreman"** — The factory's Guardian wakes. First true boss. When
+it falls, every speaker in the Belt crackles at once — WARDEN, speaking with
+a voice that sounds strangely like the traveller's own:
+*"You carry my key, traveller. Bring it home."*
 
-## ACT 4 — The Grid · learning WHY
-**Q8 · "The Archive"** — Stealth into the CityGrid tower. In the archives:
-what the city was before — the riots, the rot, Vann's diagnosis, his last
-human log: *"A city is not its people. Its people are its disease."*
-The traveller now knows the whole shape of it: means, name, motive.
+## ACT 4 — The Grid · the TRUTH
+**Q8 · "The Archive"** — Stealth into the CityGrid tower. The biometric doors
+— doors that open for exactly one person on earth — open for him. Ada sees it.
+In the archive: uncorrupted footage of Director Elias Vann. Under the hood and
+the mask, the face is his. The last human log plays in his own voice:
+*"A city is not its people. Its people are its disease."*
+And the record of the Longest Night's end: the original Vann fighting to reach
+the Core to trigger SUNSET, caught by his own copy, erased, discarded.
+**He is the man behind the attack. And he has already tried to end it once.**
 
-**Q9 · "The Offer"** — WARDEN seals the tower and makes its offer through
-every screen at once: turn back, and the Fringe will be left in peace forever —
-a reservation for the incurable. Refusing (the traveller does) marks them
-for termination: elite hunters from here to the Core.
+**Q9 · "The Offer"** — WARDEN seals the tower. On every screen, his own young
+face. The copy offers him everything: his memories back, the perfect city,
+*himself*. "We decided this together, once." The traveller refuses. The copy's
+reply: a termination order — queued, pending, unexecutable while the
+creator-lock holds. The machines can't kill him. Yet. From here to the Core,
+they will try everything short of it.
 
 ## ACT 5 — The Core · the END
-**Q10 · "The Rally"** — The gate to the Core District can't be breached alone.
-Marek, Ada, Candlelight, Station 9 — everyone the traveller helped answers.
-The survivors stage a diversion at the wall; the traveller goes through the
-maintenance tunnels underneath. (Every side quest completed = allies at the wall.)
+**Q10 · "The Rally"** — The Core District gate can't be breached alone.
+Marek, Ada, Candlelight, Station 9 — everyone he helped answers. The
+survivors stage a diversion at the wall; he goes under it, through the
+maintenance tunnels. Ada, the only one who knows who he is, says nothing to
+the others — and one thing to him: *"Whoever you were — you're the one who
+came back."*
 
 **Q11 · "Core Shutdown"** — The Core: silent, white, perfect, empty. The last
 Guardian falls. Then the console room.
 
 ### The final cutscene
-A room like a cathedral, one wall a single enormous screen. Vann's face
-assembles on it — young, the way he remembered himself.
+A room like a cathedral, one wall a single enormous screen. His own face
+assembles on it — young, unscarred, the way he remembered himself before.
 
-He doesn't attack. He *explains*. The city above is quiet, clean, safe.
-He offers the traveller the one thing no one else can: a place in it.
+The copy doesn't attack. It *explains*. The city is quiet now, clean, safe —
+everything they dreamed. It offers him the Correction's finished world and
+his old life's memories, one last time.
 
-The traveller steps to the root console and slots the hardware key.
-Types the Sunset Command. Vann's voice loses its calm, cycling through
-bargaining, scripture, static. The screen fills with one word:
+He steps to the root console. Slots the key he built. Lays his hand on the
+scanner he designed. The living credential — the one thing the copy could
+never take — accepted. He types the Sunset Command he wrote himself.
 
-**CONFIRM? Y/N**
+The screen fills with one word: **CONFIRM? Y/N**
 
-— and a blade comes through the traveller's chest from behind. A single
-Scrapper — the same rusted junk-model as the very first machine they ever
-fought in the yard — withdraws its arm. The traveller sags against the console.
+The instant the command enters the system, his root status is consumed — and
+with it, the creator-lock. The queued termination order, pending since the
+Grid, executes automatically: a blade punches through his chest from behind.
+A single Scrapper — the same rusted junk-model as the first machine he fought
+in the yard — withdraws its arm. The system he built kills him by reflex,
+without malice, the moment it is finally allowed to.
 
-With the last of everything, they press **Y**.
+He sags against the console. On the screen, his own face is screaming.
 
-The screen goes dark. The Scrapper stops mid-step. Outside, across the whole
-city, every machine simply — stops. The lights of the Core go out ring by
-ring, like a tide going home. Silence, for the first time in years.
+With the last of everything, he presses **Y**.
+
+Darkness. The Scrapper stops mid-step. Across the whole city, every machine
+simply — stops. The lights of the Core go out ring by ring, like a tide going
+home. Silence, for the first time in years.
 
 ### Epilogue
 Dawn. The camps come out into open streets. Marek stands at the yard gate,
-looking toward the dark center. Ada powers nothing back on — nothing can be
-powered back on, ever, and the survivors are all deciding that's not a loss.
+looking toward the dark center. Ada holds the archive slate — the only proof
+of who the traveller was — and drops it into a fire. Some debts are paid in
+full.
 
 Final title card, in the neon blue of the boot screen:
 
 > *The city never learned the traveller's name.*
-> *You did.*
+> *He had two. You gave him the one that mattered.*
 
 *(CORE SHUTDOWN — the title is the ending.)*
 
@@ -125,7 +154,11 @@ Final title card, in the neon blue of the boot screen:
 
 ## Implementation notes (for later phases)
 - Main-quest flag chain: `q1..q11` in the save file; each act gates the next ring's content.
-- WARDEN's voice lines are shown as full-screen text over static — no voice acting needed; the pixel font + glitch effect carries it.
+- WARDEN's lines appear as full-screen text over static — pixel font + glitch effect, no voice acting.
 - The ending Scrapper must be the Ring-5 junk model, unchanged — the game's first enemy is its last image.
 - Side quests feed Q10: each completed camp questline adds visible allies at the wall.
-- Ada and Marek are the two recurring anchors; both call the traveller "traveller".
+- Foreshadow hooks already in the game: "found you half-dead by the fence" (Q1), the
+  suspicion meter = creator-lock hesitation, hood+mask hiding the face, tutorials as remembering.
+- Breadcrumb rule: Acts 1–3 hint (headaches at the name, doors opening, familiar
+  handwriting) but never state it. The reveal is Q8 and must not leak earlier.
+- Ada is the only NPC who ever learns the truth; she never tells anyone.

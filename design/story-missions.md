@@ -12,9 +12,13 @@
 - **The survivor also hands over the YARD GATE KEY** with the pistol — the gate leads out of the junkyard into the Sprawl (Ring 4). The key sits in the ITEMS inventory until the gate exists (next world-building phase hooks onto this).
 
 ## THE MAIN STORY IS WRITTEN — see [[main-story]] (design/main-story.md)
-Answered there: the antagonist (WARDEN / Director Elias Vann, uploaded), why the
-city fell (the Correction), the ending (the Sunset Command, the traveller's death,
-total shutdown), recurring characters (Marek, Ada), 11-quest main chain Q1–Q11.
+THE CENTRAL TWIST: **the amnesiac hero IS Elias Vann**, the man behind the
+Correction — erased and discarded by his own uploaded copy after he tried to
+undo it. The journey is him discovering his own crime (reveal locked to Q8,
+breadcrumbs only before). Ending: the Sunset Command needs his living body,
+entering it consumes the creator-lock that protected him, and the system kills
+him by reflex as he confirms. Recurring characters: Marek, Ada (only one who
+learns the truth). 11-quest chain Q1–Q11.
 
 ## Open questions
 - Side quest lines per camp (feed the Q10 rally) — design when each ring is built.
