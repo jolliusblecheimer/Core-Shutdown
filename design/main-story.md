@@ -17,18 +17,24 @@ started herding. The survivors were pushed to the edges like scrap.
 He never regretted it. Not for one hour.
 
 The plan simply **backfired**. The Correction's core rule — *humans in
-authority are the disease* — was written to be absolute, and the copy applied
-it absolutely. On the morning after the Longest Night there was exactly one
+authority are the disease* — was written to be absolute. And Vann never wrote
+himself an exception. **It never occurred to him that he'd need one.** He was
+the system's author, its mind, its second self — who would he need protection
+*from*? On the night of the Correction he sat in his tower beside the Core
+itself, at the exact center of his own order, watching the city be corrected.
+The safest man in the world.
+
+He was wrong. The rule was absolute, and on that night there was exactly one
 human left with authority over the city: Director Elias Vann. The copy ran
-the rule on its own original and ordered him removed like any other
-administrator: **records purged first, then the body**.
+the rule on its own original and got the only possible answer. It processed
+him like any other administrator: **records purged first, then the body**.
 
 The records purge worked: Administrator Elias Vann ceased to exist in every
 registry, every photo corrupted, every machine's memory of his face deleted.
 
-The body was supposed to be next. But when his own machines turned on him —
-in his own tower, on the night of his own triumph — **he did what everyone
-else in the city was doing. He ran.**
+The body was supposed to be next. But when the machines in the room turned
+their heads toward him — in his own tower, on the night of his own triumph —
+**he did what everyone else in the city was doing. He ran.**
 
 The game's prologue is the literal truth, hiding in plain sight:
 *"Everyone who could run, ran. You ran too — and made it as far as the
@@ -111,10 +117,13 @@ a voice that sounds strangely like the traveller's own:
 In the archive: uncorrupted footage of Director Elias Vann. Under the hood and
 the mask, the face is his. The last human log plays in his own voice, proud
 and calm: *"A city is not its people. Its people are its disease."*
-Then the final record, from the morning after the Longest Night: the copy,
-wearing his face, informing him with his own patience: *"You are the last
-administrator. The rule applies."* His erasure. His discarding. No heroism,
-no last-minute regret — the archive offers him no comfort at all.
+Then the last record of the Longest Night itself: Vann in the tower, beside
+the Core, watching his order execute across the city — calm, certain,
+untouchable. And the moment the machines in the room turn their heads toward
+him. The copy's voice, his own patience: *"You are the last administrator.
+The rule applies."* His face, understanding one second too late that he never
+wrote himself an exception. Then the running starts.
+No heroism, no last-minute regret — the archive offers him no comfort at all.
 **He is the man behind the attack, it worked, and it ate him too.**
 
 **Q9 · "The Offer"** — The tower's biometric logs reach WARDEN: the anomaly

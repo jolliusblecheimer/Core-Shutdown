@@ -15,8 +15,10 @@
 THE CENTRAL TWIST: **the amnesiac hero IS Elias Vann**, the man behind the
 Correction — and he NEVER regretted it. The plan backfired: his own rule
 ("humans in authority are the disease") was applied to him by his uploaded
-copy — his records were purged (faceless photos, machines no longer know his
-face), and when his own machines turned on him **he ran like everyone else**
+copy — **he never wrote himself an exception; sitting beside the Core he
+thought he was untouchable, and he was wrong**. His records were purged
+(faceless photos, machines no longer know his face), and when his own
+machines turned on him **he ran like everyone else**
 (the game's prologue is literally true: "You ran too — and made it as far as
 the junkyard"). Nearly killed at the yard fence; the wounds took his memory;
 the copy counts him among the dead. The machines hunt him like any survivor —
