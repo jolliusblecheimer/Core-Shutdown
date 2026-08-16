@@ -29,6 +29,7 @@ function tutShow(id, lines, keys, footer) {
   if (Tut.done[id]) return;
   Tut.done[id] = true;
   Tut.active = { id, lines, keys, footer, grace: 0.3 };
+  SFX.blip();
 }
 
 const bullets = [];
@@ -114,6 +115,7 @@ function updatePlayer(dt) {
     player.homeSet = true;
     player.respawnX = 21.5; player.respawnY = 7.5;
     showMsg('Respawn point set — the shack', 2.5);
+    SFX.chime();
   }
 
   let ix = 0, iy = 0;
@@ -141,7 +143,11 @@ function updatePlayer(dt) {
     const spd = player.crouch ? 2.1 : SPEED;
     tryMove(player, wx * spd * dt, wy * spd * dt);
     player.animT += dt;
-    if (player.animT > (player.crouch ? 0.22 : 0.14)) { player.animT = 0; player.frame = 1 - player.frame; }
+    if (player.animT > (player.crouch ? 0.22 : 0.14)) {
+      player.animT = 0;
+      player.frame = 1 - player.frame;
+      if (player.frame === 0) SFX.step(player.crouch);   // one step per stride
+    }
   } else {
     player.frame = 0;
   }
@@ -168,9 +174,11 @@ function updatePlayer(dt) {
         vx: (dirW.x / dl) * 13, vy: (dirW.y / dl) * 13, life: 0.5,
       });
       addShake(1.2);
+      SFX.shot();
     } else {
       player.fireCd = 0.35;
       showMsg('OUT OF AMMO — scroll to your melee', 1.5);
+      SFX.dry();
     }
   }
 
@@ -180,6 +188,7 @@ function updatePlayer(dt) {
     player.swing = 0.22; player.swingCd = m.cd;
     player.combatT = 0;
     addShake(1);
+    if (m.stab) SFX.stab(); else SFX.swing();
     if (scrapper.state !== 'dead') {
       const dx = scrapper.x - player.x, dy = scrapper.y - player.y;
       const d = Math.hypot(dx, dy);
@@ -195,6 +204,7 @@ function updatePlayer(dt) {
           scrapper.kby += (dy / (d || 1)) * 0.10;
           spawnSparks(scrapper.x, scrapper.y, 6, ['#ffd27a', '#c9c9d2']);
           addShake(2);
+          SFX.clang();
           if (scrapper.hp <= 0) killScrapper();
         }
       }
@@ -208,6 +218,7 @@ function updatePlayer(dt) {
       player.inv.snack--;
       player.hp = Math.min(player.maxHp, player.hp + 40);
       showMsg('Ate a snack bar  (+40 HP)');
+      SFX.eat();
     } else if (player.inv.snack <= 0) {
       showMsg('No snack bars — the survivor trades them', 1.8);
     }
@@ -247,6 +258,7 @@ function updateItems(dt) {
       if (Math.random() < 0.2) { player.inv.tech++; extra = '  · +1 LOW-QUALITY tech component'; }
       showMsg(`Looted ${n} scrap${extra}`);
       spawnSparks(scrapper.x, scrapper.y, 5, ['#8a8a92', '#ffd27a']);
+      if (extra) SFX.tech(); else SFX.loot();
       scrapper.looted = true;
       scrapper.respawn = Math.min(scrapper.respawn, 4);
       tutShow('loot',
@@ -270,6 +282,7 @@ function updateItems(dt) {
         showMsg(`+${best.amount} rounds`);
       }
       spawnSparks(best.x, best.y, 8, ['#ffd27a', '#fff2c0']);
+      SFX.pickup();
       items.splice(items.indexOf(best), 1);
     }
   }
@@ -308,25 +321,27 @@ function talkToNpc() {
       'any', 'PRESS ANY KEY');
   } else {
     Trade.open = true;
+    SFX.uiOpen();
   }
 }
 
 function tradeBuy(n) {
   const inv = player.inv;
   if (n === 1) {
-    if (inv.scrap >= 4) { inv.scrap -= 4; inv.snack++; showMsg('Bought a snack bar  (H to eat)'); }
-    else showMsg('Not enough scrap (need 4)', 1.5);
+    if (inv.scrap >= 4) { inv.scrap -= 4; inv.snack++; showMsg('Bought a snack bar  (H to eat)'); SFX.buy(); }
+    else { showMsg('Not enough scrap (need 4)', 1.5); SFX.deny(); }
   } else if (n === 2) {
-    if (inv.scrap >= 6) { inv.scrap -= 6; player.ammo += 6; showMsg('Bought 6 rounds'); }
-    else showMsg('Not enough scrap (need 6)', 1.5);
+    if (inv.scrap >= 6) { inv.scrap -= 6; player.ammo += 6; showMsg('Bought 6 rounds'); SFX.buy(); }
+    else { showMsg('Not enough scrap (need 6)', 1.5); SFX.deny(); }
   } else if (n === 3) {
-    if (player.owned.knife) { showMsg('Already own the knife', 1.5); return; }
+    if (player.owned.knife) { showMsg('Already own the knife', 1.5); SFX.deny(); return; }
     if (inv.tech >= 2) {
       inv.tech -= 2;
       player.owned.knife = true;
       player.melee = 'knife';
       showMsg('PIERCING KNIFE acquired');
-    } else showMsg('Need 2 low-quality tech parts', 1.5);
+      SFX.buy();
+    } else { showMsg('Need 2 low-quality tech parts', 1.5); SFX.deny(); }
   }
 }
 
@@ -334,6 +349,7 @@ function updateMission() {
   if (mission.state === 'active' && scrapper.kills >= 1 && player.inv.scrap >= 5) {
     mission.state = 'complete';
     showMsg('Objective done — return to the survivor', 3);
+    SFX.chime();
   }
 }
 
@@ -350,6 +366,7 @@ function explodeBarrel(b) {
   if (pi >= 0) props.splice(pi, 1);
   decals.push({ gx: cx, gy: cy, type: 'stain' });            // scorch mark
   explosions.push({ x: cx, y: cy, t: 0.35 });
+  SFX.boom();
   spawnSparks(cx, cy, 26, ['#ffd27a', '#ff7a2e', '#ff5a3c', '#8a8a92'], 6);
   spawnSmoke(cx, cy, 12);
   addShake(7);
@@ -362,7 +379,8 @@ function explodeBarrel(b) {
     player.flash = 0.3; player.iframes = 0.5;
     const kx = (player.x - cx) / (pd || 1), ky = (player.y - cy) / (pd || 1);
     tryMove(player, kx * 0.8, ky * 0.8);
-    if (player.hp <= 0) { player.hp = 0; player.dead = 2; }
+    SFX.hurt();
+    if (player.hp <= 0) { player.hp = 0; player.dead = 2; SFX.die(); }
   }
   // shreds machines — a well-placed barrel one-shots a Scrapper
   if (scrapper.state !== 'off' && scrapper.state !== 'dead') {
@@ -403,6 +421,7 @@ function updateBullets(dt) {
     if (isSolid(b.x, b.y)) {
       hit = true;
       spawnSparks(b.x, b.y, 4, ['#ffd27a', '#ffb02e', '#c9c9d2']);
+      SFX.ricochet();
       for (const bb of boomBarrels) {
         if (bb.alive && Math.hypot(b.x - bb.gx - 0.5, b.y - bb.gy - 0.5) < 0.8) {
           explodeBarrel(bb);
@@ -417,6 +436,7 @@ function updateBullets(dt) {
       scrapper.kbx += b.vx * 0.02; scrapper.kby += b.vy * 0.02;
       spawnSparks(b.x, b.y, 6, ['#ffd27a', '#ffb02e', '#8a8a92']);
       addShake(0.8);
+      SFX.hitMetal();
       if (scrapper.hp <= 0) killScrapper();
     }
     if (hit) bullets.splice(i, 1);
@@ -428,6 +448,7 @@ function killScrapper() {
   scrapper.looted = false;
   scrapper.respawn = 20;        // lingers as a lootable wreck; 4s after looting
   scrapper.kills++;
+  SFX.robotDie();
   addShake(2.5);
   spawnSparks(scrapper.x, scrapper.y, 12, ['#ffd27a', '#ffb02e', '#8a8a92'], 3);
   spawnSmoke(scrapper.x, scrapper.y, 5);
@@ -472,6 +493,7 @@ function updateScrapper(dt) {
         s.state = 'chase';
         s.memory = 12;
         s.lastPX = player.x; s.lastPY = player.y;
+        SFX.alert();
         tutEnemy();
         break;
       }
@@ -506,7 +528,7 @@ function updateScrapper(dt) {
         break;
       }
       aiMove(s, seesYou ? player.x : s.lastPX, seesYou ? player.y : s.lastPY, 2.5 * dt, dt);
-      if (seesYou && distP < 0.95) { s.state = 'windup'; s.t = 0.45; s.didHit = false; }
+      if (seesYou && distP < 0.95) { s.state = 'windup'; s.t = 0.45; s.didHit = false; SFX.charge(); }
       break;
     }
     case 'windup': {
@@ -526,7 +548,8 @@ function updateScrapper(dt) {
           spawnSparks(player.x, player.y, 5, ['#ff5a3c', '#ffb02e']);
           const kx = (player.x - s.x) / (d || 1), ky = (player.y - s.y) / (d || 1);
           tryMove(player, kx * 0.5, ky * 0.5);
-          if (player.hp <= 0) { player.hp = 0; player.dead = 2; }
+          SFX.hurt();
+          if (player.hp <= 0) { player.hp = 0; player.dead = 2; SFX.die(); }
         }
       }
       s.t -= dt;

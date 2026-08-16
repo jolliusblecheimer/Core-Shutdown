@@ -115,6 +115,7 @@ canvas.addEventListener('wheel', e => {
   e.preventDefault();
   if (player.melee && player.hasGun) {
     player.active = player.active === 'gun' ? 'melee' : 'gun';
+    SFX.switchW();
     showMsg(player.active === 'gun'
       ? 'SCRAP PISTOL selected'
       : MELEE[player.melee].label.toUpperCase() + ' selected', 1);
@@ -279,13 +280,14 @@ function updateMeta(dt) {
   } else if (GameState === 'naming') {
     for (const code of Object.keys(Input.pressed)) {
       if (!Input.pressed[code]) continue;
-      if (code.startsWith('Key') && nameBuf.length < 12) nameBuf += code.slice(3);
-      else if (code.startsWith('Digit') && nameBuf.length < 12) nameBuf += code.slice(5);
-      else if (code === 'Backspace') nameBuf = nameBuf.slice(0, -1);
+      if (code.startsWith('Key') && nameBuf.length < 12) { nameBuf += code.slice(3); SFX.blip(); }
+      else if (code.startsWith('Digit') && nameBuf.length < 12) { nameBuf += code.slice(5); SFX.blip(); }
+      else if (code === 'Backspace') { nameBuf = nameBuf.slice(0, -1); SFX.blip(); }
       else if (code === 'Enter' && nameBuf.length > 0) {
         playerName = nameBuf;
         GameState = 'playing';
         saveGame();
+        SFX.chime();
       }
     }
   }
@@ -327,6 +329,7 @@ function update(dt) {
   if (Input.pressed['KeyI'] || Input.pressed['Tab'] || (InvUI.open && Input.pressed['Escape'])) {
     Input.pressed['KeyI'] = Input.pressed['Tab'] = false;
     InvUI.open = !InvUI.open;
+    if (InvUI.open) SFX.uiOpen(); else SFX.uiClose();
     InvUI.tab = InvUI.tab || 0;
     InvUI.cur = 0;
     // opening the pack IS the action the inventory tutorial teaches —
@@ -355,6 +358,7 @@ function update(dt) {
     if (Input.pressed['KeyE']) {
       Input.pressed['KeyE'] = false;
       Dialog.idx++;
+      SFX.blip();
       if (Dialog.idx >= Dialog.lines.length) Dialog.active = false;
     }
     updateParticles(dt);
@@ -373,7 +377,7 @@ function update(dt) {
     if (Input.pressed['Digit1']) tradeBuy(1);
     if (Input.pressed['Digit2']) tradeBuy(2);
     if (Input.pressed['Digit3']) tradeBuy(3);
-    if (Input.pressed['KeyE'] || Input.pressed['Escape']) Trade.open = false;
+    if (Input.pressed['KeyE'] || Input.pressed['Escape']) { Trade.open = false; SFX.uiClose(); }
     for (const k of ['Digit1', 'Digit2', 'Digit3', 'KeyE', 'Escape'])
       Input.pressed[k] = false;
     updateParticles(dt);
@@ -435,14 +439,17 @@ function invEntries() {
 function invAction(row) {
   if (row.id === 'pipe' || row.id === 'knife') {
     player.melee = player.melee === row.id ? null : row.id;
+    SFX.switchW();
   } else if (row.id === 'pistol') {
     player.hasGun = !player.hasGun;
+    SFX.switchW();
   } else if (row.id === 'snack') {
     if (player.hp < player.maxHp) {
       player.inv.snack--;
       player.hp = Math.min(player.maxHp, player.hp + 40);
       showMsg('Ate a snack bar  (+40 HP)');
-    } else showMsg('Already at full health', 1.5);
+      SFX.eat();
+    } else { showMsg('Already at full health', 1.5); SFX.deny(); }
   }
 }
 
