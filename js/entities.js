@@ -11,6 +11,7 @@ const player = {
   melee: null,                 // EQUIPPED melee: null | 'pipe' | 'knife'
   hasGun: false, ammo: 0,      // hasGun = pistol EQUIPPED
   active: 'melee',             // which equipped weapon LMB uses (scroll to switch)
+  scrollHintT: 0,              // "scroll" HUD hint: 30s after getting the gun, then gone
   owned: { pipe: false, knife: false, pistol: false },
   inv: { scrap: 0, tech: 0, snack: 0, gateKey: false },
   respawnX: 6.5, respawnY: 26.5, homeSet: false,
@@ -132,6 +133,7 @@ function updatePlayer(dt) {
   player.crouch = !!(Input.keys['ShiftLeft'] || Input.keys['ShiftRight'] || Input.keys['KeyC']);
 
   player.iframes -= dt; player.flash -= dt;
+  if (player.scrollHintT > 0) player.scrollHintT -= dt;
 
   // passive healing: 20s without combat, then slow regen
   player.combatT += dt;
@@ -313,6 +315,7 @@ function talkToNpc() {
     player.owned.pistol = true;
     player.hasGun = true;
     player.active = 'gun';
+    player.scrollHintT = 30;
     player.ammo += 6;
     player.inv.gateKey = true;
     showMsg('SCRAP PISTOL + YARD GATE KEY acquired', 3.5);

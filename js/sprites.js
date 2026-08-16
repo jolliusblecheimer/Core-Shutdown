@@ -588,15 +588,16 @@ function outlined(src) {
     px(kg, 13, 3, 5, 2, '#4a3a24');       // handle
     px(kg, 17, 2, 1, 4, '#3a2c1c');       // pommel
     Sprites.knifeIcon = outlined(k);
-    // held version for the stab animation — same knife, blade pointing forward
-    Sprites.knifeHeld = (() => {
-      const src = Sprites.knifeIcon;
-      const c = makeCanvas(src.width, src.height), g = c.getContext('2d');
-      g.translate(src.width, 0);
-      g.scale(-1, 1);
-      g.drawImage(src, 0, 0);
-      return c;
-    })();
+    // held version for the stab animation — same design, but compact so the
+    // on-screen blade matches the actual attack range
+    const kh = makeCanvas(12, 6), khg = kh.getContext('2d');
+    px(khg, 1, 1, 3, 2, '#4a3a24');       // handle
+    px(khg, 0, 1, 1, 2, '#3a2c1c');       // pommel
+    px(khg, 4, 0, 1, 4, '#7d818c');       // guard
+    px(khg, 5, 1, 6, 2, '#b8bcc8');       // blade
+    px(khg, 5, 1, 6, 1, '#dfe3ec');
+    px(khg, 11, 2, 1, 1, '#b8bcc8');      // tip
+    Sprites.knifeHeld = outlined(kh);
 
     // snack bar
     const sn = makeCanvas(12, 7), sng = sn.getContext('2d');

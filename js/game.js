@@ -734,8 +734,8 @@ function drawPlayer(x, y) {
   if (player.swing > 0 && player.melee) {
     const prog = 1 - player.swing / 0.22;                 // 0 → 1
     if (MELEE[player.melee].stab) {
-      // knife: one-armed forward thrust using the SAME knife sprite as the UI
-      const reach = Math.sin(prog * Math.PI) * 9;         // out and back
+      // knife: one-armed forward thrust — blade length matches the hit range
+      const reach = Math.sin(prog * Math.PI) * 7;         // out and back
       ctx.save();
       ctx.translate(x, y - 9);
       ctx.rotate(player.angle);
@@ -746,7 +746,7 @@ function drawPlayer(x, y) {
       ctx.fillRect(1 + reach * 0.4, -1, 4, 2);
       ctx.fillStyle = '#0e0e12';                          // glove
       ctx.fillRect(5 + reach * 0.4, -1, 2, 2);
-      ctx.drawImage(Sprites.knifeHeld, Math.round(5 + reach), -5);
+      ctx.drawImage(Sprites.knifeHeld, Math.round(6 + reach), -4);
       ctx.restore();
     } else {
       // pipe: wide sweep with a fading arc trail
@@ -978,7 +978,7 @@ function drawHUD() {
   } else {
     ptext('UNARMED', VIEW_W - 54, VIEW_H - 15, 7, 'rgba(232,217,192,0.45)');
   }
-  if (player.melee && player.hasGun) {
+  if (player.melee && player.hasGun && player.scrollHintT > 0) {
     ptext('scroll', VIEW_W - 33, VIEW_H - 27, 7, 'rgba(232,217,192,0.35)', 'center');
   }
 

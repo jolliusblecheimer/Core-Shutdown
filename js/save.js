@@ -14,6 +14,7 @@ function saveGame() {
         melee: player.melee, hasGun: player.hasGun, active: player.active,
         owned: { ...player.owned }, inv: { ...player.inv },
         respawnX: player.respawnX, respawnY: player.respawnY, homeSet: player.homeSet,
+        scrollHintT: Math.max(0, player.scrollHintT),
         combatT: 99,
       },
       mission: mission.state,
