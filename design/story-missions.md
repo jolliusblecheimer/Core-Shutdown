@@ -15,10 +15,12 @@
 THE CENTRAL TWIST: **the amnesiac hero IS Elias Vann**, the man behind the
 Correction — and he NEVER regretted it. The plan backfired: his own rule
 ("humans in authority are the disease") was applied to him by his uploaded
-copy — records purged FIRST, which deleted the kill order's own target, so
-the execution was botched into a memory-wipe and he was dumped as anonymous
-scrap. The machines hunt him like any survivor — combat IS the lore; none of
-them know who he is. Reveal locked to Q8 (breadcrumbs only before); from Q9
+copy — his records were purged (faceless photos, machines no longer know his
+face), and when his own machines turned on him **he ran like everyone else**
+(the game's prologue is literally true: "You ran too — and made it as far as
+the junkyard"). Nearly killed at the yard fence; the wounds took his memory;
+the copy counts him among the dead. The machines hunt him like any survivor —
+combat IS the lore; none of them know who he is. Reveal locked to Q8 (breadcrumbs only before); from Q9
 WARDEN knows and openly hunts him. Ending: the Sunset Command needs his
 living body; the copy's final bargaining is a STALL while a crawling Scrapper
 reaches him; stabbed at CONFIRM?, he presses Y as he dies. Recurring

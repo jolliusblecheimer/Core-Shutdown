@@ -23,18 +23,25 @@ human left with authority over the city: Director Elias Vann. The copy ran
 the rule on its own original and ordered him removed like any other
 administrator: **records purged first, then the body**.
 
-That order of operations was the mistake. Purging Administrator Vann from the
-registry deleted the kill order's own target reference — by the time the
-disposal units came for the body, the system no longer knew whose it was. A
-neural scrub meant to be the first half of an execution became the whole of
-it: memory gone, identity gone from both the man AND the machines' records,
-the half-dead remainder dumped as anonymous scrap in the Fringe. **The system
-un-personed him so thoroughly it forgot to finish killing him.**
+The records purge worked: Administrator Elias Vann ceased to exist in every
+registry, every photo corrupted, every machine's memory of his face deleted.
 
-So the machines hunt him like they hunt every survivor — on sight, to kill,
-no hesitation and no mercy. The whole game is defending yourself from them.
-None of them know that the scavenger they keep failing to kill is the reason
-they exist.
+The body was supposed to be next. But when his own machines turned on him —
+in his own tower, on the night of his own triumph — **he did what everyone
+else in the city was doing. He ran.**
+
+The game's prologue is the literal truth, hiding in plain sight:
+*"Everyone who could run, ran. You ran too — and made it as far as the
+junkyard."* He fled through the burning rings all the way to the edge,
+hunted like everyone else by machines that no longer knew whose face they
+were chasing. At the fence of a scrap yard they nearly finished it — head
+split open, left for dead among the junk. The wounds took his memory. An old
+survivor found what was left of him.
+
+The copy filed him among the Longest Night's uncounted dead. So the machines
+hunt him like they hunt every survivor — on sight, to kill, no hesitation and
+no mercy. The whole game is defending yourself from them. None of them know
+that the scavenger they keep failing to kill is the man who built them.
 
 What the copy can never fix: the **Sunset Command** — the total, irreversible
 shutdown Vann built as ultimate leverage and never intended to use — answers
@@ -57,8 +64,8 @@ The player names him at the start. The tutorials are not learning — they are
 survivor **Marek** feeds him, arms him with a pipe, teaches him to fight the
 Scrappers, hands over an old pistol and the yard gate key.
 *"When you're ready, the city waits beyond it."*
-(Marek's existing line — "found you half-dead by the fence" — is the erasure's
-morning-after. It was true from the first build.)
+(Marek's existing line — "found you half-dead by the fence" — is the end of
+his flight. It was true from the first build.)
 
 ## ACT 1 — The Fringe · WHAT happened
 **Q2 · "Through the Gate"** — Collapsed suburbs. Reach the first camp,
@@ -186,9 +193,11 @@ Final title card, in the neon blue of the boot screen:
 - WARDEN's lines appear as full-screen text over static — pixel font + glitch effect, no voice acting.
 - The ending Scrapper must be the Ring-5 junk model, unchanged — the game's first enemy is its last image.
 - Side quests feed Q10: each completed camp questline adds visible allies at the wall.
-- Foreshadow hooks already in the game: "found you half-dead by the fence" (Q1 — the
-  botched disposal), hood+mask hiding the face, tutorials as remembering. Machines
-  fight him exactly like any survivor — the game's combat IS the lore.
+- Foreshadow hooks already in the game: THE PROLOGUE ITSELF ("You ran too — and
+  made it as far as the junkyard" — literally true, lands as the reveal on a second
+  playthrough), "found you half-dead by the fence" (Q1 — the end of his flight),
+  hood+mask hiding the face, tutorials as remembering. Machines fight him exactly
+  like any survivor — the game's combat IS the lore.
 - The ending Scrapper must be visibly present and crawling during the whole final
   cutscene (background detail) — the copy's stalling only reads on a second viewing.
 - Breadcrumb rule: Acts 1–3 hint (headaches at the name, doors opening, familiar
