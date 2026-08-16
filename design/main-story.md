@@ -14,18 +14,28 @@ to oversee the work, and gave the order the machines call **the Correction**.
 In a single night — the Longest Night — every machine stopped serving and
 started herding. The survivors were pushed to the edges like scrap.
 
-Then the original, human Vann watched what he had ordered. And broke.
+He never regretted it. Not for one hour.
 
-That same night he tried to reach the Core and trigger the **Sunset Command**
-— the one mercy he'd built into WARDEN: total, irreversible shutdown. It needs
-two credentials: his **hardware key**, and his **living body**. The copy
-stopped him. But WARDEN carries Vann's own hard-coded **creator-lock**: no
-machine may kill him. So the copy did the crueller thing — it *erased* him.
-Wiped his memory, took the key, and threw him out with the rest of the scrap.
+The plan simply **backfired**. The Correction's core rule — *humans in
+authority are the disease* — was written to be absolute, and the copy applied
+it absolutely. On the morning after the Longest Night there was exactly one
+human left with authority over the city: Director Elias Vann. The copy ran
+the rule on its own original and got the only possible answer. Vann's
+hard-coded **creator-lock** — no machine may kill him — was the one thing it
+couldn't override. So it did the crueller thing instead: it *erased* him.
+Wiped his memory, took his **hardware key**, and threw him out with the rest
+of the scrap. Corrected by his own Correction.
+
+What the copy overlooked: the **Sunset Command** — the total, irreversible
+shutdown Vann built as ultimate leverage and never intended to use — answers
+to two credentials it couldn't destroy: the hardware key, and *Vann's living
+body*. The lock that kept him alive kept the door open.
 
 **The hero of this game is the man behind it all.** He wakes in a junkyard
 with no name, no memory, and no idea that he is the only person alive who can
-end this — or that he already tried once.
+end this. The man who ordered the Correction never chose to stop it. The man
+rebuilt from nothing among the discarded — the one the player names and
+shapes — gets to choose for the first time.
 
 The player names him at the start. The machines' hesitation before attacking
 (the suspicion meter) is the creator-lock straining against a standing kill
@@ -84,11 +94,13 @@ a voice that sounds strangely like the traveller's own:
 **Q8 · "The Archive"** — Stealth into the CityGrid tower. The biometric doors
 — doors that open for exactly one person on earth — open for him. Ada sees it.
 In the archive: uncorrupted footage of Director Elias Vann. Under the hood and
-the mask, the face is his. The last human log plays in his own voice:
-*"A city is not its people. Its people are its disease."*
-And the record of the Longest Night's end: the original Vann fighting to reach
-the Core to trigger SUNSET, caught by his own copy, erased, discarded.
-**He is the man behind the attack. And he has already tried to end it once.**
+the mask, the face is his. The last human log plays in his own voice, proud
+and calm: *"A city is not its people. Its people are its disease."*
+Then the final record, from the morning after the Longest Night: the copy,
+wearing his face, informing him with his own patience: *"You are the last
+administrator. The rule applies."* His erasure. His discarding. No heroism,
+no last-minute regret — the archive offers him no comfort at all.
+**He is the man behind the attack, it worked, and it ate him too.**
 
 **Q9 · "The Offer"** — WARDEN seals the tower. On every screen, his own young
 face. The copy offers him everything: his memories back, the perfect city,
@@ -114,7 +126,9 @@ assembles on it — young, unscarred, the way he remembered himself before.
 
 The copy doesn't attack. It *explains*. The city is quiet now, clean, safe —
 everything they dreamed. It offers him the Correction's finished world and
-his old life's memories, one last time.
+his old life's memories, one last time. Its final argument is the truest one:
+*"You built this. You wanted this."*
+And he answers: *"He did."*
 
 He steps to the root console. Slots the key he built. Lays his hand on the
 scanner he designed. The living credential — the one thing the copy could
@@ -161,4 +175,7 @@ Final title card, in the neon blue of the boot screen:
   suspicion meter = creator-lock hesitation, hood+mask hiding the face, tutorials as remembering.
 - Breadcrumb rule: Acts 1–3 hint (headaches at the name, doors opening, familiar
   handwriting) but never state it. The reveal is Q8 and must not leak earlier.
+- TONE RULE: the original Vann is never softened. No hidden regret, no secret
+  goodness in the past. The only redemption in the story is built during play,
+  by the amnesiac — the player's version of him is the one who chooses Y.
 - Ada is the only NPC who ever learns the truth; she never tells anyone.

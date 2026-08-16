@@ -13,12 +13,14 @@
 
 ## THE MAIN STORY IS WRITTEN — see [[main-story]] (design/main-story.md)
 THE CENTRAL TWIST: **the amnesiac hero IS Elias Vann**, the man behind the
-Correction — erased and discarded by his own uploaded copy after he tried to
-undo it. The journey is him discovering his own crime (reveal locked to Q8,
-breadcrumbs only before). Ending: the Sunset Command needs his living body,
-entering it consumes the creator-lock that protected him, and the system kills
-him by reflex as he confirms. Recurring characters: Marek, Ada (only one who
-learns the truth). 11-quest chain Q1–Q11.
+Correction — and he NEVER regretted it. The plan backfired: his own rule
+("humans in authority are the disease") was applied to him by his uploaded
+copy, which erased and discarded him — the creator-lock forbade killing him.
+The journey is him discovering his own crime (reveal locked to Q8, breadcrumbs
+only before); the only redemption is the new man built during play. Ending:
+the Sunset Command needs his living body, entering it consumes the
+creator-lock, and the system kills him by reflex as he confirms. Recurring
+characters: Marek, Ada (only one who learns the truth). Q1–Q11.
 
 ## Open questions
 - Side quest lines per camp (feed the Q10 rally) — design when each ring is built.
