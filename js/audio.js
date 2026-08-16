@@ -46,7 +46,82 @@ const SFX = (() => {
     src.start(t0);
   }
 
+  // ---- ambient background: dark drone chords + wind + distant machines ----
+  let ambStarted = false, musicOn = true, musicGain = null;
+  const CHORDS = [
+    [55.00, 110.00, 130.81, 164.81],   // A minor colour
+    [43.65, 87.31, 130.81, 174.61],    // F
+    [49.00, 98.00, 146.83, 185.00],    // G(m)
+    [36.71, 73.42, 110.00, 146.83],    // D minor colour
+  ];
+
+  function droneChord() {
+    if (!ambStarted || !musicOn) { if (ambStarted) setTimeout(droneChord, 9000); return; }
+    const c = ac(); if (!c) return;
+    const chord = CHORDS[(Math.random() * CHORDS.length) | 0];
+    const t0 = c.currentTime;
+    for (const f of chord) {
+      const o = c.createOscillator();
+      o.type = 'triangle';
+      o.frequency.value = f * (1 + (Math.random() - 0.5) * 0.004);   // slight detune
+      const g = c.createGain();
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.linearRampToValueAtTime(0.05, t0 + 3);
+      g.gain.setValueAtTime(0.05, t0 + 8);
+      g.gain.linearRampToValueAtTime(0.0001, t0 + 12);
+      o.connect(g).connect(musicGain);
+      o.start(t0); o.stop(t0 + 12.5);
+    }
+    setTimeout(droneChord, 9000);                 // chords overlap by 3s
+  }
+
+  function accent() {
+    if (!ambStarted) return;
+    if (musicOn) {
+      const r = Math.random();
+      if (r < 0.5) tone('sine', 70, 52, 1.4, 0.045);                    // distant thoom
+      else if (r < 0.8) noise(0.5, 0.04, 'lowpass', 300);               // far-off rumble
+      else { tone('square', 220, 205, 0.12, 0.02); tone('square', 220, 196, 0.1, 0.02, 0.3); }  // machine chatter
+    }
+    setTimeout(accent, 8000 + Math.random() * 9000);
+  }
+
+  function startAmbience() {
+    const c = ac(); if (!c || ambStarted) return;
+    ambStarted = true;
+    musicGain = c.createGain();
+    musicGain.gain.value = 0.12;
+    musicGain.connect(master);
+    // wind: looped brown-ish noise, slowly swelling and fading
+    const wbuf = c.createBuffer(1, c.sampleRate * 3, c.sampleRate);
+    const wd = wbuf.getChannelData(0);
+    let last = 0;
+    for (let i = 0; i < wd.length; i++) {
+      last = last * 0.97 + (Math.random() * 2 - 1) * 0.03;
+      wd[i] = last * 3;
+    }
+    const wsrc = c.createBufferSource();
+    wsrc.buffer = wbuf; wsrc.loop = true;
+    const wf = c.createBiquadFilter();
+    wf.type = 'lowpass'; wf.frequency.value = 280;
+    const wg = c.createGain(); wg.gain.value = 0.45;
+    const lfo = c.createOscillator(); lfo.frequency.value = 0.05;
+    const lfoG = c.createGain(); lfoG.gain.value = 0.22;
+    lfo.connect(lfoG).connect(wg.gain);
+    wsrc.connect(wf).connect(wg).connect(musicGain);
+    wsrc.start(); lfo.start();
+    droneChord();
+    accent();
+  }
+
+  function toggleMusic() {
+    musicOn = !musicOn;
+    if (musicGain) musicGain.gain.value = musicOn ? 0.12 : 0;
+    return musicOn;
+  }
+
   return {
+    startAmbience, toggleMusic,
     // combat
     shot() { noise(0.09, 0.35, 'lowpass', 2800); tone('square', 200, 80, 0.09, 0.25); },
     dry() { tone('square', 320, 320, 0.03, 0.12); },

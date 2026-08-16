@@ -241,7 +241,10 @@ function updateMeta(dt) {
     }
   } else if (GameState === 'splash') {
     splashT += dt;
-    if (splashT > 3.7 || (splashT > 0.6 && anyKey)) GameState = 'title';
+    if (splashT > 3.7 || (splashT > 0.6 && anyKey)) {
+      GameState = 'title';
+      SFX.startAmbience();      // the world starts breathing under the title
+    }
   } else if (GameState === 'title') {
     if (pendingSave) {
       if (Input.pressed['KeyE']) {
@@ -297,6 +300,11 @@ function updateMeta(dt) {
 // ---------- update ----------
 function update(dt) {
   gameTime += dt;
+  // M toggles the ambient soundscape anywhere
+  if (Input.pressed['KeyM']) {
+    Input.pressed['KeyM'] = false;
+    showMsg(SFX.toggleMusic() ? 'Ambience ON' : 'Ambience OFF', 1.2);
+  }
   if (GameState !== 'playing') {
     updateMeta(dt);
     updateParticles(dt);
