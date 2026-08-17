@@ -216,3 +216,137 @@ files, keep a log of all our prompts and answers, and always keep the .md files
 updated.
 **Claude:** Wrote `CLAUDE.md` (standing rules, auto-loaded next session),
 `PROJECT_STATE.md` (what's built + what's next), and this log.
+
+### 64. The angle pass (8 fixes)
+**Laurens:** Cars are at the wrong angle — **and put in the important .md files
+that every texture's angle must be checked and adjusted**. Removed signs still
+pop bubbles where they used to be. Signs point the wrong way and are the wrong
+angle. V-shaped roofs have a hole between the wall and the roof (fix it in the
+roof part, not the walls). Crosswalks wrong angle. One wall type has a black
+stripe. Road arrows wrong angle. Add roof variation — chimneys, AC units,
+antennas, satellite dishes.
+**Claude:** Wrote **the angle rule** into `CLAUDE.md` and `art-style.md`, then
+fixed all eight: cars/bus/shelters sheared along their road; crossings drawn
+across the carriageway; four directional painted arrows; makeshift signs
+angled to their street with a painted arrow pointing along the trail; gable
+triangles filled on pitched roofs; shopfront rebuilt into panes with mullions,
+stallriser and a painted name band (the black stripe); orphan sign bubbles
+removed; roof clutter varies by seed. **Pushed.**
+
+### 65. HD-2D detail overhaul (in progress, LOCAL ONLY)
+**Laurens:** Sent Octopath/Triangle Strategy reference shots — wants that level
+of attention to detail. **For big graphic changes: work on localhost and do not
+push until approved.** Don't forget the junkyard textures. And when things are
+angled they must still look 3D.
+**Claude:** Added the local-first rule to `CLAUDE.md`. Started the art pass:
+- Buildings: brick/stone **courses with staggered joints** across both faces, a
+  lit top course under the roof, a vertical corner highlight
+- Windows are now **recessed** — dark reveal, glass set back, frame, lit sill,
+  mullion — instead of painted rectangles
+- Pitched roofs are **shingled**: overlapping rows drawn in the slope's own
+  space with shadow lines and lit lips, plus a ridge cap
+- Flat roofs get felt seams, weathering and a real **parapet** (outer wall +
+  lit coping) so the deck sits inside it
+- Pavement rebuilt as **individual laid slabs** on the iso diagonals with lit
+  edges, joint shadows, weeds and cracked slabs
+- Junkyard concrete given the same slab treatment
+**Not pushed** — awaiting review.
+
+### 66. Twelve fixes, then a revert
+**Laurens (12 items):** boss got stuck; dying in the boss fight forces a
+restart; all cars look 2D; move the church so it isn't a straight walk; signs
+should give directions not distances; the sign boards look weird — just put
+text on them; the survivor should warn about killer droids; a huge grey square
+on the road; the map's circle animation should be pixelated; render distance
+too short, buildings vanish; another grey square with a red outline; trees on
+empty lots, 1-in-4 buildings overgrown, 1-in-4 ruined.
+**Claude:** Built all twelve, then Laurens reviewed mid-session and reverted
+four of them.
+
+**Kept:**
+- **The boss always comes.** Three escalating answers to being blocked: slide
+  along the obstruction, then smash the tiles it is pressed against (it is a
+  compactor), then as a last resort haul itself out and reappear in the open.
+- **Dying is a retry, not a restart.** `resetBossFight()` puts it back on its
+  heap at full health, puts you back where you stood when it rose, and shakes
+  the two ammo packs loose again.
+- **Render distance.** Props are indexed into *every* cell their footprint
+  touches, not just their anchor's cell — that was why big buildings popped out
+  of existence. Gather band widened; results de-duplicated with a stamp.
+- **The grey squares, both of them.** (a) The block-filler was dropping houses
+  inside the gas station, so the canopy hung over them — the forecourt now
+  claims its ground before anything is built, and `placeBuilding` refuses it.
+  (b) The canopy was one flat quad; it is now a slab with a soffit, strip
+  lights, thickness and a red fascia on both visible edges, and it fades when
+  you stand under it. (c) **The parapet coping was being drawn as a full-size
+  diamond over the finished deck** — repainting every roof in one flat colour
+  and erasing all its detail. Roofs are now a well: parapet up, deck set down
+  inside it, inner shadow on the far sides, and seams/patches/ballast/pooled
+  water that scale with the roof instead of a fixed six lines.
+- **The route.** St Martin's moved to (50,54), north of the east cross. Getting
+  there is now west along the gate road → north up the mid street → west along
+  the east cross. Two turns, not one straight line. Sign *text* rewritten to
+  directions — "KEEP TO THIS ROAD", "TURN HERE. UP THIS STREET", "LEFT AT THE
+  CROSSROADS" — and the painted road arrows follow the three legs.
+- **Marek warns you about the Hunter-Droids** before you leave the yard.
+- **Map marker** is the traveller himself, no ring.
+
+**Reverted at Laurens' request:** all trees; the wall changes (material courses
+and recessed windows — they read "double", and the ivy put random green on
+them); the painted-text sign boards; building ivy/ruin states.
+
+### 67. Vehicles rebuilt from reference photos
+**Laurens:** "the cars are blocks that is not what cars look like" — with
+photos of a Bentley saloon, a Ferrari, and Escalade / Hyundai / BMW / Cayenne
+SUVs. Also: make the school bus 3D.
+**Claude:** Replaced the box with a **swept profile** system (`makeVehicle`).
+A vehicle is described by curves sampled along its length — half-width,
+waistline, roofline, greenhouse width — and swept onto the iso grid, so the
+bonnet slopes, the nose and tail taper in plan, and the greenhouse sits
+narrower and set back. Then: shoulder highlight, swage line, shadowed sill,
+wheels sunk in real arches with tyre/rim/hub, and a proper face at the nose
+(grille slats, headlamps, bumper, splitter).
+Four bodies — saloon, SUV, coupé, hatchback — in six weathered colours, each
+built for both street directions. **The school bus uses the same system**: a
+long box with a dropped nose, a full-length window band and seven pillars.
+
+### 68. Cars back to version 1
+**Laurens:** "go back to version 1. of the cars, this is hurting my eyes"
+**Claude:** Restored the **original** cars and bus — the sheared side elevations
+that were in the game before this session touched them (`Sprites.cars` +
+`sheared()`), with the original draw offsets. Both of my attempts are gone from
+the codebase: the box version and the swept-profile version. Three car looks
+have now been tried and the original is the one that stays.
+The swept-profile code is kept out of the repo but recoverable from this
+session if it is ever wanted for something else.
+
+### 69. "but change the angle"
+**Laurens:** "but change the angle"
+**Claude:** Asked which angle rather than guess a fourth time — answer: they
+still read as a pure side view, tipped over, instead of being seen from above
+like the rest of the world.
+The geometric reason, which is worth keeping: **`sheared()` can only slope a
+sprite one way.** That leaves the roof a rectangle, and a real isometric roof
+is a rhombus — so no amount of shearing a side elevation will ever produce one.
+It has to be built from the footprint.
+So cars are now drawn at the iso viewpoint: a full-length lower body with a
+shorter, narrower cabin sat on it, plus wheels, sill, waistline and headlamps.
+Filled with **integer scanlines in flat colours** (`isoFill`) — the lesson from
+the swept-profile attempt being that fractional polygons and alpha overlays turn
+to mush at 320×180. Four paint jobs, both street directions. All four attempts
+are written up in `art-style.md` so this does not get re-litigated.
+
+### 70. Scuffed walls
+**Laurens:** "some off the walls are scuffed, fix them"
+**Claude:** Same root cause as the cars, one level down. All the small detail on
+a wall — window panes, shopfront glazing, shutters, doors, the fascia rail, the
+painted name band — was being drawn with `poly()`, which is an antialiased
+canvas path fill. A window on these buildings is about five pixels across, and
+a soft edge on something that size does not read as a soft edge; it reads as a
+smear. Every face came out looking scuffed.
+Added `hard()` — the same integer-scanline fill the cars now use (`isoFill`) —
+and moved every piece of wall detail onto it. The big face quads still use
+`poly()`, because their edges are long enough that AA helps rather than hurts.
+**The rule is now consistent across the project: geometry big enough to have a
+silhouette may be a path; anything smaller than about ten pixels must be
+integer-filled.**

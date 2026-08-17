@@ -115,6 +115,8 @@ function updatePlayer(dt) {
   if (player.dead > 0) {
     player.dead -= dt;
     if (player.dead <= 0) {
+      // a boss fight resets itself — you retry it, you don't redo the run
+      if (typeof resetBossFight === 'function' && resetBossFight()) return;
       player.x = player.respawnX; player.y = player.respawnY;
       player.hp = player.maxHp; player.iframes = 1.2;
     }
@@ -386,10 +388,15 @@ function talkToNpc() {
     Tut.done.marekRoads = true;
     startDialog([
       "Beyond that gate is the old ring road. Follow it west.",
-      "Signs still stand. They'll take you to St Martin's —",
-      "a church. People live in it now. They call it Candlelight.",
-      "Past that: a school, an airstrip they called an evacuation point.",
-      "Read the signs, traveller. This city still says where it goes.",
+      "Signs still stand. Somebody painted them after. They'll",
+      "take you to St Martin's — a church. People live in it now.",
+      "They call it Candlelight.",
+      "Listen to me. The Scrappers in here are junk-eaters.",
+      "In the city there are others. Tall. Armed. Built to hunt",
+      "people, and nothing else. We call them Hunter-Droids.",
+      "They don't rummage, traveller. They look for you.",
+      "If you see one first, that's your only advantage. Use it.",
+      "Read the signs. This city still says where it goes.",
     ]);
   } else {
     Trade.open = true;

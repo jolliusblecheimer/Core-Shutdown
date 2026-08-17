@@ -67,9 +67,17 @@ function outlined(src) {
   // HD-2D ground pass: richer, more detailed tiles
   Sprites.asphalt = []; Sprites.dirt = []; Sprites.rubble = []; Sprites.planks = [];
   for (let i = 0; i < 8; i++) {
-    // cracked concrete slabs
+    // JUNKYARD ground: cracked concrete slabs, now with laid-slab edges
     const { c, g } = tileBase('#31302e');
     sprinkle(g, 40, ['#3d3b38', '#282624', '#454340', '#2b2927', '#383633']);
+    // slab joints on the iso diagonals, with a lit lip like the pavement
+    for (let k = 0; k < 8; k++) {
+      dpx(g, 16 - k * 2, k, 1, '#232221');
+      dpx(g, 16 - k * 2 + 1, k, 1, 'rgba(120,116,110,0.18)');
+      dpx(g, 16 + k * 2, k, 1, '#232221');
+      dpx(g, k * 2, 8 + k, 1, '#232221');
+      dpx(g, 32 - k * 2, 8 + k, 1, '#232221');
+    }
     if (rng() < 0.7) {                            // slab seam
       const sy = 4 + ((rng() * 8) | 0);
       dpx(g, 0, sy, 32, '#242322');
@@ -147,16 +155,34 @@ function outlined(src) {
     Sprites.road.push(c);
   }
   for (let i = 0; i < 5; i++) {
-    // pavement: pale slabs with joints
+    // pavement: individual slabs, each with a lit top edge and a shadowed
+    // joint — the detail that makes ground read as laid stone, not a fill
     const { c, g } = tileBase('#4a4c4f');
-    sprinkle(g, 22, ['#525457', '#434548', '#4e5053']);
-    dpx(g, 0, 7, 32, '#3a3c3f');                      // slab joint
-    dpx(g, 15, 0, 2, 16, '#3a3c3f');
-    if (rng() < 0.45) {                               // weeds through the joint
-      const r = (rng() * 14) | 0;
-      dpx(g, 14 + ((rng() * 4) | 0), r, 1, '#4a5a2a');
+    sprinkle(g, 18, ['#525457', '#434548', '#4e5053']);
+    // four slabs per tile, laid on the iso diagonals
+    for (const [sx0, sy0] of [[0, 0], [16, 8], [-16, 8], [0, 16]]) {
+      for (let k = 0; k < 8; k++) {
+        const wdt = 16 - Math.abs(k - 4) * 2;
+        dpx(g, sx0 + 8 - wdt / 2, sy0 + k - 4, wdt, k < 2 ? '#585a5d' : '#4c4e51');
+      }
     }
-    if (rng() < 0.3) dpx(g, (rng() * 24) | 0, (rng() * 15) | 0, 3, '#37393c');  // missing chip
+    // joints along both diagonals
+    for (let k = 0; k < 8; k++) {
+      dpx(g, 16 - k * 2, k, 1, '#3a3c3f');
+      dpx(g, 16 + k * 2, k, 1, '#3a3c3f');
+      dpx(g, k * 2, 8 + k, 1, '#3a3c3f');
+      dpx(g, 32 - k * 2, 8 + k, 1, '#3a3c3f');
+    }
+    if (rng() < 0.5) {                                // weeds in the joint
+      const r = 2 + ((rng() * 12) | 0);
+      dpx(g, 15 + ((rng() * 3) | 0), r, 1, '#4a5a2a');
+      dpx(g, 16 + ((rng() * 3) | 0), r + 1, 1, '#3e4c22');
+    }
+    if (rng() < 0.35) {                               // a cracked / missing slab
+      const r = 3 + ((rng() * 8) | 0);
+      dpx(g, 10 + ((rng() * 10) | 0), r, 4, '#37393c');
+      dpx(g, 11 + ((rng() * 8) | 0), r + 1, 3, '#404245');
+    }
     Sprites.pavement.push(c);
   }
   for (let i = 0; i < 5; i++) {
@@ -474,25 +500,142 @@ function outlined(src) {
   }
   Sprites.scrapPiles = [scrapPile(), scrapPile(), scrapPile()];
 
-  // car wreck, two paint jobs
-  function car(body, bodyD) {
-    const c = makeCanvas(36, 20), g = c.getContext('2d');
-    px(g, 3, 8, 30, 8, body);
-    px(g, 6, 4, 20, 5, bodyD);
-    px(g, 8, 5, 7, 3, '#14161c');
-    px(g, 17, 5, 7, 3, '#14161c');
-    px(g, 3, 8, 6, 3, '#7d4a2a');
-    px(g, 24, 12, 8, 3, RUST_D);
-    px(g, 26, 9, 5, 2, RUST);
-    px(g, 6, 15, 5, 3, '#22201e');
-    px(g, 25, 15, 5, 3, '#22201e');
+  // ---- CAR WRECKS, seen from above like everything else ----
+  // Still one flat hand-drawn sprite, still chunky — but it is drawn as a ROOF
+  // BAND stacked on a side elevation. Shearing that whole stack is exactly the
+  // isometric projection of a box: the roof band becomes the roof parallelogram
+  // and the band under it becomes the near flank, both at the road's angle.
+  // A pure side elevation had no roof at all, which is why it read as a card
+  // tipped over. Everything is integer px() — no antialiased polygon edges.
+  function car(body, bodyD, roofC, glassC) {
+    const c = makeCanvas(36, 26), g = c.getContext('2d');
+    const glass = glassC || '#171b22';
+
+    // ---- the roof, seen from above (rows 0-7) ----
+    px(g, 2, 0, 32, 8, roofC);                       // whole upper surface
+    px(g, 2, 0, 32, 1, shadeHex(roofC, 1.18));       // sunlit leading edge
+    px(g, 2, 7, 32, 1, shadeHex(roofC, 0.78));       // where the roof turns down
+    px(g, 3, 1, 7, 6, shadeHex(roofC, 1.06));        // boot lid
+    px(g, 26, 1, 7, 6, shadeHex(roofC, 1.1));        // bonnet, catches most light
+    px(g, 10, 1, 4, 6, glass);                       // rear screen
+    px(g, 22, 1, 5, 6, glass);                       // windscreen
+    px(g, 22, 1, 5, 1, shadeHex(glass, 2.1));        // glint off the glass
+    px(g, 14, 1, 8, 6, shadeHex(roofC, 1.14));       // roof panel between them
+    px(g, 14, 3, 8, 1, shadeHex(roofC, 0.86));       // roof crease
+
+    // ---- the near flank (rows 8-19) ----
+    px(g, 2, 8, 32, 12, body);
+    px(g, 2, 8, 32, 1, shadeHex(body, 1.22));        // shoulder
+    px(g, 10, 8, 17, 5, glass);                      // side windows
+    px(g, 18, 8, 2, 5, bodyD);                       // B-pillar
+    px(g, 2, 13, 32, 1, bodyD);                      // swage line
+    px(g, 18, 13, 1, 7, bodyD);                      // door shut
+    px(g, 2, 18, 32, 2, shadeHex(body, 0.5));        // sill, in its own shadow
+
+    // ---- arches and wheels (rows 16-23) ----
+    px(g, 5, 16, 8, 4, '#101216');
+    px(g, 23, 16, 8, 4, '#101216');
+    px(g, 6, 18, 6, 5, '#191c21');
+    px(g, 24, 18, 6, 5, '#191c21');
+    px(g, 7, 19, 4, 3, '#3d4249');                   // rims
+    px(g, 25, 19, 4, 3, '#3d4249');
+
+    // ---- it has been sat here a long time ----
+    px(g, 4, 10, 5, 3, RUST_D);
+    px(g, 28, 14, 5, 3, RUST_D);
+    px(g, 6, 2, 4, 2, RUST);
+    px(g, 30, 4, 3, 2, RUST_D);
     return outlined(c);
   }
-  Sprites.cars = [car('#6e3b24', '#5c3220'), car('#3f5468', '#334455')];
-  // a car sits ON the road, so it must lie along the road's diagonal
+  function shadeHex(hex, f) {
+    const n = parseInt(hex.slice(1), 16);
+    const cl = (v) => Math.max(0, Math.min(255, Math.round(v * f)));
+    return '#' + [cl(n >> 16), cl((n >> 8) & 255), cl(n & 255)]
+      .map(v => v.toString(16).padStart(2, '0')).join('');
+  }
+  Sprites.cars = [
+    car('#6e3b24', '#4c2a1a', '#7d452b'),
+    car('#3f5468', '#2c3b4a', '#4a6377'),
+    car('#5a5f52', '#40443b', '#686e5f'),
+    car('#7a7468', '#565247', '#8a8377'),
+  ];
+
+  // ---- the same wrecks, drawn AT the isometric viewpoint ----
+  // Shearing a side elevation can only slope a sprite one way, so its roof
+  // stays a rectangle and the whole thing reads as a slab stood on edge. A real
+  // iso roof is a rhombus, and that has to be built from the footprint. So:
+  // a full-length lower body with a shorter, narrower cabin sat on top of it.
+  // Flat colours and integer scanlines only — no gradients, no soft edges.
+  function isoFill(g, pts, col) {
+    let y0 = Infinity, y1 = -Infinity;
+    for (const p of pts) { y0 = Math.min(y0, p[1]); y1 = Math.max(y1, p[1]); }
+    for (let y = Math.round(y0); y < Math.round(y1); y++) {
+      const xs = [];
+      for (let i = 0; i < pts.length; i++) {
+        const a = pts[i], b = pts[(i + 1) % pts.length];
+        if ((a[1] <= y && b[1] > y) || (b[1] <= y && a[1] > y)) {
+          xs.push(a[0] + (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]));
+        }
+      }
+      if (xs.length < 2) continue;
+      xs.sort((p, q) => p - q);
+      const xa = Math.round(xs[0]), xb = Math.round(xs[xs.length - 1]);
+      if (xb > xa) { g.fillStyle = col; g.fillRect(xa, y, xb - xa, 1); }
+    }
+  }
+  function carIso(along, body, bodyD, roofC) {
+    const L = 2.25, W = 1.0, BH = 11, CH = 9;      // length · width · body · cabin
+    const lx = along === 'x' ? L : W, ly = along === 'x' ? W : L;
+    const OX = Math.ceil(ly * 16) + 2, OY = BH + CH + 2;
+    const c = makeCanvas(Math.ceil((lx + ly) * 16) + 4,
+                         Math.ceil((lx + ly) * 8) + BH + CH + 5);
+    const g = c.getContext('2d');
+    const P = (t, v, h) => {
+      const a = t * L, b = v * W;
+      const wx = along === 'x' ? a : b, wy = along === 'x' ? b : a;
+      return [(wx - wy) * 16 + OX, (wx + wy) * 8 - h + OY];
+    };
+    const box = (t0, t1, v0, v1, h0, h1, top, side, end) => {
+      isoFill(g, [P(t0, v0, h1), P(t1, v0, h1), P(t1, v1, h1), P(t0, v1, h1)], top);
+      isoFill(g, [P(t0, v1, h1), P(t1, v1, h1), P(t1, v1, h0), P(t0, v1, h0)], side);  // near flank
+      isoFill(g, [P(t1, v0, h1), P(t1, v1, h1), P(t1, v1, h0), P(t1, v0, h0)], end);   // nose
+    };
+    const glass = '#181d25';
+    // lower body, full footprint
+    box(0, 1, 0, 1, 2, BH, roofC, body, bodyD);
+    // cabin, shorter and narrower, sat on the body — this is the car in it
+    box(0.24, 0.74, 0.12, 0.88, BH, BH + CH, shadeHex(roofC, 1.12), glass, glass);
+    // windscreen and rear screen read as the sloped ends of the cabin
+    isoFill(g, [P(0.74, 0.12, BH + CH), P(0.74, 0.88, BH + CH),
+                P(0.74, 0.88, BH), P(0.74, 0.12, BH)], shadeHex(glass, 1.9));
+    // waist line where the cabin meets the body, and the sill in shadow
+    isoFill(g, [P(0, 1, BH), P(1, 1, BH), P(1, 1, BH - 1.6), P(0, 1, BH - 1.6)], shadeHex(body, 1.3));
+    isoFill(g, [P(0, 1, 3.4), P(1, 1, 3.4), P(1, 1, 2), P(0, 1, 2)], shadeHex(body, 0.5));
+    // wheels, tucked under the near flank
+    for (const [t0, t1] of [[0.1, 0.28], [0.72, 0.9]]) {
+      isoFill(g, [P(t0, 1.02, 6), P(t1, 1.02, 6), P(t1, 1.02, 0), P(t0, 1.02, 0)], '#15181d');
+      isoFill(g, [P(t0 + 0.04, 1.03, 4.4), P(t1 - 0.04, 1.03, 4.4),
+                  P(t1 - 0.04, 1.03, 1.6), P(t0 + 0.04, 1.03, 1.6)], '#3f444b');
+    }
+    // headlamps on the nose
+    for (const [v0, v1] of [[0.08, 0.28], [0.72, 0.92]]) {
+      isoFill(g, [P(1, v0, 8.5), P(1, v1, 8.5), P(1, v1, 6.2), P(1, v0, 6.2)], '#8c949c');
+    }
+    // rust, so no two are the same
+    isoFill(g, [P(0.34, 1, 9), P(0.5, 1, 9), P(0.5, 1, 5), P(0.34, 1, 5)], RUST_D);
+    const out = outlined(c);
+    out.oy = -(OY + 1);
+    return out;
+  }
+  const CAR_COLS = [
+    ['#6e3b24', '#4c2a1a', '#8a4d30'],
+    ['#3f5468', '#2c3b4a', '#526b83'],
+    ['#5a5f52', '#40443b', '#727861'],
+    ['#7a7468', '#565247', '#948d7e'],
+  ];
   Sprites.carsIso = {
-    x: Sprites.cars.map(c => sheared(c, 1)),
-    y: Sprites.cars.map(c => sheared(c, -1)),
+    x: CAR_COLS.map(p => carIso('x', p[0], p[1], p[2])),
+    y: CAR_COLS.map(p => carIso('y', p[0], p[1], p[2])),
   };
 
   // oil barrel (upright + tipped)
@@ -1112,15 +1255,21 @@ function outlined(src) {
 
     // ---- openings, laid out along each face ----
     const rows = Math.max(1, Math.floor(Hh / 15));
+    // Small detail on a wall is filled with INTEGER SCANLINES, never an
+    // antialiased path. A window is ~5 pixels across; a soft edge on something
+    // that size does not read as a soft edge, it reads as a scuffed wall.
+    const hard = (P0, P1, u0, u1, v0, v1, col) =>
+      isoFill(g, faceQuad(P0, P1, Hh, u0, u1, v0, v1), col);
+
     const winRow = (P0, P1, cells, glass, isSouth) => {
       for (let r = 0; r < rows; r++) {
         const v0 = 0.16 + r * (0.74 / rows), v1 = v0 + 0.44 / rows;
         for (let i = 0; i < cells; i++) {
           const u0 = (i + 0.22) / cells, u1 = (i + 0.78) / cells;
           if (kind === 'S' && r === rows - 1) continue;             // shop sign band
-          poly(g, faceQuad(P0, P1, Hh, u0, u1, v0, v1), glass, '#12151a');
-          // a highlight streak on the glass
-          poly(g, faceQuad(P0, P1, Hh, u0, u0 + (u1 - u0) * 0.3, v0, v1), 'rgba(150,190,215,0.07)');
+          hard(P0, P1, u0, u1, v0, v1, glass);
+          // a highlight streak down the light side of the pane
+          hard(P0, P1, u0, u0 + (u1 - u0) * 0.3, v0, v1, shadeHex(glass, 1.5));
         }
       }
       // ground floor: shopfront glazing (in panes) or a shutter
@@ -1128,18 +1277,18 @@ function outlined(src) {
         const panes = Math.max(2, cells);
         for (let i = 0; i < panes; i++) {
           const u0 = 0.06 + (i + 0.06) * (0.88 / panes), u1 = 0.06 + (i + 0.94) * (0.88 / panes);
-          poly(g, faceQuad(P0, P1, Hh, u0, u1, 0.06, 0.30), glass, '#12151a');
-          poly(g, faceQuad(P0, P1, Hh, u0, u0 + (u1 - u0) * 0.35, 0.06, 0.30), 'rgba(150,190,215,0.08)');
+          hard(P0, P1, u0, u1, 0.06, 0.30, glass);
+          hard(P0, P1, u0, u0 + (u1 - u0) * 0.35, 0.06, 0.30, shadeHex(glass, 1.55));
         }
-        poly(g, faceQuad(P0, P1, Hh, 0.04, 0.96, 0.30, 0.335), st.t);      // fascia rail
-        poly(g, faceQuad(P0, P1, Hh, 0.04, 0.96, 0.03, 0.06), st.s);       // stallriser
+        hard(P0, P1, 0.04, 0.96, 0.30, 0.335, st.t);      // fascia rail
+        hard(P0, P1, 0.04, 0.96, 0.03, 0.06, st.s);       // stallriser
       } else if (kind === 'G') {
-        poly(g, faceQuad(P0, P1, Hh, 0.08, 0.92, 0.04, 0.30), st.s, '#12151a');
+        hard(P0, P1, 0.08, 0.92, 0.04, 0.30, st.s);
         for (let i = 0; i < 6; i++)
-          poly(g, faceQuad(P0, P1, Hh, 0.08, 0.92, 0.05 + i * 0.042, 0.058 + i * 0.042), st.w);
+          hard(P0, P1, 0.08, 0.92, 0.05 + i * 0.042, 0.058 + i * 0.042, st.w);
       } else if (isSouth) {
-        poly(g, faceQuad(P0, P1, Hh, 0.44, 0.58, 0.02, 0.24), '#2e2620', '#12151a');
-        poly(g, faceQuad(P0, P1, Hh, 0.44, 0.58, 0.23, 0.26), st.t);   // lintel
+        hard(P0, P1, 0.44, 0.58, 0.02, 0.24, '#2e2620');
+        hard(P0, P1, 0.44, 0.58, 0.23, 0.26, st.t);   // lintel
       }
     };
     const cellsE = Math.max(1, Math.round(h * 0.7)), cellsS = Math.max(1, Math.round(w * 0.7));
@@ -1149,9 +1298,9 @@ function outlined(src) {
     // per-type face detail
     if (kind === 'S') {                                   // painted shop name band
       for (const [P0, P1] of [[C, D], [B, C]]) {
-        poly(g, faceQuad(P0, P1, Hh, 0.05, 0.95, 0.74, 0.88), '#6d6355', '#3a352c');
+        hard(P0, P1, 0.05, 0.95, 0.74, 0.88, '#6d6355');
         for (let i = 0; i < 5; i++)                        // faded lettering
-          poly(g, faceQuad(P0, P1, Hh, 0.14 + i * 0.13, 0.20 + i * 0.13, 0.78, 0.845), '#3f3a31');
+          hard(P0, P1, 0.14 + i * 0.13, 0.20 + i * 0.13, 0.78, 0.845, '#3f3a31');
       }
     } else if (kind === 'N') {                            // bank pilasters
       for (let i = 0; i <= 4; i++) {
@@ -1184,13 +1333,40 @@ function outlined(src) {
         poly(g, [D2, C2, rB], st.s, '#1b1e22');           // visible gable (south end)
         poly(g, [A2, B2, rA], st.w);
       }
+      // SHINGLES: each slope is tiled in overlapping rows, drawn in the
+      // slope's own space so they follow the pitch instead of the screen
+      const shingle = (P0, P1, P2, P3, base, edge) => {
+        poly(g, [P0, P1, P2, P3], base, '#20242a');
+        const lerp = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+        const ROWS = 7;
+        for (let r = 0; r < ROWS; r++) {
+          const t0 = r / ROWS, t1 = (r + 1) / ROWS;
+          const eA = lerp(P0, P3, t0), eB = lerp(P1, P2, t0);
+          const fA = lerp(P0, P3, t1), fB = lerp(P1, P2, t1);
+          // the row's own shadow line, then a lit lip on its lower edge
+          poly(g, [eA, eB, lerp(eA, fA, 0.22), lerp(eB, fB, 0.22)].map((p, i) => i < 2 ? p : p), 'rgba(0,0,0,0.16)');
+          const cols = 9;
+          for (let c2 = 0; c2 <= cols; c2++) {
+            const u = (c2 + (r % 2) * 0.5) / cols;
+            if (u > 0.99) continue;
+            const a = lerp(eA, eB, u), b2 = lerp(fA, fB, u);
+            g.strokeStyle = 'rgba(0,0,0,0.20)';
+            g.lineWidth = 1;
+            g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b2[0], b2[1]); g.stroke();
+          }
+          poly(g, [lerp(eA, fA, 0.86), lerp(eB, fB, 0.86), fB, fA], edge);
+        }
+      };
       if (along) {
-        poly(g, [A2, B2, rB, rA], st.r, '#20242a');
-        poly(g, [rA, rB, C2, D2], st.re, '#20242a');
+        shingle(A2, B2, rB, rA, st.r, 'rgba(255,235,200,0.10)');
+        shingle(D2, C2, rB, rA, st.re, 'rgba(255,235,200,0.05)');
       } else {
-        poly(g, [A2, rA, rB, D2], st.r, '#20242a');
-        poly(g, [rA, B2, C2, rB], st.re, '#20242a');
+        shingle(A2, rA, rB, D2, st.r, 'rgba(255,235,200,0.10)');
+        shingle(B2, rA, rB, C2, st.re, 'rgba(255,235,200,0.05)');
       }
+      // ridge cap
+      g.strokeStyle = st.t; g.lineWidth = 2;
+      g.beginPath(); g.moveTo(rA[0], rA[1] - 1); g.lineTo(rB[0], rB[1] - 1); g.stroke();
       g.strokeStyle = '#191d22'; g.lineWidth = 1;
       g.beginPath(); g.moveTo(rA[0], rA[1]); g.lineTo(rB[0], rB[1]); g.stroke();
       if (kind === 'R') {                                  // ridge cross
@@ -1226,10 +1402,100 @@ function outlined(src) {
         }
       }
     } else {
-      poly(g, [A2, B2, C2, D2], st.r, '#20242a');
-      // parapet lip around the edge
+      // A FLAT ROOF IS A WELL, NOT A LID. The parapet stands up around the
+      // edge and the deck is set down INSIDE it. The old code drew the coping
+      // as a full-size diamond over the finished deck, which repainted the
+      // whole thing in one flat colour and wiped out every bit of detail — that
+      // was the huge grey square on the skyline.
+      const L2 = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+      const PH = 5, tI = 0.3;                    // parapet height · deck inset
+      const rise = (p) => [p[0], p[1] - PH];
+      const A3 = rise(A2), B3 = rise(B2), C3 = rise(C2), D3 = rise(D2);
+      // deck corners, drawn in from the wall line
+      const dA = [A2[0], A2[1] + 16 * tI], dB = [B2[0] - 32 * tI, B2[1]];
+      const dC = [C2[0], C2[1] - 16 * tI], dD = [D2[0] + 32 * tI, D2[1]];
+      // coping corners: the parapet top, inset the same amount
+      const iA = rise(dA), iB = rise(dB), iC = rise(dC), iD = rise(dD);
+      // outer faces of the far parapet, standing above the wall head
+      poly(g, [A2, B2, B3, A3], st.re);
+      poly(g, [D2, A2, A3, D3], st.re);
+      // and their inner faces — you are looking down into the well
+      poly(g, [dA, dB, iB, iA], '#1d2126');
+      poly(g, [dD, dA, iA, iD], '#252a30');
+      poly(g, [dA, dB, dC, dD], st.r, '#20242a');       // the deck itself
+      // roof-space point: (u along w, v along h), across the DECK
+      const R = (u, v) => [dA[0] + (dB[0] - dA[0]) * u + (dD[0] - dA[0]) * v,
+                           dA[1] + (dB[1] - dA[1]) * u + (dD[1] - dA[1]) * v];
+      const rrng = mulberry32(seed * 2654435761 + w * 97 + h * 31);
+      // felt runs down the roof: sheets laid side by side, each with a lap
+      const sheets = Math.max(5, Math.round(w * 1.5));
+      for (let i = 1; i < sheets; i++) {
+        const a = R(i / sheets, 0), b2 = R(i / sheets, 1);
+        g.strokeStyle = 'rgba(0,0,0,0.18)'; g.lineWidth = 1;
+        g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b2[0], b2[1]); g.stroke();
+        const a2 = R(i / sheets + 0.004, 0), b3 = R(i / sheets + 0.004, 1);
+        g.strokeStyle = 'rgba(255,240,215,0.07)';
+        g.beginPath(); g.moveTo(a2[0], a2[1]); g.lineTo(b3[0], b3[1]); g.stroke();
+      }
+      const laps = Math.max(4, Math.round(h * 1.2));
+      for (let i = 1; i < laps; i++) {
+        const a = R(0, i / laps), b2 = R(1, i / laps);
+        g.strokeStyle = 'rgba(255,240,215,0.055)'; g.lineWidth = 1;
+        g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b2[0], b2[1]); g.stroke();
+      }
+      // patch repairs — squares of newer felt tarred over the old
+      const patches = Math.max(4, Math.round(w * h / 6));
+      for (let i = 0; i < patches; i++) {
+        const u = 0.05 + rrng() * 0.8, v = 0.05 + rrng() * 0.8;
+        const uw = 0.06 + rrng() * 0.16, vh = 0.08 + rrng() * 0.2;
+        poly(g, [R(u, v), R(u + uw, v), R(u + uw, v + vh), R(u, v + vh)],
+             rrng() < 0.5 ? 'rgba(0,0,0,0.16)' : 'rgba(255,240,215,0.05)');
+      }
+      // ballast: chips of grit thrown across the deck
+      const grit = Math.round(w * h * 26);
+      for (let i = 0; i < grit; i++) {
+        const p = R(rrng(), rrng());
+        g.fillStyle = rrng() < 0.5 ? 'rgba(255,240,215,0.10)' : 'rgba(0,0,0,0.16)';
+        g.fillRect(p[0] | 0, p[1] | 0, 1, 1);
+      }
+      // standing water where the fall has failed, with a bright rim
+      const pools = 1 + ((rrng() * (w * h > 90 ? 3 : 1)) | 0);
+      for (let i = 0; i < pools; i++) {
+        const u = 0.15 + rrng() * 0.6, v = 0.15 + rrng() * 0.6;
+        const uw = 0.1 + rrng() * 0.18, vh = 0.12 + rrng() * 0.2;
+        poly(g, [R(u, v + vh / 2), R(u + uw / 2, v), R(u + uw, v + vh / 2), R(u + uw / 2, v + vh)],
+             'rgba(96,116,138,0.30)');
+        poly(g, [R(u + 0.02, v + vh / 2), R(u + uw / 2, v + 0.02),
+                 R(u + uw / 2, v + vh / 2)], 'rgba(150,175,200,0.20)');
+      }
+      // The parapet stands above the deck, so it throws a shadow INWARDS along
+      // the two far sides. This band is what tells the eye the roof is a well
+      // with walls round it rather than a rectangle painted on the sky.
+      const inset = (a, b2, d) => {
+        const cx3 = (A2[0] + C2[0]) / 2, cy3 = (A2[1] + C2[1]) / 2;
+        return [[a[0] + (cx3 - a[0]) * d, a[1] + (cy3 - a[1]) * d],
+                [b2[0] + (cx3 - b2[0]) * d, b2[1] + (cy3 - b2[1]) * d]];
+      };
+      for (const [e0, e1] of [[A2, B2], [D2, A2]]) {
+        const [i0, i1] = inset(e0, e1, 0.1);
+        poly(g, [e0, e1, i1, i0], 'rgba(0,0,0,0.30)');
+        const [j0, j1] = inset(e0, e1, 0.045);
+        poly(g, [e0, e1, j1, j0], 'rgba(0,0,0,0.22)');
+      }
+      // and a faint bounce along the near sides, where the light gets in
+      for (const [e0, e1] of [[B2, C2], [C2, D2]]) {
+        const [i0, i1] = inset(e0, e1, 0.05);
+        poly(g, [e0, e1, i1, i0], 'rgba(255,240,215,0.06)');
+      }
+      // parapet: an outer wall with a lit coping, so the roof sits INSIDE it
       poly(g, [A2, B2, [B2[0], B2[1] - 3], [A2[0], A2[1] - 3]], st.re);
+      poly(g, [B2, C2, [C2[0], C2[1] - 3], [B2[0], B2[1] - 3]], st.s);
+      poly(g, [C2, D2, [D2[0], D2[1] - 3], [C2[0], C2[1] - 3]], st.s);
       poly(g, [[A2[0], A2[1] - 3], [B2[0], B2[1] - 3], [C2[0], C2[1] - 3], [D2[0], D2[1] - 3]], st.r, '#20242a');
+      g.strokeStyle = 'rgba(255,240,215,0.16)'; g.lineWidth = 1;
+      g.beginPath();
+      g.moveTo(D2[0], D2[1] - 3); g.lineTo(C2[0], C2[1] - 3); g.lineTo(B2[0], B2[1] - 3);
+      g.stroke();
       const mx = (A2[0] + C2[0]) / 2, my = (A2[1] + C2[1]) / 2 - 3;
       const acUnit = (ux, uy) => {
         g.fillStyle = '#5a5e62'; g.fillRect(ux, uy - 7, 10, 7);
@@ -1266,6 +1532,39 @@ function outlined(src) {
         g.fillStyle = '#4a4e52';
         g.fillRect(mx - 2, my + 6, 3, 5);
         g.fillRect(mx + 3, my + 7, 3, 4);
+      }
+      // ...and then spread real plant across the rest of it, so a big deck is
+      // furnished all over instead of having one lonely box in the middle
+      const kit = Math.max(3, Math.round((w * h) / 8));
+      for (let i = 0; i < kit; i++) {
+        const p = R(0.12 + rrng() * 0.76, 0.12 + rrng() * 0.76);
+        const ux = p[0] | 0, uy = (p[1] - 3) | 0;
+        const r = rrng();
+        if (r < 0.34) {                                       // plant unit on a frame
+          acUnit(ux - 5, uy);
+          g.fillStyle = 'rgba(0,0,0,0.28)';
+          g.fillRect(ux - 6, uy, 12, 2);
+        } else if (r < 0.55) {                                // roof hatch / stair box
+          g.fillStyle = '#4a4e52'; g.fillRect(ux - 4, uy - 5, 9, 6);
+          g.fillStyle = '#5d6165'; g.fillRect(ux - 4, uy - 6, 9, 2);
+          g.fillStyle = '#33373b'; g.fillRect(ux - 3, uy - 3, 4, 4);
+        } else if (r < 0.72) {                                // vent stacks
+          g.fillStyle = '#4e5256'; g.fillRect(ux - 2, uy - 6, 3, 7);
+          g.fillStyle = '#61656a'; g.fillRect(ux - 3, uy - 7, 5, 2);
+          g.fillStyle = '#4e5256'; g.fillRect(ux + 3, uy - 4, 3, 5);
+        } else if (r < 0.86) {                                // water tank on legs
+          g.fillStyle = '#3a3e42'; g.fillRect(ux - 5, uy - 3, 2, 4);
+          g.fillStyle = '#3a3e42'; g.fillRect(ux + 3, uy - 3, 2, 4);
+          g.fillStyle = '#5a5e62'; g.fillRect(ux - 6, uy - 11, 12, 9);
+          g.fillStyle = '#6e7276'; g.fillRect(ux - 6, uy - 12, 12, 2);
+          g.fillStyle = '#43474b'; g.fillRect(ux - 6, uy - 5, 12, 1);
+        } else {                                              // a duct run
+          const len = 8 + ((rrng() * 14) | 0);
+          g.fillStyle = '#54585c'; g.fillRect(ux - (len >> 1), uy - 3, len, 4);
+          g.fillStyle = '#666a6e'; g.fillRect(ux - (len >> 1), uy - 4, len, 2);
+          g.fillStyle = '#3e4246';
+          for (let s3 = 0; s3 < len; s3 += 4) g.fillRect(ux - (len >> 1) + s3, uy - 4, 1, 5);
+        }
       }
       if (kind === 'T') {                                   // hotel roof sign
         g.fillStyle = '#8a4a44'; g.fillRect(mx - 13, my - 19, 26, 8);

@@ -747,8 +747,10 @@ function render() {
   }
 
   const draws = [];
-  // tall props reach far up-screen, so pull from a taller band of cells
-  for (const p of gatherNear(propCells, vx0 - 2, vy0 - 2, vx1 + 8, vy1 + 8, [])) {
+  // Tall props reach far up-screen: a church roof is visible long before its
+  // ground tiles are. Props are indexed across their whole footprint now, so
+  // this band only has to cover height — be generous, it costs one cell row.
+  for (const p of gatherNear(propCells, vx0 - 14, vy0 - 14, vx1 + 10, vy1 + 10, [])) {
     const s = isoToScreen(p.gx + 0.5, p.gy + 0.5);
     // volumes sort by their south corner: anything in front of that draws over
     const depth = (p.type === 'building' || p.type === 'canopy')
@@ -993,23 +995,51 @@ function drawRoof(p) {
     }
     return;
   }
-  // flat roofs with a parapet lip
-  const base = p.type === 'canopy' ? '#6a6e72'
-    : k === 'K' ? '#6f6a5a' : k === 'N' ? '#7c7768' : k === 'T' ? '#4e4642' : '#43474b';
-  quad(P(c1), P(c2), P(c3), P(c4), base, '#2b2f36');
-  quad(P(c1, -3), P(c2, -3), P(c3, -3), P(c4, -3),
-       p.type === 'canopy' ? '#7e8286' : '#54585c', '#2b2f36');
   if (p.type === 'canopy') {
-    // red fascia band all the way round — the petrol-station signature
-    ctx.strokeStyle = '#b8433a'; ctx.lineWidth = 3;
-    ctx.beginPath();
-    const a = P(c1, -3), b2 = P(c2, -3), c = P(c3, -3), d = P(c4, -3);
-    ctx.moveTo(a[0], a[1]); ctx.lineTo(b2[0], b2[1]); ctx.lineTo(c[0], c[1]);
-    ctx.lineTo(d[0], d[1]); ctx.closePath(); ctx.stroke();
-    ctx.lineWidth = 1;
-    addLight((a[0] + c[0]) / 2, (a[1] + c[1]) / 2, 0, 40, '255,230,180', 0.10);
+    // A CANOPY IS A SLAB, not a rectangle floating in the air. It has real
+    // thickness: a deck on top, a fascia hanging off the two camera-facing
+    // edges (the far two are behind it), and a shaded soffit underneath.
+    const TH = 7;                                  // slab thickness in pixels
+    // stand under it and it goes see-through, the same way the shack roof does
+    const under = player.x > x0 - 1 && player.x < x0 + w + 1 &&
+                  player.y > y0 - 1 && player.y < y0 + h + 1;
+    ctx.globalAlpha = under ? 0.3 : 1;
+    const D = (c) => P(c, -TH);                    // deck top (up-screen)
+    const U = (c) => P(c, 0);                      // underside of the slab
+    // soffit first — the lit ceiling over the pumps, seen past the near edges
+    quad(U(c1), U(c2), U(c3), U(c4), '#3c4045');
+    // deck
+    quad(D(c1), D(c2), D(c3), D(c4), '#7e8286', '#2b2f36');
+    // deck weathering, so the top isn't one dead grey
+    ctx.globalAlpha = 0.35;
+    quad(D(c1), D(c2),
+         [D(c2)[0] + (D(c3)[0] - D(c2)[0]) * 0.4, D(c2)[1] + (D(c3)[1] - D(c2)[1]) * 0.4],
+         [D(c1)[0] + (D(c4)[0] - D(c1)[0]) * 0.4, D(c1)[1] + (D(c4)[1] - D(c1)[1]) * 0.4],
+         '#8d9195');
+    ctx.globalAlpha = 1;
+    // the two fascia faces you can actually see, each its own tone
+    const fascia = (a, b2, lit, band) => {
+      quad(D(a), D(b2), U(b2), U(a), lit, '#22262b');
+      // red band across the fascia — the petrol-station signature
+      const t0 = 0.28, t1 = 0.72;
+      const mix = (p0, p1, t) => [p0[0] + (p1[0] - p0[0]) * t, p0[1] + (p1[1] - p0[1]) * t];
+      quad(mix(D(a), U(a), t0), mix(D(b2), U(b2), t0),
+           mix(D(b2), U(b2), t1), mix(D(a), U(a), t1), band);
+    };
+    fascia(c2, c3, '#787c80', '#b8433a');          // +x edge, catches the light
+    fascia(c3, c4, '#5f6367', '#93362f');          // +y edge, in its own shade
+    // strip lights under the deck
+    const uc = [(U(c1)[0] + U(c3)[0]) / 2, (U(c1)[1] + U(c3)[1]) / 2];
+    ctx.fillStyle = 'rgba(255,236,200,0.5)';
+    for (let i = -1; i <= 1; i++) ctx.fillRect(Math.round(uc[0] - 14 + i * 14), Math.round(uc[1] - 1), 12, 2);
+    ctx.globalAlpha = 1;
+    addLight(uc[0], uc[1], 0, 44, '255,230,180', 0.16);
     return;
   }
+  // flat roofs with a parapet lip
+  const base = k === 'K' ? '#6f6a5a' : k === 'N' ? '#7c7768' : k === 'T' ? '#4e4642' : '#43474b';
+  quad(P(c1), P(c2), P(c3), P(c4), base, '#2b2f36');
+  quad(P(c1, -3), P(c2, -3), P(c3, -3), P(c4, -3), '#54585c', '#2b2f36');
   // rooftop clutter
   const cx = (P(c1)[0] + P(c3)[0]) / 2, cy = (P(c1)[1] + P(c3)[1]) / 2;
   if (k === 'O' || k === 'N' || k === 'T') {
@@ -1149,10 +1179,9 @@ function drawProp(p, x, y) {
   else if (T === 'boom') { img = Sprites.boomBarrel; oyOff = -15; drawShadow(x, y, 5); }
   else if (T === 'scrap') { img = Sprites.scrapPiles[p.v]; oyOff = -20; drawShadow(x, y, 9); }
   else if (T === 'car') {
-    if (p.dir) {
-      img = (p.dir === 'y' ? Sprites.carsIso.y : Sprites.carsIso.x)[p.v];
-      oyOff = -18 - Math.round(Sprites.cars[p.v].width * 0.25);
-    } else { img = Sprites.cars[p.v]; oyOff = -18; }
+    const set = p.dir === 'y' ? Sprites.carsIso.y : Sprites.carsIso.x;
+    img = set[p.v % set.length];
+    oyOff = img.oy;
     drawShadow(x, y + 1, 14);
   }
   else if (T === 'barrel') { img = Sprites.barrel; oyOff = -14; drawShadow(x, y, 5); }
@@ -1873,16 +1902,12 @@ function drawHUD() {
     }
     // you — a tiny version of the traveller, with a ring so you can find him
     const pxm = mx2 + player.x * sc, pym = my2 + player.y * sc;
-    const ring = 5 + Math.sin(gameTime * 3) * 1.2;
-    uictx.strokeStyle = 'rgba(255,210,122,0.7)';
-    uictx.lineWidth = U;
-    uictx.beginPath();
-    uictx.arc(pxm * U, pym * U, ring * U, 0, Math.PI * 2);
-    uictx.stroke();
+    // No ring — the marker IS the traveller. Drawn full size and pixel-snapped
+    // so it is the same character you are looking at down in the street.
     const pim = Sprites.player[0];
     uictx.imageSmoothingEnabled = false;
-    uictx.drawImage(pim, (pxm - pim.width / 4) * U, (pym - pim.height / 2) * U,
-                    (pim.width / 2) * U, (pim.height / 2) * U);
+    uictx.drawImage(pim, Math.round(pxm - pim.width / 2) * U, Math.round(pym - pim.height + 3) * U,
+                    pim.width * U, pim.height * U);
     ptext('walked ground only  ·  M or ESC to close', VIEW_W / 2, VIEW_H - 12, 7, 'rgba(232,217,192,0.5)', 'center');
     return;
   }

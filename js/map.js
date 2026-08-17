@@ -78,11 +78,22 @@ function resetMap(w, h, rng) {
 const CELL = 8;
 let propCells = new Map(), decalCells = new Map();
 function cellOf(gx, gy) { return (Math.floor(gx / CELL)) + ',' + (Math.floor(gy / CELL)); }
+// A prop is registered in EVERY cell its footprint touches, not just the cell
+// its anchor happens to sit in. A 20x13 building anchored at its north corner
+// used to vanish the moment that one corner left the camera window — that was
+// the "buildings disappear when I walk away" bug.
 function indexInto(map, obj) {
-  const k = cellOf(obj.gx, obj.gy);
-  let a = map.get(k);
-  if (!a) { a = []; map.set(k, a); }
-  a.push(obj);
+  const f = obj.foot;
+  const x0 = f ? f[0] : obj.gx, y0 = f ? f[1] : obj.gy;
+  const x1 = f ? f[0] + f[2] : obj.gx, y1 = f ? f[1] + f[3] : obj.gy;
+  for (let cy = Math.floor(y0 / CELL); cy <= Math.floor(y1 / CELL); cy++) {
+    for (let cx = Math.floor(x0 / CELL); cx <= Math.floor(x1 / CELL); cx++) {
+      const k = cx + ',' + cy;
+      let a = map.get(k);
+      if (!a) { a = []; map.set(k, a); }
+      a.push(obj);
+    }
+  }
 }
 function buildSpatialIndex() {
   propCells = new Map(); decalCells = new Map();
@@ -93,21 +104,35 @@ function buildSpatialIndex() {
 function removeProp(p) {
   const i = props.indexOf(p);
   if (i >= 0) props.splice(i, 1);
-  const a = propCells.get(cellOf(p.gx, p.gy));
-  if (a) {
-    const j = a.indexOf(p);
-    if (j >= 0) a.splice(j, 1);
+  const f = p.foot;
+  const x0 = f ? f[0] : p.gx, y0 = f ? f[1] : p.gy;
+  const x1 = f ? f[0] + f[2] : p.gx, y1 = f ? f[1] + f[3] : p.gy;
+  for (let cy = Math.floor(y0 / CELL); cy <= Math.floor(y1 / CELL); cy++) {
+    for (let cx = Math.floor(x0 / CELL); cx <= Math.floor(x1 / CELL); cx++) {
+      const a = propCells.get(cx + ',' + cy);
+      if (!a) continue;
+      const j = a.indexOf(p);
+      if (j >= 0) a.splice(j, 1);
+    }
   }
 }
 function addDecal(d) { decals.push(d); indexInto(decalCells, d); }
-// everything within the camera's tile window
+// everything within the camera's tile window. A prop spanning several cells
+// appears in each of them, so results are stamped to keep them unique.
+let gatherStamp = 0;
 function gatherNear(map, x0, y0, x1, y1, out) {
   const cx0 = Math.floor(x0 / CELL), cx1 = Math.floor(x1 / CELL);
   const cy0 = Math.floor(y0 / CELL), cy1 = Math.floor(y1 / CELL);
+  const st = ++gatherStamp;
   for (let cy = cy0; cy <= cy1; cy++) {
     for (let cx = cx0; cx <= cx1; cx++) {
       const a = map.get(cx + ',' + cy);
-      if (a) for (const o of a) out.push(o);
+      if (!a) continue;
+      for (const o of a) {
+        if (o._gs === st) continue;
+        o._gs = st;
+        out.push(o);
+      }
     }
   }
   return out;
@@ -370,7 +395,11 @@ function buildFringe() {
     for (let y = y0; y < y0 + h; y++)
       for (let x = x0; x < x0 + w; x++) {
         if (x < 1 || y < 1 || x >= MAP_W - 1 || y >= MAP_H - 1) return false;
-        if (ground[y][x] === 4 || ground[y][x] === 5 || solid[y][x]) return false;
+        // 7 = forecourt: ground already claimed by a landmark that needs its
+        // open space (the gas station). Buildings dropped on it used to stand
+        // underneath the canopy — that was the grey slab floating over the road.
+        const gt = ground[y][x];
+        if (gt === 4 || gt === 5 || gt === 7 || solid[y][x]) return false;
       }
     for (let y = y0; y < y0 + h; y++)
       for (let x = x0; x < x0 + w; x++) { solid[y][x] = true; heavy[y][x] = true; ground[y][x] = 2; }
@@ -378,6 +407,14 @@ function buildFringe() {
     return true;
   }
   // ---------- landmarks first, so they claim their ground ----------
+  // THE GAS STATION claims its forecourt before anything else is built, or the
+  // block-filler drops houses where the pumps go and the canopy hangs over them
+  const GX = 132, GY = 125;
+  for (let y = GY - 1; y < GY + 14; y++)
+    for (let x = GX - 1; x < GX + 24; x++)
+      if (x > 0 && y > 0 && x < MAP_W - 1 && y < MAP_H - 1 && ground[y][x] !== 4 && ground[y][x] !== 5)
+        ground[y][x] = 7;
+
   // THE SCHOOL: a long pale block with a fenced yard, on the east cross street
   const SCH = { x: 108, y: 56, w: 22, h: 11 };
   placeBuilding(SCH.x, SCH.y, SCH.w, SCH.h, 'K');
@@ -390,10 +427,12 @@ function buildFringe() {
   placeBuilding(112, 96, 18, 13, 'T');
   placeBuilding(60, 96, 16, 12, 'N');
 
-  // ST MARTIN'S: the church that becomes Candlelight, on the spine
-  const CH = { x: 36, y: 90, w: 12, h: 14 };
+  // ST MARTIN'S: the church that becomes Candlelight. It sits well off the
+  // gate road, north of the east cross — you get there by turning twice, not
+  // by walking one straight line from the yard.
+  const CH = { x: 50, y: 54, w: 12, h: 14 };
   placeBuilding(CH.x, CH.y, CH.w, CH.h, 'R');
-  for (let y = CH.y + CH.h; y < CH.y + CH.h + 4; y++)
+  for (let y = CH.y + CH.h; y < CH.y + CH.h + 2; y++)
     for (let x = CH.x - 2; x < CH.x + CH.w + 2; x++)
       if (x > 0 && x < MAP_W - 1 && y < MAP_H - 1 && !solid[y][x]) ground[y][x] = 5;  // forecourt paving
 
@@ -509,7 +548,6 @@ function buildFringe() {
   // ---------- THE GAS STATION (proper forecourt layout) ----------
   // canopy on six pillars over two kerbed pump islands, shop to the east,
   // painted in/out lanes, and a pylon totem you see from up the road
-  const GX = 132, GY = 125;
   for (let y = GY - 1; y < GY + 14; y++)
     for (let x = GX - 1; x < GX + 24; x++)
       if (x > 0 && y > 0 && x < MAP_W - 1 && y < MAP_H - 1) { ground[y][x] = 7; solid[y][x] = false; }
@@ -534,8 +572,15 @@ function buildFringe() {
       boomBarrels.push({ gx: ix, gy: iy, alive: true, prop: p });   // pumps detonate
     }
   }
-  // the shop, glazed, east of the canopy
-  if (placeBuilding(GX + 17, GY + 2, 6, 8, 'S')) addBuildingProp(buildings[buildings.length - 1]);
+  // the shop, glazed, east of the canopy — a working landmark, not a ruin.
+  // Release its own tiles from the forecourt claim so it may stand there.
+  for (let y = GY + 2; y < GY + 10; y++)
+    for (let x = GX + 17; x < GX + 23; x++)
+      if (x < MAP_W - 1 && y < MAP_H - 1) ground[y][x] = 2;
+  if (placeBuilding(GX + 17, GY + 2, 6, 8, 'S')) {
+    buildings[buildings.length - 1].landmark = true;
+    addBuildingProp(buildings[buildings.length - 1]);
+  }
   // pylon totem at the roadside
   if (!solid[GY - 1][GX + 20]) {
     solid[GY - 1][GX + 20] = true;
@@ -550,31 +595,45 @@ function buildFringe() {
   // broom handles, a bedsheet between two poles, arrows daubed on the tarmac.
   // dir = where the trail continues: 'xm' west along the road, 'ym' north up
   // the spine. The board is angled to its street and the arrow points that way.
+  // Nobody paints a distance in kilometres on a bedsheet. They tell the next
+  // person where to walk and where to turn: stay on this road, turn here, left
+  // at the crossroads. Each board is angled to its street and its arrow points
+  // the way you go next, so "left" is never ambiguous.
+  // Route: west along the gate road → north up the mid street → west along the
+  // east cross → the church. Three legs, two turns.
   const SIGNS = [
-    { gx: 188, gy: 116, text: 'SHELTER', kind: 'plank', dir: 'xm' },
-    { gx: 168, gy: 116, text: 'ST MARTINS. KEEP GOING', kind: 'plank', dir: 'xm' },
-    { gx: 146, gy: 116, text: 'FOOD + BEDS', kind: 'cloth', dir: 'xm' },
-    { gx: 124, gy: 116, text: 'SHELTER 2KM', kind: 'plank', dir: 'xm' },
-    { gx: 100, gy: 116, text: 'NOT FAR NOW', kind: 'plank', dir: 'xm' },
-    { gx: 76, gy: 116, text: 'ST MARTINS 1KM', kind: 'cloth', dir: 'xm' },
-    { gx: 50, gy: 116, text: 'TURN AT THE CHURCH', kind: 'plank', dir: 'xm' },
-    { gx: 36, gy: 112, text: 'SHELTER', kind: 'plank', dir: 'ym' },
-    { gx: 34, gy: 106, text: 'YOU MADE IT. KNOCK.', kind: 'cloth', dir: 'ym' },
+    // leg 1 — the gate road, heading west (signs stand on the north pavement)
+    { gx: 188, gy: 114, text: 'SHELTER THIS WAY', kind: 'plank', dir: 'xm' },
+    { gx: 168, gy: 114, text: 'KEEP TO THIS ROAD', kind: 'plank', dir: 'xm' },
+    { gx: 146, gy: 114, text: 'FOOD AND BEDS AT THE END', kind: 'cloth', dir: 'xm' },
+    { gx: 124, gy: 114, text: 'STAY ON IT TILL THE NEXT SIGN', kind: 'plank', dir: 'xm' },
+    { gx: 106, gy: 114, text: 'TURN AT THE LIGHTS AHEAD', kind: 'plank', dir: 'xm' },
+    // the first turn — north, up the mid street
+    { gx: 96, gy: 114, text: 'TURN HERE. UP THIS STREET', kind: 'plank', dir: 'ym' },
+    { gx: 95, gy: 104, text: 'KEEP GOING UP THIS ONE', kind: 'cloth', dir: 'ym' },
+    { gx: 95, gy: 88, text: 'LEFT AT THE CROSSROADS', kind: 'plank', dir: 'ym' },
+    // the second turn — west along the east cross
+    { gx: 89, gy: 71, text: 'LEFT HERE. FOLLOW THE ROAD', kind: 'plank', dir: 'xm' },
+    { gx: 76, gy: 71, text: 'ST MARTINS. NOT FAR NOW', kind: 'cloth', dir: 'xm' },
+    { gx: 66, gy: 71, text: 'ALMOST THERE. KEEP ON', kind: 'plank', dir: 'xm' },
+    // and off the road to the door
+    { gx: 58, gy: 70, text: 'YOU MADE IT. KNOCK.', kind: 'cloth', dir: 'ym' },
   ];
   for (const s of SIGNS) {
     const x = s.gx | 0, y = s.gy | 0;
     if (x < MAP_W - 1 && y < MAP_H - 1 && !solid[y][x]) {
       solid[y][x] = true;
-      props.push({ gx: x, gy: y, type: 'sign', kind: s.kind, dir: s.dir });
+      props.push({ gx: x, gy: y, type: 'sign', kind: s.kind, dir: s.dir, text: s.text });
       signs.push({ gx: x, gy: y, text: s.text, kind: s.kind });
     }
   }
-  // painted arrows on the tarmac, pointing the way the trail runs
-  for (const [ax, ay] of [[178, 118.6], [156, 118.6], [134, 118.6], [110, 118.6],
-                          [88, 118.6], [64, 118.6], [42, 118.6]])
-    decals.push({ gx: ax, gy: ay, type: 'arrowXm' });
-  for (const [ax, ay] of [[31.4, 108], [31.4, 100]])
-    decals.push({ gx: ax, gy: ay, type: 'arrowYm' });
+  // painted arrows on the tarmac, following the same three legs
+  for (const ax of [178, 158, 138, 118, 100])
+    decals.push({ gx: ax, gy: 118.6, type: 'arrowXm' });
+  for (const ay of [110, 98, 86])
+    decals.push({ gx: 90.6, gy: ay, type: 'arrowYm' });
+  for (const ax of [84, 74, 64])
+    decals.push({ gx: ax, gy: 73.6, type: 'arrowXm' });
 
   // ---------- the JUNKYARD gate, seen from the road ----------
   // the yard's outer wall, so returning is an actual door and not a void
@@ -592,7 +651,7 @@ function buildFringe() {
   props.push({ gx: MAP_W - 2, gy: gy1 + 1, type: 'post', big: true });
   props.push({ gx: MAP_W - 2, gy: 120, type: 'gate', open: true, dir: 'b' });
   // one board by the gate, its text on the same tile as the post
-  props.push({ gx: MAP_W - 4, gy: 117, type: 'sign', kind: 'plank', dir: 'xp' });
+  props.push({ gx: MAP_W - 4, gy: 117, type: 'sign', kind: 'plank', dir: 'xp', text: 'JUNKYARD' });
   signs.push({ gx: MAP_W - 4, gy: 117, text: 'JUNKYARD', kind: 'plank' });
 
   // ---------- patrol routes: junctions and the forecourt ----------

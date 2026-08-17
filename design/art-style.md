@@ -40,6 +40,35 @@ bank — each with its own height, palette and flat-or-pitched roof.
 **Any future prop that reads as a volume (kiosks, bus shelters, containers)
 should be built this way, not as flat cards.**
 
+## VEHICLES — what four attempts taught us (2026-08-17)
+Cars are now `carIso` in sprites.js: a full-length lower body with a shorter,
+narrower cabin sat on top, built from the footprint and filled with **integer
+scanlines** (`isoFill`) in flat colours. Simple, chunky, seen from above.
+
+The three rejected attempts, so nobody repeats them:
+1. **Sheared side elevation** — "all cars look 2d". Shearing can only slope a
+   sprite ONE way, so the roof stays a rectangle. A real iso roof is a rhombus,
+   which cannot be produced by a shear at all; the sprite reads as a slab stood
+   on edge. This is the key geometric lesson.
+2. **Plain cuboid** — "the cars are blocks, that is not what cars look like".
+   A single box has no cabin, so there is no car in the silhouette.
+3. **Swept profile** — curves sampled along the length (sloping bonnet, plan
+   taper, set-back greenhouse, wheels in arches). Geometrically the best of the
+   lot, but "this is hurting my eyes": dozens of thin polygons with fractional
+   coordinates and alpha overlays turn to mush at 320×180.
+
+**The rule: iso geometry, flat colours, integer pixels.** Detail must survive
+being 30 pixels wide. Anything that needs antialiasing to read is wrong here.
+
+## A FLAT ROOF IS A WELL, NOT A LID (2026-08-17)
+The parapet stands up around the edge and the deck is set DOWN inside it, with
+a shadow cast inwards along the two far sides. The old code drew the parapet
+coping as a full-size diamond on top of the finished deck, which repainted the
+whole roof in one flat colour and erased every bit of detail underneath — the
+"huge grey square" bug. Roof detail (felt seams, patch repairs, ballast,
+standing water, plant) must **scale with the roof's size**: at 320×180 internal
+resolution a single 7×9 roof fills the screen, so a fixed six seams is nothing.
+
 ## HD-2D rendering pipeline (round 7 — Octopath Traveler reference)
 The target look is HD-2D: chunky pixel world + modern cinematic presentation. The pipeline, in order:
 1. Rich ground tiles (slab seams, cracks, pebbles, debris chunks — 8 variants per material)

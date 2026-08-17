@@ -28,6 +28,7 @@ function startGateCine() {
   GateCine.active = true;
   GateCine.t = 0;
   GateCine.spawned = false;
+  boss.fightPX = player.x; boss.fightPY = player.y;
   showMsg('You slot the key. The lock grinds...', 2.4);
   SFX.uiOpen();
 }
@@ -45,8 +46,8 @@ function updateGateCine(dt) {
   if (GateCine.spawned && boss.state !== 'reveal') {
     GateCine.active = false;
     // two packs of rounds shake loose from the junk for the fight
-    items.push({ type: 'ammo', x: 27.5, y: 9.0, amount: 6, bob: 0.4 });
-    items.push({ type: 'ammo', x: 27.5, y: 16.0, amount: 6, bob: 1.7 });
+    items.push({ type: 'ammo', x: 27.5, y: 9.0, amount: 6, bob: 0.4, bossAmmo: true });
+    items.push({ type: 'ammo', x: 27.5, y: 16.0, amount: 6, bob: 1.7, bossAmmo: true });
     showMsg('Rounds glint in the junk — grab them!', 3);
   }
 }
@@ -70,6 +71,11 @@ function spawnBoss(x, y) {
   boss.shots.length = 0;
   boss.atkCd = 2.5; boss.sprayCd = 6;
   boss.phase = 1; boss.pendingPhase = 0;
+  boss.stuckT = 0; boss.slideSide = 0;
+  boss.lastX = x; boss.lastY = y;
+  boss.homeX = x; boss.homeY = y;
+  // where you were standing when it rose — where you come back to if it wins
+  if (boss.fightPX === undefined) { boss.fightPX = player.x; boss.fightPY = player.y; }
   const dx = player.x - x, dy = player.y - y;
   const d = Math.hypot(dx, dy) || 1;
   boss.fx = dx / d; boss.fy = dy / d;
@@ -77,13 +83,113 @@ function spawnBoss(x, y) {
 
 function bossEyePos() { return { x: boss.x + boss.fx * 0.8, y: boss.y + boss.fy * 0.8 }; }
 
+// Dying to the Compactor costs you the attempt, not the evening. The yard
+// resets around you: it goes back to its pile, you go back to the gate, the
+// rounds are lying in the junk again. Walk in and try it once more.
+function resetBossFight() {
+  if (!boss.active || boss.state === 'dead') return false;
+  boss.shots.length = 0;
+  boss.absorbs = []; boss.debris = [];
+  GateCine.active = false; GateCine.spawned = true;
+  cineZoom = 1;
+  const px2 = boss.fightPX ?? 24.5, py2 = boss.fightPY ?? 20.5;
+  player.x = px2; player.y = py2;
+  player.hp = player.maxHp;
+  player.iframes = 2.5;
+  // the two packs of rounds shake loose again for the new attempt
+  for (let i = items.length - 1; i >= 0; i--) if (items[i].bossAmmo) items.splice(i, 1);
+  items.push({ type: 'ammo', x: 27.5, y: 9.0, amount: 6, bob: 0.4, bossAmmo: true });
+  items.push({ type: 'ammo', x: 27.5, y: 16.0, amount: 6, bob: 1.7, bossAmmo: true });
+  spawnBoss(boss.homeX ?? 26.5, boss.homeY ?? 12.5);
+  showMsg('It hauls itself back onto the heap. Again.', 3.5);
+  addShake(4);
+  SFX.rage();
+  return true;
+}
+
 // the Compactor does not path around junk — it goes THROUGH it.
 // Only walls and trash mountains (isHeavy) stop it. Everything else it
 // flattens; explosive barrels it rolls over detonate (and hurt it).
 function bossMove(dx, dy) {
-  if (dx !== 0 && bossCanStand(boss.x + dx, boss.y, 0.7)) boss.x += dx;
-  if (dy !== 0 && bossCanStand(boss.x, boss.y + dy, 0.7)) boss.y += dy;
+  let moved = false;
+  if (dx !== 0 && bossCanStand(boss.x + dx, boss.y, 0.7)) { boss.x += dx; moved = true; }
+  if (dy !== 0 && bossCanStand(boss.x, boss.y + dy, 0.7)) { boss.y += dy; moved = true; }
   crushUnder();
+  return moved;
+}
+
+// ---- IT ALWAYS COMES. Three escalating answers to being blocked. ----
+// 1. slide along whatever it is pressed against
+// 2. still pinned after a moment: smash the obstruction (it is a compactor)
+// 3. hopelessly wedged: haul itself out through the junk, somewhere near
+function bossUnstick(dt, ux, uy, step) {
+  const b = boss;
+  const dist = Math.hypot(b.x - (b.lastX ?? b.x), b.y - (b.lastY ?? b.y));
+  b.lastX = b.x; b.lastY = b.y;
+  if (dist > step * 0.35) { b.stuckT = 0; b.slideSide = 0; return; }
+
+  b.stuckT = (b.stuckT || 0) + dt;
+
+  // 1 — wall slide: run along the obstruction, picking the side that opens up
+  if (!b.slideSide) {
+    const openness = (sx) => {
+      let n = 0;
+      for (let k = 1; k <= 4; k++) {
+        if (bossCanStand(b.x + (-uy * sx) * k * 0.8, b.y + (ux * sx) * k * 0.8, 0.7)) n++;
+      }
+      return n;
+    };
+    b.slideSide = openness(1) >= openness(-1) ? 1 : -1;
+  }
+  if (bossMove(-uy * b.slideSide * step, ux * b.slideSide * step)) {
+    if (b.stuckT < 1.2) return;       // sliding is working, let it work
+  }
+
+  // 2 — smash: break the tiles it is pressed against, mountains included
+  if (b.stuckT > 1.2) {
+    let broke = false;
+    for (let k = 1; k <= 2 && !broke; k++) {
+      const tx = Math.floor(b.x + ux * (0.9 + k * 0.7));
+      const ty = Math.floor(b.y + uy * (0.9 + k * 0.7));
+      if (tx < 2 || ty < 2 || tx > MAP_W - 3 || ty > MAP_H - 3) continue;
+      if (!solid[ty][tx]) continue;
+      solid[ty][tx] = false; heavy[ty][tx] = false;
+      const p = crushProps[tx + ',' + ty];
+      if (p) {
+        for (const k2 of Object.keys(crushProps)) if (crushProps[k2] === p) delete crushProps[k2];
+        removeProp(p);
+      }
+      decals.push({ gx: tx + 0.5, gy: ty + 0.5, type: 'stain' });
+      spawnSparks(tx + 0.5, ty + 0.5, 10, ['#8a8a92', '#7d4a2a', '#5c3620'], 4);
+      spawnSmoke(tx + 0.5, ty + 0.5, 4);
+      addShake(3);
+      SFX.clang();
+      broke = true;
+      b.stuckT = 0.6;
+    }
+    if (broke) return;
+  }
+
+  // 3 — last resort: it was never going to be held by this. It hauls itself
+  // out and reappears in the open, close by, trailing smoke.
+  if (b.stuckT > 4) {
+    for (let r = 2; r <= 7; r++) {
+      for (let a = 0; a < 12; a++) {
+        const th = (a / 12) * Math.PI * 2;
+        const nx = player.x - Math.cos(th) * r, ny = player.y - Math.sin(th) * r;
+        if (nx < 2 || ny < 2 || nx > MAP_W - 3 || ny > MAP_H - 3) continue;
+        if (!bossCanStand(nx, ny, 0.8)) continue;
+        spawnSmoke(b.x, b.y, 8);
+        b.x = nx; b.y = ny;
+        spawnSmoke(nx, ny, 10);
+        spawnSparks(nx, ny, 12, ['#8a8a92', '#7d4a2a'], 3);
+        addShake(5);
+        SFX.rage();
+        b.stuckT = 0; b.slideSide = 0;
+        return;
+      }
+    }
+  }
 }
 
 function crushUnder() {
@@ -339,6 +445,7 @@ function updateBoss(dt) {
       b.fx /= fl; b.fy /= fl;
       const stp = (b.phase === 3 ? 1.5 : 1.15) * dt;
       bossMove((dx / distP) * stp, (dy / distP) * stp);
+      bossUnstick(dt, dx / distP, dy / distP, stp);
       b.walkPhase = (b.walkPhase || 0) + stp * 3.4;
       b.atkCd -= dt; b.sprayCd -= dt; b.novaCd -= dt;
       if (player.dead > 0) break;
