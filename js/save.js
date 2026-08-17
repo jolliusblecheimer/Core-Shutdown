@@ -1,15 +1,18 @@
-// Save system — browser localStorage, versioned, autosaving.
+﻿// Save system - browser localStorage, versioned, autosaving.
 // DESIGN RULE: a save must survive the game being updated. Fields are merged
 // onto live defaults (never replace wholesale), unknown/missing fields fall
 // back, world objects are matched by POSITION not array index (map layouts
 // change), and the player is never restored inside newly-added geometry.
-const SAVE_KEY = 'coreshutdown_save_v1';
+// Testing writes to a scratch slot so a real run can never be clobbered.
+const SAVE_KEY_REAL = 'coreshutdown_save_v1';
+const SAVE_KEY_TEST = 'coreshutdown_save_test';
+const saveKey = () => (window.TEST_MODE ? SAVE_KEY_TEST : SAVE_KEY_REAL);
 const SAVE_VERSION = 3;
 
 let playerName = '';
 
 function saveGame() {
-  // only ever persist real gameplay — never menu/test/title/arena states
+  // only ever persist real gameplay - never menu/test/title/arena states
   if (window.ARENA_MODE) return;
   if (typeof GameState !== 'undefined' && GameState !== 'playing') return;
   try {
@@ -32,8 +35,8 @@ function saveGame() {
       fog: collectFog(),
       tut: { ...Tut.done },
     };
-    localStorage.setItem(SAVE_KEY, JSON.stringify(d));
-  } catch (e) { /* storage full or blocked — play on without saving */ }
+    localStorage.setItem(saveKey(), JSON.stringify(d));
+  } catch (e) { /* storage full or blocked - play on without saving */ }
 }
 
 // explored ground, one packed string per area
@@ -57,7 +60,7 @@ function collectAreaState() {
 
 function loadSaveData() {
   try {
-    const raw = localStorage.getItem(SAVE_KEY);
+    const raw = localStorage.getItem(saveKey());
     if (!raw) return null;
     const d = JSON.parse(raw);
     if (!d || typeof d !== 'object' || !d.player) return null;
@@ -70,7 +73,7 @@ function migrate(d) {
   if (d.area === 'approach') d.area = 'fringe';   // the scrapped area
   if (d.areas && d.areas.approach) { delete d.areas.approach; }
   if (!d.v || d.v < 2) {
-    // v1 → v2: barrels/items were stored by array index; translate what we can
+    // v1 -> v2: barrels/items were stored by array index; translate what we can
     if (Array.isArray(d.barrels)) {
       d.deadBarrels = [];
       d.barrels.forEach((alive, i) => {
@@ -86,7 +89,7 @@ function migrate(d) {
     d.v = 2;
   }
   if (d.v < 3) {
-    // v2 → v3: single-map state becomes per-area state (it was the junkyard)
+    // v2 -> v3: single-map state becomes per-area state (it was the junkyard)
     d.areas = { junkyard: { deadBarrels: d.deadBarrels || [], takenItems: d.takenItems || [] } };
     d.area = 'junkyard';
     d.v = 3;
@@ -97,7 +100,7 @@ function migrate(d) {
 }
 
 function wipeSave() {
-  try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+  try { localStorage.removeItem(saveKey()); } catch (e) {}
 }
 
 const num = (v, fallback) => (typeof v === 'number' && isFinite(v)) ? v : fallback;
@@ -183,10 +186,11 @@ function findSafeSpot(x, y) {
   return null;
 }
 
-// three exit hooks — browsers don't reliably fire any single one of these,
+// three exit hooks - browsers don't reliably fire any single one of these,
 // but together they cover close, refresh, tab-switch and mobile kill
 window.addEventListener('beforeunload', () => saveGame());
 window.addEventListener('pagehide', () => saveGame());
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) saveGame();
 });
+

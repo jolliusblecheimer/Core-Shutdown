@@ -750,7 +750,10 @@ function render() {
   // tall props reach far up-screen, so pull from a taller band of cells
   for (const p of gatherNear(propCells, vx0 - 2, vy0 - 2, vx1 + 8, vy1 + 8, [])) {
     const s = isoToScreen(p.gx + 0.5, p.gy + 0.5);
-    const depth = p.foot ? s.y + (p.foot[2] + p.foot[3]) * 4 : s.y;
+    // roofs sort by their far corner so they cover their own walls
+    const depth = (p.type === 'roof' || p.type === 'canopy')
+      ? isoToScreen(p.foot[0] + p.foot[2], p.foot[1] + p.foot[3]).y + 1
+      : (p.foot ? s.y + (p.foot[2] + p.foot[3]) * 4 : s.y);
     draws.push({ depth, draw: () => drawProp(p, s.x - ox, s.y - oy) });
   }
   { const s = isoToScreen(scrapper.x, scrapper.y);
@@ -937,8 +940,115 @@ function occlusionAlpha(p) {
   return 0.3 + 0.7 * Math.min(1, Math.max(0, (d - 1.2) / 2));
 }
 
+// A building's roof: a quad lifted to the facade height, styled by what the
+// building is. Nothing is enterable yet, so roofs never fade.
+const ROOF_LIFT = 46;
+function drawRoof(p) {
+  const [x0, y0, w, h] = p.foot;
+  const lift = p.type === 'canopy' ? 40 : ROOF_LIFT;
+  const c1 = isoToScreen(x0, y0), c2 = isoToScreen(x0 + w, y0);
+  const c3 = isoToScreen(x0 + w, y0 + h), c4 = isoToScreen(x0, y0 + h);
+  const P = (c, dy) => [c.x - lastOx, c.y - lastOy - lift + (dy || 0)];
+  const quad = (a, b, c, d, fill, stroke) => {
+    ctx.beginPath();
+    ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]);
+    ctx.lineTo(c[0], c[1]); ctx.lineTo(d[0], d[1]);
+    ctx.closePath();
+    ctx.fillStyle = fill; ctx.fill();
+    if (stroke) { ctx.strokeStyle = stroke; ctx.stroke(); }
+  };
+  const k = p.kind || 'B';
+  const pitched = k === 'H' || k === 'R';
+  if (pitched) {
+    // two slopes meeting at a ridge down the long axis
+    const along = w >= h;
+    const midA = along ? isoToScreen(x0, y0 + h / 2) : isoToScreen(x0 + w / 2, y0);
+    const midB = along ? isoToScreen(x0 + w, y0 + h / 2) : isoToScreen(x0 + w / 2, y0 + h);
+    const RIDGE = k === 'R' ? 16 : 11;
+    const rA = [midA.x - lastOx, midA.y - lastOy - lift - RIDGE];
+    const rB = [midB.x - lastOx, midB.y - lastOy - lift - RIDGE];
+    const dark = k === 'R' ? '#3e4450' : '#5d3b34';
+    const light = k === 'R' ? '#4c5462' : '#71483f';
+    if (along) {
+      quad(P(c1), P(c2), rB, rA, light, '#2b2f36');
+      quad(rA, rB, P(c3), P(c4), dark, '#2b2f36');
+    } else {
+      quad(P(c1), rA, rB, P(c4), light, '#2b2f36');
+      quad(rA, P(c2), P(c3), rB, dark, '#2b2f36');
+    }
+    // ridge details
+    ctx.strokeStyle = '#262a30'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(rA[0], rA[1]); ctx.lineTo(rB[0], rB[1]); ctx.stroke();
+    if (k === 'R') {                                   // a cross on the ridge
+      const cx2 = (rA[0] + rB[0]) / 2, cy2 = (rA[1] + rB[1]) / 2;
+      ctx.fillStyle = '#8d8578';
+      ctx.fillRect(Math.round(cx2), Math.round(cy2) - 12, 2, 12);
+      ctx.fillRect(Math.round(cx2) - 3, Math.round(cy2) - 9, 8, 2);
+    } else if (p.seed % 3 === 0) {                      // chimney
+      const cx2 = rA[0] + (rB[0] - rA[0]) * 0.3, cy2 = rA[1] + (rB[1] - rA[1]) * 0.3;
+      ctx.fillStyle = '#4a3a35';
+      ctx.fillRect(Math.round(cx2), Math.round(cy2) - 9, 5, 10);
+      ctx.fillStyle = '#5c4a44';
+      ctx.fillRect(Math.round(cx2), Math.round(cy2) - 10, 5, 2);
+    }
+    return;
+  }
+  // flat roofs with a parapet lip
+  const base = p.type === 'canopy' ? '#6a6e72'
+    : k === 'K' ? '#6f6a5a' : k === 'N' ? '#7c7768' : k === 'T' ? '#4e4642' : '#43474b';
+  quad(P(c1), P(c2), P(c3), P(c4), base, '#2b2f36');
+  quad(P(c1, -3), P(c2, -3), P(c3, -3), P(c4, -3),
+       p.type === 'canopy' ? '#7e8286' : '#54585c', '#2b2f36');
+  if (p.type === 'canopy') {
+    // red fascia band all the way round — the petrol-station signature
+    ctx.strokeStyle = '#b8433a'; ctx.lineWidth = 3;
+    ctx.beginPath();
+    const a = P(c1, -3), b2 = P(c2, -3), c = P(c3, -3), d = P(c4, -3);
+    ctx.moveTo(a[0], a[1]); ctx.lineTo(b2[0], b2[1]); ctx.lineTo(c[0], c[1]);
+    ctx.lineTo(d[0], d[1]); ctx.closePath(); ctx.stroke();
+    ctx.lineWidth = 1;
+    addLight((a[0] + c[0]) / 2, (a[1] + c[1]) / 2, 0, 40, '255,230,180', 0.10);
+    return;
+  }
+  // rooftop clutter
+  const cx = (P(c1)[0] + P(c3)[0]) / 2, cy = (P(c1)[1] + P(c3)[1]) / 2;
+  if (k === 'O' || k === 'N' || k === 'T') {
+    ctx.fillStyle = '#5e6266';
+    ctx.fillRect(Math.round(cx - 8), Math.round(cy - 10), 9, 7);
+    ctx.fillStyle = '#6e7276';
+    ctx.fillRect(Math.round(cx - 8), Math.round(cy - 11), 9, 2);
+    ctx.fillStyle = '#4a4e52';
+    ctx.fillRect(Math.round(cx + 3), Math.round(cy - 6), 6, 5);
+  } else if (k === 'K') {
+    ctx.fillStyle = '#8d959b';                          // rooflights
+    for (let i = -1; i <= 1; i++) ctx.fillRect(Math.round(cx + i * 9) - 3, Math.round(cy - 4), 6, 4);
+    ctx.fillStyle = '#5a5e62';
+    ctx.fillRect(Math.round(cx - 14), Math.round(cy - 9), 6, 7);   // water tank
+  } else {
+    ctx.fillStyle = '#4e5256';
+    ctx.fillRect(Math.round(cx - 4), Math.round(cy - 7), 6, 5);     // vent
+  }
+  if (k === 'T') {                                       // hotel roof sign
+    ctx.fillStyle = '#8a4a44';
+    ctx.fillRect(Math.round(cx - 12), Math.round(cy - 18), 24, 7);
+    ctx.fillStyle = '#c98a80';
+    ctx.fillRect(Math.round(cx - 12), Math.round(cy - 18), 24, 1);
+    addLight(cx, cy - 15, 0, 22, '220,120,110', 0.18);
+  }
+}
+
 function drawProp(p, x, y) {
   const T = p.type;
+  if (T === 'roof' || T === 'canopy') { drawRoof(p); return; }
+  if (T === 'pylon') {
+    ctx.drawImage(Sprites.pylonSign, Math.round(x - 11), Math.round(y - 54));
+    addLight(x, y - 40, 0, 16, '255,225,190', 0.14);
+    return;
+  }
+  if (T === 'pumpIsland') {
+    ctx.drawImage(Sprites.pumpIsland, Math.round(x - 16), Math.round(y - 10));
+    return;
+  }
   if (T === 'wallSlice') {
     const a = occlusionAlpha(p);
     if (p.front) ctx.globalAlpha = (0.15 + roofAlpha * 0.85) * a;
@@ -964,7 +1074,7 @@ function drawProp(p, x, y) {
     const a = occlusionAlpha(p);
     if (p.front) ctx.globalAlpha = (0.15 + roofAlpha * 0.85) * a;
     else if (a < 1) ctx.globalAlpha = a;
-    ctx.drawImage(Sprites.cornerCol, Math.round(x - 4), Math.round(y - 48));
+    ctx.drawImage(Sprites.cornerCol, Math.round(x - 4), Math.round(y - 47));
     ctx.globalAlpha = 1;
     return;
   }
@@ -1006,7 +1116,11 @@ function drawProp(p, x, y) {
   else if (T === 'dumpster') { img = Sprites.dumpster; oyOff = -15; drawShadow(x, y, 9); }
   else if (T === 'hydrant') { img = Sprites.hydrant; oyOff = -12; drawShadow(x, y, 3); }
   else if (T === 'postbox') { img = Sprites.postbox; oyOff = -16; drawShadow(x, y, 4); }
-  else if (T === 'sign') { img = Sprites.signPost; oyOff = -26; drawShadow(x, y, 4); }
+  else if (T === 'sign') {
+    img = p.kind === 'cloth' ? Sprites.signCloth : Sprites.signPlank;
+    oyOff = p.kind === 'cloth' ? -20 : -22;
+    drawShadow(x, y, 4);
+  }
   else if (T === 'bus') { img = Sprites.bus; oyOff = -26; drawShadow(x, y + 1, 24); }
   else if (T === 'pump') {
     img = Sprites.fuelPump; oyOff = -22; drawShadow(x, y, 6);
@@ -1732,9 +1846,18 @@ function drawHUD() {
       const ex2 = (ex.x0 + ex.x1) / 2, ey2 = (ex.y0 + ex.y1) / 2;
       if (isExplored(ex2, ey2)) uiRect(mx2 + ex2 * sc - 1.5, my2 + ey2 * sc - 1.5, 3, 3, '#4fc3ff');
     }
-    // you
-    const blink2 = ((gameTime * 3) | 0) % 2 === 0;
-    uiRect(mx2 + player.x * sc - 1.5, my2 + player.y * sc - 1.5, 3, 3, blink2 ? '#ffffff' : '#ffd27a');
+    // you — a tiny version of the traveller, with a ring so you can find him
+    const pxm = mx2 + player.x * sc, pym = my2 + player.y * sc;
+    const ring = 5 + Math.sin(gameTime * 3) * 1.2;
+    uictx.strokeStyle = 'rgba(255,210,122,0.7)';
+    uictx.lineWidth = U;
+    uictx.beginPath();
+    uictx.arc(pxm * U, pym * U, ring * U, 0, Math.PI * 2);
+    uictx.stroke();
+    const pim = Sprites.player[0];
+    uictx.imageSmoothingEnabled = false;
+    uictx.drawImage(pim, (pxm - pim.width / 4) * U, (pym - pim.height / 2) * U,
+                    (pim.width / 2) * U, (pim.height / 2) * U);
     ptext('walked ground only  ·  M or ESC to close', VIEW_W / 2, VIEW_H - 12, 7, 'rgba(232,217,192,0.5)', 'center');
     return;
   }

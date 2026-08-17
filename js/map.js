@@ -376,6 +376,12 @@ function buildFringe() {
       if (x < MAP_W - 1 && y < MAP_H - 1 && !solid[y][x]) ground[y][x] = 7;   // playground
   signs.push({ gx: SCH.x + 4, gy: SCH.y + SCH.h + 2, text: 'ALDERGROVE PRIMARY - GO SLOWLY' });
 
+  // THE REGENT HOTEL and the CITY & COUNTY BANK — landmarks, not enterable
+  placeBuilding(112, 96, 18, 13, 'T');
+  signs.push({ gx: 112, gy: 110, text: 'THE REGENT HOTEL', kind: 'old' });
+  placeBuilding(60, 96, 16, 12, 'N');
+  signs.push({ gx: 60, gy: 109, text: 'CITY & COUNTY BANK', kind: 'old' });
+
   // ST MARTIN'S: the church that becomes Candlelight, on the spine
   const CH = { x: 36, y: 90, w: 12, h: 14 };
   placeBuilding(CH.x, CH.y, CH.w, CH.h, 'R');
@@ -439,6 +445,11 @@ function buildFringe() {
       [b.x0, b.y0, false], [b.x0 + b.w - 1, b.y0, false],
       [b.x0, b.y0 + b.h - 1, true], [b.x0 + b.w - 1, b.y0 + b.h - 1, true],
     ]) props.push({ gx: cx2, gy: cy2, type: 'cornerCol', front });
+    // every building gets a roof, styled by what it is
+    props.push({
+      gx: b.x0 + b.w / 2 - 0.5, gy: b.y0 + b.h / 2 - 0.5, type: 'roof',
+      foot: [b.x0, b.y0, b.w, b.h], kind: k, seed: (b.x0 * 31 + b.y0 * 17) % 100,
+    });
   }
 
   // ---------- street dressing ----------
@@ -496,59 +507,104 @@ function buildFringe() {
     props.push({ gx: 90, gy: 76, type: 'bus' });
   }
 
-  // ---------- THE GAS STATION ----------
-  const GX = 138, GY = 126;            // forecourt origin (south of the gate road)
-  for (let y = GY; y < GY + 12; y++)
-    for (let x = GX; x < GX + 20; x++) { if (x < MAP_W - 1 && y < MAP_H - 1) { ground[y][x] = 7; solid[y][x] = false; } }
-  for (const [px2, py2] of [[GX + 2, GY + 2], [GX + 17, GY + 2], [GX + 2, GY + 9], [GX + 17, GY + 9]]) {
+  // ---------- THE GAS STATION (proper forecourt layout) ----------
+  // canopy on six pillars over two kerbed pump islands, shop to the east,
+  // painted in/out lanes, and a pylon totem you see from up the road
+  const GX = 132, GY = 125;
+  for (let y = GY - 1; y < GY + 14; y++)
+    for (let x = GX - 1; x < GX + 24; x++)
+      if (x > 0 && y > 0 && x < MAP_W - 1 && y < MAP_H - 1) { ground[y][x] = 7; solid[y][x] = false; }
+
+  const CAN = { x0: GX + 1, y0: GY + 1, w: 14, h: 8 };     // canopy footprint
+  for (const [px2, py2] of [
+    [CAN.x0, CAN.y0], [CAN.x0 + 7, CAN.y0], [CAN.x0 + 13, CAN.y0],
+    [CAN.x0, CAN.y0 + 7], [CAN.x0 + 7, CAN.y0 + 7], [CAN.x0 + 13, CAN.y0 + 7],
+  ]) {
     solid[py2][px2] = true; heavy[py2][px2] = true;
     props.push({ gx: px2, gy: py2, type: 'pillar' });
   }
-  for (const [px2, py2] of [[GX + 6, GY + 4], [GX + 10, GY + 4], [GX + 6, GY + 8], [GX + 10, GY + 8]]) {
-    solid[py2][px2] = true;
-    const p = { gx: px2, gy: py2, type: 'pump' };
-    props.push(p);
-    boomBarrels.push({ gx: px2, gy: py2, alive: true, prop: p });   // pumps detonate
+  props.push({ gx: CAN.x0 + CAN.w / 2 - 0.5, gy: CAN.y0 + CAN.h / 2 - 0.5,
+               type: 'canopy', foot: [CAN.x0, CAN.y0, CAN.w, CAN.h] });
+  // two islands, two pumps each
+  for (const iy of [CAN.y0 + 2, CAN.y0 + 5]) {
+    props.push({ gx: CAN.x0 + 6, gy: iy, type: 'pumpIsland' });
+    for (const ix of [CAN.x0 + 4, CAN.x0 + 8]) {
+      solid[iy][ix] = true;
+      const p = { gx: ix, gy: iy, type: 'pump' };
+      props.push(p);
+      boomBarrels.push({ gx: ix, gy: iy, alive: true, prop: p });   // pumps detonate
+    }
   }
-  // the shop behind the forecourt
-  placeBuilding(GX + 12, GY + 6, 8, 6);
-  for (const b of buildings.slice(-1)) {
-    const n2 = [], s2 = [];
+  // the shop, glazed, east of the canopy
+  if (placeBuilding(GX + 17, GY + 2, 6, 8, 'S')) {
+    const b = buildings[buildings.length - 1];
+    const n2 = [], s2 = [], w2 = [], e2 = [];
     for (let x = b.x0; x < b.x0 + b.w; x++) { n2.push([x, b.y0]); s2.push([x, b.y0 + b.h - 1]); }
-    wallRun(n2, Array.from({ length: n2.length }, () => 'S'), 'x', false, true, true);
-    wallRun(s2, Array.from({ length: s2.length }, () => 'S'), 'x', true, true, true);
+    for (let y = b.y0 + 1; y < b.y0 + b.h - 1; y++) { w2.push([b.x0, y]); e2.push([b.x0 + b.w - 1, y]); }
+    const S = n => Array.from({ length: n }, () => 'S');
+    wallRun(n2, S(n2.length), 'x', false, true, true);
+    wallRun(s2, S(s2.length), 'x', true, true, true);
+    wallRun(w2, S(w2.length), 'y', false, true, true);
+    wallRun(e2, S(e2.length), 'y', true, true, true);
+    for (const [cx2, cy2, front] of [[b.x0, b.y0, false], [b.x0 + b.w - 1, b.y0, false],
+                                     [b.x0, b.y0 + b.h - 1, true], [b.x0 + b.w - 1, b.y0 + b.h - 1, true]])
+      props.push({ gx: cx2, gy: cy2, type: 'cornerCol', front });
+    props.push({ gx: b.x0 + b.w / 2 - 0.5, gy: b.y0 + b.h / 2 - 0.5, type: 'roof',
+                 foot: [b.x0, b.y0, b.w, b.h], kind: 'S', seed: 7 });
   }
-  signs.push({ gx: GX + 9, gy: GY - 1, text: 'FUEL · AIR · COFFEE' });
+  // pylon totem at the roadside
+  if (!solid[GY - 1][GX + 20]) {
+    solid[GY - 1][GX + 20] = true;
+    props.push({ gx: GX + 20, gy: GY - 1, type: 'pylon' });
+  }
+  // forecourt markings: in and out
+  for (let i = 0; i < 6; i++) decals.push({ gx: GX + 2 + i * 2, gy: GY - 0.4, type: 'paintArrow' });
+  for (let i = 0; i < 5; i++) decals.push({ gx: GX + 3 + i * 2, gy: GY + 12.4, type: 'crossbar' });
 
-  // ---------- signs ----------
-  // A TRAIL you can actually follow: gate -> west along the road -> north up
-  // the spine -> St Martin's. Each one points at the next.
+  // ---------- signs: ONLY the shelter, and all of it handmade ----------
+  // Someone walked this road afterwards with a paint tin. Planks nailed to
+  // broom handles, a bedsheet between two poles, arrows daubed on the tarmac.
   const SIGNS = [
-    { gx: 190, gy: 116, text: 'ST MARTIN\'S SHELTER  <- 4 km' },
-    { gx: 168, gy: 116, text: '<- ALDERGROVE · CITY CENTRE 9' },
-    { gx: 146, gy: 124, text: 'FUEL · AIR · COFFEE' },
-    { gx: 128, gy: 116, text: 'EVACUATION POINT -> FIELD 12' },
-    { gx: 108, gy: 116, text: 'SHELTER <- 2 km  KEEP LEFT' },
-    { gx: 86, gy: 116, text: "MARA'S GROCERY - EST. 2019" },
-    { gx: 62, gy: 116, text: 'ST MARTIN\'S <- 1 km' },
-    { gx: 36, gy: 114, text: 'SHELTER ^ 600 m  ALL WELCOME' },
-    { gx: 34, gy: 104, text: "ST MARTIN'S - ALL WELCOME" },
-    // the rest of the city, telling you what else is out there
-    { gx: 34, gy: 66, text: 'ALDERGROVE PRIMARY ->' },
-    { gx: 96, gy: 70, text: 'CURFEW 20:00 - BY ORDER' },
-    { gx: 34, gy: 26, text: 'THE SPRAWL - NO ADMITTANCE' },
-    { gx: 158, gy: 70, text: 'DEPOT YARD - AUTHORISED ONLY' },
-    { gx: 96, gy: 42, text: 'WE ARE INSIDE. KNOCK 3x' },
-    { gx: 166, gy: 40, text: 'FIELD 12 AIRSTRIP ->' },
+    { gx: 188, gy: 116, text: 'SHELTER ->', kind: 'plank' },
+    { gx: 168, gy: 116, text: 'ST MARTINS. KEEP GOING', kind: 'plank' },
+    { gx: 146, gy: 116, text: 'FOOD + BEDS ->', kind: 'cloth' },
+    { gx: 124, gy: 116, text: 'SHELTER 2KM ->', kind: 'plank' },
+    { gx: 100, gy: 116, text: 'NOT FAR NOW', kind: 'plank' },
+    { gx: 76, gy: 116, text: 'ST MARTINS 1KM ->', kind: 'cloth' },
+    { gx: 50, gy: 116, text: 'TURN RIGHT AT THE CHURCH', kind: 'plank' },
+    { gx: 36, gy: 112, text: 'SHELTER ^', kind: 'plank' },
+    { gx: 34, gy: 106, text: 'YOU MADE IT. KNOCK.', kind: 'cloth' },
   ];
   for (const s of SIGNS) {
     const x = s.gx | 0, y = s.gy | 0;
     if (x < MAP_W - 1 && y < MAP_H - 1 && !solid[y][x]) {
       solid[y][x] = true;
-      props.push({ gx: x, gy: y, type: 'sign' });
-      signs.push({ gx: x, gy: y, text: s.text });
+      props.push({ gx: x, gy: y, type: 'sign', kind: s.kind });
+      signs.push({ gx: x, gy: y, text: s.text, kind: s.kind });
     }
   }
+  // painted arrows on the road itself, pointing the same way
+  for (const [ax, ay] of [[178, 118.6], [156, 118.6], [134, 118.6], [110, 118.6],
+                          [88, 118.6], [64, 118.6], [42, 118.6], [31.4, 108], [31.4, 100]])
+    decals.push({ gx: ax, gy: ay, type: 'paintArrow' });
+
+  // ---------- the JUNKYARD gate, seen from the road ----------
+  // the yard's outer wall, so returning is an actual door and not a void
+  const gy0 = 118, gy1 = 122;
+  for (let y = 104; y < 136; y++) {
+    if (y >= gy0 && y <= gy1) continue;
+    if (y >= MAP_H - 1) break;
+    solid[y][MAP_W - 2] = true; heavy[y][MAP_W - 2] = true;
+  }
+  wallRun(Array.from({ length: gy0 - 104 }, (_, i) => [MAP_W - 2, 104 + i]),
+          fenceKinds(gy0 - 104), 'y', false, true, true);
+  wallRun(Array.from({ length: 136 - (gy1 + 1) }, (_, i) => [MAP_W - 2, gy1 + 1 + i]),
+          fenceKinds(136 - (gy1 + 1)), 'y', false, true, true);
+  props.push({ gx: MAP_W - 2, gy: gy0 - 1, type: 'post', big: true });
+  props.push({ gx: MAP_W - 2, gy: gy1 + 1, type: 'post', big: true });
+  props.push({ gx: MAP_W - 2, gy: 120, type: 'gate', open: true, dir: 'b' });
+  signs.push({ gx: MAP_W - 4, gy: 120, text: 'JUNKYARD', kind: 'plank' });
+  props.push({ gx: MAP_W - 4, gy: 117, type: 'sign', kind: 'plank' });
 
   // ---------- patrol routes: junctions and the forecourt ----------
   for (const [px2, py2] of [[30, 120], [92, 120], [165, 120], [30, 75], [92, 75], [165, 75],

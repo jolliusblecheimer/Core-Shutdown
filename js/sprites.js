@@ -667,6 +667,29 @@ function outlined(src) {
         px(g, ox + 11, y + 8 + b * 12, 1, 7, '#4a4e52');
       }
       px(g, ox, y + 42, 16, 2, '#42464a');
+    } else if (kind === 'T') {                // CITY: hotel — balconies + canopy
+      const y = H - 44;
+      px(g, ox, y, 16, 44, '#5c4e4a');
+      px(g, ox, y, 16, 3, '#71615c');
+      for (let b = 0; b < 3; b++) {
+        const by = y + 7 + b * 11;
+        px(g, ox + 2, by, 12, 6, '#1c2026');      // window
+        px(g, ox + 2, by, 12, 1, '#3d4650');
+        px(g, ox, by + 6, 16, 2, '#6e5f59');      // balcony slab
+        for (let i = 0; i < 5; i++) px(g, ox + 1 + i * 3, by + 4, 1, 2, '#8a7a72');
+      }
+      px(g, ox, y + 40, 16, 4, '#4a3f3b');
+    } else if (kind === 'N') {                // CITY: bank — stone + pilasters
+      const y = H - 44;
+      px(g, ox, y, 16, 44, '#8d8878');
+      px(g, ox, y, 16, 5, '#9d9887');           // cornice
+      px(g, ox, y + 5, 16, 2, '#7a7566');
+      px(g, ox + 1, y + 9, 4, 26, '#9a9584');   // pilasters
+      px(g, ox + 11, y + 9, 4, 26, '#9a9584');
+      px(g, ox + 6, y + 12, 4, 20, '#1b1f24');  // deep window
+      px(g, ox + 6, y + 12, 4, 1, '#3d4650');
+      px(g, ox, y + 35, 16, 3, '#7a7566');      // plinth band
+      px(g, ox, y + 38, 16, 6, '#6e6a5d');
     } else if (kind === 'G') {                // CITY: roller shutter (44)
       const y = H - 44;
       px(g, ox, y, 16, 44, '#4a4c50');
@@ -694,7 +717,7 @@ function outlined(src) {
   Sprites._makeWallRun = function (kinds, axis, trimStart, trimEnd) {
     const n = kinds.length;
     const isWall = kinds[0] === 'W';
-    const isCity = 'BSGHKRO'.includes(kinds[0]);
+    const isCity = 'BSGHKROTN'.includes(kinds[0]);
     const H = isCity ? 44 : (isWall ? 28 : 20);
     const flat = makeCanvas(16 * n, H), g = flat.getContext('2d');
     kinds.forEach((k, i) => Sprites.paintSeg(g, k, i * 16, H));
@@ -1022,14 +1045,60 @@ function outlined(src) {
   Sprites.postS = post(26);
   Sprites.postL = post(34);
 
-  // building corner column — caps the joint where two facades meet
+  // building corner column — height locked to the facade so the tops meet
   (function () {
-    const c = makeCanvas(7, 48), g = c.getContext('2d');
-    px(g, 0, 2, 7, 46, '#5a5349');
-    px(g, 0, 2, 3, 46, '#6a6257');
-    px(g, 0, 0, 7, 3, '#756d61');
-    px(g, 0, 45, 7, 3, '#3f3a33');
+    const c = makeCanvas(7, 46), g = c.getContext('2d');
+    px(g, 0, 0, 7, 46, '#5a5349');
+    px(g, 0, 0, 3, 46, '#6a6257');
+    px(g, 0, 0, 7, 2, '#756d61');
+    px(g, 0, 44, 7, 2, '#3f3a33');
     Sprites.cornerCol = outlined(c);
+  })();
+
+  // ---- makeshift signs: nailed planks, painted boards, cloth banners ----
+  (function () {
+    const board = makeCanvas(26, 22), g = board.getContext('2d');
+    px(g, 11, 10, 3, 12, '#6a5638');                 // broom handle
+    px(g, 2, 2, 22, 9, '#8a7048');                   // plank
+    px(g, 2, 2, 22, 1, '#9c8055');
+    px(g, 2, 6, 22, 1, '#75603c');                   // grain
+    px(g, 5, 4, 3, 3, '#3a2f1e');                    // nails
+    px(g, 19, 4, 3, 3, '#3a2f1e');
+    Sprites.signPlank = outlined(board);
+
+    const cloth = makeCanvas(30, 20), cg = cloth.getContext('2d');
+    px(cg, 1, 1, 2, 18, '#5a4a30');                  // poles
+    px(cg, 27, 1, 2, 18, '#5a4a30');
+    px(cg, 3, 3, 24, 11, '#b9b2a0');                 // bedsheet
+    px(cg, 3, 3, 24, 1, '#cfc8b6');
+    for (let i = 0; i < 6; i++) px(cg, 4 + i * 4, 13, 3, 2, '#a79f8d');  // ragged hem
+    Sprites.signCloth = outlined(cloth);
+
+    // arrow daubed straight onto the ground
+    const sp = makeCanvas(20, 12), sg2 = sp.getContext('2d');
+    sg2.fillStyle = 'rgba(228,222,200,0.6)';
+    sg2.fillRect(2, 5, 11, 2);
+    sg2.beginPath(); sg2.moveTo(12, 1); sg2.lineTo(19, 6); sg2.lineTo(12, 11); sg2.closePath(); sg2.fill();
+    Sprites.decals.paintArrow = sp;
+  })();
+
+  // ---- gas station: canopy fascia, pylon totem, kerbed island ----
+  (function () {
+    const py = makeCanvas(22, 52), g = py.getContext('2d');
+    px(g, 9, 20, 4, 32, '#5e6266');                  // mast
+    px(g, 2, 2, 18, 20, '#d8d2c4');                  // board
+    px(g, 2, 2, 18, 3, '#b8433a');
+    px(g, 4, 7, 14, 4, '#2a2e33');                   // brand bar
+    px(g, 4, 13, 6, 3, '#4a5a3a');                   // prices
+    px(g, 12, 13, 6, 3, '#4a5a3a');
+    px(g, 4, 17, 14, 2, '#8d887a');
+    Sprites.pylonSign = outlined(py);
+
+    const isl = makeCanvas(30, 12), ig = isl.getContext('2d');
+    px(ig, 0, 4, 30, 6, '#6e7276');                  // kerbed island
+    px(ig, 0, 3, 30, 2, '#82868a');
+    px(ig, 0, 9, 30, 2, '#565a5e');
+    Sprites.pumpIsland = outlined(isl);
   })();
 
   // lane dashes, sheared to lie along each road direction
