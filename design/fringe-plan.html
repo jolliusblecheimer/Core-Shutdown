@@ -73,6 +73,87 @@ The tutorial was small on purpose; nothing after it needs to be.</p>
 it was junkyard tiles, junkyard props and junkyard robots rearranged into a square. Deleted in
 step 1. The <em>area system</em> underneath it survives, but only for interiors and, later, other rings.</p>
 
+<h2>Where this sits <span class="n">· in the whole city</span></h2>
+<p class="sub">Orientation first. The city on the atlas is six rings; everything on this page is the
+south-east slice of the outermost one — the ground you cross before the Sprawl even begins.</p>
+
+<figure>
+<svg viewBox="0 0 900 330" role="img" aria-label="Locator diagram: the six concentric city rings with the south-eastern slice of the outer ring highlighted, expanded into the street map built on this page">
+  <rect width="900" height="330" fill="#08090a"/>
+
+  <!-- the city, small -->
+  <g>
+    <ellipse cx="150" cy="150" rx="130" ry="115" fill="#2a2018"/>
+    <ellipse cx="150" cy="150" rx="106" ry="94" fill="#2b2620"/>
+    <ellipse cx="150" cy="150" rx="82" ry="72" fill="#26272c"/>
+    <ellipse cx="150" cy="150" rx="57" ry="50" fill="#1e242c"/>
+    <ellipse cx="150" cy="150" rx="34" ry="30" fill="#2f3740"/>
+    <ellipse cx="150" cy="150" rx="16" ry="14" fill="#0d2431" stroke="#4fc3ff" stroke-width="1.2"/>
+    <g fill="none" stroke="#5d6a72" stroke-opacity=".4" stroke-dasharray="4 4">
+      <ellipse cx="150" cy="150" rx="106" ry="94"/>
+      <ellipse cx="150" cy="150" rx="82" ry="72"/>
+      <ellipse cx="150" cy="150" rx="57" ry="50"/>
+      <ellipse cx="150" cy="150" rx="34" ry="30"/>
+    </g>
+  </g>
+
+  <!-- the slice we are building -->
+  <polygon points="249.6,223.9 215,249.6 172.6,263.2 127.4,263.2 85,249.6 50.4,223.9 69,210 97.2,230.9 131.6,242 168.4,242 202.9,230.9 231,210"
+           fill="#ffb544" fill-opacity=".3" stroke="#ffb544" stroke-width="1.6"/>
+
+  <!-- zoom cone -->
+  <polygon points="231,210 249.6,223.9 470,300 470,60" fill="#ffb544" fill-opacity=".05"/>
+  <g stroke="#ffb544" stroke-opacity=".55" stroke-dasharray="5 4" fill="none">
+    <path d="M 231 210 L 470 60"/>
+    <path d="M 249.6 223.9 L 470 300"/>
+  </g>
+
+  <!-- the built map -->
+  <rect x="470" y="60" width="400" height="240" fill="#12171a" stroke="#ffb544" stroke-width="1.6"/>
+  <g stroke="#3c464d" stroke-width="9" fill="none" stroke-linecap="round">
+    <path d="M 840 268 L 700 250 L 600 250"/>
+    <path d="M 600 250 L 600 96"/>
+    <path d="M 600 178 L 790 190"/>
+  </g>
+  <g fill="#1b2226" stroke="#252f35">
+    <rect x="500" y="90" width="70" height="52"/><rect x="500" y="160" width="60" height="60"/>
+    <rect x="630" y="86" width="76" height="48"/><rect x="640" y="210" width="70" height="52"/>
+    <rect x="740" y="96" width="60" height="46"/><rect x="730" y="222" width="70" height="44"/>
+  </g>
+  <circle cx="700" cy="250" r="4" fill="#ffb544"/>
+  <rect x="833" y="262" width="9" height="9" fill="#a8873a"/>
+  <polygon points="600,176 606,188 594,188" fill="#7ad27a"/>
+  <rect x="595" y="90" width="9" height="9" fill="#4fc3ff"/>
+
+  <g font-family="ui-monospace,Consolas,monospace" font-size="10" fill="#94a0aa">
+    <text x="150" y="26" fill="#dfe3e8" text-anchor="middle" letter-spacing="2">THE WHOLE CITY</text>
+    <text x="150" y="292" fill="#ffb544" text-anchor="middle">the slice we build now</text>
+    <text x="150" y="306" text-anchor="middle">≈ 20% of Ring 5 · ~6% of the city</text>
+    <text x="670" y="46" fill="#dfe3e8" text-anchor="middle" letter-spacing="2">THIS PAGE — THE OPEN FRINGE</text>
+    <text x="670" y="318" text-anchor="middle">200 × 150 tiles · one continuous map · no loading</text>
+    <text x="852" y="278" fill="#a8873a" text-anchor="end">gate</text>
+    <text x="700" y="270" fill="#ffb544" text-anchor="middle">station</text>
+    <text x="586" y="182" fill="#7ad27a" text-anchor="end">camp</text>
+    <text x="614" y="98" fill="#4fc3ff">to the Sprawl</text>
+    <text x="150" y="150" fill="#4fc3ff" font-size="9" text-anchor="middle">CORE</text>
+  </g>
+</svg>
+<figcaption>Everything on this page is that amber slice — the outermost ring's south-east corner. The Core is six rings inward.</figcaption>
+</figure>
+
+<div class="tablewrap"><table>
+  <tr><th>Scale check</th><th>Tiles</th><th>Vs the junkyard</th><th>Status</th></tr>
+  <tr><td class="k">The junkyard (tutorial)</td><td class="num">1,024</td><td class="num">1×</td><td class="dim">built</td></tr>
+  <tr><td class="k q">The open Fringe (this page)</td><td class="num">30,000</td><td class="num">29×</td><td class="q">next</td></tr>
+  <tr><td class="k">Ring 5 in full, if we built it all</td><td class="num">~150,000</td><td class="num">~145×</td><td class="dim">we won't — the rest is closed by fire, flood, fence and rubble</td></tr>
+  <tr><td class="k">The whole city at this density</td><td class="num">~500,000</td><td class="num">~490×</td><td class="dim">never — every ring inward is built as the path you actually walk, not the whole disc</td></tr>
+</table></div>
+<p class="sub">That last row is the strategy in one line: <strong style="color:var(--ink)">we build corridors through
+a city that only <em>looks</em> complete.</strong> The rings get smaller as you go inward, so each one
+costs less than the last — and the Core is a single room.</p>
+
+<h2>The Fringe itself <span class="n">· street by street</span></h2>
+
 <figure>
 <svg viewBox="0 0 900 600" role="img" aria-label="The open Fringe map: one continuous street network running from the junkyard gate north-west, past a gas station, terraces and a church camp, out to an airstrip and an underpass, bounded by fire, flood, a fence and a collapsed viaduct">
   <rect width="900" height="600" fill="#08090a"/>
