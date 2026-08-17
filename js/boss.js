@@ -158,6 +158,20 @@ function bossHit(wx, wy, dmg, kind) {
             if (p.type === 'car') solid[ty][tx + 1] = false;
           }
         }
+        // a storm of cosmetic debris on top of the real absorbed props —
+        // many chunks, several of them big
+        boss.debris = [];
+        const cols = ['#8a8a92', '#6a6a72', '#7d4a2a', '#5c3620', '#43434b', '#c9c9d2'];
+        for (let i = 0; i < 28; i++) {
+          boss.debris.push({
+            ang: Math.random() * Math.PI * 2,
+            dist: 2.5 + Math.random() * 3,
+            t0: 0.15 + Math.random() * 1.3,
+            dur: 0.45 + Math.random() * 0.35,
+            size: i < 8 ? 6 + Math.random() * 4 : 2 + Math.random() * 4,   // 8 big chunks
+            col: cols[(Math.random() * cols.length) | 0],
+          });
+        }
         SFX.absorb();
       }
     }

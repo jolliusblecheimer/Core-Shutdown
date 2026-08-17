@@ -883,29 +883,31 @@ function drawBoss(x, y) {
 
   // cutscene extras
   if (b.state === 'cine3') {
-    // junk streaming into the machine, healing it
+    // the real absorbed props, streaming in and healing it
     for (const a of (b.absorbs || [])) {
       if (a.done || b.t < a.t0) continue;
       const p = Math.min(1, (b.t - a.t0) / 0.45);
       const wx2 = a.x + (b.x - a.x) * p, wy2 = a.y + (b.y - a.y) * p;
       const s2 = isoToScreen(wx2, wy2);
       ctx.fillStyle = p > 0.8 ? '#7ad27a' : '#8a8a92';
-      ctx.fillRect(Math.round(s2.x - lastOx) - 2, Math.round(s2.y - lastOy - 8 - p * 8), 4, 4);
+      ctx.fillRect(Math.round(s2.x - lastOx) - 3, Math.round(s2.y - lastOy - 8 - p * 8), 6, 6);
     }
-    addLight(x, bodyY + 12, 0, 26 + Math.sin(gameTime * 8) * 6, '122,210,122', 0.35);
+    // and the debris storm: dozens of chunks spiralling in from all sides
+    for (const d of (b.debris || [])) {
+      const p = (b.t - d.t0) / d.dur;
+      if (p < 0 || p > 1) continue;
+      const ang = d.ang + p * 1.8;                       // spiral as it's pulled in
+      const dist = d.dist * (1 - p);
+      const wx2 = b.x + Math.cos(ang) * dist, wy2 = b.y + Math.sin(ang) * dist;
+      const s2 = isoToScreen(wx2, wy2);
+      const sz = Math.max(1, Math.round(d.size * (1 - p * 0.5)));
+      ctx.fillStyle = p > 0.85 ? '#7ad27a' : d.col;
+      ctx.fillRect(Math.round(s2.x - lastOx) - (sz >> 1),
+                   Math.round(s2.y - lastOy - 6 - p * 10), sz, sz);
+    }
+    addLight(x, bodyY + 12, 0, 28 + Math.sin(gameTime * 8) * 7, '122,210,122', 0.4);
   }
 
-  // phase-transition shield: a crackling bubble — untouchable until it drops
-  if (b.state === 'shield' || b.state === 'nova') {
-    const sp = 0.6 + 0.4 * Math.sin(gameTime * 10);
-    ctx.strokeStyle = `rgba(120,210,255,${0.5 + 0.3 * sp})`;
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.ellipse(x, bodyY + 12, 24 + sp * 2, 18 + sp * 2, 0, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.lineWidth = 1;
-    addLight(x, bodyY + 12, 0, 30, '120,210,255', 0.35);
-  }
 
   // ONE BIG EYE — unmistakably the weak point: large, bright, pulsing
   if (b.state !== 'dead') {
