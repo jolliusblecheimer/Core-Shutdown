@@ -723,10 +723,25 @@ function render() {
   drawHUD();
 }
 
+// A tall prop standing between the camera and the player hides them. Fade any
+// wall/gate the player is standing directly behind, so they never look like
+// they are inside it.
+function occlusionAlpha(p) {
+  if (player.dead > 0) return 1;
+  const dx = player.x - p.gx, dy = player.y - p.gy;
+  // the player is "behind" it when they sit further from the camera (lower x+y)
+  if (dx + dy > 0.6) return 1;
+  const d = Math.hypot(dx, dy);
+  if (d > 3.2) return 1;
+  return 0.3 + 0.7 * Math.min(1, Math.max(0, (d - 1.2) / 2));
+}
+
 function drawProp(p, x, y) {
   const T = p.type;
   if (T === 'wallSlice') {
-    if (p.front) ctx.globalAlpha = 0.15 + roofAlpha * 0.85;
+    const a = occlusionAlpha(p);
+    if (p.front) ctx.globalAlpha = (0.15 + roofAlpha * 0.85) * a;
+    else if (a < 1) ctx.globalAlpha = a;
     ctx.drawImage(p.img, Math.round(x + p.dx), Math.round(y - p.lift + p.dy));
     ctx.globalAlpha = 1;
     return;
@@ -734,7 +749,10 @@ function drawProp(p, x, y) {
   if (T === 'gate') {
     const set = p.open ? Sprites.gateOpen : Sprites.gateClosed;
     const img = set[p.dir || 'a'];
+    const a = occlusionAlpha(p);
+    if (a < 1) ctx.globalAlpha = a;
     ctx.drawImage(img, Math.round(x - img.width / 2), Math.round(y - 40));
+    ctx.globalAlpha = 1;
     if (!p.open) {
       // the lock glints — you need the key
       addLight(x, y - 18, 0, 9, '255,210,120', 0.14 + 0.06 * Math.sin(gameTime * 2));
@@ -743,7 +761,9 @@ function drawProp(p, x, y) {
   }
   if (T === 'post') {
     const img = p.big ? Sprites.postL : Sprites.postS;
-    if (p.front) ctx.globalAlpha = 0.15 + roofAlpha * 0.85;
+    const a = occlusionAlpha(p);
+    if (p.front) ctx.globalAlpha = (0.15 + roofAlpha * 0.85) * a;
+    else if (a < 1) ctx.globalAlpha = a;
     ctx.drawImage(img, Math.round(x - img.width / 2), Math.round(y - img.height + 2));
     ctx.globalAlpha = 1;
     return;
