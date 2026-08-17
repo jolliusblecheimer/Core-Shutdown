@@ -739,12 +739,22 @@ function outlined(src) {
     const o = makeCanvas(54, 30), og = o.getContext('2d');
     px(og, 0, 2, 54, 4, '#4e463e');                    // header beam stays
     px(og, 0, 2, 54, 1, '#5e564c');
+    // the passage: solid dark backdrop so nothing shows through the opening
+    px(og, 10, 5, 34, 22, '#0c0a09');
+    px(og, 12, 7, 30, 3, '#151312');                   // depth banding
+    px(og, 13, 10, 28, 4, '#100e0d');
+    px(og, 14, 19, 26, 8, '#171b16');                  // road dust catching light
+    px(og, 18, 22, 18, 3, '#1e2119');
+    for (let i = 0; i < 7; i++) px(og, 15 + i * 4, 24 + (i % 2), 2, 2, '#242a1e');
+    px(og, 24, 12, 6, 7, '#0a0d0a');                   // a far silhouette
     px(og, 2, 6, 8, 21, '#3c3c44');                    // doors swung aside
     px(og, 44, 6, 8, 21, '#3c3c44');
+    px(og, 2, 6, 8, 2, '#4c4c54');
+    px(og, 44, 6, 8, 2, '#4c4c54');
     px(og, 3, 8, 2, 16, '#46464e');
     px(og, 45, 8, 2, 16, '#46464e');
-    px(og, 10, 6, 34, 21, '#0a0908');                  // the way out — open dark
-    px(og, 22, 10, 10, 14, '#12160e');                 // a hint of world beyond
+    px(og, 3, 24, 6, 3, '#a8873a');                    // hazard flash on the leaves
+    px(og, 45, 24, 6, 3, '#a8873a');
     Sprites.gateOpen = { a: sheared(outlined(o), 1), b: sheared(outlined(o), -1) };
   })();
 

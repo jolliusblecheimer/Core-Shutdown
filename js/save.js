@@ -104,9 +104,11 @@ function applySave(d) {
   player.dead = 0; player.iframes = 1; player.flash = 0;
   player.swing = 0; player.swingCd = 0; player.fireCd = 0; player.combatT = 99;
 
-  // an update may have put a wall where the player was standing — never
-  // restore them inside geometry
-  if (!canStand(player.x, player.y, player.r)) {
+  // an update may have put a wall where the player was standing, or an older
+  // build let them walk off the map — never restore them out of bounds or
+  // inside geometry
+  const inBounds = player.x > 1 && player.y > 1 && player.x < MAP_W - 1 && player.y < MAP_H - 1;
+  if (!inBounds || !canStand(player.x, player.y, player.r)) {
     const safe = findSafeSpot(player.x, player.y) || { x: player.respawnX, y: player.respawnY };
     player.x = safe.x; player.y = safe.y;
   }

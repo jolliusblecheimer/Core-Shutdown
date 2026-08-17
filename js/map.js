@@ -13,13 +13,12 @@ const moundSpawns = [];   // enemy spawn points tucked behind trash mountains
 const boomBarrels = [];   // explosive barrels — shoot to detonate
 let gateProp = null;      // the yard gate (south wall) — opens when the boss falls
 
+// The gate opens VISUALLY, but stays impassable: the Sprawl beyond it isn't
+// built yet, so the player must never be able to walk off the map. When Ring 4
+// exists, clear these tiles here and the world continues seamlessly.
 function openGate() {
   if (!gateProp || gateProp.open) return;
   gateProp.open = true;
-  for (let y = 11; y <= 13; y++) {
-    solid[y][MAP_W - 1] = false;
-    heavy[y][MAP_W - 1] = false;
-  }
 }
 const patrolPoints = [];  // scrap heaps that robots patrol between
 const patrolCenter = { x: 21.5, y: 12.5 };  // hub near the shack — all routes pass it

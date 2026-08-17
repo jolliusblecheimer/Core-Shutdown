@@ -272,11 +272,11 @@ function updateItems(dt) {
   if (bestKind === 'gate') {
     const gs = isoToScreen(30.6, 12.5);
     if (bossDefeated) {
-      Prompt = { sx: gs.x, sy: gs.y - 34, text: 'E — leave the yard' };
+      Prompt = { sx: gs.x, sy: gs.y - 34, text: 'E — look through' };
       if (Input.pressed['KeyE']) {
         Input.pressed['KeyE'] = false;
-        showMsg('TO BE CONTINUED — beyond lies the Sprawl', 3.5);
-        think('leave', 'The city is waiting. Soon.');
+        showMsg('TO BE CONTINUED — the Sprawl awaits', 3.5);
+        think('leave', 'The road out. Not yet — but soon.');
       }
     } else if (player.inv.gateKey) {
       Prompt = { sx: gs.x, sy: gs.y - 34, text: 'E — unlock the gate' };
