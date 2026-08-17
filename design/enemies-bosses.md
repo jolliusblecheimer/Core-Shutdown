@@ -24,7 +24,18 @@
 ## Boss roster LOCKED (Laurens, 2026-08-17) — full detail in design/city-blueprint.html
 - **The Compactor** (Ring 5, junkyard gate) — TUTORIAL-END BOSS, mandatory. Hidden in
   plain sight: it looks like part of the junk until the player walks to the gate to
-  leave, then it unfolds. Deliberately weak/beatable — the first boss lesson.
+  leave, then it unfolds. Beatable but a real fight:
+  - **HP 200** — deliberately above the ~180 damage of "6 free rounds + one cheap
+    12-round purchase", so the gun alone can't finish it: the stagger-punish melee
+    windows are mandatory, which is the fight's core lesson.
+  - Attacks: SLAM (wide telegraphed smash), CHARGE (bait into junk → 3s stagger =
+    the damage window), SCRAP SPRAY below half HP (sidestep fan).
+  - Hits for 20; everything heavily telegraphed.
+  - **Bosses take 50% damage from explosive barrels** (armor plating) — the arena
+    barrel is a ~45 HP bailout, never a one-button solution. (Rule applies to ALL bosses.)
+  - Knife owners (18 dmg) melt the stagger windows ~2.5× faster than pipe users —
+    optional prep pays off.
+  - Drop: Hydraulic Piston (first forge material) + big scrap pile → gate opens.
 - **The Shepherd** (Ring 4, the Gallery — moved to the OUTER Sprawl near the Fringe
   boundary, reachable early) — optional, drone-flock herder.
 - **The Foreman** (Ring 3, Assembly Plant 03) — mandatory, Q7.
