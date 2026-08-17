@@ -14,6 +14,8 @@ const boss = {
   didHit: false,
   atkCd: 3, sprayCd: 6,
   shots: [],                  // boss projectiles {x,y,vx,vy,life}
+  phase: 1,                   // 1 → 2 (at 66%) → 3 (at 33%), shield between
+  pendingPhase: 0,
   name: 'THE COMPACTOR',
 };
 
@@ -35,6 +37,7 @@ function spawnBoss(x, y) {
   boss.t = 0;
   boss.shots.length = 0;
   boss.atkCd = 2.5; boss.sprayCd = 6;
+  boss.phase = 1; boss.pendingPhase = 0;
   const dx = player.x - x, dy = player.y - y;
   const d = Math.hypot(dx, dy) || 1;
   boss.fx = dx / d; boss.fy = dy / d;
@@ -87,6 +90,13 @@ function crushUnder() {
 // zone check at an impact point. kind: 'bullet' | 'pipe' | 'knife' | 'blast'
 function bossHit(wx, wy, dmg, kind) {
   if (!boss.active || boss.state === 'hidden' || boss.state === 'dead') return false;
+  // phase-transition shield: nothing gets through
+  if (boss.state === 'shield' || boss.state === 'nova') {
+    spawnSparks(wx, wy, 4, ['#78d2ff', '#b8e8ff']);
+    SFX.dry();
+    think('shield', 'A shield?! Wait for it to drop.');
+    return true;
+  }
   let applied = 0, tag = 'flesh';
   if (kind === 'blast') {
     applied = Math.round(dmg * 0.5);            // bosses shrug half of barrel blasts
@@ -120,6 +130,18 @@ function bossHit(wx, wy, dmg, kind) {
     else if (tag === 'stagger') { SFX.clang(); hitPause = 0.04; }
     else SFX.hitMetal();
     if (tag === 'pierce') think('pierce', 'The knife bites through plate. Barely.');
+    // phase transitions: shield up, then a signature opening move
+    if (boss.hp > 0) {
+      if (boss.phase === 1 && boss.hp <= boss.maxHp * 0.66) {
+        boss.phase = 2; boss.pendingPhase = 2;
+        boss.state = 'shield'; boss.t = 1.6;
+        SFX.alert();
+      } else if (boss.phase === 2 && boss.hp <= boss.maxHp * 0.33) {
+        boss.phase = 3; boss.pendingPhase = 3;
+        boss.state = 'shield'; boss.t = 1.6;
+        SFX.alert();
+      }
+    }
     if (boss.hp <= 0) {
       boss.hp = 0;
       boss.state = 'dead';
@@ -178,6 +200,42 @@ function updateBoss(dt) {
   }
 
   switch (b.state) {
+    case 'shield': {
+      b.t -= dt;
+      if (((b.t * 12) | 0) % 4 === 0) spawnSparks(b.x, b.y, 1, ['#78d2ff']);
+      if (b.t <= 0) {
+        if (b.pendingPhase === 2) {
+          // phase 2 opens with an instant charge, no hesitation
+          b.state = 'charge'; b.t = 0.35; b.didHit = false;
+          b.chargeDX = dx / distP; b.chargeDY = dy / distP; b.chargeDist = 0;
+          SFX.charge();
+        } else {
+          b.state = 'nova'; b.t = 0.5;
+          SFX.charge();
+        }
+        b.pendingPhase = 0;
+      }
+      break;
+    }
+    case 'nova': {
+      // phase 3 opener: a shockwave of trash energy in every direction
+      b.t -= dt;
+      if (b.t <= 0) {
+        SFX.boom();
+        addShake(7);
+        explosions.push({ x: b.x, y: b.y, t: 0.35 });
+        for (let i = 0; i < 14; i++) {
+          const a = (i / 14) * Math.PI * 2;
+          b.shots.push({
+            x: b.x + Math.cos(a) * 0.8, y: b.y + Math.sin(a) * 0.8,
+            vx: Math.cos(a) * 6, vy: Math.sin(a) * 6, life: 1.5,
+          });
+        }
+        b.state = 'pursue';
+        b.atkCd = 1.4; b.sprayCd = 4;
+      }
+      break;
+    }
     case 'reveal': {
       b.t += dt;
       if (((b.t * 10) | 0) % 3 === 0) addShake(2);
@@ -190,7 +248,7 @@ function updateBoss(dt) {
       b.fy += ((dy / distP) - b.fy) * Math.min(1, 3 * dt);
       const fl = Math.hypot(b.fx, b.fy) || 1;
       b.fx /= fl; b.fy /= fl;
-      const stp = 1.15 * dt;
+      const stp = (b.phase === 3 ? 1.5 : 1.15) * dt;
       bossMove((dx / distP) * stp, (dy / distP) * stp);
       b.walkPhase = (b.walkPhase || 0) + stp * 3.4;
       b.atkCd -= dt; b.sprayCd -= dt;
@@ -198,10 +256,10 @@ function updateBoss(dt) {
       if (distP < 1.9 && b.atkCd <= 0) {
         b.state = 'slam'; b.t = 0.7; b.didHit = false; SFX.charge();
       } else if (b.atkCd <= 0 && distP < 8) {
-        b.state = 'charge'; b.t = 0.8; b.didHit = false;
+        b.state = 'charge'; b.t = b.phase === 3 ? 0.6 : 0.8; b.didHit = false;
         b.chargeDX = dx / distP; b.chargeDY = dy / distP; b.chargeDist = 0;
         SFX.charge();
-      } else if (b.hp < b.maxHp * 0.5 && b.sprayCd <= 0 && distP < 7) {
+      } else if (b.phase >= 2 && b.sprayCd <= 0 && distP < 7) {
         b.state = 'spray'; b.t = 0.5; SFX.charge();
       }
       break;

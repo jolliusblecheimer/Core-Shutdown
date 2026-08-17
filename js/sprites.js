@@ -687,17 +687,23 @@ function outlined(src) {
   // ---- THE COMPACTOR (boss): low crawler hull carried on four legs,
   // one big eye up front, four core vents behind, two grabber claws ----
   (function () {
-    const c = makeCanvas(46, 24), g = c.getContext('2d');
-    px(g, 3, 6, 40, 15, '#565660');                    // low hull
-    px(g, 3, 6, 40, 2, '#6e6e7a');                     // top light
-    px(g, 5, 3, 36, 5, '#61616c');                     // spine plate
-    px(g, 5, 3, 36, 1, '#75757f');
-    for (let i = 1; i < 5; i++) px(g, 3 + i * 8, 8, 1, 12, '#44444c');   // plate seams
-    px(g, 0, 9, 4, 9, '#61616c');                      // hip guards
-    px(g, 42, 9, 4, 9, '#61616c');
-    px(g, 8, 15, 6, 5, '#7d4a2a');                     // rust
-    px(g, 31, 8, 5, 4, '#5c3620');
-    px(g, 19, 1, 8, 3, '#4a4a52');                     // vent block
+    // round beetle-dome hull, compact
+    const c = makeCanvas(34, 28), g = c.getContext('2d');
+    g.fillStyle = '#565660';
+    g.beginPath(); g.ellipse(17, 14, 16, 13, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#666672';
+    g.beginPath(); g.ellipse(17, 11, 12, 8, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#75757f';
+    g.beginPath(); g.ellipse(15, 8, 7, 4, 0, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = '#44444c';                          // radial plate seams
+    for (const a of [0.5, 1.7, 2.9, 4.1, 5.3]) {
+      g.beginPath();
+      g.moveTo(17 + Math.cos(a) * 5, 14 + Math.sin(a) * 4);
+      g.lineTo(17 + Math.cos(a) * 15, 14 + Math.sin(a) * 12);
+      g.stroke();
+    }
+    px(g, 7, 18, 5, 4, '#7d4a2a');                      // rust
+    px(g, 23, 7, 4, 3, '#5c3620');
     Sprites.bossBody = outlined(c);
 
     // grabber claw — the trash-picker arms it attacks with

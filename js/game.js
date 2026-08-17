@@ -751,25 +751,25 @@ function drawBoss(x, y) {
   drawShadow(x, y + 2, 24);
   if (b.state === 'dead' && ((gameTime * 2) | 0) % 3 === 0) spawnSmoke(b.x, b.y, 1);
 
-  const bodyY = y - 26 + rise + slump;
+  const bodyY = y - 28 + rise + slump;
   const ph = b.walkPhase || 0;
   const moving = b.state === 'pursue' || (b.state === 'charge' && b.t <= 0);
 
-  // FOUR LEGS — two per side, stepping in diagonal pairs when it crawls
-  ctx.strokeStyle = '#3e3e46';
+  // FOUR LEGS — hull-coloured so they read clearly, stepping in diagonal pairs
+  ctx.strokeStyle = '#5e5e6a';
   ctx.lineWidth = 3;
   const legs = [[-1, -1, 0], [1, -1, Math.PI], [-1, 1, Math.PI], [1, 1, 0]];
   for (const [sx2, sy2, phOff] of legs) {
     const lift = moving ? Math.max(0, Math.sin(ph + phOff)) * 3 : 0;
-    const hipX = x + sx2 * 14, hipY = bodyY + 10 + sy2 * 3;
-    const kneeX = x + sx2 * 24, kneeY = hipY - 6 - lift;
-    const footX = x + sx2 * 29, footY = y + 2 + sy2 * 3 - lift * 2;
+    const hipX = x + sx2 * 11, hipY = bodyY + 12 + sy2 * 3;
+    const kneeX = x + sx2 * 20, kneeY = hipY - 6 - lift;
+    const footX = x + sx2 * 25, footY = y + 2 + sy2 * 3 - lift * 2;
     ctx.beginPath();
     ctx.moveTo(hipX, hipY);
     ctx.lineTo(kneeX, kneeY);
     ctx.lineTo(footX, footY);
     ctx.stroke();
-    ctx.fillStyle = '#2e2e36';
+    ctx.fillStyle = '#6a6a76';
     ctx.fillRect(Math.round(footX) - 2, Math.round(footY) - 1, 4, 3);
   }
   ctx.lineWidth = 1;
@@ -789,8 +789,20 @@ function drawBoss(x, y) {
   }
 
   ctx.globalAlpha = b.state === 'dead' ? 0.85 : 1;
-  ctx.drawImage(Sprites.bossBody, Math.round(x - 24), Math.round(bodyY));
+  ctx.drawImage(Sprites.bossBody, Math.round(x - 18), Math.round(bodyY));
   ctx.globalAlpha = 1;
+
+  // phase-transition shield: a crackling bubble — untouchable until it drops
+  if (b.state === 'shield' || b.state === 'nova') {
+    const sp = 0.6 + 0.4 * Math.sin(gameTime * 10);
+    ctx.strokeStyle = `rgba(120,210,255,${0.5 + 0.3 * sp})`;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.ellipse(x, bodyY + 12, 24 + sp * 2, 18 + sp * 2, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.lineWidth = 1;
+    addLight(x, bodyY + 12, 0, 30, '120,210,255', 0.35);
+  }
 
   // ONE BIG EYE — unmistakably the weak point: large, bright, pulsing
   if (b.state !== 'dead') {
@@ -810,14 +822,6 @@ function drawBoss(x, y) {
     ctx.fillStyle = '#fff2c0';                    // iris glint
     ctx.fillRect(Math.round(ex) - 1, Math.round(ey) - 2, 2, 2);
     addLight(ex, ey, 0, 20 + pulse * 8, winding ? '255,90,60' : '255,176,46', 0.6);
-
-    // FOUR core vents on the rear — blaze open during the stagger
-    const cs = isoToScreen(b.x - b.fx * 0.8, b.y - b.fy * 0.8);
-    const cx2 = cs.x - lastOx, cy2 = cs.y - lastOy - 16 + rise + slump;
-    const open = b.state === 'stagger';
-    ctx.fillStyle = open ? '#ffb02e' : 'rgba(255,176,46,0.35)';
-    for (let i = 0; i < 4; i++) ctx.fillRect(Math.round(cx2 - 7 + i * 4), Math.round(cy2), 2, open ? 5 : 4);
-    if (open) addLight(cx2, cy2, 0, 24 + pulse * 8, '255,176,46', 0.65);
   }
 }
 
