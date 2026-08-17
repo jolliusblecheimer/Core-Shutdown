@@ -16,9 +16,9 @@ let gateProp = null;      // the yard gate (south wall) — opens when the boss 
 function openGate() {
   if (!gateProp || gateProp.open) return;
   gateProp.open = true;
-  for (let x = 20; x <= 22; x++) {
-    solid[MAP_H - 1][x] = false;
-    heavy[MAP_H - 1][x] = false;
+  for (let y = 6; y <= 8; y++) {
+    solid[y][MAP_W - 1] = false;
+    heavy[y][MAP_W - 1] = false;
   }
 }
 const patrolPoints = [];  // scrap heaps that robots patrol between
@@ -68,16 +68,17 @@ const SHACK = { x0: 18, y0: 4, x1: 24, y1: 9, doorX: 21 };
   // perimeter barricade — corner tiles belong to BOTH runs so each corner
   // gets both wall faces meeting in a proper L (no open gaps/protrusions)
   wallRun(Array.from({ length: MAP_W }, (_, i) => [i, 0]), fenceKinds(MAP_W), 'x', false, true, true);
-  // south wall parts around THE GATE (x 20..22, aligned with the shack path)
-  wallRun(Array.from({ length: 20 }, (_, i) => [i, MAP_H - 1]), fenceKinds(20), 'x', false, true, false);
-  wallRun(Array.from({ length: 9 }, (_, i) => [23 + i, MAP_H - 1]), fenceKinds(9), 'x', false, false, true);
-  for (let x = 20; x <= 22; x++) { solid[MAP_H - 1][x] = true; heavy[MAP_H - 1][x] = true; }
-  gateProp = { gx: 21, gy: MAP_H - 1, type: 'gate', open: false };
-  props.push(gateProp);
-  props.push({ gx: 19, gy: MAP_H - 1, type: 'post', big: true });
-  props.push({ gx: 23, gy: MAP_H - 1, type: 'post', big: true });
+  wallRun(Array.from({ length: MAP_W }, (_, i) => [i, MAP_H - 1]), fenceKinds(MAP_W), 'x', false, true, true);
   wallRun(Array.from({ length: MAP_H }, (_, i) => [0, i]), fenceKinds(MAP_H), 'y', false, true, true);
-  wallRun(Array.from({ length: MAP_H }, (_, i) => [MAP_W - 1, i]), fenceKinds(MAP_H), 'y', false, true, true);
+  // EAST wall, broken by THE GATE beside the shack (y 6..8, on the same
+  // side as the house so it reads as the yard's proper exit)
+  wallRun(Array.from({ length: 6 }, (_, i) => [MAP_W - 1, i]), fenceKinds(6), 'y', false, true, false);
+  wallRun(Array.from({ length: MAP_H - 9 }, (_, i) => [MAP_W - 1, 9 + i]), fenceKinds(MAP_H - 9), 'y', false, false, true);
+  for (let y = 6; y <= 8; y++) { solid[y][MAP_W - 1] = true; heavy[y][MAP_W - 1] = true; }
+  gateProp = { gx: MAP_W - 1, gy: 7, type: 'gate', open: false, dir: 'b' };
+  props.push(gateProp);
+  props.push({ gx: MAP_W - 1, gy: 5, type: 'post', big: true });
+  props.push({ gx: MAP_W - 1, gy: 9, type: 'post', big: true });
 
   // ---- the shack (corners doubled here too; south & east faces fade) ----
   const W = SHACK;
@@ -138,7 +139,7 @@ const SHACK = { x0: 18, y0: 4, x1: 24, y1: 9, doorX: 21 };
     Math.hypot(x - 6.5, y - 26.5) < 2.5 ||     // player spawn
     Math.hypot(x - 9.5, y - 23.5) < 1.5 ||     // pistol
     Math.hypot(x - 24.5, y - 18.5) < 1.5 ||    // scrapper spawn
-    Math.hypot(x - 21.5, y - 28.5) < 3;        // gate approach / boss arena
+    (x > 25 && y > 3 && y < 12);               // gate approach / boss arena
 
   function scatter(type, count, variants) {
     let placed = 0, tries = 0;

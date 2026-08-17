@@ -258,7 +258,7 @@ function updateItems(dt) {
   // the yard gate (main game only, never during the fight or cutscene)
   if (!window.ARENA_MODE && !GateCine.active &&
       !(boss.active && boss.state !== 'dead' && !bossDefeated)) {
-    const gd = Math.hypot(player.x - 21.5, player.y - 30.3);
+    const gd = Math.hypot(player.x - 30.3, player.y - 7.5);
     if (gd < 1.7 && gd < bestD) { bestD = gd; best = 'gate'; bestKind = 'gate'; }
   }
   if (scrapper.state === 'dead' && !scrapper.looted) {
@@ -267,7 +267,7 @@ function updateItems(dt) {
   }
 
   if (bestKind === 'gate') {
-    const gs = isoToScreen(21.5, 30.6);
+    const gs = isoToScreen(30.6, 7.5);
     if (bossDefeated) {
       Prompt = { sx: gs.x, sy: gs.y - 34, text: 'E — leave the yard' };
       if (Input.pressed['KeyE']) {

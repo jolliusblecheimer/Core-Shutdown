@@ -732,11 +732,12 @@ function drawProp(p, x, y) {
     return;
   }
   if (T === 'gate') {
-    const img = p.open ? Sprites.gateOpen : Sprites.gateClosed;
-    ctx.drawImage(img, Math.round(x - img.width / 2), Math.round(y - 27));
+    const set = p.open ? Sprites.gateOpen : Sprites.gateClosed;
+    const img = set[p.dir || 'a'];
+    ctx.drawImage(img, Math.round(x - img.width / 2), Math.round(y - 40));
     if (!p.open) {
       // the lock glints — you need the key
-      addLight(x, y - 12, 0, 8, '255,210,120', 0.12 + 0.06 * Math.sin(gameTime * 2));
+      addLight(x, y - 18, 0, 9, '255,210,120', 0.14 + 0.06 * Math.sin(gameTime * 2));
     }
     return;
   }
@@ -920,6 +921,54 @@ function drawBoss(x, y) {
       ctx.beginPath();
       ctx.ellipse(x, bodyY + 13, 22, 14, 0, faceAngle + dir * 1.5, faceAngle + dir * 2.3, dir < 0);
       ctx.stroke();
+    }
+    ctx.lineWidth = 1;
+  }
+
+  // REAR PANELS — thinner, battered plating over the back: exhaust grilles,
+  // a hinge spine and heat scoring. Visibly weaker than the front plow.
+  if (b.state !== 'dead' && b.state !== 'stagger' && b.state !== 'reveal') {
+    const back = faceAngle + Math.PI;
+    const cy = bodyY + 12;
+    ctx.strokeStyle = '#43434c';                        // panel mass (thinner)
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.ellipse(x, cy, 17, 11, 0, back - 0.85, back + 0.85);
+    ctx.stroke();
+    ctx.strokeStyle = '#585863';                        // lit edge
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.ellipse(x, cy - 2, 17, 11, 0, back - 0.8, back + 0.8);
+    ctx.stroke();
+    ctx.strokeStyle = '#26262e';                        // two panel seams
+    ctx.lineWidth = 1;
+    for (const off of [-0.3, 0.3]) {
+      const a = back + off;
+      ctx.beginPath();
+      ctx.moveTo(x + Math.cos(a) * 12, cy + Math.sin(a) * 7);
+      ctx.lineTo(x + Math.cos(a) * 21, cy + Math.sin(a) * 13);
+      ctx.stroke();
+    }
+    // exhaust grille slats
+    ctx.strokeStyle = '#1c1c22';
+    for (let i = -2; i <= 2; i++) {
+      const a = back + i * 0.16;
+      ctx.beginPath();
+      ctx.moveTo(x + Math.cos(a) * 14, cy - 3 + Math.sin(a) * 9);
+      ctx.lineTo(x + Math.cos(a) * 19, cy - 3 + Math.sin(a) * 12);
+      ctx.stroke();
+    }
+    // heat scoring around the vents
+    ctx.strokeStyle = 'rgba(120,70,40,0.5)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(x, cy - 4, 15, 10, 0, back - 0.4, back + 0.4);
+    ctx.stroke();
+    // hinge spine + bolts
+    ctx.fillStyle = '#5c5c68';
+    for (let i = -2; i <= 2; i++) {
+      const a = back + i * 0.34;
+      ctx.fillRect(Math.round(x + Math.cos(a) * 17) - 1, Math.round(cy + 2 + Math.sin(a) * 11) - 1, 2, 2);
     }
     ctx.lineWidth = 1;
   }

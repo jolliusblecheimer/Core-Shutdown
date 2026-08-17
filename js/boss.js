@@ -12,7 +12,7 @@ const boss = {
   t: 0, anim: 0,
   chargeDX: 0, chargeDY: 0, chargeDist: 0,
   didHit: false,
-  atkCd: 3, sprayCd: 6,
+  atkCd: 3, sprayCd: 6, novaCd: 6,
   shots: [],                  // boss projectiles {x,y,vx,vy,life}
   phase: 1,                   // 1 → 2 (at 66%) → 3 (at 33%), shield between
   pendingPhase: 0,
@@ -38,15 +38,15 @@ function updateGateCine(dt) {
   if (GateCine.t > 1.1 && GateCine.t < 1.5) addShake(1.4);
   if (GateCine.t >= 1.5 && !GateCine.spawned) {
     GateCine.spawned = true;
-    spawnBoss(21.5, 25.5);            // it was the junk pile behind you all along
+    spawnBoss(26.5, 7.5);             // it was the junk pile behind you all along
     SFX.rage();
     think('gateboss', 'Behind me—!');
   }
   if (GateCine.spawned && boss.state !== 'reveal') {
     GateCine.active = false;
     // two packs of rounds shake loose from the junk for the fight
-    items.push({ type: 'ammo', x: 18.0, y: 28.5, amount: 6, bob: 0.4 });
-    items.push({ type: 'ammo', x: 25.0, y: 27.5, amount: 6, bob: 1.7 });
+    items.push({ type: 'ammo', x: 27.5, y: 4.0, amount: 6, bob: 0.4 });
+    items.push({ type: 'ammo', x: 27.5, y: 11.0, amount: 6, bob: 1.7 });
     showMsg('Rounds glint in the junk — grab them!', 3);
   }
 }
@@ -323,6 +323,7 @@ function updateBoss(dt) {
         }
         b.state = 'pursue';
         b.atkCd = 1.4; b.sprayCd = 4;
+        b.novaCd = 6 + Math.random() * 2;     // and it will do it again
       }
       break;
     }
@@ -341,13 +342,16 @@ function updateBoss(dt) {
       const stp = (b.phase === 3 ? 1.5 : 1.15) * dt;
       bossMove((dx / distP) * stp, (dy / distP) * stp);
       b.walkPhase = (b.walkPhase || 0) + stp * 3.4;
-      b.atkCd -= dt; b.sprayCd -= dt;
+      b.atkCd -= dt; b.sprayCd -= dt; b.novaCd -= dt;
       if (player.dead > 0) break;
       if (distP < 1.9 && b.atkCd <= 0) {
         b.state = 'slam'; b.t = 0.7; b.didHit = false; SFX.charge();
       } else if (b.atkCd <= 0 && distP < 8) {
         b.state = 'charge'; b.t = b.phase === 3 ? 0.6 : 0.8; b.didHit = false;
         b.chargeDX = dx / distP; b.chargeDY = dy / distP; b.chargeDist = 0;
+        SFX.charge();
+      } else if (b.phase === 3 && b.novaCd <= 0) {
+        b.state = 'nova'; b.t = 0.5;      // phase 3 keeps unleashing the nova
         SFX.charge();
       } else if (b.phase >= 2 && b.sprayCd <= 0 && distP < 7) {
         b.state = 'spray'; b.t = 0.5; SFX.charge();

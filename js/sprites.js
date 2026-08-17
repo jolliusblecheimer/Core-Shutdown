@@ -734,7 +734,7 @@ function outlined(src) {
     px(g, 26, 6, 2, 21, '#22222a');                    // center seam
     px(g, 25, 14, 4, 5, '#5c5c66');                    // the LOCK
     px(g, 26, 16, 2, 2, '#1a1a20');                    // keyhole
-    Sprites.gateClosed = outlined(c);
+    Sprites.gateClosed = { a: sheared(outlined(c), 1), b: sheared(outlined(c), -1) };
 
     const o = makeCanvas(54, 30), og = o.getContext('2d');
     px(og, 0, 2, 54, 4, '#4e463e');                    // header beam stays
@@ -745,7 +745,7 @@ function outlined(src) {
     px(og, 45, 8, 2, 16, '#46464e');
     px(og, 10, 6, 34, 21, '#0a0908');                  // the way out — open dark
     px(og, 22, 10, 10, 14, '#12160e');                 // a hint of world beyond
-    Sprites.gateOpen = outlined(o);
+    Sprites.gateOpen = { a: sheared(outlined(o), 1), b: sheared(outlined(o), -1) };
   })();
 
   // corner / doorframe posts that cap wall joints
