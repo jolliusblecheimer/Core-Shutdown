@@ -29,6 +29,18 @@
 - **Blocking/parry:** dodge only, or also a block/parry mechanic?
 - Difficulty settings menu: yes/no?
 
+## Planned (approved direction, built with the first boss)
+- **Thought bubbles**: the traveller's inner voice — small pixel-text bubble above
+  the player's head, one-shot triggers (armor lessons, discoveries, later: memory
+  breadcrumbs). Diegetic feedback instead of UI messages wherever the CHARACTER
+  would know something.
+- **Crosshair reticle** at the mouse (replaces bare cursor in combat); glows amber
+  when the aim line rests on a weak point. Bullets fly exactly along the aim line —
+  no spread; precision is player skill.
+- **Boss hit zones**: circular zones attached to boss bodies (weak points vs armor),
+  checked in priority order at impact. Armor = zero damage + clank; weak = full
+  damage + amber flash + 40ms hit-pause.
+
 ## Style notes
 Playtest round 2 (2026-08-16):
 - **Starter pistol nerfed** — it felt too strong for early game. Now: slow fire rate (0.5s between shots, nerfed twice from 0.22) and short range (bullet lifetime 0.5s ≈ 6.5 tiles). Early weapons should feel scrappy; power comes later through gear.

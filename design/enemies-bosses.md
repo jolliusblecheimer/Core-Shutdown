@@ -39,9 +39,26 @@
     fill the screen when it charges.
   - **ARMOR + WEAK POINTS (locational damage):**
     - **Armor plates** (hull, crusher arm, front): hits deal ZERO damage — grey
-      spark, dull CLANK sound, no hit-flash. The game's way of saying "not here."
+      spark, dull CLANK sound, no hit-flash.
+    - **Feedback is DIEGETIC — the traveller THINKS.** No UI notes/messages:
+      a small thought bubble appears over the player's head, pixel font:
+      first armor bullet-hit → *"Armored. My bullets just bounce off..."*;
+      first melee clank → *"Not even the blade. There has to be a soft spot."*;
+      first stagger (core exposed) → *"There — the glow!"*
+      Each thought fires ONCE. This introduces the character's inner voice —
+      the same system later carries the amnesia breadcrumbs (headaches,
+      familiar handwriting) in the main story.
     - **Weak point 1 — the EYE** (small, front): always damageable, full damage,
       but a small moving target — precision shooting is the skill-shot option.
+    - **AIMED SHOTS — how it works (planned):** the boss carries hit ZONES
+      (circles attached to its body: eye at the front, core at the rear, armor
+      everywhere else); bullets check zones in priority order at the point of
+      impact — no random spread, the shot goes exactly along your aim line, so
+      accuracy is purely player skill. A small pixel **crosshair reticle** at the
+      mouse replaces the bare cursor, and it **glows amber when your aim line
+      rests on a weak point** — "take aim, then shoot" made visible. Weak-point
+      hits get an amber flash + a 40ms hit-pause so they feel meaty; hitbox radii
+      are tuning knobs (eye starts generous, ~0.35 tiles).
     - **Weak point 2 — the REAR CORE** (glowing vents on its back): full damage,
       but it faces you while active — reachable mid-fight only by outmaneuvering it.
     - **STAGGER = exposure**: after a charge crashes into junk, it slumps forward
