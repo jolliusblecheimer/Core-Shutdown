@@ -16,7 +16,7 @@ let gateProp = null;      // the yard gate (south wall) — opens when the boss 
 function openGate() {
   if (!gateProp || gateProp.open) return;
   gateProp.open = true;
-  for (let y = 6; y <= 8; y++) {
+  for (let y = 11; y <= 13; y++) {
     solid[y][MAP_W - 1] = false;
     heavy[y][MAP_W - 1] = false;
   }
@@ -70,15 +70,15 @@ const SHACK = { x0: 18, y0: 4, x1: 24, y1: 9, doorX: 21 };
   wallRun(Array.from({ length: MAP_W }, (_, i) => [i, 0]), fenceKinds(MAP_W), 'x', false, true, true);
   wallRun(Array.from({ length: MAP_W }, (_, i) => [i, MAP_H - 1]), fenceKinds(MAP_W), 'x', false, true, true);
   wallRun(Array.from({ length: MAP_H }, (_, i) => [0, i]), fenceKinds(MAP_H), 'y', false, true, true);
-  // EAST wall, broken by THE GATE beside the shack (y 6..8, on the same
-  // side as the house so it reads as the yard's proper exit)
-  wallRun(Array.from({ length: 6 }, (_, i) => [MAP_W - 1, i]), fenceKinds(6), 'y', false, true, false);
-  wallRun(Array.from({ length: MAP_H - 9 }, (_, i) => [MAP_W - 1, 9 + i]), fenceKinds(MAP_H - 9), 'y', false, false, true);
-  for (let y = 6; y <= 8; y++) { solid[y][MAP_W - 1] = true; heavy[y][MAP_W - 1] = true; }
-  gateProp = { gx: MAP_W - 1, gy: 7, type: 'gate', open: false, dir: 'b' };
+  // EAST wall, broken by THE GATE just south of the shack (y 11..13) —
+  // straight out from the house along the yard's east side
+  wallRun(Array.from({ length: 11 }, (_, i) => [MAP_W - 1, i]), fenceKinds(11), 'y', false, true, false);
+  wallRun(Array.from({ length: MAP_H - 14 }, (_, i) => [MAP_W - 1, 14 + i]), fenceKinds(MAP_H - 14), 'y', false, false, true);
+  for (let y = 11; y <= 13; y++) { solid[y][MAP_W - 1] = true; heavy[y][MAP_W - 1] = true; }
+  gateProp = { gx: MAP_W - 1, gy: 12, type: 'gate', open: false, dir: 'b' };
   props.push(gateProp);
-  props.push({ gx: MAP_W - 1, gy: 5, type: 'post', big: true });
-  props.push({ gx: MAP_W - 1, gy: 9, type: 'post', big: true });
+  props.push({ gx: MAP_W - 1, gy: 10, type: 'post', big: true });
+  props.push({ gx: MAP_W - 1, gy: 14, type: 'post', big: true });
 
   // ---- the shack (corners doubled here too; south & east faces fade) ----
   const W = SHACK;
@@ -139,7 +139,7 @@ const SHACK = { x0: 18, y0: 4, x1: 24, y1: 9, doorX: 21 };
     Math.hypot(x - 6.5, y - 26.5) < 2.5 ||     // player spawn
     Math.hypot(x - 9.5, y - 23.5) < 1.5 ||     // pistol
     Math.hypot(x - 24.5, y - 18.5) < 1.5 ||    // scrapper spawn
-    (x > 25 && y > 3 && y < 12);               // gate approach / boss arena
+    (x > 25 && y > 8 && y < 17);               // gate approach / boss arena
 
   function scatter(type, count, variants) {
     let placed = 0, tries = 0;

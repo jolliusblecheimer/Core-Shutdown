@@ -38,15 +38,15 @@ function updateGateCine(dt) {
   if (GateCine.t > 1.1 && GateCine.t < 1.5) addShake(1.4);
   if (GateCine.t >= 1.5 && !GateCine.spawned) {
     GateCine.spawned = true;
-    spawnBoss(26.5, 7.5);             // it was the junk pile behind you all along
+    spawnBoss(26.5, 12.5);            // it was the junk pile behind you all along
     SFX.rage();
     think('gateboss', 'Behind me—!');
   }
   if (GateCine.spawned && boss.state !== 'reveal') {
     GateCine.active = false;
     // two packs of rounds shake loose from the junk for the fight
-    items.push({ type: 'ammo', x: 27.5, y: 4.0, amount: 6, bob: 0.4 });
-    items.push({ type: 'ammo', x: 27.5, y: 11.0, amount: 6, bob: 1.7 });
+    items.push({ type: 'ammo', x: 27.5, y: 9.0, amount: 6, bob: 0.4 });
+    items.push({ type: 'ammo', x: 27.5, y: 16.0, amount: 6, bob: 1.7 });
     showMsg('Rounds glint in the junk — grab them!', 3);
   }
 }
