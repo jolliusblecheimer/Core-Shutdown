@@ -15,6 +15,22 @@
 - Camera zoom: fixed or player-controlled zoom levels?
 - How dark is dark? (night/interior visibility — flashlight mechanic?)
 
+## BUILDINGS ARE VOLUMES, NOT PANELS (2026-08-17 — supersedes all wall-panel work)
+Three attempts to assemble buildings from sheared per-tile wall strips + a
+separate roof quad + corner columns all failed to line up: four independent
+pieces had to agree on the corners, and never did.
+**The rule now:** a building is rendered ONCE into a single sprite
+(`Sprites.makeBuilding`) containing both camera-facing faces and the roof,
+drawn from the same four corner points — misalignment is structurally
+impossible. Windows, doors, shutters, pilasters, balconies and band courses are
+laid out in *face space* so they follow the wall angle exactly. Each building
+is one prop with one depth (its south corner).
+Nine styles: house, brick, shopfront, shutter, office, school, church, hotel,
+bank — each with its own height, palette and flat-or-pitched roof.
+`makeWallRun` survives only for genuinely thin walls (junkyard fence, shack).
+**Any future prop that reads as a volume (kiosks, bus shelters, containers)
+should be built this way, not as flat cards.**
+
 ## HD-2D rendering pipeline (round 7 — Octopath Traveler reference)
 The target look is HD-2D: chunky pixel world + modern cinematic presentation. The pipeline, in order:
 1. Rich ground tiles (slab seams, cracks, pebbles, debris chunks — 8 variants per material)

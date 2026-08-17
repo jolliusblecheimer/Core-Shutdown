@@ -1,4 +1,17 @@
-# Fringe pass 3 — PLAN (not yet built)
+# Fringe pass 3 — STATUS
+
+**Built:** roofs (superseded — buildings are now whole volumes), hotel + bank,
+gas station rebuild, two-way visible junkyard gate, makeshift shelter-only
+signs, tiny-character map marker, corner alignment, save-slot isolation for
+testing.
+**Could not reproduce:** the questline reset (item 7) — most likely Claude's
+test saves overwriting the run; testing is now isolated so it cannot recur.
+**Still open:** long props (bus stop, dumpster, awning) are flat cards that
+don't lie along the road — rebuild them in face space like buildings.
+
+---
+
+## Original plan (kept for reference)
 
 Nine fixes from playtesting the open city. Ordered by what has to happen first.
 
