@@ -59,6 +59,8 @@ function loadSaveData() {
 
 // old saves are UPGRADED, never discarded
 function migrate(d) {
+  if (d.area === 'approach') d.area = 'fringe';   // the scrapped area
+  if (d.areas && d.areas.approach) { delete d.areas.approach; }
   if (!d.v || d.v < 2) {
     // v1 → v2: barrels/items were stored by array index; translate what we can
     if (Array.isArray(d.barrels)) {

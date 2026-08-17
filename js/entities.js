@@ -426,8 +426,7 @@ function explodeBarrel(b) {
   b.alive = false;
   const cx = b.gx + 0.5, cy = b.gy + 0.5;
   solid[b.gy][b.gx] = false;
-  const pi = props.indexOf(b.prop);
-  if (pi >= 0) props.splice(pi, 1);
+  removeProp(b.prop);
   decals.push({ gx: cx, gy: cy, type: 'stain' });            // scorch mark
   explosions.push({ x: cx, y: cy, t: 0.35 });
   SFX.boom();

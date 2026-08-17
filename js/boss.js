@@ -105,8 +105,7 @@ function crushUnder() {
       for (const k of Object.keys(crushProps)) {
         if (crushProps[k] === p) delete crushProps[k];
       }
-      const pi = props.indexOf(p);
-      if (pi >= 0) props.splice(pi, 1);
+      removeProp(p);
       const tx = Math.floor(p.gx), ty = Math.floor(p.gy);
       solid[ty][tx] = false;
       if (p.type === 'car') solid[ty][tx + 1] = false;
@@ -183,8 +182,7 @@ function bossHit(wx, wy, dmg, kind) {
             boss.absorbs.push({ x: p.gx + 0.5, y: p.gy + 0.5, t0: 0.4 + boss.absorbs.length * 0.22, done: false });
             // remove the prop from the world immediately; the flying debris is the visual
             for (const k2 of Object.keys(crushProps)) if (crushProps[k2] === p) delete crushProps[k2];
-            const pi2 = props.indexOf(p);
-            if (pi2 >= 0) props.splice(pi2, 1);
+            removeProp(p);
             const tx = Math.floor(p.gx), ty = Math.floor(p.gy);
             solid[ty][tx] = false;
             if (p.type === 'car') solid[ty][tx + 1] = false;

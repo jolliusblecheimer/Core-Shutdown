@@ -129,6 +129,172 @@ function outlined(src) {
     Sprites.planks.push(c);
   }
 
+  // ---- STREET TILES (the city — nothing here comes from the yard) ----
+  Sprites.road = []; Sprites.pavement = []; Sprites.verge = []; Sprites.forecourt = [];
+  for (let i = 0; i < 6; i++) {
+    // road: dark, smooth, polished where the wheels ran
+    const { c, g } = tileBase('#33363b');
+    sprinkle(g, 26, ['#2c2f33', '#3a3d42', '#303338', '#3e4147']);
+    if (rng() < 0.5) { const r = (rng() * TILE_H) | 0; dpx(g, (rng() * 26) | 0, r, 5, '#3d4046'); }
+    if (rng() < 0.35) {                              // patched repair
+      const r = 3 + ((rng() * 8) | 0);
+      dpx(g, 6, r, 14, '#1a1c1f'); dpx(g, 6, r + 1, 14, '#1d1f22');
+    }
+    if (rng() < 0.3) {                               // oil ghost
+      const r = 4 + ((rng() * 7) | 0);
+      dpx(g, 10, r, 8, 'rgba(10,10,12,0.5)'); dpx(g, 12, r + 1, 6, 'rgba(10,10,12,0.4)');
+    }
+    Sprites.road.push(c);
+  }
+  for (let i = 0; i < 5; i++) {
+    // pavement: pale slabs with joints
+    const { c, g } = tileBase('#4a4c4f');
+    sprinkle(g, 22, ['#525457', '#434548', '#4e5053']);
+    dpx(g, 0, 7, 32, '#3a3c3f');                      // slab joint
+    dpx(g, 15, 0, 2, 16, '#3a3c3f');
+    if (rng() < 0.45) {                               // weeds through the joint
+      const r = (rng() * 14) | 0;
+      dpx(g, 14 + ((rng() * 4) | 0), r, 1, '#4a5a2a');
+    }
+    if (rng() < 0.3) dpx(g, (rng() * 24) | 0, (rng() * 15) | 0, 3, '#37393c');  // missing chip
+    Sprites.pavement.push(c);
+  }
+  for (let i = 0; i < 5; i++) {
+    // verge: dead grass and gravel
+    const { c, g } = tileBase('#3a3f33');
+    sprinkle(g, 40, ['#333828', '#434a38', '#2e3329', '#4a5240']);
+    for (let k = 0; k < 5; k++) dpx(g, (rng() * 30) | 0, (rng() * 15) | 0, 1, '#55603f');
+    Sprites.verge.push(c);
+  }
+  for (let i = 0; i < 4; i++) {
+    // forecourt: poured concrete with expansion joints
+    const { c, g } = tileBase('#5a5c5e');
+    sprinkle(g, 20, ['#626466', '#525456', '#5e6062']);
+    dpx(g, 0, 3, 32, '#4a4c4e');
+    dpx(g, 0, 11, 32, '#4a4c4e');
+    if (rng() < 0.4) dpx(g, (rng() * 20) | 0, (rng() * 15) | 0, 4, '#4e5052');
+    Sprites.forecourt.push(c);
+  }
+
+  // road paint, laid as decals
+  Sprites.decals = Sprites.decals || {};
+  (function () {
+    const d = makeCanvas(14, 7), g = d.getContext('2d');
+    g.fillStyle = 'rgba(200,196,170,0.55)';
+    g.fillRect(0, 3, 12, 2);
+    Sprites.decals.dash = d;
+    const cb = makeCanvas(20, 10), cg = cb.getContext('2d');
+    cg.fillStyle = 'rgba(205,201,175,0.5)';
+    for (let i = 0; i < 4; i++) cg.fillRect(i * 5, 2 + i, 3, 5);
+    Sprites.decals.crossbar = cb;
+    const ar = makeCanvas(14, 14), ag = ar.getContext('2d');
+    ag.fillStyle = 'rgba(200,196,170,0.5)';
+    ag.fillRect(5, 4, 3, 8);
+    ag.beginPath(); ag.moveTo(6.5, 0); ag.lineTo(12, 6); ag.lineTo(1, 6); ag.closePath(); ag.fill();
+    Sprites.decals.arrow = ar;
+  })();
+
+  // ---- STREET FURNITURE ----
+  (function () {
+    // streetlight: tall pole, arm, dead lamp
+    const c = makeCanvas(16, 44), g = c.getContext('2d');
+    px(g, 6, 8, 3, 34, '#4a4e52');
+    px(g, 6, 8, 1, 34, '#5c6064');
+    px(g, 5, 41, 5, 3, '#3a3e42');
+    px(g, 7, 6, 8, 2, '#4a4e52');
+    px(g, 12, 7, 4, 3, '#33373b');
+    px(g, 13, 9, 2, 1, '#6a5a3a');
+    Sprites.streetlight = outlined(c);
+
+    // traffic light
+    const t = makeCanvas(12, 40), tg = t.getContext('2d');
+    px(tg, 5, 10, 3, 30, '#3e4246');
+    px(tg, 4, 38, 5, 2, '#31353a');
+    px(tg, 3, 2, 7, 12, '#2a2e32');
+    px(tg, 4, 3, 5, 3, '#4a2020');
+    px(tg, 4, 6, 5, 3, '#4a4020');
+    px(tg, 4, 9, 5, 3, '#204a28');
+    Sprites.trafficLight = outlined(t);
+
+    // bus stop shelter
+    const b = makeCanvas(34, 26), bg2 = b.getContext('2d');
+    px(bg2, 1, 2, 32, 3, '#3e4246');
+    px(bg2, 2, 5, 3, 20, '#4a4e52');
+    px(bg2, 29, 5, 3, 20, '#4a4e52');
+    px(bg2, 5, 6, 24, 14, 'rgba(150,190,210,0.18)');
+    for (let i = 0; i < 4; i++) px(bg2, 7 + i * 6, 6, 1, 14, '#4a4e52');
+    px(bg2, 8, 12, 12, 6, '#6a5a3a');
+    Sprites.busStop = outlined(b);
+
+    // dumpster
+    const dm = makeCanvas(20, 15), dg = dm.getContext('2d');
+    px(dg, 1, 4, 18, 9, '#2f4a38');
+    px(dg, 1, 3, 18, 2, '#3b5a44');
+    px(dg, 1, 12, 18, 2, '#263c2d');
+    px(dg, 3, 5, 2, 7, '#3b5a44');
+    px(dg, 2, 13, 3, 2, '#1c1c20');
+    px(dg, 15, 13, 3, 2, '#1c1c20');
+    Sprites.dumpster = outlined(dm);
+
+    // hydrant
+    const h = makeCanvas(8, 12), hg = h.getContext('2d');
+    px(hg, 2, 2, 4, 9, '#8a3226');
+    px(hg, 2, 1, 4, 2, '#a43e2c');
+    px(hg, 0, 4, 8, 2, '#8a3226');
+    px(hg, 3, 10, 2, 2, '#5c2418');
+    Sprites.hydrant = outlined(h);
+
+    // postbox
+    const pb = makeCanvas(10, 16), pg2 = pb.getContext('2d');
+    px(pg2, 1, 3, 8, 12, '#7a2a2a');
+    px(pg2, 1, 2, 8, 2, '#8f3535');
+    px(pg2, 3, 6, 4, 1, '#2a1010');
+    px(pg2, 2, 14, 6, 2, '#5c1f1f');
+    Sprites.postbox = outlined(pb);
+
+    // road sign on a post (the plate; text is drawn in-world)
+    const sg = makeCanvas(26, 26), sgg = sg.getContext('2d');
+    px(sgg, 11, 12, 3, 14, '#4a4e52');
+    px(sgg, 1, 2, 24, 11, '#2d4a3c');
+    px(sgg, 1, 2, 24, 1, '#3d5a4c');
+    px(sgg, 2, 3, 22, 9, '#25402f');
+    Sprites.signPost = outlined(sg);
+
+    // shopfront awning bar (small dressing over facades)
+    const aw = makeCanvas(28, 8), ag2 = aw.getContext('2d');
+    for (let i = 0; i < 7; i++) px(ag2, i * 4, 1, 4, 6, i % 2 ? '#6a3a35' : '#8a4a44');
+    px(ag2, 0, 6, 28, 2, '#4a2a26');
+    Sprites.awning = outlined(aw);
+
+    // city bus (big wreck across a junction)
+    const bs = makeCanvas(56, 26), bsg = bs.getContext('2d');
+    px(bsg, 2, 6, 52, 15, '#8a6a2a');
+    px(bsg, 2, 5, 52, 2, '#a4823a');
+    px(bsg, 2, 19, 52, 3, '#6a4f1e');
+    for (let i = 0; i < 6; i++) px(bsg, 5 + i * 8, 8, 6, 6, '#16181c');
+    px(bsg, 46, 8, 7, 7, '#16181c');
+    px(bsg, 6, 21, 6, 4, '#1c1c20');
+    px(bsg, 42, 21, 6, 4, '#1c1c20');
+    Sprites.bus = outlined(bs);
+
+    // fuel pump island
+    const fp = makeCanvas(16, 22), fg = fp.getContext('2d');
+    px(fg, 1, 16, 14, 5, '#5a5c5e');
+    px(fg, 3, 2, 10, 15, '#b8433a');
+    px(fg, 3, 2, 10, 2, '#d2564a');
+    px(fg, 5, 5, 6, 5, '#1c1e22');
+    px(fg, 6, 6, 4, 3, '#7ad27a');
+    px(fg, 12, 8, 3, 6, '#3a3c40');
+    Sprites.fuelPump = outlined(fp);
+
+    // canopy pillar
+    const cp = makeCanvas(10, 40), cpg = cp.getContext('2d');
+    px(cpg, 2, 2, 6, 36, '#6e7276');
+    px(cpg, 2, 2, 2, 36, '#82868a');
+    px(cpg, 1, 36, 8, 4, '#5a5e62');
+    Sprites.pillar = outlined(cp);
+  })();
+
   // ambient-occlusion diamond (drawn on tiles that touch solid objects)
   (function () {
     const c = makeCanvas(TILE_W, TILE_H), g = c.getContext('2d');
@@ -140,7 +306,7 @@ function outlined(src) {
   })();
 
   // ---- Ground decals (non-blocking, break up the surface) ----
-  Sprites.decals = {};
+  Sprites.decals = Sprites.decals || {};
   (function () {
     // crack
     const c = makeCanvas(18, 9), g = c.getContext('2d');
@@ -424,7 +590,7 @@ function outlined(src) {
       px(g, ox, y + 1, 3, 5, '#7d786e');
       px(g, ox + 13, y + 1, 3, 5, '#7d786e');
       px(g, ox + 5, y + 7, 5, 4, '#57534b');
-    } else {                                  // 'W' shack wall (28 tall)
+    } else if (kind === 'W') {                // shack wall (28 tall)
       const y = H - 28;
       px(g, ox, y + 3, 16, 23, '#3e3831');
       for (let i = 0; i < 4; i++) px(g, ox + 1 + i * 4, y + 3, 2, 23, '#48423a');
@@ -432,6 +598,37 @@ function outlined(src) {
       px(g, ox, y + 24, 16, 2, '#2c2822');
       px(g, ox + 11, y + 7, 4, 4, RUST_D);
       px(g, ox + 3, y + 16, 3, 5, RUST);
+    } else if (kind === 'B') {                // CITY: brick building wall (44)
+      const y = H - 44;
+      px(g, ox, y, 16, 44, '#4a3a35');
+      for (let r = 0; r < 11; r++) {
+        const off = (r % 2) * 4;
+        for (let b = 0; b < 2; b++) px(g, ox + off + b * 8, y + r * 4, 7, 3, r % 3 ? '#54423c' : '#4e3d37');
+      }
+      px(g, ox, y, 16, 2, '#63504a');          // cap
+      px(g, ox, y + 42, 16, 2, '#332824');     // base shadow
+      if (ox % 32 === 0) { px(g, ox + 5, y + 12, 6, 9, '#191c20'); px(g, ox + 5, y + 12, 6, 1, '#2a2e33'); }  // window
+    } else if (kind === 'S') {                // CITY: shopfront (44)
+      const y = H - 44;
+      px(g, ox, y, 16, 44, '#4f4a44');
+      px(g, ox, y, 16, 3, '#635d55');
+      px(g, ox, y + 5, 16, 8, '#2a2620');      // sign band
+      px(g, ox + 2, y + 7, 12, 4, '#6a6154');
+      px(g, ox + 1, y + 16, 14, 20, '#171b1f');  // glass
+      px(g, ox + 1, y + 16, 14, 1, '#39424a');
+      px(g, ox + 2, y + 18, 5, 8, 'rgba(150,190,210,0.10)');
+      if ((ox / 16) % 3 === 1) {               // some are smashed
+        px(g, ox + 4, y + 22, 8, 3, '#0d1013');
+        px(g, ox + 7, y + 26, 5, 6, '#0d1013');
+      }
+      px(g, ox, y + 38, 16, 6, '#3e3a34');
+    } else if (kind === 'G') {                // CITY: roller shutter (44)
+      const y = H - 44;
+      px(g, ox, y, 16, 44, '#4a4c50');
+      px(g, ox, y, 16, 3, '#5c5e62');
+      for (let r = 0; r < 9; r++) px(g, ox, y + 8 + r * 4, 16, 2, '#3c3e42');
+      px(g, ox + 3, y + 20, 4, 5, '#6a3a2a');  // rust bloom
+      px(g, ox, y + 41, 16, 3, '#2e3034');
     }
   };
 
@@ -439,10 +636,21 @@ function outlined(src) {
   // trimStart/trimEnd cut HALF a tile where the run meets a perpendicular
   // wall, so both faces stop exactly at the corner point instead of
   // overshooting past it (the overshoot was the "protruding" corner bug).
+  // identical runs are extremely common in a city — slice each shape once
+  const wallRunCache = new Map();
   Sprites.makeWallRun = function (kinds, axis, trimStart, trimEnd) {
+    const ck = kinds.join('') + '|' + axis + '|' + (trimStart ? 1 : 0) + (trimEnd ? 1 : 0);
+    const hit = wallRunCache.get(ck);
+    if (hit) return hit;
+    const res = Sprites._makeWallRun(kinds, axis, trimStart, trimEnd);
+    if (wallRunCache.size < 600) wallRunCache.set(ck, res);
+    return res;
+  };
+  Sprites._makeWallRun = function (kinds, axis, trimStart, trimEnd) {
     const n = kinds.length;
     const isWall = kinds[0] === 'W';
-    const H = isWall ? 28 : 20;
+    const isCity = 'BSG'.includes(kinds[0]);
+    const H = isCity ? 44 : (isWall ? 28 : 20);
     const flat = makeCanvas(16 * n, H), g = flat.getContext('2d');
     kinds.forEach((k, i) => Sprites.paintSeg(g, k, i * 16, H));
     const out = outlined(flat);
@@ -466,7 +674,7 @@ function outlined(src) {
       img.getContext('2d').drawImage(F, a, 0, b - a, F.height, 0, 0, b - a, F.height);
       const off = dir > 0 ? 8 * si + 1 : 8 * (n - si);
       const dx = (a - 1 - 16 * si) - 8;
-      slices.push({ img, dx, dy: -off, lift: isWall ? 30 : 24 });
+      slices.push({ img, dx, dy: -off, lift: isCity ? 46 : (isWall ? 30 : 24) });
     }
     return slices;
   };

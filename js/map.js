@@ -74,6 +74,45 @@ function resetMap(w, h, rng) {
   }
 }
 
+// ---------- spatial index: only nearby props/decals are drawn & sorted ----------
+const CELL = 8;
+let propCells = new Map(), decalCells = new Map();
+function cellOf(gx, gy) { return (Math.floor(gx / CELL)) + ',' + (Math.floor(gy / CELL)); }
+function indexInto(map, obj) {
+  const k = cellOf(obj.gx, obj.gy);
+  let a = map.get(k);
+  if (!a) { a = []; map.set(k, a); }
+  a.push(obj);
+}
+function buildSpatialIndex() {
+  propCells = new Map(); decalCells = new Map();
+  for (const p of props) indexInto(propCells, p);
+  for (const d of decals) indexInto(decalCells, d);
+}
+// props are removed at runtime (crushed junk, blown barrels) — keep both in sync
+function removeProp(p) {
+  const i = props.indexOf(p);
+  if (i >= 0) props.splice(i, 1);
+  const a = propCells.get(cellOf(p.gx, p.gy));
+  if (a) {
+    const j = a.indexOf(p);
+    if (j >= 0) a.splice(j, 1);
+  }
+}
+function addDecal(d) { decals.push(d); indexInto(decalCells, d); }
+// everything within the camera's tile window
+function gatherNear(map, x0, y0, x1, y1, out) {
+  const cx0 = Math.floor(x0 / CELL), cx1 = Math.floor(x1 / CELL);
+  const cy0 = Math.floor(y0 / CELL), cy1 = Math.floor(y1 / CELL);
+  for (let cy = cy0; cy <= cy1; cy++) {
+    for (let cx = cx0; cx <= cx1; cx++) {
+      const a = map.get(cx + ',' + cy);
+      if (a) for (const o of a) out.push(o);
+    }
+  }
+  return out;
+}
+
 function buildAO() {
   aoGrid = [];
   for (let y = 0; y < MAP_H; y++) {
@@ -257,141 +296,249 @@ function buildJunkyard() {
     puddles++;
   }
   buildAO();
+  buildSpatialIndex();
 }
 
 // =====================================================================
-// AREA 2 — THE APPROACH (first ground outside the yard)
-// A service road between collapsed retaining walls: open, low cover, and
-// the first place patrols can see you coming.
+// AREA 2 — THE FRINGE: one open city. Streets are hand-drawn, the blocks
+// between them are filled with buildings, and every POI hangs off a road.
+// Ground types here: 4 road · 5 pavement · 6 verge · 7 forecourt
 // =====================================================================
-function buildApproach() {
-  const rng = mulberry32(90210);
-  resetMap(36, 36, rng);
-  patrolCenter = { x: 18, y: 18 };
+const FRINGE_W = 200, FRINGE_H = 150;
+let signs = [];   // readable street signs {gx, gy, text}
 
-  // the road: asphalt band running west→east across the middle
+function buildFringe() {
+  const rng = mulberry32(20260817);
+  resetMap(FRINGE_W, FRINGE_H, rng);
+  signs = [];
+
+  // everything starts as dead lots
+  for (let y = 0; y < MAP_H; y++)
+    for (let x = 0; x < MAP_W; x++)
+      ground[y][x] = rng() < 0.55 ? 6 : 2;
+
+  // ---------- the street network ----------
+  // {x0,y0,x1,y1,half} — axis-aligned segments, half = lanes each side
+  const STREETS = [
+    { x0: 30, y0: 120, x1: 196, y1: 120, half: 4, name: 'gate road' },
+    { x0: 30, y0: 14, x1: 30, y1: 120, half: 4, name: 'spine' },
+    { x0: 30, y0: 75, x1: 165, y1: 75, half: 3, name: 'east cross' },
+    { x0: 30, y0: 36, x1: 172, y1: 36, half: 3, name: 'north cross' },
+    { x0: 165, y0: 75, x1: 165, y1: 120, half: 3, name: 'south link' },
+    { x0: 92, y0: 36, x1: 92, y1: 120, half: 2, name: 'mid street' },
+  ];
+  const onStreet = (x, y) => {
+    for (const s of STREETS) {
+      const h = s.half + 2;                     // + pavement
+      if (s.x0 === s.x1) {
+        if (Math.abs(x - s.x0) <= h && y >= Math.min(s.y0, s.y1) - h && y <= Math.max(s.y0, s.y1) + h) return s;
+      } else {
+        if (Math.abs(y - s.y0) <= h && x >= Math.min(s.x0, s.x1) - h && x <= Math.max(s.x0, s.x1) + h) return s;
+      }
+    }
+    return null;
+  };
   for (let y = 0; y < MAP_H; y++) {
     for (let x = 0; x < MAP_W; x++) {
-      const onRoad = y >= 15 && y <= 20;
-      ground[y][x] = onRoad ? 0 : (rng() < 0.55 ? 1 : 2);
+      for (const s of STREETS) {
+        let d = null;
+        if (s.x0 === s.x1) {
+          if (y >= Math.min(s.y0, s.y1) - s.half - 2 && y <= Math.max(s.y0, s.y1) + s.half + 2) d = Math.abs(x - s.x0);
+        } else {
+          if (x >= Math.min(s.x0, s.x1) - s.half - 2 && x <= Math.max(s.x0, s.x1) + s.half + 2) d = Math.abs(y - s.y0);
+        }
+        if (d === null) continue;
+        if (d <= s.half) ground[y][x] = 4;                                  // carriageway
+        else if (d <= s.half + 2 && ground[y][x] !== 4) ground[y][x] = 5;   // pavement
+      }
     }
   }
-  // verges break up the shoulder
-  for (const [bx, by, r] of [[8, 7, 5], [27, 9, 4], [6, 28, 5], [26, 27, 5], [17, 4, 4], [18, 31, 4]]) {
-    for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) {
-      if (y >= 15 && y <= 20) continue;
-      if (Math.hypot(x - bx, y - by) < r - 0.5 + rng()) ground[y][x] = 1;
+
+  // ---------- city blocks: buildings fill the space between streets ----------
+  const buildings = [];
+  function placeBuilding(x0, y0, w, h) {
+    for (let y = y0; y < y0 + h; y++)
+      for (let x = x0; x < x0 + w; x++) {
+        if (x < 1 || y < 1 || x >= MAP_W - 1 || y >= MAP_H - 1) return false;
+        if (ground[y][x] === 4 || ground[y][x] === 5 || solid[y][x]) return false;
+      }
+    for (let y = y0; y < y0 + h; y++)
+      for (let x = x0; x < x0 + w; x++) { solid[y][x] = true; heavy[y][x] = true; ground[y][x] = 2; }
+    buildings.push({ x0, y0, w, h });
+    return true;
+  }
+  // walk each street and line it with buildings set back from the pavement
+  for (const s of STREETS) {
+    const vertical = s.x0 === s.x1;
+    const len = vertical ? Math.abs(s.y1 - s.y0) : Math.abs(s.x1 - s.x0);
+    const start = vertical ? Math.min(s.y0, s.y1) : Math.min(s.x0, s.x1);
+    for (const side of [-1, 1]) {
+      let t = start + 2 + ((rng() * 5) | 0);
+      while (t < start + len - 6) {
+        const run = 6 + ((rng() * 9) | 0);
+        const depth = 7 + ((rng() * 10) | 0);
+        const off = s.half + 3;
+        if (vertical) {
+          const bx = side < 0 ? s.x0 - off - depth : s.x0 + off;
+          placeBuilding(bx, t, depth, run);
+        } else {
+          const by = side < 0 ? s.y0 - off - depth : s.y0 + off;
+          placeBuilding(t, by, run, depth);
+        }
+        t += run + 2 + ((rng() * 4) | 0);      // alley gap between terraces
+      }
     }
   }
 
-  // ---- edges ----
-  // north & south: collapsed retaining walls (concrete, heavy)
-  const conc = n => Array.from({ length: n }, () => 'C');
-  wallRun(Array.from({ length: MAP_W }, (_, i) => [i, 0]), conc(MAP_W), 'x', false, true, true);
-  wallRun(Array.from({ length: MAP_W }, (_, i) => [i, MAP_H - 1]), conc(MAP_W), 'x', false, true, true);
-  // west wall, broken where the junkyard gate lets you back in (y 16..19)
-  wallRun(Array.from({ length: 16 }, (_, i) => [0, i]), fenceKinds(16), 'y', false, true, false);
-  wallRun(Array.from({ length: MAP_H - 20 }, (_, i) => [0, 20 + i]), fenceKinds(MAP_H - 20), 'y', false, false, true);
-  props.push({ gx: 0, gy: 15, type: 'post', big: true });
-  props.push({ gx: 0, gy: 20, type: 'post', big: true });
-  // east: rubble ridge — the road continues, but Aldergrove/Field 12 aren't built
-  wallRun(Array.from({ length: MAP_H }, (_, i) => [MAP_W - 1, i]), conc(MAP_H), 'y', false, true, true);
-  props.push({ gx: MAP_W - 1, gy: 0, type: 'post', big: true });
-  props.push({ gx: MAP_W - 1, gy: MAP_H - 1, type: 'post', big: true });
-
-  const reserved = (x, y) =>
-    (solid[y] && solid[y][x]) ||
-    (x < 4 && y > 13 && y < 22) ||           // arrival mouth stays clear
-    (y >= 16 && y <= 19 && x < 30);          // driving lane of the road
-
-  // ---- THE CONVOY: six vehicles nose-to-tail, the night everyone fled ----
-  const convoy = [[6, 14], [10, 14], [14, 15], [19, 14], [24, 15], [28, 14]];
-  let cv = 0;
-  for (const [cx, cy] of convoy) {
-    if (cx + 1 >= MAP_W - 1) continue;
-    solid[cy][cx] = true; solid[cy][cx + 1] = true;
-    const prop = { gx: cx + 0.5, gy: cy, type: 'car', v: cv++ % 2 };
-    props.push(prop);
-    crushProps[cx + ',' + cy] = prop;
-    crushProps[(cx + 1) + ',' + cy] = prop;
-  }
-  // a second, scattered line on the south shoulder — people tried to overtake
-  for (const [cx, cy] of [[8, 21], [16, 21], [26, 21]]) {
-    solid[cy][cx] = true; solid[cy][cx + 1] = true;
-    const prop = { gx: cx + 0.5, gy: cy, type: 'car', v: cv++ % 2 };
-    props.push(prop);
-    crushProps[cx + ',' + cy] = prop;
-    crushProps[(cx + 1) + ',' + cy] = prop;
-  }
-
-  // ---- scatter ----
-  function scatter(type, count, variants) {
-    let placed = 0, tries = 0;
-    while (placed < count && tries < 400) {
-      tries++;
-      const x = 2 + ((rng() * (MAP_W - 4)) | 0);
-      const y = 2 + ((rng() * (MAP_H - 4)) | 0);
-      if (reserved(x, y)) continue;
-      solid[y][x] = true;
-      const prop = { gx: x, gy: y, type, v: variants ? (rng() * variants) | 0 : 0 };
-      props.push(prop);
-      crushProps[x + ',' + y] = prop;
-      placed++;
+  // fill the deep interior of each block too — a city is buildings, not lots
+  for (let gy = 4; gy < MAP_H - 12; gy += 12) {
+    for (let gx = 4; gx < MAP_W - 12; gx += 12) {
+      if (rng() < 0.18) continue;                    // the odd yard or car park
+      const w = 7 + ((rng() * 4) | 0), h = 7 + ((rng() * 4) | 0);
+      placeBuilding(gx + ((rng() * 3) | 0), gy + ((rng() * 3) | 0), w, h);
     }
   }
-  scatter('scrap', 9, 3); scatter('barrel', 6); scatter('barrelTipped', 3);
-  scatter('tires', 4); scatter('pipe', 4); scatter('girder', 3); scatter('crate', 5);
 
-  // explosive barrels along the road — the convoy was carrying fuel
-  for (const [x, y] of [[12, 13], [21, 22], [17, 12], [25, 23]]) {
-    if (reserved(x, y)) continue;
+  // ---------- facades: give every street-facing wall a face ----------
+  const KIND = ['B', 'B', 'S', 'B', 'G', 'S'];
+  for (const b of buildings) {
+    const pick = () => KIND[(rng() * KIND.length) | 0];
+    // south face (toward the camera) and east face read as "front"
+    const north = [], south = [], west = [], east = [];
+    for (let x = b.x0; x < b.x0 + b.w; x++) { north.push([x, b.y0]); south.push([x, b.y0 + b.h - 1]); }
+    for (let y = b.y0; y < b.y0 + b.h; y++) { west.push([b.x0, y]); east.push([b.x0 + b.w - 1, y]); }
+    const runKinds = n => { const k = pick(); return Array.from({ length: n }, () => k); };
+    if (b.y0 > 1) wallRun(north, runKinds(north.length), 'x', false, true, true);
+    if (b.y0 + b.h < MAP_H - 1) wallRun(south, runKinds(south.length), 'x', true, true, true);
+    if (b.x0 > 1) wallRun(west, runKinds(west.length), 'y', false, true, true);
+    if (b.x0 + b.w < MAP_W - 1) wallRun(east, runKinds(east.length), 'y', true, true, true);
+  }
+
+  // ---------- street dressing ----------
+  const freeSpot = (x, y) => x > 1 && y > 1 && x < MAP_W - 1 && y < MAP_H - 1 &&
+                             !solid[y][x] && ground[y][x] === 5;
+  function placeProp(x, y, type, extra) {
+    if (!freeSpot(x, y)) return null;
     solid[y][x] = true;
-    const prop = { gx: x, gy: y, type: 'boom' };
-    props.push(prop);
-    crushProps[x + ',' + y] = prop;
-    boomBarrels.push({ gx: x, gy: y, alive: true, prop });
+    const p = Object.assign({ gx: x, gy: y, type }, extra || {});
+    props.push(p);
+    return p;
   }
-
-  // rubble heaps on the shoulders, doubling as spawn cover
-  function heap(x0, y0, fw, fh, v) {
-    for (let y = y0; y < y0 + fh; y++) for (let x = x0; x < x0 + fw; x++) {
-      if (x >= 1 && y >= 1 && x < MAP_W - 1 && y < MAP_H - 1) { solid[y][x] = true; heavy[y][x] = true; }
+  for (const s of STREETS) {
+    const vertical = s.x0 === s.x1;
+    const len = vertical ? Math.abs(s.y1 - s.y0) : Math.abs(s.x1 - s.x0);
+    const start = vertical ? Math.min(s.y0, s.y1) : Math.min(s.x0, s.x1);
+    for (let t = start + 4; t < start + len - 3; t += 7 + ((rng() * 4) | 0)) {
+      for (const side of [-1, 1]) {
+        const off = s.half + 1 + ((rng() * 2) | 0);
+        const x = vertical ? s.x0 + side * off : t;
+        const y = vertical ? t : s.y0 + side * off;
+        const r = rng();
+        if (r < 0.42) placeProp(x, y, 'streetlight', { lit: rng() < 0.28 });   // a few still burn
+        else if (r < 0.55) placeProp(x, y, 'dumpster');
+        else if (r < 0.66) placeProp(x, y, 'postbox');
+        else if (r < 0.78) placeProp(x, y, 'hydrant');
+        else if (r < 0.86) placeProp(x, y, 'busStop');
+      }
     }
-    props.push({ gx: x0 + fw / 2 - 0.5, gy: y0 + fh / 2 - 0.5, type: 'mound2', v, foot: [x0, y0, fw, fh] });
+    // lane paint down the middle
+    if (vertical) for (let t2 = start + 2; t2 < start + len - 2; t2 += 3) decals.push({ gx: s.x0 + 0.4, gy: t2, type: 'dash' });
+    else for (let t2 = start + 2; t2 < start + len - 2; t2 += 3) decals.push({ gx: t2, gy: s.y0 + 0.4, type: 'dash' });
   }
-  heap(9, 8, 2, 2, 0); heap(23, 6, 2, 2, 1); heap(7, 26, 2, 2, 1); heap(25, 27, 2, 2, 0);
+  // traffic lights + crossings at the junctions
+  for (const [jx, jy] of [[30, 120], [30, 75], [30, 36], [92, 75], [92, 36], [165, 75], [165, 120], [92, 120]]) {
+    placeProp(jx + 5, jy + 5, 'trafficLight') || placeProp(jx - 5, jy - 5, 'trafficLight');
+    for (let i = -3; i <= 3; i++) decals.push({ gx: jx + i, gy: jy + 6.5, type: 'crossbar' });
+  }
 
-  for (const p of props) {
-    if (!p.foot) continue;
-    const [x0, y0, fw, fh] = p.foot;
-    for (const [sx, sy] of [[x0 + fw / 2, y0 - 1.2], [x0 - 1.2, y0 + fh / 2]]) {
-      if (canStand(sx, sy, 0.35)) moundSpawns.push({ x: sx, y: sy });
+  // ---------- the traffic jam: cars queued nose to tail, doors open ----------
+  function car(cx, cy, v) {
+    if (cx + 1 >= MAP_W - 1 || solid[cy][cx] || solid[cy][cx + 1]) return;
+    solid[cy][cx] = true; solid[cy][cx + 1] = true;
+    const p = { gx: cx + 0.5, gy: cy, type: 'car', v: v % 2 };
+    props.push(p);
+    crushProps[cx + ',' + cy] = p; crushProps[(cx + 1) + ',' + cy] = p;
+  }
+  let cv = 0;
+  for (let x = 60; x < 190; x += 5 + ((rng() * 4) | 0)) car(x, 118 + ((rng() * 3) | 0), cv++);
+  for (let y = 40; y < 115; y += 6 + ((rng() * 5) | 0)) car(28 + ((rng() * 3) | 0), y, cv++);
+  for (let x = 40; x < 150; x += 9 + ((rng() * 6) | 0)) car(x, 74 + ((rng() * 2) | 0), cv++);
+  // a bus slewed across the mid junction
+  if (!solid[76][90]) {
+    for (let x = 88; x <= 93; x++) { if (!solid[76][x]) solid[76][x] = true; }
+    props.push({ gx: 90.5, gy: 76, type: 'bus' });
+  }
+
+  // ---------- THE GAS STATION ----------
+  const GX = 138, GY = 126;            // forecourt origin (south of the gate road)
+  for (let y = GY; y < GY + 12; y++)
+    for (let x = GX; x < GX + 20; x++) { if (x < MAP_W - 1 && y < MAP_H - 1) { ground[y][x] = 7; solid[y][x] = false; } }
+  for (const [px2, py2] of [[GX + 2, GY + 2], [GX + 17, GY + 2], [GX + 2, GY + 9], [GX + 17, GY + 9]]) {
+    solid[py2][px2] = true; heavy[py2][px2] = true;
+    props.push({ gx: px2, gy: py2, type: 'pillar' });
+  }
+  for (const [px2, py2] of [[GX + 6, GY + 4], [GX + 10, GY + 4], [GX + 6, GY + 8], [GX + 10, GY + 8]]) {
+    solid[py2][px2] = true;
+    const p = { gx: px2, gy: py2, type: 'pump' };
+    props.push(p);
+    boomBarrels.push({ gx: px2, gy: py2, alive: true, prop: p });   // pumps detonate
+  }
+  // the shop behind the forecourt
+  placeBuilding(GX + 12, GY + 6, 8, 6);
+  for (const b of buildings.slice(-1)) {
+    const n2 = [], s2 = [];
+    for (let x = b.x0; x < b.x0 + b.w; x++) { n2.push([x, b.y0]); s2.push([x, b.y0 + b.h - 1]); }
+    wallRun(n2, Array.from({ length: n2.length }, () => 'S'), 'x', false, true, true);
+    wallRun(s2, Array.from({ length: s2.length }, () => 'S'), 'x', true, true, true);
+  }
+  signs.push({ gx: GX + 9, gy: GY - 1, text: 'FUEL · AIR · COFFEE' });
+
+  // ---------- signs: what this place used to be ----------
+  const SIGNS = [
+    { gx: 186, gy: 116, text: 'ALDERGROVE 2 · CITY CENTRE 9' },
+    { gx: 120, gy: 116, text: 'EVACUATION POINT -> FIELD 12' },
+    { gx: 60, gy: 116, text: "MARA'S GROCERY - EST. 2019" },
+    { gx: 34, gy: 96, text: "ST MARTIN'S - ALL WELCOME" },
+    { gx: 34, gy: 60, text: 'SCHOOL - DRIVE SLOWLY' },
+    { gx: 96, gy: 70, text: 'CURFEW 20:00 - BY ORDER' },
+    { gx: 34, gy: 24, text: 'THE SPRAWL - NO ADMITTANCE' },
+    { gx: 160, gy: 70, text: 'DEPOT YARD - AUTHORISED ONLY' },
+    { gx: 96, gy: 40, text: 'WE ARE INSIDE. KNOCK 3x' },
+  ];
+  for (const s of SIGNS) {
+    const x = s.gx | 0, y = s.gy | 0;
+    if (x < MAP_W - 1 && y < MAP_H - 1 && !solid[y][x]) {
+      solid[y][x] = true;
+      props.push({ gx: x, gy: y, type: 'sign' });
+      signs.push({ gx: x, gy: y, text: s.text });
     }
   }
-  // patrols walk the road end to end, and out to the shoulders
-  for (const [px, py] of [[6, 18], [14, 17], [22, 18], [30, 18], [10, 10], [26, 10], [12, 26], [27, 25]]) {
-    if (canStand(px, py, 0.35)) patrolPoints.push({ x: px, y: py });
-  }
-  patrolCenter = { x: 18, y: 18 };
 
-  // ---- dressing ----
-  for (let i = 0; i < 90; i++) {
+  // ---------- patrol routes: junctions and the forecourt ----------
+  for (const [px2, py2] of [[30, 120], [92, 120], [165, 120], [30, 75], [92, 75], [165, 75],
+                            [30, 36], [92, 36], [172, 36], [GX + 9, GY + 6], [60, 120], [30, 96]]) {
+    if (canStand(px2, py2, 0.4)) patrolPoints.push({ x: px2, y: py2 });
+  }
+  patrolCenter = { x: 92, y: 120 };
+  for (const [sx, sy] of [[40, 124], [110, 112], [70, 128], [150, 112], [36, 90], [98, 66]]) {
+    if (canStand(sx, sy, 0.4)) moundSpawns.push({ x: sx, y: sy });
+  }
+
+  // ---------- ground dressing ----------
+  for (let i = 0; i < 900; i++) {
     const x = 1 + rng() * (MAP_W - 2), y = 1 + rng() * (MAP_H - 2);
-    const r = rng();
-    decals.push({ gx: x, gy: y, type: r < 0.45 ? 'crack' : r < 0.7 ? 'weed' : 'stain' });
-  }
-  let pud = 0, pt = 0;
-  while (pud < 7 && pt < 200) {
-    pt++;
-    const x = 2 + rng() * (MAP_W - 4), y = 2 + rng() * (MAP_H - 4);
     if (solid[y | 0][x | 0]) continue;
-    decals.push({ gx: x, gy: y, type: 'puddle' });
-    pud++;
+    const r = rng();
+    decals.push({ gx: x, gy: y, type: r < 0.4 ? 'crack' : r < 0.72 ? 'weed' : 'stain' });
   }
-  // road markings down the centre line
-  for (let x = 3; x < MAP_W - 2; x += 3) decals.push({ gx: x, gy: 17.6, type: 'crack' });
+  for (let i = 0; i < 40; i++) {
+    const x = 2 + rng() * (MAP_W - 4), y = 2 + rng() * (MAP_H - 4);
+    if (solid[y | 0][x | 0] || ground[y | 0][x | 0] !== 4) continue;
+    decals.push({ gx: x, gy: y, type: 'puddle' });
+  }
 
   buildAO();
+  buildSpatialIndex();
 }
 
 // =====================================================================
@@ -407,19 +554,21 @@ const Areas = {
       { type: 'ammo', x: 14.5, y: 21.5, amount: 6, bob: 1.3 },
       { type: 'ammo', x: 25.5, y: 26.5, amount: 6, bob: 2.1 },
     ]),
-    // walking into the open gate leaves for the Approach
-    exits: [{ x0: 30.2, y0: 10.6, x1: 32, y1: 14.4, to: 'approach', entry: { x: 2.2, y: 17.6 },
+    // walking into the open gate leaves for the open city
+    exits: [{ x0: 30.2, y0: 10.6, x1: 32, y1: 14.4, to: 'fringe', entry: { x: 194, y: 120 },
               needsGate: true }],
   },
-  approach: {
-    id: 'approach', name: 'THE APPROACH', build: buildApproach,
-    hasScrapper: true, hasBoss: false, hasNpc: false,
-    tint: '#e2c39c',      // thinner, colder light out here
+  fringe: {
+    id: 'fringe', name: 'THE FRINGE', build: buildFringe,
+    hasScrapper: false, hasBoss: false, hasNpc: false,
+    tint: '#efe0cc',      // thinner, cooler, brighter than the yard's dusk
     makeItems: () => ([
-      { type: 'ammo', x: 11.5, y: 11.5, amount: 6, bob: 0.8 },
-      { type: 'ammo', x: 29.5, y: 25.5, amount: 6, bob: 2.4 },
+      { type: 'ammo', x: 150.5, y: 130.5, amount: 6, bob: 0.8 },
+      { type: 'ammo', x: 62.5, y: 122.5, amount: 6, bob: 2.4 },
+      { type: 'ammo', x: 33.5, y: 88.5, amount: 6, bob: 1.5 },
     ]),
-    exits: [{ x0: -1, y0: 15.6, x1: 1.4, y1: 19.4, to: 'junkyard', entry: { x: 29.6, y: 12.5 } }],
+    // back through the yard gate
+    exits: [{ x0: 196.4, y0: 117.6, x1: 201, y1: 122.4, to: 'junkyard', entry: { x: 29.6, y: 12.5 } }],
   },
 };
 

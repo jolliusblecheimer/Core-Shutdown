@@ -234,20 +234,36 @@ function ptext(str, gx, gy, size = 8, color = '#e8d9c0', align = 'left', alpha =
   return e.img.width * ts / U;
 }
 
-// ---------- minimap (rebuilt whenever the area changes) ----------
+// ground type → tileset
+const TILESETS = [];
+function buildTilesets() {
+  TILESETS[0] = Sprites.asphalt; TILESETS[1] = Sprites.dirt;
+  TILESETS[2] = Sprites.rubble;  TILESETS[3] = Sprites.planks;
+  TILESETS[4] = Sprites.road;    TILESETS[5] = Sprites.pavement;
+  TILESETS[6] = Sprites.verge;   TILESETS[7] = Sprites.forecourt;
+}
+buildTilesets();
+
+// ---------- minimap: whole map pre-rendered, shown as a window when big ----
 const MMS = 1.5;
-let minimap = null;
+const MM_VIEW = 46;          // tiles shown around the player on a large map
+let minimap = null, mmWindowed = false;
 function buildMinimap() {
   minimap = makeCanvas(Math.ceil(MAP_W * MMS), Math.ceil(MAP_H * MMS));
   const g = minimap.getContext('2d');
   for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) {
     const t = ground[y][x];
-    g.fillStyle = solid[y][x] ? '#7a6248'
+    g.fillStyle = solid[y][x] ? (t === 2 || t === 5 ? '#5c5f63' : '#7a6248')
+      : t === 4 ? '#2b2d31'
+      : t === 5 ? '#4a4c4f'
+      : t === 7 ? '#5a5c5e'
+      : t === 6 ? '#333828'
       : t === 3 ? '#463a2c'
       : t === 1 ? '#2e2620'
       : t === 2 ? '#282420' : '#1e1c1a';
     g.fillRect(x * MMS, y * MMS, MMS, MMS);
   }
+  mmWindowed = MAP_W > 60 || MAP_H > 60;
 }
 buildMinimap();
 
@@ -272,8 +288,7 @@ function restoreArea(id) {
     if (b.alive && dead.has(b.gx + ',' + b.gy)) {
       b.alive = false;
       solid[b.gy][b.gx] = false;
-      const pi = props.indexOf(b.prop);
-      if (pi >= 0) props.splice(pi, 1);
+      removeProp(b.prop);
     }
   }
   const taken = new Set(st.takenItems || []);
@@ -630,13 +645,23 @@ function render() {
       (VIEW_W / 2) * (1 - cineZoom), (VIEW_H / 2) * (1 - cineZoom));
   }
 
-  for (let gy = 0; gy < MAP_H; gy++) {
-    for (let gx = 0; gx < MAP_W; gx++) {
+  // ---- only what the camera can see: the map may be 200x150 ----
+  const MARG = 3;
+  let vx0 = Infinity, vy0 = Infinity, vx1 = -Infinity, vy1 = -Infinity;
+  for (const c of [screenToIso(ox - TILE_W, oy - 48), screenToIso(ox + VIEW_W + TILE_W, oy - 48),
+                   screenToIso(ox - TILE_W, oy + VIEW_H + 60), screenToIso(ox + VIEW_W + TILE_W, oy + VIEW_H + 60)]) {
+    vx0 = Math.min(vx0, c.x); vx1 = Math.max(vx1, c.x);
+    vy0 = Math.min(vy0, c.y); vy1 = Math.max(vy1, c.y);
+  }
+  vx0 = Math.max(0, Math.floor(vx0) - MARG); vy0 = Math.max(0, Math.floor(vy0) - MARG);
+  vx1 = Math.min(MAP_W - 1, Math.ceil(vx1) + MARG); vy1 = Math.min(MAP_H - 1, Math.ceil(vy1) + MARG);
+
+  for (let gy = vy0; gy <= vy1; gy++) {
+    for (let gx = vx0; gx <= vx1; gx++) {
       const px_ = (gx - gy) * (TILE_W / 2) - TILE_W / 2 - ox;
       const py_ = (gx + gy) * (TILE_H / 2) - oy;
       if (px_ < -TILE_W || px_ > VIEW_W || py_ < -TILE_H || py_ > VIEW_H) continue;
-      const t = ground[gy][gx];
-      const set = t === 0 ? Sprites.asphalt : t === 1 ? Sprites.dirt : t === 2 ? Sprites.rubble : Sprites.planks;
+      const set = TILESETS[ground[gy][gx]] || Sprites.asphalt;
       ctx.drawImage(set[groundVar[gy][gx] % set.length], px_, py_);
       // ambient occlusion: ground darkens where it meets objects
       const ao = aoGrid[gy][gx];
@@ -648,9 +673,10 @@ function render() {
     }
   }
 
-  for (const d of decals) {
-    const s = isoToScreen(d.gx, d.gy);
+  for (const d of gatherNear(decalCells, vx0, vy0, vx1, vy1, [])) {
     const img = Sprites.decals[d.type];
+    if (!img) continue;
+    const s = isoToScreen(d.gx, d.gy);
     ctx.drawImage(img, Math.round(s.x - ox - img.width / 2), Math.round(s.y - oy - img.height / 2));
     if (d.type === 'puddle') {
       addLight(s.x - ox, s.y - oy, 0, 8, '160,185,230',
@@ -659,7 +685,8 @@ function render() {
   }
 
   const draws = [];
-  for (const p of props) {
+  // tall props reach far up-screen, so pull from a taller band of cells
+  for (const p of gatherNear(propCells, vx0 - 2, vy0 - 2, vx1 + 8, vy1 + 8, [])) {
     const s = isoToScreen(p.gx + 0.5, p.gy + 0.5);
     const depth = p.foot ? s.y + (p.foot[2] + p.foot[3]) * 4 : s.y;
     draws.push({ depth, draw: () => drawProp(p, s.x - ox, s.y - oy) });
@@ -892,7 +919,31 @@ function drawProp(p, x, y) {
     return;
   }
   let img = null, oyOff = 0;
-  if (T === 'boom') { img = Sprites.boomBarrel; oyOff = -15; drawShadow(x, y, 5); }
+  // ---- city furniture ----
+  if (T === 'streetlight') {
+    img = Sprites.streetlight; oyOff = -44; drawShadow(x, y, 4);
+    if (p.lit) {
+      // the handful still burning are the only real light left on the street
+      const flick = 0.86 + 0.14 * Math.sin(gameTime * 7 + p.gx);
+      ctx.fillStyle = '#ffe9b0';
+      ctx.fillRect(Math.round(x + 5), Math.round(y - 37), 2, 2);
+      addLight(x + 6, y - 36, 0, 34 * flick, '255,214,140', 0.42 * flick);
+      addLight(x + 2, y - 2, 0, 24, '255,214,140', 0.16 * flick);
+    }
+  }
+  else if (T === 'trafficLight') { img = Sprites.trafficLight; oyOff = -40; drawShadow(x, y, 4); }
+  else if (T === 'busStop') { img = Sprites.busStop; oyOff = -26; drawShadow(x, y, 12); }
+  else if (T === 'dumpster') { img = Sprites.dumpster; oyOff = -15; drawShadow(x, y, 9); }
+  else if (T === 'hydrant') { img = Sprites.hydrant; oyOff = -12; drawShadow(x, y, 3); }
+  else if (T === 'postbox') { img = Sprites.postbox; oyOff = -16; drawShadow(x, y, 4); }
+  else if (T === 'sign') { img = Sprites.signPost; oyOff = -26; drawShadow(x, y, 4); }
+  else if (T === 'bus') { img = Sprites.bus; oyOff = -26; drawShadow(x, y + 1, 24); }
+  else if (T === 'pump') {
+    img = Sprites.fuelPump; oyOff = -22; drawShadow(x, y, 6);
+    addLight(x + 1, y - 14, 0, 7, '122,210,122', 0.16);
+  }
+  else if (T === 'pillar') { img = Sprites.pillar; oyOff = -40; drawShadow(x, y, 5); }
+  else if (T === 'boom') { img = Sprites.boomBarrel; oyOff = -15; drawShadow(x, y, 5); }
   else if (T === 'scrap') { img = Sprites.scrapPiles[p.v]; oyOff = -20; drawShadow(x, y, 9); }
   else if (T === 'car') { img = Sprites.cars[p.v]; oyOff = -18; drawShadow(x, y + 1, 15); }
   else if (T === 'barrel') { img = Sprites.barrel; oyOff = -14; drawShadow(x, y, 5); }
@@ -1433,15 +1484,24 @@ function drawHUD() {
     ptext('scroll', VIEW_W - 33, VIEW_H - 27, 7, 'rgba(232,217,192,0.35)', 'center');
   }
 
-  // minimap
-  const mw = minimap.width, mh = minimap.height;
+  // minimap — whole map when small, a scrolling window when the area is big
+  const mw = mmWindowed ? MM_VIEW * MMS : minimap.width;
+  const mh = mmWindowed ? MM_VIEW * MMS : minimap.height;
   const mx = VIEW_W - mw - 6, my = 6;
+  let srcX = 0, srcY = 0;
+  if (mmWindowed) {
+    srcX = Math.max(0, Math.min(minimap.width - mw, player.x * MMS - mw / 2));
+    srcY = Math.max(0, Math.min(minimap.height - mh, player.y * MMS - mh / 2));
+  }
   uiRect(mx - 2, my - 2, mw + 4, mh + 4, 'rgba(0,0,0,0.5)');
   g.globalAlpha = 0.9;
-  uiIcon(minimap, mx, my);
+  g.imageSmoothingEnabled = false;
+  g.drawImage(minimap, srcX, srcY, mw, mh, mx * U, my * U, mw * U, mh * U);
   g.globalAlpha = 1;
   function blip(wx, wy, col) {
-    uiRect(mx + wx * MMS - 1, my + wy * MMS - 1, 2, 2, col);
+    const px2 = mx + wx * MMS - srcX - 1, py2 = my + wy * MMS - srcY - 1;
+    if (px2 < mx - 1 || py2 < my - 1 || px2 > mx + mw || py2 > my + mh) return;
+    uiRect(px2, py2, 2, 2, col);
   }
   for (const it of items) blip(it.x, it.y, '#ffd27a');
   if (currentAreaDef().hasNpc) blip(npc.x, npc.y, '#7ad27a');
@@ -1508,6 +1568,28 @@ function drawHUD() {
     ptext(mission.state === 'active'
       ? `Destroy Scrappers - loot scrap ${Math.min(player.inv.scrap, 5)}/5`
       : 'Return to the survivor', 16, 8, 8);
+  }
+
+  // street signs read themselves when you get close
+  if (typeof signs !== 'undefined' && signs.length && !Dialog.active && !Trade.open) {
+    let near = null, nd = 3.2;
+    for (const s of signs) {
+      const d = Math.hypot(player.x - s.gx, player.y - s.gy);
+      if (d < nd) { nd = d; near = s; }
+    }
+    if (near) {
+      const ss = isoToScreen(near.gx, near.gy);
+      const tx = ss.x - lastOx, ty = ss.y - lastOy - 40;
+      const w = ptWidth(near.text, 8);
+      const a = Math.min(1, (3.2 - nd) * 1.6);
+      uictx.globalAlpha = a;
+      uiRect(tx - w / 2 - 4, ty - 3, w + 8, 12, 'rgba(10,14,12,0.85)');
+      uictx.strokeStyle = '#3d5a4c';
+      uictx.lineWidth = U;
+      uictx.strokeRect((tx - w / 2 - 4) * U, (ty - 3) * U, (w + 8) * U, 12 * U);
+      uictx.globalAlpha = 1;
+      ptext(near.text, tx, ty - 1, 8, '#9fd6b4', 'center', a);
+    }
   }
 
   // interaction prompt
