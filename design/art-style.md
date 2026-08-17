@@ -15,6 +15,15 @@
 - Camera zoom: fixed or player-controlled zoom levels?
 - How dark is dark? (night/interior visibility — flashlight mechanic?)
 
+## THE ANGLE RULE (2026-08-17) — applies to EVERY texture
+Isometric projection: screen-right-down = world +x, screen-left-down = world +y.
+**Anything lying on the ground or running along a road/wall must be sheared to
+that diagonal.** Road dashes, crossings, painted arrows, cars, buses, benches,
+bus shelters, signs — all take a direction (`dir: 'x' | 'y'`) and use the
+matching sheared sprite. Only upright free-standing objects (poles, barrels,
+hydrants, people) are drawn straight.
+Check the angle when creating any new texture, and fix it before shipping.
+
 ## BUILDINGS ARE VOLUMES, NOT PANELS (2026-08-17 — supersedes all wall-panel work)
 Three attempts to assemble buildings from sheared per-tile wall strips + a
 separate roof quad + corner columns all failed to line up: four independent

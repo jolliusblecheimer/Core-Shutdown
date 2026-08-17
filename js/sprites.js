@@ -225,6 +225,8 @@ function outlined(src) {
     for (let i = 0; i < 4; i++) px(bg2, 7 + i * 6, 6, 1, 14, '#4a4e52');
     px(bg2, 8, 12, 12, 6, '#6a5a3a');
     Sprites.busStop = outlined(b);
+    // shelters stand ALONG the pavement, so they follow its diagonal
+    Sprites.busStopIso = { x: sheared(Sprites.busStop, 1), y: sheared(Sprites.busStop, -1) };
 
     // dumpster
     const dm = makeCanvas(20, 15), dg = dm.getContext('2d');
@@ -276,6 +278,7 @@ function outlined(src) {
     px(bsg, 6, 21, 6, 4, '#1c1c20');
     px(bsg, 42, 21, 6, 4, '#1c1c20');
     Sprites.bus = outlined(bs);
+    Sprites.busIso = { x: sheared(Sprites.bus, 1), y: sheared(Sprites.bus, -1) };
 
     // fuel pump island
     const fp = makeCanvas(16, 22), fg = fp.getContext('2d');
@@ -486,6 +489,11 @@ function outlined(src) {
     return outlined(c);
   }
   Sprites.cars = [car('#6e3b24', '#5c3220'), car('#3f5468', '#334455')];
+  // a car sits ON the road, so it must lie along the road's diagonal
+  Sprites.carsIso = {
+    x: Sprites.cars.map(c => sheared(c, 1)),
+    y: Sprites.cars.map(c => sheared(c, -1)),
+  };
 
   // oil barrel (upright + tipped)
   (function () {
@@ -1115,12 +1123,20 @@ function outlined(src) {
           poly(g, faceQuad(P0, P1, Hh, u0, u0 + (u1 - u0) * 0.3, v0, v1), 'rgba(150,190,215,0.07)');
         }
       }
-      // ground floor: shopfront glazing or a door
-      if (kind === 'S' || kind === 'G') {
-        poly(g, faceQuad(P0, P1, Hh, 0.08, 0.92, 0.04, 0.30),
-             kind === 'G' ? st.s : glass, '#12151a');
-        if (kind === 'G') for (let i = 0; i < 6; i++)
-          poly(g, faceQuad(P0, P1, Hh, 0.08, 0.92, 0.05 + i * 0.042, 0.055 + i * 0.042), st.w);
+      // ground floor: shopfront glazing (in panes) or a shutter
+      if (kind === 'S') {
+        const panes = Math.max(2, cells);
+        for (let i = 0; i < panes; i++) {
+          const u0 = 0.06 + (i + 0.06) * (0.88 / panes), u1 = 0.06 + (i + 0.94) * (0.88 / panes);
+          poly(g, faceQuad(P0, P1, Hh, u0, u1, 0.06, 0.30), glass, '#12151a');
+          poly(g, faceQuad(P0, P1, Hh, u0, u0 + (u1 - u0) * 0.35, 0.06, 0.30), 'rgba(150,190,215,0.08)');
+        }
+        poly(g, faceQuad(P0, P1, Hh, 0.04, 0.96, 0.30, 0.335), st.t);      // fascia rail
+        poly(g, faceQuad(P0, P1, Hh, 0.04, 0.96, 0.03, 0.06), st.s);       // stallriser
+      } else if (kind === 'G') {
+        poly(g, faceQuad(P0, P1, Hh, 0.08, 0.92, 0.04, 0.30), st.s, '#12151a');
+        for (let i = 0; i < 6; i++)
+          poly(g, faceQuad(P0, P1, Hh, 0.08, 0.92, 0.05 + i * 0.042, 0.058 + i * 0.042), st.w);
       } else if (isSouth) {
         poly(g, faceQuad(P0, P1, Hh, 0.44, 0.58, 0.02, 0.24), '#2e2620', '#12151a');
         poly(g, faceQuad(P0, P1, Hh, 0.44, 0.58, 0.23, 0.26), st.t);   // lintel
@@ -1131,9 +1147,12 @@ function outlined(src) {
     winRow(C, D, cellsS, st.g, true);
 
     // per-type face detail
-    if (kind === 'S') {                                   // lit sign band
-      poly(g, faceQuad(C, D, Hh, 0.05, 0.95, 0.74, 0.9), '#2a2620', '#12151a');
-      poly(g, faceQuad(C, D, Hh, 0.12, 0.5, 0.78, 0.86), '#7a6f5c');
+    if (kind === 'S') {                                   // painted shop name band
+      for (const [P0, P1] of [[C, D], [B, C]]) {
+        poly(g, faceQuad(P0, P1, Hh, 0.05, 0.95, 0.74, 0.88), '#6d6355', '#3a352c');
+        for (let i = 0; i < 5; i++)                        // faded lettering
+          poly(g, faceQuad(P0, P1, Hh, 0.14 + i * 0.13, 0.20 + i * 0.13, 0.78, 0.845), '#3f3a31');
+      }
     } else if (kind === 'N') {                            // bank pilasters
       for (let i = 0; i <= 4; i++) {
         poly(g, faceQuad(C, D, Hh, i / 4 - 0.03, i / 4 + 0.03, 0.05, 0.82), st.t);
@@ -1156,6 +1175,15 @@ function outlined(src) {
       const mA = along ? [(A2[0] + D2[0]) / 2, (A2[1] + D2[1]) / 2] : [(A2[0] + B2[0]) / 2, (A2[1] + B2[1]) / 2];
       const mB = along ? [(B2[0] + C2[0]) / 2, (B2[1] + C2[1]) / 2] : [(D2[0] + C2[0]) / 2, (D2[1] + C2[1]) / 2];
       const rA = [mA[0], mA[1] - ridge], rB = [mB[0], mB[1] - ridge];
+      // GABLE: fill the triangle between the wall top and the sloping roof,
+      // or a hole opens up at the end of the ridge
+      if (along) {
+        poly(g, [B2, C2, rB], st.w, '#1b1e22');          // visible gable (east end)
+        poly(g, [A2, D2, rA], st.s);                      // far gable, mostly hidden
+      } else {
+        poly(g, [D2, C2, rB], st.s, '#1b1e22');           // visible gable (south end)
+        poly(g, [A2, B2, rA], st.w);
+      }
       if (along) {
         poly(g, [A2, B2, rB, rA], st.r, '#20242a');
         poly(g, [rA, rB, C2, D2], st.re, '#20242a');
@@ -1170,10 +1198,32 @@ function outlined(src) {
         g.fillStyle = '#9a9284';
         g.fillRect(mx - 1, my - 14, 2, 14);
         g.fillRect(mx - 4, my - 11, 8, 2);
-      } else if (seed % 3 === 0) {                         // chimney
-        const cx2 = rA[0] + (rB[0] - rA[0]) * 0.28, cy2 = rA[1] + (rB[1] - rA[1]) * 0.28;
-        g.fillStyle = '#4a3a35'; g.fillRect(cx2 - 2, cy2 - 11, 5, 12);
-        g.fillStyle = '#5f4c46'; g.fillRect(cx2 - 2, cy2 - 12, 5, 2);
+      } else {
+        // roof clutter, varying per building
+        const at = f => [rA[0] + (rB[0] - rA[0]) * f, rA[1] + (rB[1] - rA[1]) * f];
+        if (seed % 3 === 0) {                              // chimney
+          const [cx2, cy2] = at(0.28);
+          g.fillStyle = '#4a3a35'; g.fillRect(cx2 - 2, cy2 - 11, 5, 12);
+          g.fillStyle = '#5f4c46'; g.fillRect(cx2 - 2, cy2 - 12, 5, 2);
+        }
+        if (seed % 5 === 1) {                              // TV aerial
+          const [cx2, cy2] = at(0.68);
+          g.strokeStyle = '#3a3f45'; g.lineWidth = 1;
+          g.beginPath(); g.moveTo(cx2, cy2); g.lineTo(cx2, cy2 - 14); g.stroke();
+          for (let i = 0; i < 4; i++) {
+            g.beginPath();
+            g.moveTo(cx2 - 4, cy2 - 6 - i * 2.5); g.lineTo(cx2 + 4, cy2 - 6 - i * 2.5);
+            g.stroke();
+          }
+        } else if (seed % 5 === 3) {                        // satellite dish
+          const [cx2, cy2] = at(0.72);
+          g.strokeStyle = '#3a3f45'; g.lineWidth = 1;
+          g.beginPath(); g.moveTo(cx2, cy2); g.lineTo(cx2, cy2 - 7); g.stroke();
+          g.fillStyle = '#9aa0a6';
+          g.beginPath(); g.ellipse(cx2 + 2, cy2 - 9, 4, 3, -0.5, 0, Math.PI * 2); g.fill();
+          g.fillStyle = '#5a6066';
+          g.fillRect(cx2 + 1, cy2 - 10, 1, 3);
+        }
       }
     } else {
       poly(g, [A2, B2, C2, D2], st.r, '#20242a');
@@ -1181,16 +1231,41 @@ function outlined(src) {
       poly(g, [A2, B2, [B2[0], B2[1] - 3], [A2[0], A2[1] - 3]], st.re);
       poly(g, [[A2[0], A2[1] - 3], [B2[0], B2[1] - 3], [C2[0], C2[1] - 3], [D2[0], D2[1] - 3]], st.r, '#20242a');
       const mx = (A2[0] + C2[0]) / 2, my = (A2[1] + C2[1]) / 2 - 3;
+      const acUnit = (ux, uy) => {
+        g.fillStyle = '#5a5e62'; g.fillRect(ux, uy - 7, 10, 7);
+        g.fillStyle = '#6c7074'; g.fillRect(ux, uy - 8, 10, 2);
+        g.fillStyle = '#42464a';
+        for (let i = 0; i < 3; i++) g.fillRect(ux + 2 + i * 3, uy - 5, 1, 4);
+      };
       if (kind === 'O' || kind === 'T' || kind === 'N') {
-        g.fillStyle = '#5a5e62'; g.fillRect(mx - 9, my - 7, 10, 7);
-        g.fillStyle = '#6c7074'; g.fillRect(mx - 9, my - 8, 10, 2);
-        g.fillStyle = '#4a4e52'; g.fillRect(mx + 3, my - 4, 7, 5);
+        acUnit(mx - 9, my);
+        g.fillStyle = '#4a4e52'; g.fillRect(mx + 4, my - 4, 7, 5);       // stair box
       } else if (kind === 'K') {
         g.fillStyle = '#9aa2a8';
         for (let i = -1; i <= 1; i++) g.fillRect(mx + i * 10 - 3, my - 4, 7, 4);
-        g.fillStyle = '#5a5e62'; g.fillRect(mx - 16, my - 9, 7, 8);
+        g.fillStyle = '#5a5e62'; g.fillRect(mx - 16, my - 9, 7, 8);       // water tank
       } else {
         g.fillStyle = '#4e5256'; g.fillRect(mx - 4, my - 6, 7, 5);
+      }
+      // flat-roof clutter varies per building
+      if (seed % 4 === 0) acUnit(mx + 6, my + 5);
+      if (seed % 7 === 2) {                                   // satellite dish
+        g.strokeStyle = '#3a3f45'; g.lineWidth = 1;
+        g.beginPath(); g.moveTo(mx - 14, my + 4); g.lineTo(mx - 14, my - 3); g.stroke();
+        g.fillStyle = '#9aa0a6';
+        g.beginPath(); g.ellipse(mx - 12, my - 5, 4, 3, -0.5, 0, Math.PI * 2); g.fill();
+      } else if (seed % 7 === 5) {                            // aerial mast
+        g.strokeStyle = '#3a3f45'; g.lineWidth = 1;
+        g.beginPath(); g.moveTo(mx + 12, my + 3); g.lineTo(mx + 12, my - 16); g.stroke();
+        for (let i = 0; i < 3; i++) {
+          g.beginPath();
+          g.moveTo(mx + 8, my - 8 - i * 3); g.lineTo(mx + 16, my - 8 - i * 3); g.stroke();
+        }
+      }
+      if (seed % 3 === 1) {                                   // vent pipes
+        g.fillStyle = '#4a4e52';
+        g.fillRect(mx - 2, my + 6, 3, 5);
+        g.fillRect(mx + 3, my + 7, 3, 4);
       }
       if (kind === 'T') {                                   // hotel roof sign
         g.fillStyle = '#8a4a44'; g.fillRect(mx - 13, my - 19, 26, 8);
@@ -1215,31 +1290,53 @@ function outlined(src) {
     Sprites.cornerCol = outlined(c);
   })();
 
-  // ---- makeshift signs: nailed planks, painted boards, cloth banners ----
+  // ---- makeshift signs: nailed planks and cloth banners, with a painted
+  // arrow that actually points where the trail goes. The board is angled to
+  // the street it stands on, and the arrow to the direction of travel. ----
   (function () {
-    const board = makeCanvas(26, 22), g = board.getContext('2d');
-    px(g, 11, 10, 3, 12, '#6a5638');                 // broom handle
-    px(g, 2, 2, 22, 9, '#8a7048');                   // plank
-    px(g, 2, 2, 22, 1, '#9c8055');
-    px(g, 2, 6, 22, 1, '#75603c');                   // grain
-    px(g, 5, 4, 3, 3, '#3a2f1e');                    // nails
-    px(g, 19, 4, 3, 3, '#3a2f1e');
-    Sprites.signPlank = outlined(board);
-
-    const cloth = makeCanvas(30, 20), cg = cloth.getContext('2d');
-    px(cg, 1, 1, 2, 18, '#5a4a30');                  // poles
-    px(cg, 27, 1, 2, 18, '#5a4a30');
-    px(cg, 3, 3, 24, 11, '#b9b2a0');                 // bedsheet
-    px(cg, 3, 3, 24, 1, '#cfc8b6');
-    for (let i = 0; i < 6; i++) px(cg, 4 + i * 4, 13, 3, 2, '#a79f8d');  // ragged hem
-    Sprites.signCloth = outlined(cloth);
-
-    // arrow daubed straight onto the ground
-    const sp = makeCanvas(20, 12), sg2 = sp.getContext('2d');
-    sg2.fillStyle = 'rgba(228,222,200,0.6)';
-    sg2.fillRect(2, 5, 11, 2);
-    sg2.beginPath(); sg2.moveTo(12, 1); sg2.lineTo(19, 6); sg2.lineTo(12, 11); sg2.closePath(); sg2.fill();
-    Sprites.decals.paintArrow = sp;
+    // paint an arrow onto the board, pointing along iso direction (dx,dy)
+    const paintArrow = (g, cx2, cy2, dx, dy) => {
+      const ux = (dx - dy) * 7, uy = (dx + dy) * 3.5;
+      g.fillStyle = '#43331d';
+      for (let t = -1; t <= 0.7; t += 0.08) g.fillRect(Math.round(cx2 + ux * t), Math.round(cy2 + uy * t), 2, 2);
+      const hx = cx2 + ux * 0.85, hy = cy2 + uy * 0.85;
+      g.beginPath();
+      g.moveTo(hx + ux * 0.5, hy + uy * 0.5);
+      g.lineTo(hx - uy * 0.5, hy + ux * 0.5);
+      g.lineTo(hx + uy * 0.5, hy - ux * 0.5);
+      g.closePath(); g.fill();
+    };
+    const mkPlank = (dx, dy) => {
+      const c = makeCanvas(28, 24), g = c.getContext('2d');
+      px(g, 12, 11, 3, 13, '#6a5638');               // broom handle
+      px(g, 2, 2, 24, 10, '#8a7048');                // plank
+      px(g, 2, 2, 24, 1, '#9c8055');
+      px(g, 2, 7, 24, 1, '#75603c');
+      px(g, 4, 4, 2, 2, '#3a2f1e'); px(g, 22, 4, 2, 2, '#3a2f1e');   // nails
+      paintArrow(g, 14, 7, dx, dy);
+      return outlined(c);
+    };
+    const mkCloth = (dx, dy) => {
+      const c = makeCanvas(32, 22), g = c.getContext('2d');
+      px(g, 1, 1, 2, 20, '#5a4a30'); px(g, 29, 1, 2, 20, '#5a4a30');
+      px(g, 3, 3, 26, 12, '#b9b2a0');
+      px(g, 3, 3, 26, 1, '#cfc8b6');
+      for (let i = 0; i < 7; i++) px(g, 4 + i * 4, 14, 3, 2, '#a79f8d');
+      paintArrow(g, 16, 9, dx, dy);
+      return outlined(c);
+    };
+    // keyed by the direction the trail continues in
+    const dirs = { xm: [-1, 0], xp: [1, 0], ym: [0, -1], yp: [0, 1] };
+    Sprites.signPlankDir = {}; Sprites.signClothDir = {};
+    for (const k of Object.keys(dirs)) {
+      const [dx, dy] = dirs[k];
+      // a sign standing beside an east-west street is sheared with it
+      const along = (k === 'xm' || k === 'xp') ? 1 : -1;
+      Sprites.signPlankDir[k] = sheared(mkPlank(dx, dy), along);
+      Sprites.signClothDir[k] = sheared(mkCloth(dx, dy), along);
+    }
+    Sprites.signPlank = Sprites.signPlankDir.xm;
+    Sprites.signCloth = Sprites.signClothDir.xm;
   })();
 
   // ---- gas station: canopy fascia, pylon totem, kerbed island ----
@@ -1261,18 +1358,65 @@ function outlined(src) {
     Sprites.pumpIsland = outlined(isl);
   })();
 
-  // lane dashes, sheared to lie along each road direction
+  // ---- GROUND PAINT: every mark lies on the iso grid, never axis-aligned ----
+  // dir +1 = runs along world +x (screen down-right), -1 = along +y (down-left)
   (function () {
-    const mk = dir => {
-      const c = makeCanvas(18, 12), g = c.getContext('2d');
-      g.fillStyle = 'rgba(206,201,176,0.6)';
-      for (let i = 0; i < 14; i++) {
-        const yy = dir > 0 ? 2 + i * 0.5 : 9 - i * 0.5;
-        g.fillRect(i + 2, yy, 1, 2);
+    // a stripe of length L running along the road
+    const stripe = (dir, L, thick, col) => {
+      const c = makeCanvas(L * 2 + thick * 2, L + thick * 2 + 2), g = c.getContext('2d');
+      g.fillStyle = col;
+      for (let i = 0; i < L * 2; i++) {
+        const yy = dir > 0 ? i * 0.5 : (L - i * 0.5);
+        g.fillRect(i, yy + 1, 1, thick);
       }
       return c;
     };
-    Sprites.decals.dashX = mk(1);    // road running along world +x
-    Sprites.decals.dashY = mk(-1);   // road running along world +y
+    Sprites.decals.dashX = stripe(1, 7, 2, 'rgba(206,201,176,0.6)');
+    Sprites.decals.dashY = stripe(-1, 7, 2, 'rgba(206,201,176,0.6)');
+
+    // crossing: bars laid ACROSS the road, so they run on the other diagonal
+    const crossing = dir => {
+      const c = makeCanvas(34, 26), g = c.getContext('2d');
+      g.fillStyle = 'rgba(205,201,175,0.5)';
+      for (let b = 0; b < 5; b++) {
+        // each bar runs perpendicular to travel; step the bars along travel
+        const ox2 = b * 5, oy2 = dir > 0 ? b * 2.5 : -b * 2.5;
+        for (let i = 0; i < 16; i++) {
+          const yy = dir > 0 ? (8 - i * 0.5) : (i * 0.5 + 2);
+          g.fillRect(ox2 + i, yy + oy2 + 8, 1, 2);
+        }
+      }
+      return c;
+    };
+    Sprites.decals.crossbarX = crossing(1);
+    Sprites.decals.crossbarY = crossing(-1);
+    Sprites.decals.crossbar = Sprites.decals.crossbarX;
+
+    // painted arrow pointing along the road, four directions
+    const arrow = (dx, dy) => {
+      const c = makeCanvas(30, 22), g = c.getContext('2d');
+      const cx2 = 15, cy2 = 11;
+      // shaft and head follow the iso direction (dx,dy) in tile space
+      const sx = dx * 16, sy = (dx + dy) * 0;   // screen dir for (dx,dy)
+      const ux = (dx - dy) * 8, uy = (dx + dy) * 4;   // one tile step, halved
+      g.fillStyle = 'rgba(214,209,184,0.62)';
+      for (let t = -1.2; t <= 0.9; t += 0.06) {
+        g.fillRect(Math.round(cx2 + ux * t), Math.round(cy2 + uy * t), 2, 2);
+      }
+      // head
+      const hx = cx2 + ux * 1.0, hy = cy2 + uy * 1.0;
+      const px2 = -uy, py2 = ux;                       // perpendicular
+      g.beginPath();
+      g.moveTo(hx + ux * 0.45, hy + uy * 0.45);
+      g.lineTo(hx + px2 * 0.42, hy + py2 * 0.42);
+      g.lineTo(hx - px2 * 0.42, hy - py2 * 0.42);
+      g.closePath(); g.fill();
+      return c;
+    };
+    Sprites.decals.arrowXp = arrow(1, 0);    // toward +x  (down-right)
+    Sprites.decals.arrowXm = arrow(-1, 0);   // toward -x  (up-left)
+    Sprites.decals.arrowYp = arrow(0, 1);    // toward +y  (down-left)
+    Sprites.decals.arrowYm = arrow(0, -1);   // toward -y  (up-right)
+    Sprites.decals.paintArrow = Sprites.decals.arrowXm;
   })();
 })();

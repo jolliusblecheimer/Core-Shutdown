@@ -35,6 +35,28 @@ Read this first every session. It is the contract for how this project runs.
 | `design/*.md`, `design/*.html` | Per-topic design docs; the .html ones are published artifacts |
 | `backup/` | Pre-HD-2D snapshot |
 
+## Big art changes: LOCAL FIRST, DO NOT PUSH
+When making a large visual overhaul, build and iterate on localhost and **do
+not commit/push until Laurens has seen and approved it** — a bad look must
+never reach the live site. Small verified bug fixes may still be pushed.
+
+## THE ANGLE RULE — check this for every texture you make
+
+This world is isometric: **screen-right-down is world +x, screen-left-down is
+world +y.** Anything that lies on, along or against the ground must be drawn on
+that diagonal, never axis-aligned.
+
+Before shipping any new sprite or decal, ask: *does this thing lie flat on the
+ground, or run along a wall/road?* If yes it must be **sheared to the iso
+grid** (`sheared(img, +1)` for things running along world +x, `-1` for +y) and
+placed with a `dir` so the right variant is used. This applies to road paint,
+crossings, arrows, vehicles, benches, shelters, signs, kerbs, anything long.
+Only free-standing upright objects (poles, barrels, people) may be drawn
+straight.
+
+Flat rectangles pasted on an iso floor were the single most common visual bug
+in this project. Check the angle every time.
+
 ## Hard-won technical rules
 
 - **Buildings are single pre-rendered volumes**, never assembled wall panels.

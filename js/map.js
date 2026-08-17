@@ -384,13 +384,11 @@ function buildFringe() {
   for (let y = SCH.y + SCH.h + 1; y < SCH.y + SCH.h + 7; y++)
     for (let x = SCH.x; x < SCH.x + SCH.w; x++)
       if (x < MAP_W - 1 && y < MAP_H - 1 && !solid[y][x]) ground[y][x] = 7;   // playground
-  signs.push({ gx: SCH.x + 4, gy: SCH.y + SCH.h + 2, text: 'ALDERGROVE PRIMARY - GO SLOWLY' });
 
-  // THE REGENT HOTEL and the CITY & COUNTY BANK — landmarks, not enterable
+  // THE REGENT HOTEL and the CITY & COUNTY BANK — landmarks, not enterable.
+  // No name bubbles: a sign only exists where a sign prop stands.
   placeBuilding(112, 96, 18, 13, 'T');
-  signs.push({ gx: 112, gy: 110, text: 'THE REGENT HOTEL', kind: 'old' });
   placeBuilding(60, 96, 16, 12, 'N');
-  signs.push({ gx: 60, gy: 109, text: 'CITY & COUNTY BANK', kind: 'old' });
 
   // ST MARTIN'S: the church that becomes Candlelight, on the spine
   const CH = { x: 36, y: 90, w: 12, h: 14 };
@@ -461,11 +459,12 @@ function buildFringe() {
         const x = vertical ? s.x0 + side * off : t;
         const y = vertical ? t : s.y0 + side * off;
         const r = rng();
+        const sd = vertical ? 'y' : 'x';        // things along this street
         if (r < 0.42) placeProp(x, y, 'streetlight', { lit: rng() < 0.28 });   // a few still burn
-        else if (r < 0.55) placeProp(x, y, 'dumpster');
+        else if (r < 0.55) placeProp(x, y, 'dumpster', { dir: sd });
         else if (r < 0.66) placeProp(x, y, 'postbox');
         else if (r < 0.78) placeProp(x, y, 'hydrant');
-        else if (r < 0.86) placeProp(x, y, 'busStop');
+        else if (r < 0.86) placeProp(x, y, 'busStop', { dir: sd });
       }
     }
     // lane paint down the middle, sheared to lie along the road
@@ -475,25 +474,36 @@ function buildFringe() {
   // traffic lights + crossings at the junctions
   for (const [jx, jy] of [[30, 120], [30, 75], [30, 36], [92, 75], [92, 36], [165, 75], [165, 120], [92, 120]]) {
     placeProp(jx + 5, jy + 5, 'trafficLight') || placeProp(jx - 5, jy - 5, 'trafficLight');
-    for (let i = -3; i <= 3; i++) decals.push({ gx: jx + i, gy: jy + 6.5, type: 'crossbar' });
+    // crossings lie across the carriageway, on the road's own diagonal
+    decals.push({ gx: jx, gy: jy + 6.5, type: 'crossbarX' });
+    decals.push({ gx: jx + 6.5, gy: jy, type: 'crossbarY' });
   }
 
   // ---------- the traffic jam: cars queued nose to tail, doors open ----------
-  function car(cx, cy, v) {
+  // cars lie ALONG their road: dir 'x' east-west, 'y' north-south
+  function car(cx, cy, v, dir) {
+    if (dir === 'y') {
+      if (cy + 1 >= MAP_H - 1 || solid[cy][cx] || solid[cy + 1][cx]) return;
+      solid[cy][cx] = true; solid[cy + 1][cx] = true;
+      const p = { gx: cx, gy: cy + 0.5, type: 'car', v: v % 2, dir: 'y' };
+      props.push(p);
+      crushProps[cx + ',' + cy] = p; crushProps[cx + ',' + (cy + 1)] = p;
+      return;
+    }
     if (cx + 1 >= MAP_W - 1 || solid[cy][cx] || solid[cy][cx + 1]) return;
     solid[cy][cx] = true; solid[cy][cx + 1] = true;
-    const p = { gx: cx + 0.5, gy: cy, type: 'car', v: v % 2 };
+    const p = { gx: cx + 0.5, gy: cy, type: 'car', v: v % 2, dir: 'x' };
     props.push(p);
     crushProps[cx + ',' + cy] = p; crushProps[(cx + 1) + ',' + cy] = p;
   }
   let cv = 0;
-  for (let x = 60; x < 190; x += 5 + ((rng() * 4) | 0)) car(x, 118 + ((rng() * 3) | 0), cv++);
-  for (let y = 40; y < 115; y += 6 + ((rng() * 5) | 0)) car(28 + ((rng() * 3) | 0), y, cv++);
-  for (let x = 40; x < 150; x += 9 + ((rng() * 6) | 0)) car(x, 74 + ((rng() * 2) | 0), cv++);
+  for (let x = 60; x < 190; x += 5 + ((rng() * 4) | 0)) car(x, 118 + ((rng() * 3) | 0), cv++, 'x');
+  for (let y = 40; y < 115; y += 6 + ((rng() * 5) | 0)) car(28 + ((rng() * 3) | 0), y, cv++, 'y');
+  for (let x = 40; x < 150; x += 9 + ((rng() * 6) | 0)) car(x, 74 + ((rng() * 2) | 0), cv++, 'x');
   // a bus slewed across the mid junction — footprint matches the sprite
   if (!solid[76][89] && !solid[76][90] && !solid[76][91]) {
     for (let x = 89; x <= 91; x++) solid[76][x] = true;
-    props.push({ gx: 90, gy: 76, type: 'bus' });
+    props.push({ gx: 90, gy: 76, type: 'bus', dir: 'x' });
   }
 
   // ---------- THE GAS STATION (proper forecourt layout) ----------
@@ -532,35 +542,39 @@ function buildFringe() {
     props.push({ gx: GX + 20, gy: GY - 1, type: 'pylon' });
   }
   // forecourt markings: in and out
-  for (let i = 0; i < 6; i++) decals.push({ gx: GX + 2 + i * 2, gy: GY - 0.4, type: 'paintArrow' });
-  for (let i = 0; i < 5; i++) decals.push({ gx: GX + 3 + i * 2, gy: GY + 12.4, type: 'crossbar' });
+  for (let i = 0; i < 5; i++) decals.push({ gx: GX + 3 + i * 3, gy: GY - 0.4, type: 'arrowXp' });
+  for (let i = 0; i < 4; i++) decals.push({ gx: GX + 4 + i * 3, gy: GY + 12.4, type: 'arrowXm' });
 
   // ---------- signs: ONLY the shelter, and all of it handmade ----------
   // Someone walked this road afterwards with a paint tin. Planks nailed to
   // broom handles, a bedsheet between two poles, arrows daubed on the tarmac.
+  // dir = where the trail continues: 'xm' west along the road, 'ym' north up
+  // the spine. The board is angled to its street and the arrow points that way.
   const SIGNS = [
-    { gx: 188, gy: 116, text: 'SHELTER ->', kind: 'plank' },
-    { gx: 168, gy: 116, text: 'ST MARTINS. KEEP GOING', kind: 'plank' },
-    { gx: 146, gy: 116, text: 'FOOD + BEDS ->', kind: 'cloth' },
-    { gx: 124, gy: 116, text: 'SHELTER 2KM ->', kind: 'plank' },
-    { gx: 100, gy: 116, text: 'NOT FAR NOW', kind: 'plank' },
-    { gx: 76, gy: 116, text: 'ST MARTINS 1KM ->', kind: 'cloth' },
-    { gx: 50, gy: 116, text: 'TURN RIGHT AT THE CHURCH', kind: 'plank' },
-    { gx: 36, gy: 112, text: 'SHELTER ^', kind: 'plank' },
-    { gx: 34, gy: 106, text: 'YOU MADE IT. KNOCK.', kind: 'cloth' },
+    { gx: 188, gy: 116, text: 'SHELTER', kind: 'plank', dir: 'xm' },
+    { gx: 168, gy: 116, text: 'ST MARTINS. KEEP GOING', kind: 'plank', dir: 'xm' },
+    { gx: 146, gy: 116, text: 'FOOD + BEDS', kind: 'cloth', dir: 'xm' },
+    { gx: 124, gy: 116, text: 'SHELTER 2KM', kind: 'plank', dir: 'xm' },
+    { gx: 100, gy: 116, text: 'NOT FAR NOW', kind: 'plank', dir: 'xm' },
+    { gx: 76, gy: 116, text: 'ST MARTINS 1KM', kind: 'cloth', dir: 'xm' },
+    { gx: 50, gy: 116, text: 'TURN AT THE CHURCH', kind: 'plank', dir: 'xm' },
+    { gx: 36, gy: 112, text: 'SHELTER', kind: 'plank', dir: 'ym' },
+    { gx: 34, gy: 106, text: 'YOU MADE IT. KNOCK.', kind: 'cloth', dir: 'ym' },
   ];
   for (const s of SIGNS) {
     const x = s.gx | 0, y = s.gy | 0;
     if (x < MAP_W - 1 && y < MAP_H - 1 && !solid[y][x]) {
       solid[y][x] = true;
-      props.push({ gx: x, gy: y, type: 'sign', kind: s.kind });
+      props.push({ gx: x, gy: y, type: 'sign', kind: s.kind, dir: s.dir });
       signs.push({ gx: x, gy: y, text: s.text, kind: s.kind });
     }
   }
-  // painted arrows on the road itself, pointing the same way
+  // painted arrows on the tarmac, pointing the way the trail runs
   for (const [ax, ay] of [[178, 118.6], [156, 118.6], [134, 118.6], [110, 118.6],
-                          [88, 118.6], [64, 118.6], [42, 118.6], [31.4, 108], [31.4, 100]])
-    decals.push({ gx: ax, gy: ay, type: 'paintArrow' });
+                          [88, 118.6], [64, 118.6], [42, 118.6]])
+    decals.push({ gx: ax, gy: ay, type: 'arrowXm' });
+  for (const [ax, ay] of [[31.4, 108], [31.4, 100]])
+    decals.push({ gx: ax, gy: ay, type: 'arrowYm' });
 
   // ---------- the JUNKYARD gate, seen from the road ----------
   // the yard's outer wall, so returning is an actual door and not a void
@@ -577,8 +591,9 @@ function buildFringe() {
   props.push({ gx: MAP_W - 2, gy: gy0 - 1, type: 'post', big: true });
   props.push({ gx: MAP_W - 2, gy: gy1 + 1, type: 'post', big: true });
   props.push({ gx: MAP_W - 2, gy: 120, type: 'gate', open: true, dir: 'b' });
-  signs.push({ gx: MAP_W - 4, gy: 120, text: 'JUNKYARD', kind: 'plank' });
-  props.push({ gx: MAP_W - 4, gy: 117, type: 'sign', kind: 'plank' });
+  // one board by the gate, its text on the same tile as the post
+  props.push({ gx: MAP_W - 4, gy: 117, type: 'sign', kind: 'plank', dir: 'xp' });
+  signs.push({ gx: MAP_W - 4, gy: 117, text: 'JUNKYARD', kind: 'plank' });
 
   // ---------- patrol routes: junctions and the forecourt ----------
   for (const [px2, py2] of [[30, 120], [92, 120], [165, 120], [30, 75], [92, 75], [165, 75],

@@ -1119,16 +1119,28 @@ function drawProp(p, x, y) {
     }
   }
   else if (T === 'trafficLight') { img = Sprites.trafficLight; oyOff = -40; drawShadow(x, y, 4); }
-  else if (T === 'busStop') { img = Sprites.busStop; oyOff = -26; drawShadow(x, y, 12); }
+  else if (T === 'busStop') {
+    // a shelter runs along its pavement, so it uses the sheared variant
+    const set = Sprites.busStopIso;
+    img = p.dir === 'y' ? set.y : set.x;
+    oyOff = -26 - Math.round(Sprites.busStop.width * 0.25);
+    drawShadow(x, y, 12);
+  }
   else if (T === 'dumpster') { img = Sprites.dumpster; oyOff = -15; drawShadow(x, y, 9); }
   else if (T === 'hydrant') { img = Sprites.hydrant; oyOff = -12; drawShadow(x, y, 3); }
   else if (T === 'postbox') { img = Sprites.postbox; oyOff = -16; drawShadow(x, y, 4); }
   else if (T === 'sign') {
-    img = p.kind === 'cloth' ? Sprites.signCloth : Sprites.signPlank;
-    oyOff = p.kind === 'cloth' ? -20 : -22;
+    const set = p.kind === 'cloth' ? Sprites.signClothDir : Sprites.signPlankDir;
+    img = set[p.dir || 'xm'];
+    const base = p.kind === 'cloth' ? 22 : 24;
+    oyOff = -base - Math.round((p.kind === 'cloth' ? 32 : 28) * 0.25);
     drawShadow(x, y, 4);
   }
-  else if (T === 'bus') { img = Sprites.bus; oyOff = -26; drawShadow(x, y + 1, 24); }
+  else if (T === 'bus') {
+    img = p.dir === 'y' ? Sprites.busIso.y : Sprites.busIso.x;
+    oyOff = -26 - Math.round(Sprites.bus.width * 0.25);
+    drawShadow(x, y + 1, 22);
+  }
   else if (T === 'pump') {
     img = Sprites.fuelPump; oyOff = -22; drawShadow(x, y, 6);
     addLight(x + 1, y - 14, 0, 7, '122,210,122', 0.16);
@@ -1136,7 +1148,13 @@ function drawProp(p, x, y) {
   else if (T === 'pillar') { img = Sprites.pillar; oyOff = -40; drawShadow(x, y, 5); }
   else if (T === 'boom') { img = Sprites.boomBarrel; oyOff = -15; drawShadow(x, y, 5); }
   else if (T === 'scrap') { img = Sprites.scrapPiles[p.v]; oyOff = -20; drawShadow(x, y, 9); }
-  else if (T === 'car') { img = Sprites.cars[p.v]; oyOff = -18; drawShadow(x, y + 1, 15); }
+  else if (T === 'car') {
+    if (p.dir) {
+      img = (p.dir === 'y' ? Sprites.carsIso.y : Sprites.carsIso.x)[p.v];
+      oyOff = -18 - Math.round(Sprites.cars[p.v].width * 0.25);
+    } else { img = Sprites.cars[p.v]; oyOff = -18; }
+    drawShadow(x, y + 1, 14);
+  }
   else if (T === 'barrel') { img = Sprites.barrel; oyOff = -14; drawShadow(x, y, 5); }
   else if (T === 'barrelTipped') { img = Sprites.barrelTipped; oyOff = -8; drawShadow(x, y, 7); }
   else if (T === 'tires') { img = Sprites.tires; oyOff = -12; drawShadow(x, y, 6); }
