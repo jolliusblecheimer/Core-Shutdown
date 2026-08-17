@@ -750,9 +750,9 @@ function render() {
   // tall props reach far up-screen, so pull from a taller band of cells
   for (const p of gatherNear(propCells, vx0 - 2, vy0 - 2, vx1 + 8, vy1 + 8, [])) {
     const s = isoToScreen(p.gx + 0.5, p.gy + 0.5);
-    // roofs sort by their far corner so they cover their own walls
-    const depth = (p.type === 'roof' || p.type === 'canopy')
-      ? isoToScreen(p.foot[0] + p.foot[2], p.foot[1] + p.foot[3]).y + 1
+    // volumes sort by their south corner: anything in front of that draws over
+    const depth = (p.type === 'building' || p.type === 'canopy')
+      ? isoToScreen(p.foot[0] + p.foot[2], p.foot[1] + p.foot[3]).y - 1
       : (p.foot ? s.y + (p.foot[2] + p.foot[3]) * 4 : s.y);
     draws.push({ depth, draw: () => drawProp(p, s.x - ox, s.y - oy) });
   }
@@ -1039,7 +1039,14 @@ function drawRoof(p) {
 
 function drawProp(p, x, y) {
   const T = p.type;
-  if (T === 'roof' || T === 'canopy') { drawRoof(p); return; }
+  if (T === 'building') {
+    // one pre-rendered volume: faces and roof already share their corners
+    const bs = Sprites.makeBuilding(p.foot[2], p.foot[3], p.kind, p.seed);
+    const a = isoToScreen(p.foot[0], p.foot[1]);
+    ctx.drawImage(bs.img, Math.round(a.x - lastOx - bs.ax), Math.round(a.y - lastOy - bs.ay));
+    return;
+  }
+  if (T === 'canopy') { drawRoof(p); return; }
   if (T === 'pylon') {
     ctx.drawImage(Sprites.pylonSign, Math.round(x - 11), Math.round(y - 54));
     addLight(x, y - 40, 0, 16, '255,225,190', 0.14);

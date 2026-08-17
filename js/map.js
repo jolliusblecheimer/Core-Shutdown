@@ -140,6 +140,16 @@ function wallRun(tiles, kinds, axis, front, trimS, trimE) {
 }
 const fenceKinds = n => Array.from({ length: n }, () => 'M');
 
+// a building is ONE prop: a pre-rendered volume with a single depth
+function addBuildingProp(b) {
+  props.push({
+    gx: b.x0, gy: b.y0, type: 'building',
+    foot: [b.x0, b.y0, b.w, b.h],
+    kind: b.kind || 'B',
+    seed: (b.x0 * 31 + b.y0 * 17) % 100,
+  });
+}
+
 // =====================================================================
 // AREA 1 — THE JUNKYARD (where the game begins)
 // =====================================================================
@@ -428,29 +438,8 @@ function buildFringe() {
     }
   }
 
-  // ---------- facades: every street-facing wall gets a face, and every
-  // corner gets a column so the four runs meet cleanly ----------
-  for (const b of buildings) {
-    const k = b.kind || 'B';
-    const kindsOf = n => Array.from({ length: n }, () => k);
-    // horizontal runs own the corners; vertical runs sit between them
-    const north = [], south = [], west = [], east = [];
-    for (let x = b.x0; x < b.x0 + b.w; x++) { north.push([x, b.y0]); south.push([x, b.y0 + b.h - 1]); }
-    for (let y = b.y0 + 1; y < b.y0 + b.h - 1; y++) { west.push([b.x0, y]); east.push([b.x0 + b.w - 1, y]); }
-    wallRun(north, kindsOf(north.length), 'x', false, true, true);
-    wallRun(south, kindsOf(south.length), 'x', true, true, true);
-    if (west.length) wallRun(west, kindsOf(west.length), 'y', false, true, true);
-    if (east.length) wallRun(east, kindsOf(east.length), 'y', true, true, true);
-    for (const [cx2, cy2, front] of [
-      [b.x0, b.y0, false], [b.x0 + b.w - 1, b.y0, false],
-      [b.x0, b.y0 + b.h - 1, true], [b.x0 + b.w - 1, b.y0 + b.h - 1, true],
-    ]) props.push({ gx: cx2, gy: cy2, type: 'cornerCol', front });
-    // every building gets a roof, styled by what it is
-    props.push({
-      gx: b.x0 + b.w / 2 - 0.5, gy: b.y0 + b.h / 2 - 0.5, type: 'roof',
-      foot: [b.x0, b.y0, b.w, b.h], kind: k, seed: (b.x0 * 31 + b.y0 * 17) % 100,
-    });
-  }
+  // ---------- one solid volume per building ----------
+  for (const b of buildings) addBuildingProp(b);
 
   // ---------- street dressing ----------
   const freeSpot = (x, y) => x > 1 && y > 1 && x < MAP_W - 1 && y < MAP_H - 1 &&
@@ -536,22 +525,7 @@ function buildFringe() {
     }
   }
   // the shop, glazed, east of the canopy
-  if (placeBuilding(GX + 17, GY + 2, 6, 8, 'S')) {
-    const b = buildings[buildings.length - 1];
-    const n2 = [], s2 = [], w2 = [], e2 = [];
-    for (let x = b.x0; x < b.x0 + b.w; x++) { n2.push([x, b.y0]); s2.push([x, b.y0 + b.h - 1]); }
-    for (let y = b.y0 + 1; y < b.y0 + b.h - 1; y++) { w2.push([b.x0, y]); e2.push([b.x0 + b.w - 1, y]); }
-    const S = n => Array.from({ length: n }, () => 'S');
-    wallRun(n2, S(n2.length), 'x', false, true, true);
-    wallRun(s2, S(s2.length), 'x', true, true, true);
-    wallRun(w2, S(w2.length), 'y', false, true, true);
-    wallRun(e2, S(e2.length), 'y', true, true, true);
-    for (const [cx2, cy2, front] of [[b.x0, b.y0, false], [b.x0 + b.w - 1, b.y0, false],
-                                     [b.x0, b.y0 + b.h - 1, true], [b.x0 + b.w - 1, b.y0 + b.h - 1, true]])
-      props.push({ gx: cx2, gy: cy2, type: 'cornerCol', front });
-    props.push({ gx: b.x0 + b.w / 2 - 0.5, gy: b.y0 + b.h / 2 - 0.5, type: 'roof',
-                 foot: [b.x0, b.y0, b.w, b.h], kind: 'S', seed: 7 });
-  }
+  if (placeBuilding(GX + 17, GY + 2, 6, 8, 'S')) addBuildingProp(buildings[buildings.length - 1]);
   // pylon totem at the roadside
   if (!solid[GY - 1][GX + 20]) {
     solid[GY - 1][GX + 20] = true;

@@ -1045,6 +1045,166 @@ function outlined(src) {
   Sprites.postS = post(26);
   Sprites.postL = post(34);
 
+  // =====================================================================
+  // BUILDINGS AS SOLID VOLUMES
+  // A building is not four wall cards with a lid — it's one box, drawn once
+  // into a single sprite: the two camera-facing faces plus the roof, sharing
+  // real corners. Nothing can misalign because nothing is assembled at
+  // runtime, and each building becomes ONE prop with ONE depth.
+  // =====================================================================
+  const BUILD_STYLE = {
+    // wall / wallShade / trim / roof / roofEdge / glass  + height + pitched
+    H: { w: '#6f6459', s: '#5b5147', t: '#83776a', r: '#6b4038', re: '#4a2b26', g: '#20242a', h: 46, pitch: true },
+    B: { w: '#5a453f', s: '#48352f', t: '#6d564e', r: '#3e4247', re: '#2b2f33', g: '#1d2126', h: 48 },
+    S: { w: '#565049', t: '#6a6357', s: '#443f39', r: '#414549', re: '#2c3033', g: '#171b1f', h: 44 },
+    G: { w: '#4e5054', s: '#3e4044', t: '#5f6165', r: '#3b3f43', re: '#2a2e32', g: '#22262a', h: 44 },
+    O: { w: '#64686c', s: '#4f5357', t: '#767a7e', r: '#44484c', re: '#303438', g: '#191d22', h: 64 },
+    K: { w: '#8a7c66', s: '#6f6353', t: '#9c8d74', r: '#5e5a4c', re: '#43402f', g: '#1b2026', h: 52 },
+    R: { w: '#7f796d', s: '#666158', t: '#918a7c', r: '#41485a', re: '#2c313d', g: '#2a2036', h: 58, pitch: true },
+    T: { w: '#61534e', s: '#4d4340', t: '#75655f', r: '#463e3a', re: '#2f2a27', g: '#1c2026', h: 78 },
+    N: { w: '#8d8878', s: '#726d60', t: '#a29c8a', r: '#5c584c', re: '#403d34', g: '#1b1f24', h: 58 },
+  };
+
+  function poly(g, pts, fill, stroke) {
+    g.beginPath();
+    g.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
+    g.closePath();
+    if (fill) { g.fillStyle = fill; g.fill(); }
+    if (stroke) { g.strokeStyle = stroke; g.lineWidth = 1; g.stroke(); }
+  }
+  // a rectangle in "face space": u runs along the wall, v runs up it
+  function faceQuad(P0, P1, Hh, u0, u1, v0, v1) {
+    const p = (u, v) => [P0[0] + (P1[0] - P0[0]) * u, P0[1] + (P1[1] - P0[1]) * u - Hh * v];
+    return [p(u0, v0), p(u1, v0), p(u1, v1), p(u0, v1)];
+  }
+
+  const buildingCache = new Map();
+  // returns { img, ax, ay } — ax/ay is where the building's NORTH tile corner
+  // sits inside the image
+  Sprites.makeBuilding = function (w, h, kind, seed) {
+    const key = w + 'x' + h + kind + (seed % 4);
+    const hit = buildingCache.get(key);
+    if (hit) return hit;
+    const st = BUILD_STYLE[kind] || BUILD_STYLE.B;
+    const Hh = st.h;
+    const ridge = st.pitch ? (kind === 'R' ? 20 : 13) : 0;
+    const cw = (w + h) * 16, ch = (w + h) * 8 + Hh + ridge + 4;
+    const c = makeCanvas(cw, ch), g = c.getContext('2d');
+    const ax = h * 16, ay = Hh + ridge;
+    // ground-level corners: A north, B east, C south, D west
+    const A = [ax, ay], B = [ax + w * 16, ay + w * 8];
+    const C = [w * 16, ay + (w + h) * 8], D = [0, ay + h * 8];
+    const up = p => [p[0], p[1] - Hh];
+    const A2 = up(A), B2 = up(B), C2 = up(C), D2 = up(D);
+
+    // ---- the two faces the camera can see ----
+    poly(g, [B, C, C2, B2], st.w, '#1b1e22');          // east face (lit side)
+    poly(g, [C, D, D2, C2], st.s, '#1b1e22');          // south face (shaded)
+
+    // ---- openings, laid out along each face ----
+    const rows = Math.max(1, Math.floor(Hh / 15));
+    const winRow = (P0, P1, cells, glass, isSouth) => {
+      for (let r = 0; r < rows; r++) {
+        const v0 = 0.16 + r * (0.74 / rows), v1 = v0 + 0.44 / rows;
+        for (let i = 0; i < cells; i++) {
+          const u0 = (i + 0.22) / cells, u1 = (i + 0.78) / cells;
+          if (kind === 'S' && r === rows - 1) continue;             // shop sign band
+          poly(g, faceQuad(P0, P1, Hh, u0, u1, v0, v1), glass, '#12151a');
+          // a highlight streak on the glass
+          poly(g, faceQuad(P0, P1, Hh, u0, u0 + (u1 - u0) * 0.3, v0, v1), 'rgba(150,190,215,0.07)');
+        }
+      }
+      // ground floor: shopfront glazing or a door
+      if (kind === 'S' || kind === 'G') {
+        poly(g, faceQuad(P0, P1, Hh, 0.08, 0.92, 0.04, 0.30),
+             kind === 'G' ? st.s : glass, '#12151a');
+        if (kind === 'G') for (let i = 0; i < 6; i++)
+          poly(g, faceQuad(P0, P1, Hh, 0.08, 0.92, 0.05 + i * 0.042, 0.055 + i * 0.042), st.w);
+      } else if (isSouth) {
+        poly(g, faceQuad(P0, P1, Hh, 0.44, 0.58, 0.02, 0.24), '#2e2620', '#12151a');
+        poly(g, faceQuad(P0, P1, Hh, 0.44, 0.58, 0.23, 0.26), st.t);   // lintel
+      }
+    };
+    const cellsE = Math.max(1, Math.round(h * 0.7)), cellsS = Math.max(1, Math.round(w * 0.7));
+    winRow(B, C, cellsE, st.g, false);
+    winRow(C, D, cellsS, st.g, true);
+
+    // per-type face detail
+    if (kind === 'S') {                                   // lit sign band
+      poly(g, faceQuad(C, D, Hh, 0.05, 0.95, 0.74, 0.9), '#2a2620', '#12151a');
+      poly(g, faceQuad(C, D, Hh, 0.12, 0.5, 0.78, 0.86), '#7a6f5c');
+    } else if (kind === 'N') {                            // bank pilasters
+      for (let i = 0; i <= 4; i++) {
+        poly(g, faceQuad(C, D, Hh, i / 4 - 0.03, i / 4 + 0.03, 0.05, 0.82), st.t);
+      }
+      poly(g, faceQuad(C, D, Hh, 0.05, 0.95, 0.84, 0.94), st.t, '#12151a');
+    } else if (kind === 'T') {                            // hotel balcony bands
+      for (let r = 1; r < rows; r++) {
+        const v = 0.12 + r * (0.74 / rows);
+        poly(g, faceQuad(C, D, Hh, 0.03, 0.97, v, v + 0.03), st.t);
+        poly(g, faceQuad(B, C, Hh, 0.03, 0.97, v, v + 0.03), st.t);
+      }
+    } else if (kind === 'K') {                            // school band course
+      poly(g, faceQuad(C, D, Hh, 0.02, 0.98, 0.30, 0.35), st.t);
+      poly(g, faceQuad(B, C, Hh, 0.02, 0.98, 0.30, 0.35), st.t);
+    }
+
+    // ---- the roof, sharing the exact same corners ----
+    if (st.pitch) {
+      const along = w >= h;
+      const mA = along ? [(A2[0] + D2[0]) / 2, (A2[1] + D2[1]) / 2] : [(A2[0] + B2[0]) / 2, (A2[1] + B2[1]) / 2];
+      const mB = along ? [(B2[0] + C2[0]) / 2, (B2[1] + C2[1]) / 2] : [(D2[0] + C2[0]) / 2, (D2[1] + C2[1]) / 2];
+      const rA = [mA[0], mA[1] - ridge], rB = [mB[0], mB[1] - ridge];
+      if (along) {
+        poly(g, [A2, B2, rB, rA], st.r, '#20242a');
+        poly(g, [rA, rB, C2, D2], st.re, '#20242a');
+      } else {
+        poly(g, [A2, rA, rB, D2], st.r, '#20242a');
+        poly(g, [rA, B2, C2, rB], st.re, '#20242a');
+      }
+      g.strokeStyle = '#191d22'; g.lineWidth = 1;
+      g.beginPath(); g.moveTo(rA[0], rA[1]); g.lineTo(rB[0], rB[1]); g.stroke();
+      if (kind === 'R') {                                  // ridge cross
+        const mx = (rA[0] + rB[0]) / 2, my = (rA[1] + rB[1]) / 2;
+        g.fillStyle = '#9a9284';
+        g.fillRect(mx - 1, my - 14, 2, 14);
+        g.fillRect(mx - 4, my - 11, 8, 2);
+      } else if (seed % 3 === 0) {                         // chimney
+        const cx2 = rA[0] + (rB[0] - rA[0]) * 0.28, cy2 = rA[1] + (rB[1] - rA[1]) * 0.28;
+        g.fillStyle = '#4a3a35'; g.fillRect(cx2 - 2, cy2 - 11, 5, 12);
+        g.fillStyle = '#5f4c46'; g.fillRect(cx2 - 2, cy2 - 12, 5, 2);
+      }
+    } else {
+      poly(g, [A2, B2, C2, D2], st.r, '#20242a');
+      // parapet lip around the edge
+      poly(g, [A2, B2, [B2[0], B2[1] - 3], [A2[0], A2[1] - 3]], st.re);
+      poly(g, [[A2[0], A2[1] - 3], [B2[0], B2[1] - 3], [C2[0], C2[1] - 3], [D2[0], D2[1] - 3]], st.r, '#20242a');
+      const mx = (A2[0] + C2[0]) / 2, my = (A2[1] + C2[1]) / 2 - 3;
+      if (kind === 'O' || kind === 'T' || kind === 'N') {
+        g.fillStyle = '#5a5e62'; g.fillRect(mx - 9, my - 7, 10, 7);
+        g.fillStyle = '#6c7074'; g.fillRect(mx - 9, my - 8, 10, 2);
+        g.fillStyle = '#4a4e52'; g.fillRect(mx + 3, my - 4, 7, 5);
+      } else if (kind === 'K') {
+        g.fillStyle = '#9aa2a8';
+        for (let i = -1; i <= 1; i++) g.fillRect(mx + i * 10 - 3, my - 4, 7, 4);
+        g.fillStyle = '#5a5e62'; g.fillRect(mx - 16, my - 9, 7, 8);
+      } else {
+        g.fillStyle = '#4e5256'; g.fillRect(mx - 4, my - 6, 7, 5);
+      }
+      if (kind === 'T') {                                   // hotel roof sign
+        g.fillStyle = '#8a4a44'; g.fillRect(mx - 13, my - 19, 26, 8);
+        g.fillStyle = '#cf9a92'; g.fillRect(mx - 13, my - 19, 26, 1);
+        g.fillStyle = '#e8d9c0';
+        for (let i = 0; i < 5; i++) g.fillRect(mx - 9 + i * 4, my - 16, 2, 4);
+      }
+    }
+
+    const res = { img: c, ax, ay, h: Hh };
+    if (buildingCache.size < 400) buildingCache.set(key, res);
+    return res;
+  };
+
   // building corner column — height locked to the facade so the tops meet
   (function () {
     const c = makeCanvas(7, 46), g = c.getContext('2d');
