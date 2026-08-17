@@ -22,6 +22,7 @@ function saveGame() {
       },
       mission: mission.state,
       kills: scrapper.kills,
+      bossDown: typeof bossDefeated !== 'undefined' ? bossDefeated : false,
       barrels: boomBarrels.map(b => b.alive),
       items: items.map(it => ({ ...it })),
       tut: { ...Tut.done },
@@ -54,6 +55,10 @@ function applySave(d) {
   player.swing = 0; player.swingCd = 0; player.fireCd = 0;
   mission.state = d.mission;
   scrapper.kills = d.kills || 0;
+  if (d.bossDown) {
+    bossDefeated = true;
+    openGate();
+  }
   (d.barrels || []).forEach((alive, i) => {
     const b = boomBarrels[i];
     if (b && !alive && b.alive) {

@@ -255,12 +255,40 @@ function updateItems(dt) {
   }
   const npcD = Math.hypot(player.x - npc.x, player.y - npc.y);
   if (npcD < 1.3 && npcD < bestD) { bestD = npcD; best = npc; bestKind = 'npc'; }
+  // the yard gate (main game only, never during the fight or cutscene)
+  if (!window.ARENA_MODE && !GateCine.active &&
+      !(boss.active && boss.state !== 'dead' && !bossDefeated)) {
+    const gd = Math.hypot(player.x - 21.5, player.y - 30.3);
+    if (gd < 1.7 && gd < bestD) { bestD = gd; best = 'gate'; bestKind = 'gate'; }
+  }
   if (scrapper.state === 'dead' && !scrapper.looted) {
     const d = Math.hypot(player.x - scrapper.x, player.y - scrapper.y);
     if (d < 1.1 && d < bestD) { bestD = d; best = scrapper; bestKind = 'wreck'; }
   }
 
-  if (bestKind === 'npc') {
+  if (bestKind === 'gate') {
+    const gs = isoToScreen(21.5, 30.6);
+    if (bossDefeated) {
+      Prompt = { sx: gs.x, sy: gs.y - 34, text: 'E — leave the yard' };
+      if (Input.pressed['KeyE']) {
+        Input.pressed['KeyE'] = false;
+        showMsg('TO BE CONTINUED — beyond lies the Sprawl', 3.5);
+        think('leave', 'The city is waiting. Soon.');
+      }
+    } else if (player.inv.gateKey) {
+      Prompt = { sx: gs.x, sy: gs.y - 34, text: 'E — unlock the gate' };
+      if (Input.pressed['KeyE']) {
+        Input.pressed['KeyE'] = false;
+        startGateCine();
+      }
+    } else {
+      Prompt = { sx: gs.x, sy: gs.y - 34, text: 'locked' };
+      if (Input.pressed['KeyE']) {
+        Input.pressed['KeyE'] = false;
+        think('gatelocked', 'Locked tight. Marek must have the key.');
+      }
+    }
+  } else if (bestKind === 'npc') {
     const s = isoToScreen(npc.x, npc.y);
     Prompt = { sx: s.x, sy: s.y - 30, text: mission.state === 'turned' ? 'E — trade' : 'E — talk' };
     if (Input.pressed['KeyE']) { Input.pressed['KeyE'] = false; talkToNpc(); }

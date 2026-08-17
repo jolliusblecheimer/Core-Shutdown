@@ -719,6 +719,35 @@ function outlined(src) {
     Sprites.bossArm = outlined(a);
   })();
 
+  // ---- THE YARD GATE: two braced steel doors in the south wall ----
+  (function () {
+    const c = makeCanvas(54, 30), g = c.getContext('2d');
+    px(g, 0, 2, 54, 4, '#4e463e');                     // header beam
+    px(g, 0, 2, 54, 1, '#5e564c');
+    for (const ox of [1, 28]) {                        // two door panels
+      px(g, ox, 6, 25, 21, '#3c3c44');
+      px(g, ox, 6, 25, 2, '#4c4c54');
+      for (let i = 0; i < 5; i++) px(g, ox + 2 + i * 5, 8, 2, 16, '#46464e');  // ribs
+      for (let i = 0; i < 5; i++) px(g, ox + i * 5, 24, 3, 3, i % 2 ? '#a8873a' : '#26262c'); // hazard stripe
+      px(g, ox + 11, 15, 3, 3, '#2a2a30');             // handle plate
+    }
+    px(g, 26, 6, 2, 21, '#22222a');                    // center seam
+    px(g, 25, 14, 4, 5, '#5c5c66');                    // the LOCK
+    px(g, 26, 16, 2, 2, '#1a1a20');                    // keyhole
+    Sprites.gateClosed = outlined(c);
+
+    const o = makeCanvas(54, 30), og = o.getContext('2d');
+    px(og, 0, 2, 54, 4, '#4e463e');                    // header beam stays
+    px(og, 0, 2, 54, 1, '#5e564c');
+    px(og, 2, 6, 8, 21, '#3c3c44');                    // doors swung aside
+    px(og, 44, 6, 8, 21, '#3c3c44');
+    px(og, 3, 8, 2, 16, '#46464e');
+    px(og, 45, 8, 2, 16, '#46464e');
+    px(og, 10, 6, 34, 21, '#0a0908');                  // the way out — open dark
+    px(og, 22, 10, 10, 14, '#12160e');                 // a hint of world beyond
+    Sprites.gateOpen = outlined(o);
+  })();
+
   // corner / doorframe posts that cap wall joints
   function post(h) {
     const c = makeCanvas(6, h), g = c.getContext('2d');

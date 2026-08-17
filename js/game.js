@@ -417,12 +417,14 @@ function update(dt) {
       Input.pressed[k] = false;
     updateParticles(dt);
   } else {
-    const bossCine = boss.active && (boss.state === 'cine2' || boss.state === 'cine3');
+    const bossCine = GateCine.active ||
+      (boss.active && (boss.state === 'cine2' || boss.state === 'cine3'));
     if (!bossCine) {
       updatePlayer(dt);
       updateScrapper(dt);
       updateItems(dt);
     }
+    updateGateCine(dt);
     updateBoss(dt);
     updateNpc(dt);
     updateBullets(dt);
@@ -447,14 +449,22 @@ function update(dt) {
     if (m.y > VIEW_H) m.y -= VIEW_H;
   }
 
-  // camera: normally the player; during a boss cutscene, the boss — zoomed
+  // camera: the player normally; the boss during its cutscenes; during the
+  // gate cutscene, first the gate lock — then whatever rises behind you
   const cineOn = boss.active && (boss.state === 'cine2' || boss.state === 'cine3');
-  const focus = cineOn ? isoToScreen(boss.x, boss.y) : isoToScreen(player.x, player.y);
+  let focus;
+  if (GateCine.active) {
+    focus = GateCine.spawned ? isoToScreen(boss.x, boss.y) : isoToScreen(21.5, 30.0);
+  } else if (cineOn) {
+    focus = isoToScreen(boss.x, boss.y);
+  } else {
+    focus = isoToScreen(player.x, player.y);
+  }
   const targetX = focus.x - VIEW_W / 2, targetY = focus.y - VIEW_H / 2 - 8;
   if (!camInit) { camX = targetX; camY = targetY; camInit = true; }
   camX += (targetX - camX) * Math.min(1, 8 * dt);
   camY += (targetY - camY) * Math.min(1, 8 * dt);
-  const zoomTarget = cineOn ? 1.55 : 1;
+  const zoomTarget = GateCine.active ? 1.35 : (cineOn ? 1.55 : 1);
   cineZoom += (zoomTarget - cineZoom) * Math.min(1, 5 * dt);
 }
 
@@ -719,6 +729,15 @@ function drawProp(p, x, y) {
     if (p.front) ctx.globalAlpha = 0.15 + roofAlpha * 0.85;
     ctx.drawImage(p.img, Math.round(x + p.dx), Math.round(y - p.lift + p.dy));
     ctx.globalAlpha = 1;
+    return;
+  }
+  if (T === 'gate') {
+    const img = p.open ? Sprites.gateOpen : Sprites.gateClosed;
+    ctx.drawImage(img, Math.round(x - img.width / 2), Math.round(y - 27));
+    if (!p.open) {
+      // the lock glints — you need the key
+      addLight(x, y - 12, 0, 8, '255,210,120', 0.12 + 0.06 * Math.sin(gameTime * 2));
+    }
     return;
   }
   if (T === 'post') {

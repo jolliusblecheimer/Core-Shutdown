@@ -11,6 +11,16 @@ const props = [];    // {gx, gy, type, v, dir, front, foot}
 const decals = [];
 const moundSpawns = [];   // enemy spawn points tucked behind trash mountains
 const boomBarrels = [];   // explosive barrels — shoot to detonate
+let gateProp = null;      // the yard gate (south wall) — opens when the boss falls
+
+function openGate() {
+  if (!gateProp || gateProp.open) return;
+  gateProp.open = true;
+  for (let x = 20; x <= 22; x++) {
+    solid[MAP_H - 1][x] = false;
+    heavy[MAP_H - 1][x] = false;
+  }
+}
 const patrolPoints = [];  // scrap heaps that robots patrol between
 const patrolCenter = { x: 21.5, y: 12.5 };  // hub near the shack — all routes pass it
 
@@ -58,7 +68,14 @@ const SHACK = { x0: 18, y0: 4, x1: 24, y1: 9, doorX: 21 };
   // perimeter barricade — corner tiles belong to BOTH runs so each corner
   // gets both wall faces meeting in a proper L (no open gaps/protrusions)
   wallRun(Array.from({ length: MAP_W }, (_, i) => [i, 0]), fenceKinds(MAP_W), 'x', false, true, true);
-  wallRun(Array.from({ length: MAP_W }, (_, i) => [i, MAP_H - 1]), fenceKinds(MAP_W), 'x', false, true, true);
+  // south wall parts around THE GATE (x 20..22, aligned with the shack path)
+  wallRun(Array.from({ length: 20 }, (_, i) => [i, MAP_H - 1]), fenceKinds(20), 'x', false, true, false);
+  wallRun(Array.from({ length: 9 }, (_, i) => [23 + i, MAP_H - 1]), fenceKinds(9), 'x', false, false, true);
+  for (let x = 20; x <= 22; x++) { solid[MAP_H - 1][x] = true; heavy[MAP_H - 1][x] = true; }
+  gateProp = { gx: 21, gy: MAP_H - 1, type: 'gate', open: false };
+  props.push(gateProp);
+  props.push({ gx: 19, gy: MAP_H - 1, type: 'post', big: true });
+  props.push({ gx: 23, gy: MAP_H - 1, type: 'post', big: true });
   wallRun(Array.from({ length: MAP_H }, (_, i) => [0, i]), fenceKinds(MAP_H), 'y', false, true, true);
   wallRun(Array.from({ length: MAP_H }, (_, i) => [MAP_W - 1, i]), fenceKinds(MAP_H), 'y', false, true, true);
 
@@ -120,7 +137,8 @@ const SHACK = { x0: 18, y0: 4, x1: 24, y1: 9, doorX: 21 };
     (x >= SHACK.doorX - 1 && x <= SHACK.doorX + 1 && y > SHACK.y1 && y <= SHACK.y1 + 3) || // door approach
     Math.hypot(x - 6.5, y - 26.5) < 2.5 ||     // player spawn
     Math.hypot(x - 9.5, y - 23.5) < 1.5 ||     // pistol
-    Math.hypot(x - 24.5, y - 18.5) < 1.5;      // scrapper spawn
+    Math.hypot(x - 24.5, y - 18.5) < 1.5 ||    // scrapper spawn
+    Math.hypot(x - 21.5, y - 28.5) < 3;        // gate approach / boss arena
 
   function scatter(type, count, variants) {
     let placed = 0, tries = 0;

@@ -19,6 +19,38 @@ const boss = {
   name: 'THE COMPACTOR',
 };
 
+let bossDefeated = false;
+
+// the gate cutscene: key goes in the lock — and the yard answers
+const GateCine = { active: false, t: 0, spawned: false };
+
+function startGateCine() {
+  GateCine.active = true;
+  GateCine.t = 0;
+  GateCine.spawned = false;
+  showMsg('You slot the key. The lock grinds...', 2.4);
+  SFX.uiOpen();
+}
+
+function updateGateCine(dt) {
+  if (!GateCine.active) return;
+  GateCine.t += dt;
+  if (GateCine.t > 1.1 && GateCine.t < 1.5) addShake(1.4);
+  if (GateCine.t >= 1.5 && !GateCine.spawned) {
+    GateCine.spawned = true;
+    spawnBoss(21.5, 25.5);            // it was the junk pile behind you all along
+    SFX.rage();
+    think('gateboss', 'Behind me—!');
+  }
+  if (GateCine.spawned && boss.state !== 'reveal') {
+    GateCine.active = false;
+    // two packs of rounds shake loose from the junk for the fight
+    items.push({ type: 'ammo', x: 18.0, y: 28.5, amount: 6, bob: 0.4 });
+    items.push({ type: 'ammo', x: 25.0, y: 27.5, amount: 6, bob: 1.7 });
+    showMsg('Rounds glint in the junk — grab them!', 3);
+  }
+}
+
 const Thoughts = { done: {}, text: '', t: 0 };
 function think(id, text) {
   if (Thoughts.done[id]) return;
@@ -183,10 +215,17 @@ function bossHit(wx, wy, dmg, kind) {
       SFX.boom();
       spawnSparks(boss.x, boss.y, 30, ['#ffd27a', '#ff7a2e', '#8a8a92', '#7d4a2a'], 5);
       spawnSmoke(boss.x, boss.y, 15);
-      showMsg('THE COMPACTOR IS DOWN — Hydraulic Piston acquired', 4);
       player.inv.tech += 2;
       player.inv.scrap += 8;
-      if (window.ARENA_MODE) showMsg('BOSS DOWN — press R to refight', 4);
+      if (window.ARENA_MODE) {
+        showMsg('BOSS DOWN — press R to refight', 4);
+      } else {
+        bossDefeated = true;
+        openGate();
+        SFX.chime();
+        showMsg('THE COMPACTOR IS DOWN — the gate stands open', 4.5);
+        saveGame();
+      }
     }
   } else {
     // clank: the game saying "not here"
