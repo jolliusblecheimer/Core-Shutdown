@@ -192,6 +192,21 @@ function updatePlayer(dt) {
     player.combatT = 0;
     addShake(1);
     if (m.stab) SFX.stab(); else SFX.swing();
+    // melee vs the boss: impact point along the aim line at the hull edge
+    if (typeof boss !== 'undefined' && boss.active &&
+        boss.state !== 'hidden' && boss.state !== 'dead') {
+      const bd = Math.hypot(boss.x - player.x, boss.y - player.y);
+      if (bd < m.range + boss.r) {
+        const dirW = screenToIso(Math.cos(player.angle), Math.sin(player.angle));
+        const dl = Math.hypot(dirW.x, dirW.y) || 1;
+        const reach = Math.min(bd, m.range + boss.r * 0.5);
+        const hx = player.x + (dirW.x / dl) * reach;
+        const hy = player.y + (dirW.y / dl) * reach;
+        if (Math.hypot(hx - boss.x, hy - boss.y) < boss.r + 0.3) {
+          bossHit(hx, hy, m.dmg, m.stab ? 'knife' : 'pipe');
+        }
+      }
+    }
     if (scrapper.state !== 'dead') {
       const dx = scrapper.x - player.x, dy = scrapper.y - player.y;
       const d = Math.hypot(dx, dy);
@@ -392,6 +407,12 @@ function explodeBarrel(b) {
     SFX.hurt();
     if (player.hp <= 0) { player.hp = 0; player.dead = 2; SFX.die(); }
   }
+  // bosses shrug off half of a blast (armor plating)
+  if (typeof boss !== 'undefined' && boss.active &&
+      boss.state !== 'hidden' && boss.state !== 'dead') {
+    const bd = Math.hypot(boss.x - cx, boss.y - cy);
+    if (bd < R + boss.r) bossHit(boss.x, boss.y, Math.round(30 + 60 * (1 - Math.min(1, bd / R))), 'blast');
+  }
   // shreds machines — a well-placed barrel one-shots a Scrapper
   if (scrapper.state !== 'off' && scrapper.state !== 'dead') {
     const sd = Math.hypot(scrapper.x - cx, scrapper.y - cy);
@@ -440,7 +461,13 @@ function updateBullets(dt) {
         }
       }
     }
-    if (scrapper.state !== 'dead' && Math.hypot(b.x - scrapper.x, b.y - scrapper.y) < 0.45) {
+    if (!hit && typeof boss !== 'undefined' && boss.active &&
+        boss.state !== 'hidden' && boss.state !== 'dead' &&
+        Math.hypot(b.x - boss.x, b.y - boss.y) < boss.r + 0.15) {
+      hit = true;
+      bossHit(b.x, b.y, 10, 'bullet');
+    }
+    if (!hit && scrapper.state !== 'dead' && Math.hypot(b.x - scrapper.x, b.y - scrapper.y) < 0.45) {
       hit = true;
       scrapper.hp -= 10;
       scrapper.hitFlash = 0.08;

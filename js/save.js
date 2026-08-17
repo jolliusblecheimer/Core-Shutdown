@@ -5,7 +5,8 @@ const SAVE_KEY = 'coreshutdown_save_v1';
 let playerName = '';
 
 function saveGame() {
-  // only ever persist real gameplay — never menu/test/title states
+  // only ever persist real gameplay — never menu/test/title/arena states
+  if (window.ARENA_MODE) return;
   if (typeof GameState !== 'undefined' && GameState !== 'playing') return;
   try {
     const d = {

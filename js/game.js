@@ -18,7 +18,8 @@ let playTime = 0;      // time actually in-game (drives tutorial triggers)
 let saveT = 0;         // autosave heartbeat
 
 // BOOT → SPLASH → TITLE → INTRO → NAMING → PLAYING  (plus CONFIRMWIPE)
-let GameState = 'boot';
+// Arena builds skip everything and drop straight into the fight.
+let GameState = window.ARENA_MODE ? 'playing' : 'boot';
 let splashT = 0;
 
 // neon power-on sound — synthesized live, no audio files.
@@ -69,8 +70,25 @@ function playSplashSound() {
     wh.start(t0 + 2.0); wh.stop(t0 + 3.5);
   } catch (e) { /* no audio — carry on silently */ }
 }
-let pendingSave = loadSaveData();
+let pendingSave = window.ARENA_MODE ? null : loadSaveData();
 if (pendingSave) playerName = pendingSave.name;
+
+// arena loadout: fully armed, tutorials off, boss waiting
+if (window.ARENA_MODE) {
+  playerName = 'ARENA';
+  player.owned = { pipe: true, knife: true, pistol: true };
+  player.melee = 'knife';
+  player.hasGun = true;
+  player.active = 'gun';
+  player.ammo = 60;
+  player.inv.snack = 5;
+  player.scrollHintT = 0;
+  Tut.done = { move: 1, melee: 1, enemy: 1, loot: 1, gun: 1, stealth: 1 };
+  player.x = 16.5; player.y = 21.5;
+  player.respawnX = 16.5; player.respawnY = 21.5;
+  spawnBoss(16.5, 14.5);
+  hintTimer = 8;
+}
 const INTRO_LINES = [
   'The machines took the city.',
   'Everyone who could run, ran.',
@@ -321,9 +339,17 @@ function update(dt) {
     }
     return;
   }
+  // weak-point hit-pause: the world holds its breath for a couple frames
+  if (hitPause > 0) { hitPause -= dt; return; }
+
   playTime += dt;
   saveT += dt;
   if (saveT > 5) { saveT = 0; saveGame(); }
+
+  if (window.ARENA_MODE && Input.pressed['KeyR']) {
+    Input.pressed['KeyR'] = false;
+    resetArena();
+  }
   const w = screenToIso(Input.mouseX + camX, Input.mouseY + camY);
   Input.worldX = w.x; Input.worldY = w.y;
 
@@ -392,6 +418,7 @@ function update(dt) {
   } else {
     updatePlayer(dt);
     updateScrapper(dt);
+    updateBoss(dt);
     updateNpc(dt);
     updateBullets(dt);
     updateExplosions(dt);
@@ -401,6 +428,9 @@ function update(dt) {
     hintTimer -= dt;
   }
   Msg.t -= dt;
+  Thoughts.t -= dt;
+  // arena: death resets the whole fight
+  if (window.ARENA_MODE && player.dead > 0 && player.dead < 0.1) resetArena();
 
   const targetRoof = insideShack(player.x, player.y) ? 0.12 : 1;
   roofAlpha += (targetRoof - roofAlpha) * Math.min(1, 10 * dt);
@@ -509,6 +539,18 @@ function render() {
   }
   { const s = isoToScreen(scrapper.x, scrapper.y);
     draws.push({ depth: s.y, draw: () => drawScrapper(s.x - ox, s.y - oy) }); }
+  if (boss.active && boss.state !== 'hidden') {
+    const s = isoToScreen(boss.x, boss.y);
+    draws.push({ depth: s.y + 2, draw: () => drawBoss(s.x - ox, s.y - oy) });
+    for (const sh of boss.shots) {
+      const ss = isoToScreen(sh.x, sh.y);
+      draws.push({ depth: ss.y + 1, draw: () => {
+        ctx.fillStyle = '#ff8b45';
+        ctx.fillRect(Math.round(ss.x - ox - 1), Math.round(ss.y - oy - 6), 3, 3);
+        addLight(ss.x - ox, ss.y - oy - 5, 0, 9, '255,140,60', 0.3);
+      }});
+    }
+  }
   { const s = isoToScreen(npc.x, npc.y);
     draws.push({ depth: s.y, draw: () => drawNpc(s.x - ox, s.y - oy) }); }
   { const s = isoToScreen(player.x, player.y);
@@ -700,6 +742,56 @@ function drawProp(p, x, y) {
     addLight(x, y - 7, 0, 18 + Math.sin(gameTime * 9) * 3, '255,140,60', 0.35);
   }
   if (img) ctx.drawImage(img, Math.round(x - img.width / 2), Math.round(y + oyOff));
+}
+
+function drawBoss(x, y) {
+  const b = boss;
+  const rise = b.state === 'reveal' ? (1 - Math.min(1, b.t / 1.6)) * 22 : 0;
+  const slump = b.state === 'stagger' ? 4 : (b.state === 'dead' ? 8 : 0);
+  drawShadow(x, y + 2, 22);
+  if (b.state === 'dead' && ((gameTime * 2) | 0) % 3 === 0) spawnSmoke(b.x, b.y, 1);
+
+  // crusher arm points along facing (behind the body when facing away)
+  const fs = isoToScreen(b.fx, b.fy);
+  const armAngle = Math.atan2(fs.y, fs.x);
+  const armBehind = Math.sin(armAngle) < 0;
+  const drawArm = () => {
+    ctx.save();
+    ctx.translate(x, y - 16 + rise + slump);
+    ctx.rotate(armAngle);
+    if (Math.cos(armAngle) < 0) ctx.scale(1, -1);
+    ctx.drawImage(Sprites.bossArm, 12, -6);
+    ctx.restore();
+  };
+  if (armBehind) drawArm();
+  ctx.globalAlpha = b.state === 'dead' ? 0.85 : 1;
+  ctx.drawImage(Sprites.bossBody, Math.round(x - 25), Math.round(y - 36 + rise + slump));
+  ctx.globalAlpha = 1;
+  if (!armBehind) drawArm();
+
+  // THE EYE — unmistakably the weak point: bright, pulsing, alive
+  if (b.state !== 'dead') {
+    const e = bossEyePos();
+    const es = isoToScreen(e.x, e.y);
+    const ex = es.x - lastOx, ey = es.y - lastOy - 14 + rise + slump;
+    const winding = (b.state === 'slam' || (b.state === 'charge' && b.t > 0));
+    const pulse = 0.5 + 0.5 * Math.sin(gameTime * 6);
+    ctx.fillStyle = winding && ((performance.now() / 90) | 0) % 2 ? '#ff5040' : '#ffb02e';
+    ctx.beginPath();
+    ctx.arc(Math.round(ex), Math.round(ey), 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fff2c0';
+    ctx.fillRect(Math.round(ex) - 1, Math.round(ey) - 1, 1, 1);
+    addLight(ex, ey, 0, 16 + pulse * 6, winding ? '255,90,60' : '255,176,46', 0.55);
+
+    // rear core vents — glow hard when the plates are thrown open
+    const cs = isoToScreen(b.x - b.fx * 0.8, b.y - b.fy * 0.8);
+    const cx2 = cs.x - lastOx, cy2 = cs.y - lastOy - 18 + rise + slump;
+    const open = b.state === 'stagger';
+    ctx.fillStyle = open ? '#ffb02e' : 'rgba(255,176,46,0.35)';
+    for (let i = -1; i <= 1; i++) ctx.fillRect(Math.round(cx2 + i * 4) - 1, Math.round(cy2), 2, 4);
+    if (open) addLight(cx2, cy2, 0, 22 + pulse * 8, '255,176,46', 0.6);
+  }
 }
 
 function drawShadow(x, y, w) {
@@ -1000,6 +1092,51 @@ function drawHUD() {
   g.strokeStyle = '#5a4a38';
   g.lineWidth = U;
   g.strokeRect((mx - 1.5) * U, (my - 1.5) * U, (mw + 3) * U, (mh + 3) * U);
+
+  // boss health bar (top center)
+  if (boss.active && boss.state !== 'hidden' && boss.state !== 'dead' && boss.state !== 'reveal') {
+    ptext(boss.name, VIEW_W / 2, 6, 8, '#ff5040', 'center');
+    uiRect(VIEW_W / 2 - 86, 17, 172, 7, 'rgba(0,0,0,0.6)');
+    uiRect(VIEW_W / 2 - 84, 19, 168, 3, '#3a1410');
+    uiRect(VIEW_W / 2 - 84, 19, Math.round(168 * Math.max(0, boss.hp) / boss.maxHp), 3, '#ff5040');
+  }
+
+  // thought bubble — the traveller's inner voice
+  if (Thoughts.t > 0 && player.dead <= 0) {
+    const ps = isoToScreen(player.x, player.y);
+    const bx = ps.x - lastOx, byy = ps.y - lastOy - 30;
+    const lines = ptWrap(Thoughts.text, 26);
+    let w = 0;
+    for (const l of lines) w = Math.max(w, ptWidth(l, 8));
+    const bw = w + 12, bh = lines.length * 10 + 8;
+    const alpha = Math.min(1, Thoughts.t);
+    uictx.globalAlpha = alpha;
+    uiRect(bx - bw / 2, byy - bh, bw, bh, 'rgba(12,10,8,0.92)');
+    uictx.strokeStyle = '#5a4a38';
+    uictx.lineWidth = U;
+    uictx.strokeRect((bx - bw / 2) * U, (byy - bh) * U, bw * U, bh * U);
+    // tail: three shrinking dots toward the head (thought, not speech)
+    uiRect(bx - 2, byy + 2, 3, 3, 'rgba(12,10,8,0.92)');
+    uiRect(bx - 5, byy + 6, 2, 2, 'rgba(12,10,8,0.92)');
+    for (let i = 0; i < lines.length; i++) {
+      ptext(lines[i], bx, byy - bh + 4 + i * 10, 8, '#e8dcc8', 'center', alpha);
+    }
+    uictx.globalAlpha = 1;
+  }
+
+  // crosshair reticle during boss fights — glows amber over the weak point
+  if (boss.active && boss.state !== 'dead' && boss.state !== 'hidden' &&
+      player.hasGun && player.active === 'gun' && player.dead <= 0) {
+    const e = bossEyePos();
+    const onEye = Math.hypot(Input.worldX - e.x, Input.worldY - e.y) < 0.55;
+    const rc = onEye ? '#ffb02e' : 'rgba(232,217,192,0.7)';
+    const mx2 = Input.mouseX, my2 = Input.mouseY;
+    const gap = onEye ? 3 : 2, len = onEye ? 4 : 3;
+    uiRect(mx2 - gap - len, my2, len, 1, rc);
+    uiRect(mx2 + gap + 1, my2, len, 1, rc);
+    uiRect(mx2, my2 - gap - len, 1, len, rc);
+    uiRect(mx2, my2 + gap + 1, 1, len, rc);
+  }
 
   // mission objective (top-left)
   if (mission.state === 'active' || mission.state === 'complete') {
