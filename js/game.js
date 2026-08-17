@@ -819,6 +819,47 @@ function drawBoss(x, y) {
   ctx.drawImage(Sprites.bossBody, Math.round(x - 18), Math.round(bodyY));
   ctx.globalAlpha = 1;
 
+  // FRONT ARMOR PLOW — the visibly hard zone. Bolted panels arc across the
+  // facing side: this is the game showing "don't shoot here". The panels
+  // swing OPEN during a stagger (that's why everything hits then).
+  if (b.state !== 'dead' && b.state !== 'stagger' && b.state !== 'reveal') {
+    const cy = bodyY + 13;
+    ctx.strokeStyle = '#3a3a42';                        // plate mass
+    ctx.lineWidth = 7;
+    ctx.beginPath();
+    ctx.ellipse(x, cy, 16, 10, 0, faceAngle - 0.95, faceAngle + 0.95);
+    ctx.stroke();
+    ctx.strokeStyle = '#5a5a66';                        // lit top edge
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.ellipse(x, cy - 2, 16, 10, 0, faceAngle - 0.9, faceAngle + 0.9);
+    ctx.stroke();
+    ctx.strokeStyle = '#22222a';                        // panel seams
+    ctx.lineWidth = 1;
+    for (let i = -2; i <= 2; i++) {
+      const a = faceAngle + i * 0.4;
+      ctx.beginPath();
+      ctx.moveTo(x + Math.cos(a) * 12, cy + Math.sin(a) * 7);
+      ctx.lineTo(x + Math.cos(a) * 20, cy + Math.sin(a) * 12.5);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#71717e';                          // rivets
+    for (let i = -3; i <= 3; i += 2) {
+      const a = faceAngle + i * 0.27;
+      ctx.fillRect(Math.round(x + Math.cos(a) * 16) - 1, Math.round(cy + Math.sin(a) * 10) - 1, 2, 2);
+    }
+  } else if (b.state === 'stagger') {
+    // plates hanging open at the sides — the whole machine is soft right now
+    ctx.strokeStyle = '#3a3a42';
+    ctx.lineWidth = 6;
+    for (const dir of [-1, 1]) {
+      ctx.beginPath();
+      ctx.ellipse(x, bodyY + 13, 19, 12, 0, faceAngle + dir * 1.5, faceAngle + dir * 2.3, dir < 0);
+      ctx.stroke();
+    }
+    ctx.lineWidth = 1;
+  }
+
   // phase-transition shield: a crackling bubble — untouchable until it drops
   if (b.state === 'shield' || b.state === 'nova') {
     const sp = 0.6 + 0.4 * Math.sin(gameTime * 10);
