@@ -381,6 +381,16 @@ function talkToNpc() {
     tutShow('gun',
       ['Scroll the MOUSE WHEEL to switch', 'between pistol and melee.', 'LMB uses the selected weapon.'],
       'any', 'PRESS ANY KEY');
+  } else if (!Tut.done.marekRoads) {
+    // once you're armed, he tells you what's out there — the sign trail
+    Tut.done.marekRoads = true;
+    startDialog([
+      "Beyond that gate is the old ring road. Follow it west.",
+      "Signs still stand. They'll take you to St Martin's —",
+      "a church. People live in it now. They call it Candlelight.",
+      "Past that: a school, an airstrip they called an evacuation point.",
+      "Read the signs, traveller. This city still says where it goes.",
+    ]);
   } else {
     Trade.open = true;
     SFX.uiOpen();

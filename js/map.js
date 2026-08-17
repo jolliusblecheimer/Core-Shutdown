@@ -356,7 +356,7 @@ function buildFringe() {
 
   // ---------- city blocks: buildings fill the space between streets ----------
   const buildings = [];
-  function placeBuilding(x0, y0, w, h) {
+  function placeBuilding(x0, y0, w, h, kind) {
     for (let y = y0; y < y0 + h; y++)
       for (let x = x0; x < x0 + w; x++) {
         if (x < 1 || y < 1 || x >= MAP_W - 1 || y >= MAP_H - 1) return false;
@@ -364,9 +364,25 @@ function buildFringe() {
       }
     for (let y = y0; y < y0 + h; y++)
       for (let x = x0; x < x0 + w; x++) { solid[y][x] = true; heavy[y][x] = true; ground[y][x] = 2; }
-    buildings.push({ x0, y0, w, h });
+    buildings.push({ x0, y0, w, h, kind: kind || null });
     return true;
   }
+  // ---------- landmarks first, so they claim their ground ----------
+  // THE SCHOOL: a long pale block with a fenced yard, on the east cross street
+  const SCH = { x: 108, y: 56, w: 22, h: 11 };
+  placeBuilding(SCH.x, SCH.y, SCH.w, SCH.h, 'K');
+  for (let y = SCH.y + SCH.h + 1; y < SCH.y + SCH.h + 7; y++)
+    for (let x = SCH.x; x < SCH.x + SCH.w; x++)
+      if (x < MAP_W - 1 && y < MAP_H - 1 && !solid[y][x]) ground[y][x] = 7;   // playground
+  signs.push({ gx: SCH.x + 4, gy: SCH.y + SCH.h + 2, text: 'ALDERGROVE PRIMARY - GO SLOWLY' });
+
+  // ST MARTIN'S: the church that becomes Candlelight, on the spine
+  const CH = { x: 36, y: 90, w: 12, h: 14 };
+  placeBuilding(CH.x, CH.y, CH.w, CH.h, 'R');
+  for (let y = CH.y + CH.h; y < CH.y + CH.h + 4; y++)
+    for (let x = CH.x - 2; x < CH.x + CH.w + 2; x++)
+      if (x > 0 && x < MAP_W - 1 && y < MAP_H - 1 && !solid[y][x]) ground[y][x] = 5;  // forecourt paving
+
   // walk each street and line it with buildings set back from the pavement
   for (const s of STREETS) {
     const vertical = s.x0 === s.x1;
@@ -378,12 +394,17 @@ function buildFringe() {
         const run = 6 + ((rng() * 9) | 0);
         const depth = 7 + ((rng() * 10) | 0);
         const off = s.half + 3;
+        // main roads get shops; back streets are houses and the odd office
+        const main = s.half >= 4;
+        const roll = rng();
+        const kind = main ? (roll < 0.45 ? 'S' : roll < 0.6 ? 'G' : roll < 0.85 ? 'H' : 'O')
+                          : (roll < 0.62 ? 'H' : roll < 0.78 ? 'B' : roll < 0.9 ? 'S' : 'O');
         if (vertical) {
           const bx = side < 0 ? s.x0 - off - depth : s.x0 + off;
-          placeBuilding(bx, t, depth, run);
+          placeBuilding(bx, t, depth, run, kind);
         } else {
           const by = side < 0 ? s.y0 - off - depth : s.y0 + off;
-          placeBuilding(t, by, run, depth);
+          placeBuilding(t, by, run, depth, kind);
         }
         t += run + 2 + ((rng() * 4) | 0);      // alley gap between terraces
       }
@@ -395,23 +416,29 @@ function buildFringe() {
     for (let gx = 4; gx < MAP_W - 12; gx += 12) {
       if (rng() < 0.18) continue;                    // the odd yard or car park
       const w = 7 + ((rng() * 4) | 0), h = 7 + ((rng() * 4) | 0);
-      placeBuilding(gx + ((rng() * 3) | 0), gy + ((rng() * 3) | 0), w, h);
+      const r2 = rng();
+      placeBuilding(gx + ((rng() * 3) | 0), gy + ((rng() * 3) | 0), w, h,
+                    r2 < 0.66 ? 'H' : r2 < 0.85 ? 'B' : 'O');
     }
   }
 
-  // ---------- facades: give every street-facing wall a face ----------
-  const KIND = ['B', 'B', 'S', 'B', 'G', 'S'];
+  // ---------- facades: every street-facing wall gets a face, and every
+  // corner gets a column so the four runs meet cleanly ----------
   for (const b of buildings) {
-    const pick = () => KIND[(rng() * KIND.length) | 0];
-    // south face (toward the camera) and east face read as "front"
+    const k = b.kind || 'B';
+    const kindsOf = n => Array.from({ length: n }, () => k);
+    // horizontal runs own the corners; vertical runs sit between them
     const north = [], south = [], west = [], east = [];
     for (let x = b.x0; x < b.x0 + b.w; x++) { north.push([x, b.y0]); south.push([x, b.y0 + b.h - 1]); }
-    for (let y = b.y0; y < b.y0 + b.h; y++) { west.push([b.x0, y]); east.push([b.x0 + b.w - 1, y]); }
-    const runKinds = n => { const k = pick(); return Array.from({ length: n }, () => k); };
-    if (b.y0 > 1) wallRun(north, runKinds(north.length), 'x', false, true, true);
-    if (b.y0 + b.h < MAP_H - 1) wallRun(south, runKinds(south.length), 'x', true, true, true);
-    if (b.x0 > 1) wallRun(west, runKinds(west.length), 'y', false, true, true);
-    if (b.x0 + b.w < MAP_W - 1) wallRun(east, runKinds(east.length), 'y', true, true, true);
+    for (let y = b.y0 + 1; y < b.y0 + b.h - 1; y++) { west.push([b.x0, y]); east.push([b.x0 + b.w - 1, y]); }
+    wallRun(north, kindsOf(north.length), 'x', false, true, true);
+    wallRun(south, kindsOf(south.length), 'x', true, true, true);
+    if (west.length) wallRun(west, kindsOf(west.length), 'y', false, true, true);
+    if (east.length) wallRun(east, kindsOf(east.length), 'y', true, true, true);
+    for (const [cx2, cy2, front] of [
+      [b.x0, b.y0, false], [b.x0 + b.w - 1, b.y0, false],
+      [b.x0, b.y0 + b.h - 1, true], [b.x0 + b.w - 1, b.y0 + b.h - 1, true],
+    ]) props.push({ gx: cx2, gy: cy2, type: 'cornerCol', front });
   }
 
   // ---------- street dressing ----------
@@ -441,9 +468,9 @@ function buildFringe() {
         else if (r < 0.86) placeProp(x, y, 'busStop');
       }
     }
-    // lane paint down the middle
-    if (vertical) for (let t2 = start + 2; t2 < start + len - 2; t2 += 3) decals.push({ gx: s.x0 + 0.4, gy: t2, type: 'dash' });
-    else for (let t2 = start + 2; t2 < start + len - 2; t2 += 3) decals.push({ gx: t2, gy: s.y0 + 0.4, type: 'dash' });
+    // lane paint down the middle, sheared to lie along the road
+    if (vertical) for (let t2 = start + 2; t2 < start + len - 2; t2 += 3) decals.push({ gx: s.x0 + 0.4, gy: t2, type: 'dashY' });
+    else for (let t2 = start + 2; t2 < start + len - 2; t2 += 3) decals.push({ gx: t2, gy: s.y0 + 0.4, type: 'dashX' });
   }
   // traffic lights + crossings at the junctions
   for (const [jx, jy] of [[30, 120], [30, 75], [30, 36], [92, 75], [92, 36], [165, 75], [165, 120], [92, 120]]) {
@@ -463,10 +490,10 @@ function buildFringe() {
   for (let x = 60; x < 190; x += 5 + ((rng() * 4) | 0)) car(x, 118 + ((rng() * 3) | 0), cv++);
   for (let y = 40; y < 115; y += 6 + ((rng() * 5) | 0)) car(28 + ((rng() * 3) | 0), y, cv++);
   for (let x = 40; x < 150; x += 9 + ((rng() * 6) | 0)) car(x, 74 + ((rng() * 2) | 0), cv++);
-  // a bus slewed across the mid junction
-  if (!solid[76][90]) {
-    for (let x = 88; x <= 93; x++) { if (!solid[76][x]) solid[76][x] = true; }
-    props.push({ gx: 90.5, gy: 76, type: 'bus' });
+  // a bus slewed across the mid junction — footprint matches the sprite
+  if (!solid[76][89] && !solid[76][90] && !solid[76][91]) {
+    for (let x = 89; x <= 91; x++) solid[76][x] = true;
+    props.push({ gx: 90, gy: 76, type: 'bus' });
   }
 
   // ---------- THE GAS STATION ----------
@@ -493,17 +520,26 @@ function buildFringe() {
   }
   signs.push({ gx: GX + 9, gy: GY - 1, text: 'FUEL · AIR · COFFEE' });
 
-  // ---------- signs: what this place used to be ----------
+  // ---------- signs ----------
+  // A TRAIL you can actually follow: gate -> west along the road -> north up
+  // the spine -> St Martin's. Each one points at the next.
   const SIGNS = [
-    { gx: 186, gy: 116, text: 'ALDERGROVE 2 · CITY CENTRE 9' },
-    { gx: 120, gy: 116, text: 'EVACUATION POINT -> FIELD 12' },
-    { gx: 60, gy: 116, text: "MARA'S GROCERY - EST. 2019" },
-    { gx: 34, gy: 96, text: "ST MARTIN'S - ALL WELCOME" },
-    { gx: 34, gy: 60, text: 'SCHOOL - DRIVE SLOWLY' },
+    { gx: 190, gy: 116, text: 'ST MARTIN\'S SHELTER  <- 4 km' },
+    { gx: 168, gy: 116, text: '<- ALDERGROVE · CITY CENTRE 9' },
+    { gx: 146, gy: 124, text: 'FUEL · AIR · COFFEE' },
+    { gx: 128, gy: 116, text: 'EVACUATION POINT -> FIELD 12' },
+    { gx: 108, gy: 116, text: 'SHELTER <- 2 km  KEEP LEFT' },
+    { gx: 86, gy: 116, text: "MARA'S GROCERY - EST. 2019" },
+    { gx: 62, gy: 116, text: 'ST MARTIN\'S <- 1 km' },
+    { gx: 36, gy: 114, text: 'SHELTER ^ 600 m  ALL WELCOME' },
+    { gx: 34, gy: 104, text: "ST MARTIN'S - ALL WELCOME" },
+    // the rest of the city, telling you what else is out there
+    { gx: 34, gy: 66, text: 'ALDERGROVE PRIMARY ->' },
     { gx: 96, gy: 70, text: 'CURFEW 20:00 - BY ORDER' },
-    { gx: 34, gy: 24, text: 'THE SPRAWL - NO ADMITTANCE' },
-    { gx: 160, gy: 70, text: 'DEPOT YARD - AUTHORISED ONLY' },
-    { gx: 96, gy: 40, text: 'WE ARE INSIDE. KNOCK 3x' },
+    { gx: 34, gy: 26, text: 'THE SPRAWL - NO ADMITTANCE' },
+    { gx: 158, gy: 70, text: 'DEPOT YARD - AUTHORISED ONLY' },
+    { gx: 96, gy: 42, text: 'WE ARE INSIDE. KNOCK 3x' },
+    { gx: 166, gy: 40, text: 'FIELD 12 AIRSTRIP ->' },
   ];
   for (const s of SIGNS) {
     const x = s.gx | 0, y = s.gy | 0;

@@ -267,6 +267,53 @@ function buildMinimap() {
 }
 buildMinimap();
 
+// ---------- fog of war: the map remembers only where you have walked ----------
+const FOG = 3;                       // tiles per explored cell
+const exploredByArea = {};
+let explored = null, fogW = 0, fogH = 0;
+function initFog(areaId) {
+  fogW = Math.ceil(MAP_W / FOG); fogH = Math.ceil(MAP_H / FOG);
+  if (!exploredByArea[areaId] || exploredByArea[areaId].length !== fogW * fogH) {
+    exploredByArea[areaId] = new Uint8Array(fogW * fogH);
+  }
+  explored = exploredByArea[areaId];
+}
+initFog(currentArea);
+function markExplored(x, y, r) {
+  const cx = Math.floor(x / FOG), cy = Math.floor(y / FOG), cr = Math.ceil(r / FOG);
+  for (let j = cy - cr; j <= cy + cr; j++) {
+    if (j < 0 || j >= fogH) continue;
+    for (let i = cx - cr; i <= cx + cr; i++) {
+      if (i < 0 || i >= fogW) continue;
+      if ((i - cx) * (i - cx) + (j - cy) * (j - cy) <= cr * cr) explored[j * fogW + i] = 1;
+    }
+  }
+}
+const isExplored = (tx, ty) => {
+  const i = Math.floor(tx / FOG), j = Math.floor(ty / FOG);
+  return i >= 0 && j >= 0 && i < fogW && j < fogH && explored[j * fogW + i] === 1;
+};
+// pack/unpack for the save file
+function fogToString(a) {
+  let s = '';
+  for (let i = 0; i < a.length; i += 6) {
+    let v = 0;
+    for (let b = 0; b < 6; b++) if (a[i + b]) v |= 1 << b;
+    s += String.fromCharCode(48 + v);
+  }
+  return s;
+}
+function fogFromString(s, len) {
+  const a = new Uint8Array(len);
+  for (let i = 0; i < s.length; i++) {
+    const v = s.charCodeAt(i) - 48;
+    for (let b = 0; b < 6; b++) if (v & (1 << b)) { const k = i * 6 + b; if (k < len) a[k] = 1; }
+  }
+  return a;
+}
+
+const MapUI = { open: false };
+
 // ---------- area transitions ----------
 // Fade out, swap the world, fade in. Per-area state (what you took, what you
 // blew up) is stashed so an area remembers you were there.
@@ -305,6 +352,7 @@ function enterArea(id, entry) {
   restoreArea(id);
   if (id === 'junkyard' && bossDefeated) openGate();
   buildMinimap();
+  initFog(id);
   // entities that don't belong here stand down
   boss.active = false; boss.state = 'hidden'; boss.shots.length = 0;
   bullets.length = 0; Particles.length = 0;
@@ -435,9 +483,9 @@ function updateMeta(dt) {
 // ---------- update ----------
 function update(dt) {
   gameTime += dt;
-  // M toggles the ambient soundscape anywhere
-  if (Input.pressed['KeyM']) {
-    Input.pressed['KeyM'] = false;
+  // O toggles the ambient soundscape anywhere (M is the map)
+  if (Input.pressed['KeyO']) {
+    Input.pressed['KeyO'] = false;
     showMsg(SFX.toggleMusic() ? 'Ambience ON' : 'Ambience OFF', 1.2);
   }
   if (GameState !== 'playing') {
@@ -475,6 +523,19 @@ function update(dt) {
     tutShow('move',
       ['Use W A S D to move.', 'Head for the glowing pipe in the yard.'],
       ['KeyW', 'KeyA', 'KeyS', 'KeyD'], 'PRESS W A S D');
+  }
+
+  // M — the map of everywhere you have been
+  if (GameState === 'playing' && (Input.pressed['KeyM'] || (MapUI.open && Input.pressed['Escape']))) {
+    Input.pressed['KeyM'] = false;
+    MapUI.open = !MapUI.open;
+    if (MapUI.open) { InvUI.open = false; SFX.uiOpen(); } else SFX.uiClose();
+  }
+  if (MapUI.open) {
+    Input.pressed['Escape'] = false;
+    updateParticles(dt);
+    Msg.t -= dt;
+    return;
   }
 
   if (Input.pressed['KeyI'] || Input.pressed['Tab'] || (InvUI.open && Input.pressed['Escape'])) {
@@ -540,6 +601,7 @@ function update(dt) {
       updateScrapper(dt);
       updateItems(dt);
       checkExits(dt);
+      markExplored(player.x, player.y, 9);
     }
     updateTransition(dt);
     updateGateCine(dt);
@@ -896,6 +958,14 @@ function drawProp(p, x, y) {
       // the lock glints — you need the key
       addLight(x, y - 18, 0, 9, '255,210,120', 0.14 + 0.06 * Math.sin(gameTime * 2));
     }
+    return;
+  }
+  if (T === 'cornerCol') {
+    const a = occlusionAlpha(p);
+    if (p.front) ctx.globalAlpha = (0.15 + roofAlpha * 0.85) * a;
+    else if (a < 1) ctx.globalAlpha = a;
+    ctx.drawImage(Sprites.cornerCol, Math.round(x - 4), Math.round(y - 48));
+    ctx.globalAlpha = 1;
     return;
   }
   if (T === 'post') {
@@ -1619,6 +1689,54 @@ function drawHUD() {
   // floating message
   if (Msg.t > 0) {
     ptext(Msg.text, VIEW_W / 2, 24, 8, '#ffd27a', 'center', Math.min(1, Msg.t));
+  }
+
+  // THE MAP — everywhere you have walked, and nothing you haven't
+  if (MapUI.open) {
+    uiRect(0, 0, VIEW_W, VIEW_H, 'rgba(6,7,8,0.9)');
+    const pad = 16, top = 22;
+    const availW = VIEW_W - pad * 2, availH = VIEW_H - top - 20;
+    const sc = Math.min(availW / MAP_W, availH / MAP_H);
+    const mw2 = MAP_W * sc, mh2 = MAP_H * sc;
+    const mx2 = (VIEW_W - mw2) / 2, my2 = top + (availH - mh2) / 2;
+    ptext(currentAreaDef().name, VIEW_W / 2, 8, 8, '#ffd27a', 'center');
+    uictx.strokeStyle = '#3a4a52';
+    uictx.lineWidth = U;
+    uictx.strokeRect((mx2 - 2) * U, (my2 - 2) * U, (mw2 + 4) * U, (mh2 + 4) * U);
+    // explored cells only
+    for (let j = 0; j < fogH; j++) {
+      for (let i = 0; i < fogW; i++) {
+        if (!explored[j * fogW + i]) continue;
+        const tx = i * FOG, ty = j * FOG;
+        let road = 0, build = 0, n = 0;
+        for (let y = ty; y < Math.min(MAP_H, ty + FOG); y++)
+          for (let x = tx; x < Math.min(MAP_W, tx + FOG); x++) {
+            n++;
+            if (solid[y][x]) build++;
+            else if (ground[y][x] === 4 || ground[y][x] === 5 || ground[y][x] === 7) road++;
+          }
+        if (!n) continue;
+        const col = build > n * 0.5 ? '#4c5054' : road > n * 0.3 ? '#8d959b' : '#3a4238';
+        uiRect(mx2 + i * FOG * sc, my2 + j * FOG * sc, FOG * sc + 0.6, FOG * sc + 0.6, col);
+      }
+    }
+    // landmarks you have actually seen
+    if (typeof signs !== 'undefined') {
+      for (const s of signs) {
+        if (!isExplored(s.gx, s.gy)) continue;
+        uiRect(mx2 + s.gx * sc - 1, my2 + s.gy * sc - 1, 2, 2, '#7ad27a');
+      }
+    }
+    for (const ex of (currentAreaDef().exits || [])) {
+      if (ex.needsGate && !(gateProp && gateProp.open)) continue;
+      const ex2 = (ex.x0 + ex.x1) / 2, ey2 = (ex.y0 + ex.y1) / 2;
+      if (isExplored(ex2, ey2)) uiRect(mx2 + ex2 * sc - 1.5, my2 + ey2 * sc - 1.5, 3, 3, '#4fc3ff');
+    }
+    // you
+    const blink2 = ((gameTime * 3) | 0) % 2 === 0;
+    uiRect(mx2 + player.x * sc - 1.5, my2 + player.y * sc - 1.5, 3, 3, blink2 ? '#ffffff' : '#ffd27a');
+    ptext('walked ground only  ·  M or ESC to close', VIEW_W / 2, VIEW_H - 12, 7, 'rgba(232,217,192,0.5)', 'center');
+    return;
   }
 
   // BotW-style full-screen pack (world frozen while open)

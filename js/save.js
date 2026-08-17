@@ -29,10 +29,18 @@ function saveGame() {
       area: currentArea,
       // per-area world state, keyed by tile so map edits can't shuffle it
       areas: collectAreaState(),
+      fog: collectFog(),
       tut: { ...Tut.done },
     };
     localStorage.setItem(SAVE_KEY, JSON.stringify(d));
   } catch (e) { /* storage full or blocked — play on without saving */ }
+}
+
+// explored ground, one packed string per area
+function collectFog() {
+  const out = {};
+  for (const id of Object.keys(exploredByArea)) out[id] = fogToString(exploredByArea[id]);
+  return out;
 }
 
 // every area's remembered state, with the live area folded in
@@ -134,6 +142,18 @@ function applySave(d) {
   loadAreaItems(currentArea);
   if (bossDefeated) openGate();
   restoreArea(currentArea);
+  // explored ground comes back with the run
+  if (d.fog) {
+    for (const id of Object.keys(d.fog)) {
+      const def = Areas[id];
+      if (!def) continue;
+      const w = id === currentArea ? MAP_W : (id === 'fringe' ? FRINGE_W : 32);
+      const h = id === currentArea ? MAP_H : (id === 'fringe' ? FRINGE_H : 32);
+      const len = Math.ceil(w / FOG) * Math.ceil(h / FOG);
+      exploredByArea[id] = fogFromString(d.fog[id], len);
+    }
+  }
+  initFog(currentArea);
 
   // the position check must run against the AREA WE LOADED
   const inBounds2 = player.x > 1 && player.y > 1 && player.x < MAP_W - 1 && player.y < MAP_H - 1;

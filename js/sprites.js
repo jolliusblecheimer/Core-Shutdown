@@ -622,6 +622,51 @@ function outlined(src) {
         px(g, ox + 7, y + 26, 5, 6, '#0d1013');
       }
       px(g, ox, y + 38, 16, 6, '#3e3a34');
+    } else if (kind === 'H') {                // CITY: house — render + window + sill
+      const y = H - 44;
+      px(g, ox, y, 16, 44, '#6a6055');
+      px(g, ox, y, 16, 3, '#7d7266');
+      px(g, ox, y + 41, 16, 3, '#4c453d');
+      px(g, ox + 3, y + 12, 10, 11, '#20242a');      // window
+      px(g, ox + 3, y + 12, 10, 1, '#39424a');
+      px(g, ox + 7, y + 12, 2, 11, '#5c554c');       // mullion
+      px(g, ox + 2, y + 23, 12, 2, '#82776a');       // sill
+      px(g, ox + 4, y + 28, 8, 8, '#5e564c');        // lower panel
+    } else if (kind === 'K') {                // CITY: school — pale brick, tall windows
+      const y = H - 44;
+      px(g, ox, y, 16, 44, '#8a7c66');
+      for (let r = 0; r < 11; r++) px(g, ox, y + r * 4, 16, 1, '#7d7059');
+      px(g, ox, y, 16, 4, '#9c8d74');                 // parapet
+      px(g, ox, y + 8, 16, 2, '#6e6252');             // band course
+      px(g, ox + 2, y + 13, 5, 18, '#1b2026');        // tall paired windows
+      px(g, ox + 9, y + 13, 5, 18, '#1b2026');
+      px(g, ox + 2, y + 13, 5, 1, '#3d4650');
+      px(g, ox + 9, y + 13, 5, 1, '#3d4650');
+      px(g, ox + 1, y + 31, 14, 2, '#6e6252');
+    } else if (kind === 'R') {                // CITY: church — stone + arched window
+      const y = H - 44;
+      px(g, ox, y, 16, 44, '#7a7468');
+      for (let r = 0; r < 7; r++) {
+        const off = (r % 2) * 5;
+        for (let b = 0; b < 2; b++) px(g, ox + off + b * 9, y + 4 + r * 6, 8, 5, r % 2 ? '#847d70' : '#726c60');
+      }
+      px(g, ox, y, 16, 4, '#8d8578');
+      px(g, ox + 5, y + 14, 6, 16, '#181d24');        // arched window
+      px(g, ox + 6, y + 11, 4, 4, '#181d24');
+      px(g, ox + 7, y + 10, 2, 2, '#181d24');
+      px(g, ox + 7, y + 17, 2, 9, '#3f2f4a');         // stained glass mullion
+      px(g, ox + 5, y + 21, 6, 1, '#4a3a2a');
+    } else if (kind === 'O') {                // CITY: office — concrete + window band
+      const y = H - 44;
+      px(g, ox, y, 16, 44, '#5e6266');
+      px(g, ox, y, 16, 3, '#70747a');
+      for (let b = 0; b < 3; b++) {
+        px(g, ox, y + 8 + b * 12, 16, 7, '#191d22');
+        px(g, ox, y + 8 + b * 12, 16, 1, '#39424a');
+        px(g, ox + 5, y + 8 + b * 12, 1, 7, '#4a4e52');
+        px(g, ox + 11, y + 8 + b * 12, 1, 7, '#4a4e52');
+      }
+      px(g, ox, y + 42, 16, 2, '#42464a');
     } else if (kind === 'G') {                // CITY: roller shutter (44)
       const y = H - 44;
       px(g, ox, y, 16, 44, '#4a4c50');
@@ -649,7 +694,7 @@ function outlined(src) {
   Sprites._makeWallRun = function (kinds, axis, trimStart, trimEnd) {
     const n = kinds.length;
     const isWall = kinds[0] === 'W';
-    const isCity = 'BSG'.includes(kinds[0]);
+    const isCity = 'BSGHKRO'.includes(kinds[0]);
     const H = isCity ? 44 : (isWall ? 28 : 20);
     const flat = makeCanvas(16 * n, H), g = flat.getContext('2d');
     kinds.forEach((k, i) => Sprites.paintSeg(g, k, i * 16, H));
@@ -976,4 +1021,29 @@ function outlined(src) {
   }
   Sprites.postS = post(26);
   Sprites.postL = post(34);
+
+  // building corner column — caps the joint where two facades meet
+  (function () {
+    const c = makeCanvas(7, 48), g = c.getContext('2d');
+    px(g, 0, 2, 7, 46, '#5a5349');
+    px(g, 0, 2, 3, 46, '#6a6257');
+    px(g, 0, 0, 7, 3, '#756d61');
+    px(g, 0, 45, 7, 3, '#3f3a33');
+    Sprites.cornerCol = outlined(c);
+  })();
+
+  // lane dashes, sheared to lie along each road direction
+  (function () {
+    const mk = dir => {
+      const c = makeCanvas(18, 12), g = c.getContext('2d');
+      g.fillStyle = 'rgba(206,201,176,0.6)';
+      for (let i = 0; i < 14; i++) {
+        const yy = dir > 0 ? 2 + i * 0.5 : 9 - i * 0.5;
+        g.fillRect(i + 2, yy, 1, 2);
+      }
+      return c;
+    };
+    Sprites.decals.dashX = mk(1);    // road running along world +x
+    Sprites.decals.dashY = mk(-1);   // road running along world +y
+  })();
 })();
