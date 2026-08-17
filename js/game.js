@@ -774,14 +774,41 @@ function drawBoss(x, y) {
   }
   ctx.lineWidth = 1;
 
-  // TWO GRABBER CLAWS at the sides, angled toward the facing — raised for a slam
+  // TWO GRABBER CLAWS — the actual weapons. Wind-up: spread wide and raised.
+  // Strike: both scythe inward across the front with slash trails.
   const fs = isoToScreen(b.fx, b.fy);
   const faceAngle = Math.atan2(fs.y, fs.x);
-  const slamRaise = b.state === 'slam' ? (b.t > 0.15 ? -6 : 4) : 0;
-  for (const side of [-0.55, 0.55]) {
-    const a = faceAngle + side;
+  let spread = 0.55, reach = 8, raise = 0, strikeS = 0;
+  if (b.state === 'slam') {
+    if (b.t > 0.15) {
+      const w = Math.min(1, (0.7 - b.t) / 0.4);          // wind-up 0→1
+      spread = 0.55 + w * 0.65;
+      raise = -9 * w + Math.sin(gameTime * 30) * w;       // trembling with intent
+      reach = 7;
+    } else {
+      strikeS = 1 - b.t / 0.15;                           // strike 0→1
+      spread = 1.2 - strikeS * 1.05;                      // claws scythe together
+      raise = -9 + strikeS * 13;
+      reach = 7 + strikeS * 10;
+    }
+  } else if (b.state === 'charge' && b.t <= 0) {
+    spread = 1.5; reach = 5;                              // tucked back while ramming
+  }
+  // slash trails while the claws sweep
+  if (strikeS > 0.05) {
+    ctx.strokeStyle = `rgba(255,242,192,${0.6 - strikeS * 0.4})`;
+    ctx.lineWidth = 2;
+    for (const dir of [-1, 1]) {
+      ctx.beginPath();
+      ctx.arc(x, bodyY + 12, 17, faceAngle + dir * 1.25 - dir * strikeS * 1.0, faceAngle + dir * 1.25, dir > 0);
+      ctx.stroke();
+    }
+    ctx.lineWidth = 1;
+  }
+  for (const dir of [-1, 1]) {
+    const a = faceAngle + dir * spread;
     ctx.save();
-    ctx.translate(x + Math.cos(a) * 8, bodyY + 12 + Math.sin(a) * 5 + slamRaise);
+    ctx.translate(x + Math.cos(a) * reach, bodyY + 12 + Math.sin(a) * reach * 0.55 + raise);
     ctx.rotate(a);
     if (Math.cos(a) < 0) ctx.scale(1, -1);
     ctx.drawImage(Sprites.bossArm, 6, -6);

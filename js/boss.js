@@ -269,8 +269,15 @@ function updateBoss(dt) {
       if (b.t <= 0.15 && !b.didHit) {
         b.didHit = true;
         addShake(6);
-        SFX.boom();
-        spawnSmoke(b.x + b.fx, b.y + b.fy, 6);
+        SFX.clang();
+        SFX.swing();
+        // claw impact: sparks rake across the strike zone in front
+        for (let i = -2; i <= 2; i++) {
+          spawnSparks(b.x + b.fx * 1.2 + b.fy * i * 0.3,
+                      b.y + b.fy * 1.2 - b.fx * i * 0.3, 4,
+                      ['#ffd27a', '#c9c9d2', '#8a8a92']);
+        }
+        spawnSmoke(b.x + b.fx, b.y + b.fy, 4);
         const d2 = Math.hypot(player.x - b.x, player.y - b.y);
         const pdot = ((player.x - b.x) / (d2 || 1)) * b.fx + ((player.y - b.y) / (d2 || 1)) * b.fy;
         if (d2 < 2.1 && pdot > 0.2 && player.iframes <= 0 && player.dead <= 0) {
