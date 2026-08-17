@@ -35,7 +35,21 @@
     barrel is a ~45 HP bailout, never a one-button solution. (Rule applies to ALL bosses.)
   - Knife owners (18 dmg) melt the stagger windows ~2.5× faster than pipe users —
     optional prep pays off.
-  - Drop: Hydraulic Piston (first forge material) + big scrap pile → gate opens.
+  - **BIG: ~3× player height** (sprite ~60px tall, 2×2 tile footprint) — it should
+    fill the screen when it charges.
+  - **ARMOR + WEAK POINTS (locational damage):**
+    - **Armor plates** (hull, crusher arm, front): hits deal ZERO damage — grey
+      spark, dull CLANK sound, no hit-flash. The game's way of saying "not here."
+    - **Weak point 1 — the EYE** (small, front): always damageable, full damage,
+      but a small moving target — precision shooting is the skill-shot option.
+    - **Weak point 2 — the REAR CORE** (glowing vents on its back): full damage,
+      but it faces you while active — reachable mid-fight only by outmaneuvering it.
+    - **STAGGER = exposure**: after a charge crashes into junk, it slumps forward
+      — the rear core points at the arena for ~3s and takes **1.5× damage**.
+      The intended loop stays: bait charge → punish core.
+    - Visual language (LAW for all future bosses): **what glows amber can be hurt;
+      dull plate cannot.** No tooltips needed — the Scrapper's glowing eye taught
+      this from hour one.
 - **The Shepherd** (Ring 4, the Gallery — moved to the OUTER Sprawl near the Fringe
   boundary, reachable early) — optional, drone-flock herder.
 - **The Foreman** (Ring 3, Assembly Plant 03) — mandatory, Q7.
