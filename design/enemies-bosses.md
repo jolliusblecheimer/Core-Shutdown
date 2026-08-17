@@ -69,11 +69,15 @@
       rests on a weak point** — "take aim, then shoot" made visible. Weak-point
       hits get an amber flash + a 40ms hit-pause so they feel meaty; hitbox radii
       are tuning knobs (eye starts generous, ~0.35 tiles).
-    - **Weak point 2 — the REAR CORE** (glowing vents on its back): full damage,
-      but it faces you while active — reachable mid-fight only by outmaneuvering it.
-    - **STAGGER = exposure**: after a charge crashes into junk, it slumps forward
-      — the rear core points at the arena for ~3s and takes **1.5× damage**.
-      The intended loop stays: bait charge → punish core.
+    - ~~Rear core~~ REMOVED (Laurens) — **the eye is the only weak point.**
+    - **STAGGER = exposure**: after a charge crashes into a wall/mound, it slumps
+      for ~3s and takes **1.5× damage everywhere** (plates hang open).
+    - **PHASES with shield transitions:** at 66% and 33% HP a crackling blue
+      shield bubble makes it INVULNERABLE for ~1.6s (shots spark off; thought:
+      "A shield?! Wait for it to drop."), then a signature opener:
+      Phase 2 → an INSTANT charge, no wind-up courtesy. Phase 3 → a 360°
+      TRASH-ENERGY NOVA (ring shockwave + 14 projectiles), and from then on it
+      pursues and charges faster, spraying more often.
     - Visual language (LAW for all future bosses): **what glows amber can be hurt;
       dull plate cannot.** No tooltips needed — the Scrapper's glowing eye taught
       this from hour one.
