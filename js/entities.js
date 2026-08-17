@@ -41,6 +41,9 @@ const items = [
   { type: 'ammo', x: 14.5, y: 21.5, amount: 6, bob: 1.3 },
   { type: 'ammo', x: 25.5, y: 26.5, amount: 6, bob: 2.1 },
 ];
+// identity of the world's starting items, so saves can record what was taken
+// without breaking when new items are added in an update
+const START_ITEMS = items.map(it => it.type + '@' + it.x.toFixed(1) + ',' + it.y.toFixed(1));
 
 // pick an enemy spawn point tucked behind a trash mountain, away from the player
 function pickSpawn() {
