@@ -254,12 +254,15 @@ function updateBoss(dt) {
       for (const a of (b.absorbs || [])) {
         if (!a.done && b.t >= a.t0 + 0.45) {
           a.done = true;
-          b.hp = Math.min(b.maxHp, b.hp + 6);
           spawnSparks(b.x, b.y, 6, ['#7ad27a', '#8a8a92']);
           SFX.absorbTick();
         }
       }
+      // the feeding restores it COMPLETELY — the health bar climbs back
+      // to full over the course of the cutscene
+      if (b.t > 0.4) b.hp = Math.min(b.maxHp, b.hp + b.maxHp * dt / 1.6);
       if (b.t >= 2.2) {
+        b.hp = b.maxHp;
         b.state = 'nova'; b.t = 0.4;
         SFX.charge();
       }

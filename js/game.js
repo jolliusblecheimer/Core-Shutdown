@@ -864,10 +864,34 @@ function drawBoss(x, y) {
       ctx.lineTo(x + Math.cos(a) * 24, cy + Math.sin(a) * 15.5);
       ctx.stroke();
     }
-    ctx.fillStyle = '#7d7d8a';                          // rivets
+    // industrial hazard chevrons along the lower face of the plow
+    ctx.lineWidth = 3;
+    for (let i = -4; i < 4; i++) {
+      ctx.strokeStyle = (i % 2 === 0) ? '#a8873a' : '#26262c';
+      ctx.beginPath();
+      ctx.ellipse(x, cy + 3, 18, 11, 0, faceAngle + i * 0.22, faceAngle + (i + 1) * 0.22);
+      ctx.stroke();
+    }
+    // battle scuffs raked across the plates
+    ctx.strokeStyle = 'rgba(205,210,220,0.3)';
+    ctx.lineWidth = 1;
+    for (const [ao, len] of [[-0.62, 4], [0.15, 6], [0.71, 3], [-0.2, 5]]) {
+      const a = faceAngle + ao;
+      const px2 = x + Math.cos(a) * 17, py2 = cy - 3 + Math.sin(a) * 10;
+      ctx.beginPath();
+      ctx.moveTo(px2 - len / 2, py2 - 1);
+      ctx.lineTo(px2 + len / 2, py2 + 1);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#7d7d8a';                          // upper rivet row
     for (let i = -3; i <= 3; i += 2) {
       const a = faceAngle + i * 0.28;
-      ctx.fillRect(Math.round(x + Math.cos(a) * 19) - 1, Math.round(cy + Math.sin(a) * 12) - 1, 3, 3);
+      ctx.fillRect(Math.round(x + Math.cos(a) * 19) - 1, Math.round(cy - 4 + Math.sin(a) * 12) - 1, 3, 3);
+    }
+    ctx.fillStyle = '#5c5c68';                          // lower rivet row, shadowed
+    for (let i = -2; i <= 2; i += 2) {
+      const a = faceAngle + i * 0.28 + 0.14;
+      ctx.fillRect(Math.round(x + Math.cos(a) * 20) - 1, Math.round(cy + 5 + Math.sin(a) * 12) - 1, 2, 2);
     }
   } else if (b.state === 'stagger') {
     // plates hanging open at the sides — the whole machine is soft right now
