@@ -234,10 +234,11 @@ function ptext(str, gx, gy, size = 8, color = '#e8d9c0', align = 'left', alpha =
   return e.img.width * ts / U;
 }
 
-// ---------- minimap base ----------
+// ---------- minimap (rebuilt whenever the area changes) ----------
 const MMS = 1.5;
-const minimap = makeCanvas(Math.ceil(MAP_W * MMS), Math.ceil(MAP_H * MMS));
-(function () {
+let minimap = null;
+function buildMinimap() {
+  minimap = makeCanvas(Math.ceil(MAP_W * MMS), Math.ceil(MAP_H * MMS));
   const g = minimap.getContext('2d');
   for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) {
     const t = ground[y][x];
@@ -247,7 +248,107 @@ const minimap = makeCanvas(Math.ceil(MAP_W * MMS), Math.ceil(MAP_H * MMS));
       : t === 2 ? '#282420' : '#1e1c1a';
     g.fillRect(x * MMS, y * MMS, MMS, MMS);
   }
-})();
+}
+buildMinimap();
+
+// ---------- area transitions ----------
+// Fade out, swap the world, fade in. Per-area state (what you took, what you
+// blew up) is stashed so an area remembers you were there.
+const areaState = {};
+const Trans = { active: false, t: 0, to: null, entry: null, swapped: false };
+
+function stashArea() {
+  areaState[currentArea] = {
+    deadBarrels: boomBarrels.filter(b => !b.alive).map(b => b.gx + ',' + b.gy),
+    takenItems: (START_ITEMS_BY_AREA[currentArea] || []).filter(
+      k => !items.some(it => itemKey(it) === k)),
+  };
+}
+function restoreArea(id) {
+  const st = areaState[id];
+  if (!st) return;
+  const dead = new Set(st.deadBarrels || []);
+  for (const b of boomBarrels) {
+    if (b.alive && dead.has(b.gx + ',' + b.gy)) {
+      b.alive = false;
+      solid[b.gy][b.gx] = false;
+      const pi = props.indexOf(b.prop);
+      if (pi >= 0) props.splice(pi, 1);
+    }
+  }
+  const taken = new Set(st.takenItems || []);
+  for (let i = items.length - 1; i >= 0; i--) {
+    if (taken.has(itemKey(items[i]))) items.splice(i, 1);
+  }
+}
+
+function enterArea(id, entry) {
+  stashArea();
+  currentArea = id;
+  Areas[id].build();
+  loadAreaItems(id);
+  restoreArea(id);
+  if (id === 'junkyard' && bossDefeated) openGate();
+  buildMinimap();
+  // entities that don't belong here stand down
+  boss.active = false; boss.state = 'hidden'; boss.shots.length = 0;
+  bullets.length = 0; Particles.length = 0;
+  explosions.length = 0; fuses.length = 0;
+  if (Areas[id].hasScrapper && mission.state !== 'none') spawnScrapper();
+  else scrapper.state = 'off';
+  if (entry) {
+    player.x = entry.x; player.y = entry.y;
+    if (!canStand(player.x, player.y, player.r)) {
+      const safe = findSafeSpot(player.x, player.y);
+      if (safe) { player.x = safe.x; player.y = safe.y; }
+    }
+  }
+  player.iframes = 0.8;
+  camInit = false;
+  exitArmed = false;          // must step clear of the doorway before it works
+  sinceArea = 0;
+  showMsg(Areas[id].name, 2.6);
+  saveGame();
+}
+
+function startTransition(to, entry) {
+  if (Trans.active) return;
+  Trans.active = true; Trans.t = 0; Trans.to = to; Trans.entry = entry;
+  Trans.swapped = false;
+  SFX.uiOpen();
+}
+
+function updateTransition(dt) {
+  if (!Trans.active) return;
+  Trans.t += dt;
+  if (!Trans.swapped && Trans.t >= 0.45) {
+    Trans.swapped = true;
+    enterArea(Trans.to, Trans.entry);
+  }
+  if (Trans.t >= 1.0) Trans.active = false;
+}
+
+// walking into an exit zone leaves the area. The exit only arms once the
+// player has stepped clear of every zone, so arriving next to a doorway can
+// never bounce you straight back where you came from.
+let exitArmed = false;
+let sinceArea = 0;
+function checkExits(dt) {
+  if (Trans.active || window.ARENA_MODE) return;
+  sinceArea += dt || 0;
+  const zones = (currentAreaDef().exits || []).filter(
+    ex => !(ex.needsGate && !(gateProp && gateProp.open)));
+  const inZone = ex => player.x >= ex.x0 && player.x <= ex.x1 &&
+                       player.y >= ex.y0 && player.y <= ex.y1;
+  if (!exitArmed) {
+    // normally: arm once you've stepped clear. Safety: never stay locked.
+    if (!zones.some(inZone) || sinceArea > 2.5) exitArmed = true;
+    return;
+  }
+  for (const ex of zones) {
+    if (inZone(ex)) { startTransition(ex.to, ex.entry); return; }
+  }
+}
 
 // ---------- title / intro / naming ----------
 function updateMeta(dt) {
@@ -417,13 +518,15 @@ function update(dt) {
       Input.pressed[k] = false;
     updateParticles(dt);
   } else {
-    const bossCine = GateCine.active ||
+    const bossCine = GateCine.active || Trans.active ||
       (boss.active && (boss.state === 'cine2' || boss.state === 'cine3'));
     if (!bossCine) {
       updatePlayer(dt);
       updateScrapper(dt);
       updateItems(dt);
+      checkExits(dt);
     }
+    updateTransition(dt);
     updateGateCine(dt);
     updateBoss(dt);
     updateNpc(dt);
@@ -575,8 +678,10 @@ function render() {
       }});
     }
   }
-  { const s = isoToScreen(npc.x, npc.y);
-    draws.push({ depth: s.y, draw: () => drawNpc(s.x - ox, s.y - oy) }); }
+  if (currentAreaDef().hasNpc) {
+    const s = isoToScreen(npc.x, npc.y);
+    draws.push({ depth: s.y, draw: () => drawNpc(s.x - ox, s.y - oy) });
+  }
   { const s = isoToScreen(player.x, player.y);
     draws.push({ depth: s.y + 0.01, draw: () => drawPlayer(s.x - ox, s.y - oy) }); }
   for (const it of items) {
@@ -591,7 +696,7 @@ function render() {
       addLight(s.x - ox, s.y - oy - 5, 0, 10, '255,190,90', 0.25);
     }});
   }
-  {
+  if (SHACK) {
     const c1 = isoToScreen(SHACK.x0, SHACK.y0);
     const c2 = isoToScreen(SHACK.x1 + 1, SHACK.y0);
     const c3 = isoToScreen(SHACK.x1 + 1, SHACK.y1 + 1);
@@ -656,7 +761,7 @@ function render() {
   }
 
   ctx.globalCompositeOperation = 'multiply';
-  ctx.fillStyle = '#e6c092';
+  ctx.fillStyle = currentAreaDef().tint || '#e6c092';
   ctx.fillRect(0, 0, VIEW_W, VIEW_H);
 
   ctx.globalCompositeOperation = 'lighter';
@@ -699,6 +804,13 @@ function render() {
 
   if (player.flash > 0) {
     ctx.fillStyle = `rgba(255,40,20,${Math.min(0.35, player.flash)})`;
+    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  }
+
+  // area transition fade
+  if (Trans.active) {
+    const a = Trans.t < 0.45 ? Trans.t / 0.45 : Math.max(0, 1 - (Trans.t - 0.45) / 0.55);
+    ctx.fillStyle = `rgba(6,5,4,${Math.min(1, a)})`;
     ctx.fillRect(0, 0, VIEW_W, VIEW_H);
   }
 
@@ -1332,7 +1444,11 @@ function drawHUD() {
     uiRect(mx + wx * MMS - 1, my + wy * MMS - 1, 2, 2, col);
   }
   for (const it of items) blip(it.x, it.y, '#ffd27a');
-  blip(npc.x, npc.y, '#7ad27a');
+  if (currentAreaDef().hasNpc) blip(npc.x, npc.y, '#7ad27a');
+  for (const ex of (currentAreaDef().exits || [])) {
+    if (ex.needsGate && !(gateProp && gateProp.open)) continue;
+    blip((ex.x0 + ex.x1) / 2, (ex.y0 + ex.y1) / 2, '#4fc3ff');
+  }
   if (scrapper.state !== 'dead' && scrapper.state !== 'off' &&
       Math.hypot(scrapper.x - player.x, scrapper.y - player.y) < 8)
     blip(scrapper.x, scrapper.y, '#ff5a3c');

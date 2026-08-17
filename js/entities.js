@@ -36,14 +36,21 @@ function tutShow(id, lines, keys, footer) {
 const bullets = [];
 
 // items lying in the world (glowing pickups)
-const items = [
-  { type: 'pipe', x: 9.5, y: 23.5, bob: 0 },
-  { type: 'ammo', x: 14.5, y: 21.5, amount: 6, bob: 1.3 },
-  { type: 'ammo', x: 25.5, y: 26.5, amount: 6, bob: 2.1 },
-];
-// identity of the world's starting items, so saves can record what was taken
+const items = [];
+const itemKey = it => it.type + '@' + Number(it.x).toFixed(1) + ',' + Number(it.y).toFixed(1);
+// identity of each area's starting items, so saves record what was taken
 // without breaking when new items are added in an update
-const START_ITEMS = items.map(it => it.type + '@' + it.x.toFixed(1) + ',' + it.y.toFixed(1));
+const START_ITEMS_BY_AREA = {};
+for (const id of Object.keys(Areas)) {
+  START_ITEMS_BY_AREA[id] = Areas[id].makeItems().map(itemKey);
+}
+function loadAreaItems(areaId) {
+  items.length = 0;
+  for (const it of Areas[areaId].makeItems()) items.push(it);
+}
+loadAreaItems(currentArea);
+// legacy alias used by the v1→v2 save migration
+const START_ITEMS = START_ITEMS_BY_AREA.junkyard;
 
 // pick an enemy spawn point tucked behind a trash mountain, away from the player
 function pickSpawn() {
@@ -256,10 +263,12 @@ function updateItems(dt) {
     const d = Math.hypot(player.x - it.x, player.y - it.y);
     if (d < bestD) { bestD = d; best = it; bestKind = 'item'; }
   }
-  const npcD = Math.hypot(player.x - npc.x, player.y - npc.y);
-  if (npcD < 1.3 && npcD < bestD) { bestD = npcD; best = npc; bestKind = 'npc'; }
+  if (currentAreaDef().hasNpc) {
+    const npcD = Math.hypot(player.x - npc.x, player.y - npc.y);
+    if (npcD < 1.3 && npcD < bestD) { bestD = npcD; best = npc; bestKind = 'npc'; }
+  }
   // the yard gate (main game only, never during the fight or cutscene)
-  if (!window.ARENA_MODE && !GateCine.active &&
+  if (!window.ARENA_MODE && currentArea === 'junkyard' && !GateCine.active &&
       !(boss.active && boss.state !== 'dead' && !bossDefeated)) {
     const gd = Math.hypot(player.x - 30.3, player.y - 12.5);
     if (gd < 1.7 && gd < bestD) { bestD = gd; best = 'gate'; bestKind = 'gate'; }
@@ -272,11 +281,10 @@ function updateItems(dt) {
   if (bestKind === 'gate') {
     const gs = isoToScreen(30.6, 12.5);
     if (bossDefeated) {
-      Prompt = { sx: gs.x, sy: gs.y - 34, text: 'E — look through' };
+      Prompt = { sx: gs.x, sy: gs.y - 34, text: 'walk through →' };
       if (Input.pressed['KeyE']) {
         Input.pressed['KeyE'] = false;
-        showMsg('TO BE CONTINUED — the Sprawl awaits', 3.5);
-        think('leave', 'The road out. Not yet — but soon.');
+        think('leave', 'The road out. Nothing stopping me now.');
       }
     } else if (player.inv.gateKey) {
       Prompt = { sx: gs.x, sy: gs.y - 34, text: 'E — unlock the gate' };
@@ -526,6 +534,7 @@ function killScrapper() {
 function updateScrapper(dt) {
   const s = scrapper;
   if (s.state === 'off') return;      // yard is quiet until the NPC's warning
+  if (!currentAreaDef().hasScrapper) return;
   s.hitFlash -= dt;
   if (s.kbx || s.kby) {
     tryMove(s, s.kbx, s.kby);

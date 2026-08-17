@@ -4,7 +4,7 @@
 // back, world objects are matched by POSITION not array index (map layouts
 // change), and the player is never restored inside newly-added geometry.
 const SAVE_KEY = 'coreshutdown_save_v1';
-const SAVE_VERSION = 2;
+const SAVE_VERSION = 3;
 
 let playerName = '';
 
@@ -26,19 +26,25 @@ function saveGame() {
       mission: mission.state,
       kills: scrapper.kills,
       bossDown: typeof bossDefeated !== 'undefined' ? bossDefeated : false,
-      // world objects keyed by tile so map edits can't shuffle them
-      deadBarrels: boomBarrels.filter(b => !b.alive).map(b => b.gx + ',' + b.gy),
-      takenItems: itemsTakenKeys(),
+      area: currentArea,
+      // per-area world state, keyed by tile so map edits can't shuffle it
+      areas: collectAreaState(),
       tut: { ...Tut.done },
     };
     localStorage.setItem(SAVE_KEY, JSON.stringify(d));
   } catch (e) { /* storage full or blocked — play on without saving */ }
 }
 
-// which of the world's starting items are no longer on the ground
-function itemsTakenKeys() {
-  const present = new Set(items.map(it => it.type + '@' + it.x.toFixed(1) + ',' + it.y.toFixed(1)));
-  return START_ITEMS.filter(k => !present.has(k));
+// every area's remembered state, with the live area folded in
+function collectAreaState() {
+  const all = {};
+  for (const id of Object.keys(areaState)) all[id] = areaState[id];
+  all[currentArea] = {
+    deadBarrels: boomBarrels.filter(b => !b.alive).map(b => b.gx + ',' + b.gy),
+    takenItems: (START_ITEMS_BY_AREA[currentArea] || []).filter(
+      k => !items.some(it => itemKey(it) === k)),
+  };
+  return all;
 }
 
 function loadSaveData() {
@@ -69,7 +75,14 @@ function migrate(d) {
     }
     d.v = 2;
   }
-  if (!d.name) d.name = 'TRAVELLER';     // never throw a run away over a blank name
+  if (d.v < 3) {
+    // v2 → v3: single-map state becomes per-area state (it was the junkyard)
+    d.areas = { junkyard: { deadBarrels: d.deadBarrels || [], takenItems: d.takenItems || [] } };
+    d.area = 'junkyard';
+    d.v = 3;
+  }
+  if (!Areas[d.area]) d.area = 'junkyard';   // an area we no longer ship
+  if (!d.name) d.name = 'TRAVELLER';         // never throw a run away over a blank name
   return d;
 }
 
@@ -104,44 +117,34 @@ function applySave(d) {
   player.dead = 0; player.iframes = 1; player.flash = 0;
   player.swing = 0; player.swingCd = 0; player.fireCd = 0; player.combatT = 99;
 
-  // an update may have put a wall where the player was standing, or an older
-  // build let them walk off the map — never restore them out of bounds or
-  // inside geometry
-  const inBounds = player.x > 1 && player.y > 1 && player.x < MAP_W - 1 && player.y < MAP_H - 1;
-  if (!inBounds || !canStand(player.x, player.y, player.r)) {
-    const safe = findSafeSpot(player.x, player.y) || { x: player.respawnX, y: player.respawnY };
+  mission.state = ['none', 'active', 'complete', 'turned'].includes(d.mission) ? d.mission : 'none';
+  scrapper.kills = Math.max(0, num(d.kills, 0));
+  if (d.bossDown) bossDefeated = true;
+
+  // per-area world state: remember every area, then load the one we're in
+  for (const id of Object.keys(d.areas || {})) areaState[id] = d.areas[id];
+  const wantArea = d.area || 'junkyard';
+  if (wantArea !== currentArea) {
+    currentArea = wantArea;
+    Areas[wantArea].build();
+    buildMinimap();
+  }
+  loadAreaItems(currentArea);
+  if (bossDefeated) openGate();
+  restoreArea(currentArea);
+
+  // the position check must run against the AREA WE LOADED
+  const inBounds2 = player.x > 1 && player.y > 1 && player.x < MAP_W - 1 && player.y < MAP_H - 1;
+  if (!inBounds2 || !canStand(player.x, player.y, player.r)) {
+    const safe = findSafeSpot(player.x, player.y) ||
+      (currentArea === 'junkyard' ? { x: player.respawnX, y: player.respawnY } : { x: MAP_W / 2, y: MAP_H / 2 });
     player.x = safe.x; player.y = safe.y;
   }
 
-  mission.state = ['none', 'active', 'complete', 'turned'].includes(d.mission) ? d.mission : 'none';
-  scrapper.kills = Math.max(0, num(d.kills, 0));
-  if (d.bossDown) {
-    bossDefeated = true;
-    openGate();
-  }
-
-  // barrels matched by tile — moved/added barrels simply stay intact
-  const dead = new Set(d.deadBarrels || []);
-  for (const b of boomBarrels) {
-    if (b.alive && dead.has(b.gx + ',' + b.gy)) {
-      b.alive = false;
-      solid[b.gy][b.gx] = false;
-      const pi = props.indexOf(b.prop);
-      if (pi >= 0) props.splice(pi, 1);
-    }
-  }
-
-  // items the player already collected disappear; items ADDED by an update
-  // are left on the ground so new content is never invisible
-  const taken = new Set(d.takenItems || []);
-  for (let i = items.length - 1; i >= 0; i--) {
-    const it = items[i];
-    if (taken.has(it.type + '@' + it.x.toFixed(1) + ',' + it.y.toFixed(1))) items.splice(i, 1);
-  }
-
   Object.assign(Tut.done, d.tut || {});
-  // robots re-enter the yard fresh (never saved mid-chase)
-  if (mission.state !== 'none') spawnScrapper();
+  // robots re-enter fresh (never saved mid-chase)
+  if (mission.state !== 'none' && currentAreaDef().hasScrapper) spawnScrapper();
+  else scrapper.state = 'off';
 }
 
 // nearest open tile, spiralling outward
