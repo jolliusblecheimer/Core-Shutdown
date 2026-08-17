@@ -90,11 +90,10 @@ function crushUnder() {
 // zone check at an impact point. kind: 'bullet' | 'pipe' | 'knife' | 'blast'
 function bossHit(wx, wy, dmg, kind) {
   if (!boss.active || boss.state === 'hidden' || boss.state === 'dead') return false;
-  // phase-transition shield: nothing gets through
-  if (boss.state === 'shield' || boss.state === 'nova') {
-    spawnSparks(wx, wy, 4, ['#78d2ff', '#b8e8ff']);
+  // phase transitions play out untouchable — this is its moment, not yours
+  if (boss.state === 'cine2' || boss.state === 'cine3' || boss.state === 'nova') {
+    spawnSparks(wx, wy, 4, ['#9a9aa2', '#6a6a72']);
     SFX.dry();
-    think('shield', 'A shield?! Wait for it to drop.');
     return true;
   }
   let applied = 0, tag = 'flesh';
@@ -130,16 +129,36 @@ function bossHit(wx, wy, dmg, kind) {
     else if (tag === 'stagger') { SFX.clang(); hitPause = 0.04; }
     else SFX.hitMetal();
     if (tag === 'pierce') think('pierce', 'The knife bites through plate. Barely.');
-    // phase transitions: shield up, then a signature opening move
+    // phase transitions: a short cutscene, then the phase's opening move
     if (boss.hp > 0) {
       if (boss.phase === 1 && boss.hp <= boss.maxHp * 0.66) {
-        boss.phase = 2; boss.pendingPhase = 2;
-        boss.state = 'shield'; boss.t = 1.6;
-        SFX.alert();
+        boss.phase = 2;
+        boss.state = 'cine2'; boss.t = 0;
+        SFX.rage();
       } else if (boss.phase === 2 && boss.hp <= boss.maxHp * 0.33) {
-        boss.phase = 3; boss.pendingPhase = 3;
-        boss.state = 'shield'; boss.t = 1.6;
-        SFX.alert();
+        boss.phase = 3;
+        boss.state = 'cine3'; boss.t = 0;
+        // mark nearby junk for absorption (never the explosive barrels —
+        // those stay on the field as the player's tools)
+        boss.absorbs = [];
+        const keys = Object.keys(crushProps);
+        for (const k of keys) {
+          if (boss.absorbs.length >= 5) break;
+          const p = crushProps[k];
+          if (p.type === 'boom') continue;
+          const d = Math.hypot(p.gx + 0.5 - boss.x, p.gy + 0.5 - boss.y);
+          if (d < 5) {
+            boss.absorbs.push({ x: p.gx + 0.5, y: p.gy + 0.5, t0: 0.4 + boss.absorbs.length * 0.22, done: false });
+            // remove the prop from the world immediately; the flying debris is the visual
+            for (const k2 of Object.keys(crushProps)) if (crushProps[k2] === p) delete crushProps[k2];
+            const pi2 = props.indexOf(p);
+            if (pi2 >= 0) props.splice(pi2, 1);
+            const tx = Math.floor(p.gx), ty = Math.floor(p.gy);
+            solid[ty][tx] = false;
+            if (p.type === 'car') solid[ty][tx + 1] = false;
+          }
+        }
+        SFX.absorb();
       }
     }
     if (boss.hp <= 0) {
@@ -200,20 +219,35 @@ function updateBoss(dt) {
   }
 
   switch (b.state) {
-    case 'shield': {
-      b.t -= dt;
-      if (((b.t * 12) | 0) % 4 === 0) spawnSparks(b.x, b.y, 1, ['#78d2ff']);
-      if (b.t <= 0) {
-        if (b.pendingPhase === 2) {
-          // phase 2 opens with an instant charge, no hesitation
-          b.state = 'charge'; b.t = 0.35; b.didHit = false;
-          b.chargeDX = dx / distP; b.chargeDY = dy / distP; b.chargeDist = 0;
-          SFX.charge();
-        } else {
-          b.state = 'nova'; b.t = 0.5;
-          SFX.charge();
+    case 'cine2': {
+      // RAGE: camera zooms in while it thrashes — then straight into a charge
+      b.t += dt;
+      if (b.t > 0.4 && b.t < 1.5) {
+        addShake(1.5);
+        if (((b.t * 20) | 0) % 5 === 0) spawnSparks(b.x, b.y, 2, ['#ff5040', '#ffb02e']);
+      }
+      if (b.t >= 1.9) {
+        b.state = 'charge'; b.t = 0.3; b.didHit = false;
+        b.chargeDX = dx / distP; b.chargeDY = dy / distP; b.chargeDist = 0;
+        SFX.charge();
+      }
+      break;
+    }
+    case 'cine3': {
+      // ABSORB: nearby junk flies into it, each piece healing it a little —
+      // then all of it is released as the nova
+      b.t += dt;
+      for (const a of (b.absorbs || [])) {
+        if (!a.done && b.t >= a.t0 + 0.45) {
+          a.done = true;
+          b.hp = Math.min(b.maxHp, b.hp + 6);
+          spawnSparks(b.x, b.y, 6, ['#7ad27a', '#8a8a92']);
+          SFX.absorbTick();
         }
-        b.pendingPhase = 0;
+      }
+      if (b.t >= 2.2) {
+        b.state = 'nova'; b.t = 0.4;
+        SFX.charge();
       }
       break;
     }

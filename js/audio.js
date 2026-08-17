@@ -134,6 +134,9 @@ const SFX = (() => {
     robotDie() { noise(0.25, 0.3, 'lowpass', 900); tone('sawtooth', 300, 50, 0.4, 0.2); tone('square', 700, 100, 0.2, 0.1, 0.05); },
     charge() { tone('sawtooth', 220, 640, 0.4, 0.1); },
     alert() { tone('square', 960, 960, 0.08, 0.2); tone('square', 960, 960, 0.08, 0.2, 0.12); },
+    rage() { tone('sawtooth', 95, 45, 1.0, 0.3); noise(0.7, 0.25, 'lowpass', 700); tone('square', 180, 60, 0.5, 0.12, 0.15); },
+    absorb() { tone('sine', 180, 760, 1.3, 0.12); noise(1.0, 0.06, 'bandpass', 900); },
+    absorbTick() { tone('triangle', 620, 900, 0.08, 0.12); },
     // player
     hurt() { tone('triangle', 160, 70, 0.15, 0.3); noise(0.08, 0.25, 'lowpass', 500); },
     die() { tone('sawtooth', 280, 40, 0.8, 0.3); noise(0.3, 0.2, 'lowpass', 600); },

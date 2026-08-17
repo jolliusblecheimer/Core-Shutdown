@@ -11,6 +11,7 @@ let U = 1;
 
 let camX = 0, camY = 0, camInit = false;
 let lastOx = 0, lastOy = 0;
+let cineZoom = 1;      // camera zoom during boss phase cutscenes
 let hintTimer = 12;
 let roofAlpha = 1;
 let gameTime = 0;
@@ -416,13 +417,16 @@ function update(dt) {
       Input.pressed[k] = false;
     updateParticles(dt);
   } else {
-    updatePlayer(dt);
-    updateScrapper(dt);
+    const bossCine = boss.active && (boss.state === 'cine2' || boss.state === 'cine3');
+    if (!bossCine) {
+      updatePlayer(dt);
+      updateScrapper(dt);
+      updateItems(dt);
+    }
     updateBoss(dt);
     updateNpc(dt);
     updateBullets(dt);
     updateExplosions(dt);
-    updateItems(dt);
     updateMission();
     updateParticles(dt);
     hintTimer -= dt;
@@ -443,11 +447,15 @@ function update(dt) {
     if (m.y > VIEW_H) m.y -= VIEW_H;
   }
 
-  const ps = isoToScreen(player.x, player.y);
-  const targetX = ps.x - VIEW_W / 2, targetY = ps.y - VIEW_H / 2 - 8;
+  // camera: normally the player; during a boss cutscene, the boss — zoomed
+  const cineOn = boss.active && (boss.state === 'cine2' || boss.state === 'cine3');
+  const focus = cineOn ? isoToScreen(boss.x, boss.y) : isoToScreen(player.x, player.y);
+  const targetX = focus.x - VIEW_W / 2, targetY = focus.y - VIEW_H / 2 - 8;
   if (!camInit) { camX = targetX; camY = targetY; camInit = true; }
   camX += (targetX - camX) * Math.min(1, 8 * dt);
   camY += (targetY - camY) * Math.min(1, 8 * dt);
+  const zoomTarget = cineOn ? 1.55 : 1;
+  cineZoom += (zoomTarget - cineZoom) * Math.min(1, 5 * dt);
 }
 
 // ---------- inventory data & actions (BotW-style pack) ----------
@@ -500,8 +508,14 @@ function render() {
   const ox = Math.round(camX + sx), oy = Math.round(camY + sy);
   lastOx = ox; lastOy = oy;
 
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = '#141110';
   ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  // cutscene zoom, centered on the screen
+  if (cineZoom > 1.005) {
+    ctx.setTransform(cineZoom, 0, 0, cineZoom,
+      (VIEW_W / 2) * (1 - cineZoom), (VIEW_H / 2) * (1 - cineZoom));
+  }
 
   for (let gy = 0; gy < MAP_H; gy++) {
     for (let gx = 0; gx < MAP_W; gx++) {
@@ -678,6 +692,8 @@ function render() {
     ctx.fillRect(0, 0, VIEW_W, VIEW_H);
   }
 
+  ctx.setTransform(1, 0, 0, 1, 0, 0);   // zoom never touches the post-process
+
   // ---- HD-2D post-process: color grade, then tilt-shift blur bands ----
   postCtx.clearRect(0, 0, VIEW_W, VIEW_H);
   postCtx.drawImage(canvas, 0, 0);
@@ -793,6 +809,11 @@ function drawBoss(x, y) {
     }
   } else if (b.state === 'charge' && b.t <= 0) {
     spread = 1.5; reach = 5;                              // tucked back while ramming
+  } else if (b.state === 'cine2' && b.t > 0.4 && b.t < 1.5) {
+    // RAGE: claws thrash wildly while the camera is on it
+    spread = 0.9 + Math.sin(gameTime * 26) * 0.55;
+    raise = -5 + Math.sin(gameTime * 31) * 4;
+    reach = 9;
   }
   // slash trails while the claws sweep
   if (strikeS > 0.05) {
@@ -825,39 +846,53 @@ function drawBoss(x, y) {
   if (b.state !== 'dead' && b.state !== 'stagger' && b.state !== 'reveal') {
     const cy = bodyY + 13;
     ctx.strokeStyle = '#3a3a42';                        // plate mass
-    ctx.lineWidth = 7;
+    ctx.lineWidth = 9;
     ctx.beginPath();
-    ctx.ellipse(x, cy, 16, 10, 0, faceAngle - 0.95, faceAngle + 0.95);
+    ctx.ellipse(x, cy, 19, 12, 0, faceAngle - 1.0, faceAngle + 1.0);
     ctx.stroke();
     ctx.strokeStyle = '#5a5a66';                        // lit top edge
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.ellipse(x, cy - 2, 16, 10, 0, faceAngle - 0.9, faceAngle + 0.9);
+    ctx.ellipse(x, cy - 2, 19, 12, 0, faceAngle - 0.95, faceAngle + 0.95);
     ctx.stroke();
     ctx.strokeStyle = '#22222a';                        // panel seams
     ctx.lineWidth = 1;
     for (let i = -2; i <= 2; i++) {
-      const a = faceAngle + i * 0.4;
+      const a = faceAngle + i * 0.42;
       ctx.beginPath();
-      ctx.moveTo(x + Math.cos(a) * 12, cy + Math.sin(a) * 7);
-      ctx.lineTo(x + Math.cos(a) * 20, cy + Math.sin(a) * 12.5);
+      ctx.moveTo(x + Math.cos(a) * 13, cy + Math.sin(a) * 8);
+      ctx.lineTo(x + Math.cos(a) * 24, cy + Math.sin(a) * 15.5);
       ctx.stroke();
     }
-    ctx.fillStyle = '#71717e';                          // rivets
+    ctx.fillStyle = '#7d7d8a';                          // rivets
     for (let i = -3; i <= 3; i += 2) {
-      const a = faceAngle + i * 0.27;
-      ctx.fillRect(Math.round(x + Math.cos(a) * 16) - 1, Math.round(cy + Math.sin(a) * 10) - 1, 2, 2);
+      const a = faceAngle + i * 0.28;
+      ctx.fillRect(Math.round(x + Math.cos(a) * 19) - 1, Math.round(cy + Math.sin(a) * 12) - 1, 3, 3);
     }
   } else if (b.state === 'stagger') {
     // plates hanging open at the sides — the whole machine is soft right now
     ctx.strokeStyle = '#3a3a42';
-    ctx.lineWidth = 6;
+    ctx.lineWidth = 8;
     for (const dir of [-1, 1]) {
       ctx.beginPath();
-      ctx.ellipse(x, bodyY + 13, 19, 12, 0, faceAngle + dir * 1.5, faceAngle + dir * 2.3, dir < 0);
+      ctx.ellipse(x, bodyY + 13, 22, 14, 0, faceAngle + dir * 1.5, faceAngle + dir * 2.3, dir < 0);
       ctx.stroke();
     }
     ctx.lineWidth = 1;
+  }
+
+  // cutscene extras
+  if (b.state === 'cine3') {
+    // junk streaming into the machine, healing it
+    for (const a of (b.absorbs || [])) {
+      if (a.done || b.t < a.t0) continue;
+      const p = Math.min(1, (b.t - a.t0) / 0.45);
+      const wx2 = a.x + (b.x - a.x) * p, wy2 = a.y + (b.y - a.y) * p;
+      const s2 = isoToScreen(wx2, wy2);
+      ctx.fillStyle = p > 0.8 ? '#7ad27a' : '#8a8a92';
+      ctx.fillRect(Math.round(s2.x - lastOx) - 2, Math.round(s2.y - lastOy - 8 - p * 8), 4, 4);
+    }
+    addLight(x, bodyY + 12, 0, 26 + Math.sin(gameTime * 8) * 6, '122,210,122', 0.35);
   }
 
   // phase-transition shield: a crackling bubble — untouchable until it drops
@@ -877,7 +912,7 @@ function drawBoss(x, y) {
     const e = bossEyePos();
     const es = isoToScreen(e.x, e.y);
     const ex = es.x - lastOx, ey = es.y - lastOy - 12 + rise + slump;
-    const winding = (b.state === 'slam' || (b.state === 'charge' && b.t > 0));
+    const winding = (b.state === 'slam' || (b.state === 'charge' && b.t > 0) || b.state === 'cine2');
     const pulse = 0.5 + 0.5 * Math.sin(gameTime * 6);
     ctx.fillStyle = '#2a2a30';                    // eye housing ring
     ctx.beginPath();
