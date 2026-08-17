@@ -21,5 +21,24 @@
 - **Stealth & detection (core system for ALL robots):** enemies never magically know the player's position. They **patrol heap-to-heap** (`patrolPoints`), pausing to scan. Detection is a visible meter above their head (yellow → red) that fills when the player is inside their sight — robot sight (4.5) is SHORTER than the player's view, so you can outrun it. **Crouch (CTRL or C)** slows you to half speed but shrinks their sight to 2.2 — useless up close though: under 1.6 tiles they see you regardless. Losing a chase (range > 7.5) drops them back to suspicious patrol (alert 0.35).
 - **Knife trade costs 3 low-quality tech parts** (not scrap) — first gear gated behind the tech-component tier.
 
+## Boss roster LOCKED (Laurens, 2026-08-17) — full detail in design/city-blueprint.html
+- **The Compactor** (Ring 5, junkyard gate) — TUTORIAL-END BOSS, mandatory. Hidden in
+  plain sight: it looks like part of the junk until the player walks to the gate to
+  leave, then it unfolds. Deliberately weak/beatable — the first boss lesson.
+- **The Shepherd** (Ring 4, the Gallery — moved to the OUTER Sprawl near the Fringe
+  boundary, reachable early) — optional, drone-flock herder.
+- **The Foreman** (Ring 3, Assembly Plant 03) — mandatory, Q7.
+- **The Smelter** (Ring 3, Blastworks) — optional.
+- **The Auditor** (Ring 2, Neon Plaza, post-Q9) — optional.
+- **Twin Watchers** (Ring 2, Coreward Bridge) — route-optional.
+- **Ring 1 Guardians: pick-one by approach.** CANONICAL ROUTE = **the Sentinel's
+  bridge**; Chorister and Surgeon exist for replay variety.
+- **The Last Guardian** (Ring 0) — final fight; its wreckage provides the cutscene Scrapper.
+
+**THE LOOT RULE:** every boss (optional ones especially) drops high-quality
+materials/gear pieces that only **the Forge at Cinder Row** can craft into great
+equipment — each boss holds a UNIQUE forge material, so no optional boss is ever
+pointless. Signature drops listed in the city blueprint.
+
 ## Style notes
 - Robot look evolves inward: rust/junk/improvised (outskirts) → clean/lethal/uniform (Core). The AI's "handwriting" gets neater as you approach it.
