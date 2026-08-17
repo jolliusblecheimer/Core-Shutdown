@@ -5,6 +5,8 @@ const MAP_W = 32, MAP_H = 32;
 const ground = [];
 const groundVar = [];
 const solid = [];
+const heavy = [];    // walls & trash mountains — stops even the boss
+const crushProps = {}; // "x,y" -> prop: small junk the Compactor flattens
 const props = [];    // {gx, gy, type, v, dir, front, foot}
 const decals = [];
 const moundSpawns = [];   // enemy spawn points tucked behind trash mountains
@@ -19,11 +21,12 @@ const SHACK = { x0: 18, y0: 4, x1: 24, y1: 9, doorX: 21 };
   const rng = mulberry32(4242);
 
   for (let y = 0; y < MAP_H; y++) {
-    ground[y] = []; groundVar[y] = []; solid[y] = [];
+    ground[y] = []; groundVar[y] = []; solid[y] = []; heavy[y] = [];
     for (let x = 0; x < MAP_W; x++) {
       ground[y][x] = 0;
       groundVar[y][x] = (rng() * 6) | 0;
       solid[y][x] = false;
+      heavy[y][x] = false;
     }
   }
 
@@ -43,6 +46,7 @@ const SHACK = { x0: 18, y0: 4, x1: 24, y1: 9, doorX: 21 };
     const slices = Sprites.makeWallRun(kinds, axis, trimS, trimE);
     tiles.forEach(([x, y], i) => {
       solid[y][x] = true;
+      heavy[y][x] = true;
       const s = slices[i];
       props.push({ gx: x, gy: y, type: 'wallSlice', img: s.img, dx: s.dx, dy: s.dy, lift: s.lift, front });
     });
@@ -84,6 +88,7 @@ const SHACK = { x0: 18, y0: 4, x1: 24, y1: 9, doorX: 21 };
     [19, 7, 'table'], [20, 7, 'stool'], [23, 8, 'stove'],
   ]) {
     solid[fy][fx] = true;
+    heavy[fy][fx] = true;      // interior is boss-proof anyway
     props.push({ gx: fx, gy: fy, type: ftype, v: 0 });
   }
 
@@ -97,7 +102,7 @@ const SHACK = { x0: 18, y0: 4, x1: 24, y1: 9, doorX: 21 };
   // ---- trash mountains (multi-tile footprints) ----
   function placeMound(x0, y0, fw, fh, type, v) {
     for (let y = y0; y < y0 + fh; y++) for (let x = x0; x < x0 + fw; x++) {
-      if (x >= 1 && y >= 1 && x < MAP_W - 1 && y < MAP_H - 1) solid[y][x] = true;
+      if (x >= 1 && y >= 1 && x < MAP_W - 1 && y < MAP_H - 1) { solid[y][x] = true; heavy[y][x] = true; }
     }
     props.push({ gx: x0 + fw / 2 - 0.5, gy: y0 + fh / 2 - 0.5, type, v, foot: [x0, y0, fw, fh] });
   }
@@ -125,7 +130,9 @@ const SHACK = { x0: 18, y0: 4, x1: 24, y1: 9, doorX: 21 };
       const y = 2 + ((rng() * (MAP_H - 4)) | 0);
       if (reserved(x, y)) continue;
       solid[y][x] = true;
-      props.push({ gx: x, gy: y, type, v: variants ? (rng() * variants) | 0 : 0 });
+      const prop = { gx: x, gy: y, type, v: variants ? (rng() * variants) | 0 : 0 };
+      props.push(prop);
+      crushProps[x + ',' + y] = prop;
       placed++;
     }
   }
@@ -143,6 +150,7 @@ const SHACK = { x0: 18, y0: 4, x1: 24, y1: 9, doorX: 21 };
     solid[y][x] = true;
     const prop = { gx: x, gy: y, type: 'boom' };
     props.push(prop);
+    crushProps[x + ',' + y] = prop;
     boomBarrels.push({ gx: x, gy: y, alive: true, prop });
   }
 
@@ -152,7 +160,10 @@ const SHACK = { x0: 18, y0: 4, x1: 24, y1: 9, doorX: 21 };
   for (const [cx, cy] of carSpots) {
     if (reserved(cx, cy) || reserved(cx + 1, cy)) continue;
     solid[cy][cx] = true; solid[cy][cx + 1] = true;
-    props.push({ gx: cx + 0.5, gy: cy, type: 'car', v: carV++ % 2 });
+    const prop = { gx: cx + 0.5, gy: cy, type: 'car', v: carV++ % 2 };
+    props.push(prop);
+    crushProps[cx + ',' + cy] = prop;
+    crushProps[(cx + 1) + ',' + cy] = prop;
   }
 
   // enemy spawn points hidden behind trash mountains (north/west sides sit
@@ -219,6 +230,17 @@ const aoGrid = [];
 function isSolid(gx, gy) {
   if (gx < 0 || gy < 0 || gx >= MAP_W || gy >= MAP_H) return true;
   return solid[gy | 0] && solid[gy | 0][gx | 0];
+}
+
+// only walls and trash mountains stop the Compactor
+function isHeavy(gx, gy) {
+  if (gx < 0 || gy < 0 || gx >= MAP_W || gy >= MAP_H) return true;
+  return heavy[gy | 0] && heavy[gy | 0][gx | 0];
+}
+
+function bossCanStand(x, y, r) {
+  return !isHeavy(x - r, y - r) && !isHeavy(x + r, y - r) &&
+         !isHeavy(x - r, y + r) && !isHeavy(x + r, y + r);
 }
 
 function canStand(x, y, r) {

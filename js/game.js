@@ -748,49 +748,76 @@ function drawBoss(x, y) {
   const b = boss;
   const rise = b.state === 'reveal' ? (1 - Math.min(1, b.t / 1.6)) * 22 : 0;
   const slump = b.state === 'stagger' ? 4 : (b.state === 'dead' ? 8 : 0);
-  drawShadow(x, y + 2, 22);
+  drawShadow(x, y + 2, 24);
   if (b.state === 'dead' && ((gameTime * 2) | 0) % 3 === 0) spawnSmoke(b.x, b.y, 1);
 
-  // crusher arm points along facing (behind the body when facing away)
-  const fs = isoToScreen(b.fx, b.fy);
-  const armAngle = Math.atan2(fs.y, fs.x);
-  const armBehind = Math.sin(armAngle) < 0;
-  const drawArm = () => {
-    ctx.save();
-    ctx.translate(x, y - 16 + rise + slump);
-    ctx.rotate(armAngle);
-    if (Math.cos(armAngle) < 0) ctx.scale(1, -1);
-    ctx.drawImage(Sprites.bossArm, 12, -6);
-    ctx.restore();
-  };
-  if (armBehind) drawArm();
-  ctx.globalAlpha = b.state === 'dead' ? 0.85 : 1;
-  ctx.drawImage(Sprites.bossBody, Math.round(x - 25), Math.round(y - 36 + rise + slump));
-  ctx.globalAlpha = 1;
-  if (!armBehind) drawArm();
+  const bodyY = y - 26 + rise + slump;
+  const ph = b.walkPhase || 0;
+  const moving = b.state === 'pursue' || (b.state === 'charge' && b.t <= 0);
 
-  // THE EYE — unmistakably the weak point: bright, pulsing, alive
+  // FOUR LEGS — two per side, stepping in diagonal pairs when it crawls
+  ctx.strokeStyle = '#3e3e46';
+  ctx.lineWidth = 3;
+  const legs = [[-1, -1, 0], [1, -1, Math.PI], [-1, 1, Math.PI], [1, 1, 0]];
+  for (const [sx2, sy2, phOff] of legs) {
+    const lift = moving ? Math.max(0, Math.sin(ph + phOff)) * 3 : 0;
+    const hipX = x + sx2 * 14, hipY = bodyY + 10 + sy2 * 3;
+    const kneeX = x + sx2 * 24, kneeY = hipY - 6 - lift;
+    const footX = x + sx2 * 29, footY = y + 2 + sy2 * 3 - lift * 2;
+    ctx.beginPath();
+    ctx.moveTo(hipX, hipY);
+    ctx.lineTo(kneeX, kneeY);
+    ctx.lineTo(footX, footY);
+    ctx.stroke();
+    ctx.fillStyle = '#2e2e36';
+    ctx.fillRect(Math.round(footX) - 2, Math.round(footY) - 1, 4, 3);
+  }
+  ctx.lineWidth = 1;
+
+  // TWO GRABBER CLAWS at the sides, angled toward the facing — raised for a slam
+  const fs = isoToScreen(b.fx, b.fy);
+  const faceAngle = Math.atan2(fs.y, fs.x);
+  const slamRaise = b.state === 'slam' ? (b.t > 0.15 ? -6 : 4) : 0;
+  for (const side of [-0.55, 0.55]) {
+    const a = faceAngle + side;
+    ctx.save();
+    ctx.translate(x + Math.cos(a) * 8, bodyY + 12 + Math.sin(a) * 5 + slamRaise);
+    ctx.rotate(a);
+    if (Math.cos(a) < 0) ctx.scale(1, -1);
+    ctx.drawImage(Sprites.bossArm, 6, -6);
+    ctx.restore();
+  }
+
+  ctx.globalAlpha = b.state === 'dead' ? 0.85 : 1;
+  ctx.drawImage(Sprites.bossBody, Math.round(x - 24), Math.round(bodyY));
+  ctx.globalAlpha = 1;
+
+  // ONE BIG EYE — unmistakably the weak point: large, bright, pulsing
   if (b.state !== 'dead') {
     const e = bossEyePos();
     const es = isoToScreen(e.x, e.y);
-    const ex = es.x - lastOx, ey = es.y - lastOy - 14 + rise + slump;
+    const ex = es.x - lastOx, ey = es.y - lastOy - 12 + rise + slump;
     const winding = (b.state === 'slam' || (b.state === 'charge' && b.t > 0));
     const pulse = 0.5 + 0.5 * Math.sin(gameTime * 6);
+    ctx.fillStyle = '#2a2a30';                    // eye housing ring
+    ctx.beginPath();
+    ctx.arc(Math.round(ex), Math.round(ey), 6, 0, Math.PI * 2);
+    ctx.fill();
     ctx.fillStyle = winding && ((performance.now() / 90) | 0) % 2 ? '#ff5040' : '#ffb02e';
     ctx.beginPath();
-    ctx.arc(Math.round(ex), Math.round(ey), 3, 0, Math.PI * 2);
+    ctx.arc(Math.round(ex), Math.round(ey), 4.5, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#fff2c0';
-    ctx.fillRect(Math.round(ex) - 1, Math.round(ey) - 1, 1, 1);
-    addLight(ex, ey, 0, 16 + pulse * 6, winding ? '255,90,60' : '255,176,46', 0.55);
+    ctx.fillStyle = '#fff2c0';                    // iris glint
+    ctx.fillRect(Math.round(ex) - 1, Math.round(ey) - 2, 2, 2);
+    addLight(ex, ey, 0, 20 + pulse * 8, winding ? '255,90,60' : '255,176,46', 0.6);
 
-    // rear core vents — glow hard when the plates are thrown open
+    // FOUR core vents on the rear — blaze open during the stagger
     const cs = isoToScreen(b.x - b.fx * 0.8, b.y - b.fy * 0.8);
-    const cx2 = cs.x - lastOx, cy2 = cs.y - lastOy - 18 + rise + slump;
+    const cx2 = cs.x - lastOx, cy2 = cs.y - lastOy - 16 + rise + slump;
     const open = b.state === 'stagger';
     ctx.fillStyle = open ? '#ffb02e' : 'rgba(255,176,46,0.35)';
-    for (let i = -1; i <= 1; i++) ctx.fillRect(Math.round(cx2 + i * 4) - 1, Math.round(cy2), 2, 4);
-    if (open) addLight(cx2, cy2, 0, 22 + pulse * 8, '255,176,46', 0.6);
+    for (let i = 0; i < 4; i++) ctx.fillRect(Math.round(cx2 - 7 + i * 4), Math.round(cy2), 2, open ? 5 : 4);
+    if (open) addLight(cx2, cy2, 0, 24 + pulse * 8, '255,176,46', 0.65);
   }
 }
 

@@ -42,6 +42,48 @@ function spawnBoss(x, y) {
 
 function bossEyePos() { return { x: boss.x + boss.fx * 0.8, y: boss.y + boss.fy * 0.8 }; }
 
+// the Compactor does not path around junk — it goes THROUGH it.
+// Only walls and trash mountains (isHeavy) stop it. Everything else it
+// flattens; explosive barrels it rolls over detonate (and hurt it).
+function bossMove(dx, dy) {
+  if (dx !== 0 && bossCanStand(boss.x + dx, boss.y, 0.7)) boss.x += dx;
+  if (dy !== 0 && bossCanStand(boss.x, boss.y + dy, 0.7)) boss.y += dy;
+  crushUnder();
+}
+
+function crushUnder() {
+  const x0 = Math.floor(boss.x - 1), x1 = Math.ceil(boss.x + 1);
+  const y0 = Math.floor(boss.y - 1), y1 = Math.ceil(boss.y + 1);
+  for (let gy = y0; gy <= y1; gy++) {
+    for (let gx = x0; gx <= x1; gx++) {
+      const key = gx + ',' + gy;
+      const p = crushProps[key];
+      if (!p) continue;
+      if (Math.hypot(gx + 0.5 - boss.x, gy + 0.5 - boss.y) > 1.15) continue;
+      if (p.type === 'boom') {
+        const bb = boomBarrels.find(b => b.prop === p);
+        delete crushProps[key];
+        if (bb && bb.alive) explodeBarrel(bb);      // rolling over a barrel sets it off
+        continue;
+      }
+      // flatten it
+      for (const k of Object.keys(crushProps)) {
+        if (crushProps[k] === p) delete crushProps[k];
+      }
+      const pi = props.indexOf(p);
+      if (pi >= 0) props.splice(pi, 1);
+      const tx = Math.floor(p.gx), ty = Math.floor(p.gy);
+      solid[ty][tx] = false;
+      if (p.type === 'car') solid[ty][tx + 1] = false;
+      decals.push({ gx: p.gx + 0.5, gy: p.gy + 0.5, type: 'stain' });  // flattened smear
+      spawnSparks(p.gx + 0.5, p.gy + 0.5, 8, ['#8a8a92', '#7d4a2a', '#5c3620'], 3);
+      spawnSmoke(p.gx + 0.5, p.gy + 0.5, 3);
+      addShake(2);
+      SFX.clang();
+    }
+  }
+}
+
 // zone check at an impact point. kind: 'bullet' | 'pipe' | 'knife' | 'blast'
 function bossHit(wx, wy, dmg, kind) {
   if (!boss.active || boss.state === 'hidden' || boss.state === 'dead') return false;
@@ -143,12 +185,14 @@ function updateBoss(dt) {
       break;
     }
     case 'pursue': {
-      // face and stalk the player
+      // face and stalk the player — straight through whatever's in the way
       b.fx += ((dx / distP) - b.fx) * Math.min(1, 3 * dt);
       b.fy += ((dy / distP) - b.fy) * Math.min(1, 3 * dt);
       const fl = Math.hypot(b.fx, b.fy) || 1;
       b.fx /= fl; b.fy /= fl;
-      aiMove(b, player.x, player.y, 1.15 * dt, dt);
+      const stp = 1.15 * dt;
+      bossMove((dx / distP) * stp, (dy / distP) * stp);
+      b.walkPhase = (b.walkPhase || 0) + stp * 3.4;
       b.atkCd -= dt; b.sprayCd -= dt;
       if (player.dead > 0) break;
       if (distP < 1.9 && b.atkCd <= 0) {
@@ -192,6 +236,7 @@ function updateBoss(dt) {
       const step = 8.5 * dt;
       const nx = b.x + b.chargeDX * step, ny = b.y + b.chargeDY * step;
       b.chargeDist += step;
+      b.walkPhase = (b.walkPhase || 0) + step * 3.4;
       // run over the player
       if (!b.didHit && player.dead <= 0 && player.iframes <= 0 &&
           Math.hypot(player.x - b.x, player.y - b.y) < 1.2) {
@@ -203,7 +248,7 @@ function updateBoss(dt) {
         SFX.hurt();
         if (player.hp <= 0) { player.hp = 0; player.dead = 2; SFX.die(); }
       }
-      if (!canStand(nx, ny, b.r * 0.7) || b.chargeDist > 7) {
+      if (!bossCanStand(nx, ny, b.r * 0.7) || b.chargeDist > 7) {
         // CRASH — the whole point of the fight
         b.state = 'stagger'; b.t = 3;
         addShake(7);
@@ -213,6 +258,7 @@ function updateBoss(dt) {
         think('stagger', "It's wide open — NOW!");
       } else {
         b.x = nx; b.y = ny;
+        crushUnder();            // a charging Compactor flattens everything on the line
       }
       break;
     }

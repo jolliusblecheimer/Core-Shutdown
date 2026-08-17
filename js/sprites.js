@@ -684,30 +684,32 @@ function outlined(src) {
     Sprites.stove = outlined(fv);
   })();
 
-  // ---- THE COMPACTOR (boss): big dull hull, glowing eye, rear core vents ----
+  // ---- THE COMPACTOR (boss): low crawler hull carried on four legs,
+  // one big eye up front, four core vents behind, two grabber claws ----
   (function () {
-    const c = makeCanvas(48, 38), g = c.getContext('2d');
-    px(g, 6, 30, 36, 6, '#3a3a42');                    // treads
-    for (let i = 0; i < 6; i++) px(g, 8 + i * 6, 31, 2, 4, '#2c2c33');
-    px(g, 4, 12, 40, 19, '#565660');                   // hull
-    px(g, 4, 12, 40, 2, '#6e6e7a');                    // top light
-    for (let i = 1; i < 5; i++) px(g, 4 + i * 8, 14, 1, 16, '#44444c');  // plate seams
-    px(g, 8, 6, 32, 7, '#61616c');                     // upper deck
-    px(g, 8, 6, 32, 1, '#75757f');
-    px(g, 1, 14, 5, 12, '#61616c');                    // shoulder plates
-    px(g, 42, 14, 5, 12, '#61616c');
-    px(g, 10, 22, 6, 6, '#7d4a2a');                    // rust
-    px(g, 33, 15, 5, 4, '#5c3620');
-    px(g, 22, 8, 6, 3, '#4a4a52');                     // vent block
+    const c = makeCanvas(46, 24), g = c.getContext('2d');
+    px(g, 3, 6, 40, 15, '#565660');                    // low hull
+    px(g, 3, 6, 40, 2, '#6e6e7a');                     // top light
+    px(g, 5, 3, 36, 5, '#61616c');                     // spine plate
+    px(g, 5, 3, 36, 1, '#75757f');
+    for (let i = 1; i < 5; i++) px(g, 3 + i * 8, 8, 1, 12, '#44444c');   // plate seams
+    px(g, 0, 9, 4, 9, '#61616c');                      // hip guards
+    px(g, 42, 9, 4, 9, '#61616c');
+    px(g, 8, 15, 6, 5, '#7d4a2a');                     // rust
+    px(g, 31, 8, 5, 4, '#5c3620');
+    px(g, 19, 1, 8, 3, '#4a4a52');                     // vent block
     Sprites.bossBody = outlined(c);
 
-    const a = makeCanvas(22, 12), ag = a.getContext('2d');
-    px(ag, 0, 3, 14, 6, '#4c4c56');                    // arm plate
-    px(ag, 0, 3, 14, 1, '#5e5e68');
-    px(ag, 12, 1, 6, 10, '#565660');                   // crusher head
-    px(ag, 18, 2, 3, 2, '#8a8a92');                    // teeth
-    px(ag, 18, 6, 3, 2, '#8a8a92');
-    px(ag, 4, 5, 6, 2, '#8a8a92');                     // piston
+    // grabber claw — the trash-picker arms it attacks with
+    const a = makeCanvas(20, 12), ag = a.getContext('2d');
+    px(ag, 0, 4, 10, 4, '#4c4c56');                    // arm segment
+    px(ag, 0, 4, 10, 1, '#5e5e68');
+    px(ag, 9, 2, 4, 8, '#565660');                     // wrist block
+    px(ag, 13, 1, 6, 3, '#6a6a74');                    // upper prong
+    px(ag, 17, 3, 2, 2, '#8a8a92');
+    px(ag, 13, 8, 6, 3, '#6a6a74');                    // lower prong
+    px(ag, 17, 7, 2, 2, '#8a8a92');
+    px(ag, 4, 5, 4, 2, '#8a8a92');                     // piston
     Sprites.bossArm = outlined(a);
   })();
 

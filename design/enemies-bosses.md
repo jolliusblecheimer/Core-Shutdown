@@ -35,8 +35,18 @@
     barrel is a ~45 HP bailout, never a one-button solution. (Rule applies to ALL bosses.)
   - Knife owners (18 dmg) melt the stagger windows ~2.5× faster than pipe users —
     optional prep pays off.
-  - **BIG: ~3× player height** (sprite ~60px tall, 2×2 tile footprint) — it should
-    fill the screen when it charges.
+  - **BIG: ~3× player height** (2×2 tile footprint) — it should fill the screen
+    when it charges.
+  - **DESIGN (v2, Laurens): a four-legged CRAWLER.** Low plated hull carried on
+    four articulated legs (stepping in diagonal pairs), ONE big glowing eye up
+    front, FOUR core vents on the rear, and TWO grabber claws at the sides — its
+    trash-picker arms, raised and smashed down for the slam. (Reference picture
+    may follow; iterate then.)
+  - **IT CRUSHES THROUGH EVERYTHING.** The Compactor never paths around junk:
+    small props (piles, barrels, tires, crates, even car wrecks) are flattened as
+    it passes — leaving smears — and **explosive barrels it rolls over DETONATE**,
+    hurting it (50%): baiting it across barrels is a real tactic. Only walls and
+    trash mountains (`isHeavy`) stop it — those are what charges crash into.
   - **ARMOR + WEAK POINTS (locational damage):**
     - **Armor plates** (hull, crusher arm, front): hits deal ZERO damage — grey
       spark, dull CLANK sound, no hit-flash.
