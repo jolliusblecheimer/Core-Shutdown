@@ -719,3 +719,23 @@ what says "stairs" at a glance, before any tread registers.
 
 All four doors re-tested end to end, and the map table still hands over the
 ring.
+
+### 82. The gate cutscene was looking at the wrong end of the yard
+**Laurens:** "there is a problem when spawning the first boss, the camera pans
+to the spot the gate used to be at the bottom of the map, now that the boss
+spawns somewhere else the animation and camera pan has to be adjusted"
+**Claude:** Exactly that, and it was one line.
+
+The cutscene's first beat — the lock grinding — focused on the literal pair of
+numbers `(21.5, 30.0)`. That is where the gate stood when it was in the SOUTH
+wall. It has been in the east wall for a long time. So on unlocking, the camera
+flew eighteen tiles to an empty corner of the yard, sat there through the
+shake, and then flew all the way back across the map when the Compactor rose.
+
+Measured before and after rather than eyeballed. Before: `30.2,12.5 →
+21.5,30.0 → 26.5,12.5`. After: `30.6,12.5` held through the grind, then a
+four-tile pan west onto the boss as it rises, then back to the player.
+
+It reads off `gateProp` now instead of carrying a copy of its position, so
+moving the gate again cannot break it. That is the actual fix — the numbers
+were only the symptom.

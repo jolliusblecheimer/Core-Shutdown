@@ -637,11 +637,20 @@ function update(dt) {
   }
 
   // camera: the player normally; the boss during its cutscenes; during the
-  // gate cutscene, first the gate lock — then whatever rises behind you
+  // gate cutscene, first the gate lock — then whatever rises behind you.
+  //
+  // The lock used to be the literal pair of numbers (21.5, 30.0), which is
+  // where the gate stood when it was in the south wall. It has been in the
+  // EAST wall for a long time, so the first beat of the cutscene panned
+  // eighteen tiles to an empty corner of the yard, sat there while the lock
+  // ground, and then flew all the way back when the Compactor rose. It reads
+  // off the gate itself now, so moving the gate again cannot break it.
   const cineOn = boss.active && (boss.state === 'cine2' || boss.state === 'cine3');
   let focus;
   if (GateCine.active) {
-    focus = GateCine.spawned ? isoToScreen(boss.x, boss.y) : isoToScreen(21.5, 30.0);
+    const lockX = gateProp ? gateProp.gx - 0.4 : player.x;
+    const lockY = gateProp ? gateProp.gy + 0.5 : player.y;
+    focus = GateCine.spawned ? isoToScreen(boss.x, boss.y) : isoToScreen(lockX, lockY);
   } else if (cineOn) {
     focus = isoToScreen(boss.x, boss.y);
   } else {
