@@ -483,6 +483,49 @@ function outlined(src) {
 
   // ---- Props (all outlined so they read as objects) ----
   // tall scrap piles
+  // Scatter-built sprites (junk piles, trash mountains) can throw a speck or a
+  // pipe clear of the main mass, and a lump of rust floating beside the heap
+  // reads as a bug, not as debris. This walks the sprite's connected pixels and
+  // erases everything that is not part of the biggest lump. 8-connected, so a
+  // corner touch still counts as attached.
+  function dropStrays(c) {
+    const g = c.getContext('2d'), W = c.width, H = c.height;
+    const img = g.getImageData(0, 0, W, H), d = img.data;
+    const lab = new Int32Array(W * H).fill(-1);
+    const sizes = [];
+    const stack = [];
+    for (let i = 0; i < W * H; i++) {
+      if (d[i * 4 + 3] === 0 || lab[i] !== -1) continue;
+      const id = sizes.length;
+      let n = 0;
+      stack.push(i);
+      lab[i] = id;
+      while (stack.length) {
+        const q = stack.pop();
+        n++;
+        const qx = q % W, qy = (q / W) | 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const nx = qx + dx, ny = qy + dy;
+            if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+            const k = ny * W + nx;
+            if (lab[k] !== -1 || d[k * 4 + 3] === 0) continue;
+            lab[k] = id;
+            stack.push(k);
+          }
+        }
+      }
+      sizes.push(n);
+    }
+    if (sizes.length < 2) return;
+    let best = 0;
+    for (let i = 1; i < sizes.length; i++) if (sizes[i] > sizes[best]) best = i;
+    for (let i = 0; i < W * H; i++) {
+      if (lab[i] !== -1 && lab[i] !== best) d[i * 4 + 3] = 0;
+    }
+    g.putImageData(img, 0, 0);
+  }
+
   function scrapPile() {
     const c = makeCanvas(24, 22), g = c.getContext('2d');
     const cols = ['#5a5a62', '#43434b', '#7d4a2a', '#5c3620', '#6a6a72', '#333338'];
@@ -496,6 +539,7 @@ function outlined(src) {
       const col = t > 0.72 && rng() < 0.5 ? lit[(rng() * 2) | 0] : cols[(rng() * cols.length) | 0];
       px(g, x | 0, y | 0, w, 1 + ((rng() * 2) | 0), col);
     }
+    dropStrays(c);
     return outlined(c);
   }
   Sprites.scrapPiles = [scrapPile(), scrapPile(), scrapPile()];
@@ -624,7 +668,11 @@ function outlined(src) {
     // rust, so no two are the same
     isoFill(g, [P(0.34, 1, 9), P(0.5, 1, 9), P(0.5, 1, 5), P(0.34, 1, 5)], RUST_D);
     const out = outlined(c);
-    out.oy = -(OY + 1);
+    // Anchor the sprite on the CENTRE of its own footprint, not on P(0,0).
+    // The old +1 put the drawn car three quarters of a tile down-screen of the
+    // tiles it blocked, so you bumped into thin air beside it and walked
+    // through its nose. (L+W)/2 tiles along the diagonal is 8px per tile.
+    out.oy = -(OY + Math.round((L + W) * 4));
     return out;
   }
   const CAR_COLS = [
@@ -912,11 +960,21 @@ function outlined(src) {
       const col = (t > 0.55 && rng() < 0.4) ? lit[(rng() * lit.length) | 0] : cols[(rng() * cols.length) | 0];
       px(g, x | 0, y | 0, 1 + ((rng() * 3) | 0), 1 + ((rng() * 2) | 0), col);
     }
-    // a few poking silhouettes on the crest (pipes, girder ends)
+    // A few pipes and girder ends poking out of the crest. These MUST be
+    // planted in the heap: drawn at a fixed height near the top they ended up
+    // hanging in mid-air wherever the slope fell away beneath them, which is
+    // what the floating bits were. So find the heap's own surface at this x
+    // first, then bury the bottom of the pipe a few pixels into it.
     for (let i = 0; i < W / 14; i++) {
-      const x = cx + (rng() * 2 - 1) * (W / 5);
-      px(g, x | 0, 1 + ((rng() * 5) | 0), 2, 6 + ((rng() * 5) | 0), rng() < 0.5 ? '#43434b' : '#5c3620');
+      const dx = (rng() * 2 - 1) * (W / 5);
+      const x = cx + dx;
+      const t = Math.max(0, Math.min(1, 1 - (Math.abs(dx) - 2) / (W / 2 - 2)));
+      const surf = H - 2 - t * (H - 5);
+      const len = 6 + ((rng() * 5) | 0);
+      const top = Math.max(1, surf - len);
+      px(g, x | 0, top | 0, 2, ((surf + 3) - top) | 0, rng() < 0.5 ? '#43434b' : '#5c3620');
     }
+    dropStrays(c);
     return outlined(c);
   }
   Sprites.mound2 = [mound(60, 42), mound(60, 42)];

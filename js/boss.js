@@ -212,9 +212,7 @@ function crushUnder() {
         if (crushProps[k] === p) delete crushProps[k];
       }
       removeProp(p);
-      const tx = Math.floor(p.gx), ty = Math.floor(p.gy);
-      solid[ty][tx] = false;
-      if (p.type === 'car') solid[ty][tx + 1] = false;
+      clearPropSolid(p);
       decals.push({ gx: p.gx + 0.5, gy: p.gy + 0.5, type: 'stain' });  // flattened smear
       spawnSparks(p.gx + 0.5, p.gy + 0.5, 8, ['#8a8a92', '#7d4a2a', '#5c3620'], 3);
       spawnSmoke(p.gx + 0.5, p.gy + 0.5, 3);
@@ -289,9 +287,7 @@ function bossHit(wx, wy, dmg, kind) {
             // remove the prop from the world immediately; the flying debris is the visual
             for (const k2 of Object.keys(crushProps)) if (crushProps[k2] === p) delete crushProps[k2];
             removeProp(p);
-            const tx = Math.floor(p.gx), ty = Math.floor(p.gy);
-            solid[ty][tx] = false;
-            if (p.type === 'car') solid[ty][tx + 1] = false;
+            clearPropSolid(p);
           }
         }
         // a storm of cosmetic debris on top of the real absorbed props —

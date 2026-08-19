@@ -350,3 +350,22 @@ and moved every piece of wall detail onto it. The big face quads still use
 **The rule is now consistent across the project: geometry big enough to have a
 silhouette may be a path; anything smaller than about ten pixels must be
 integer-filled.**
+
+### 71. Floating bits on the scrap mountains
+**Laurens:** "for some of the trash/scrap mountains there are some flying parts
+of it not connected, get rid of them it looks bad"
+**Claude:** Two causes, both fixed.
+The direct one: the pipes and girder ends poking out of a mound's crest were
+drawn at a *fixed* height near the top of the sprite (`y = 1 + rng()*5`),
+regardless of where the heap's surface actually was at that x. Toward the
+flanks the slope falls away fast, so a pipe placed there ended several pixels
+clear of the junk with nothing under it. They are now planted: the code solves
+the mound's own profile for the surface height at that x and buries the bottom
+of the pipe three pixels into it.
+The general one: `dropStrays()` — a connected-component pass (8-connected) run
+over every scatter-built sprite before it is outlined. It keeps the largest
+mass and erases everything else, so a stray speck thrown clear by the random
+scatter can never survive, in mounds or in the small scrap piles.
+Verified by re-running the component count on the built sprites: mound2, mound3
+and all three scrap piles now come back as exactly **1** island each (they were
+not all 1 before). Not screenshotted — the browser pane would not composite.

@@ -117,6 +117,17 @@ function removeProp(p) {
   }
 }
 function addDecal(d) { decals.push(d); indexInto(decalCells, d); }
+// A crushed/absorbed prop must free EVERY tile it stood on, not just its
+// anchor tile - multi-tile junk used to leave invisible walls behind.
+function clearPropSolid(p) {
+  const f = p.foot;
+  const x0 = f ? f[0] : Math.floor(p.gx), y0 = f ? f[1] : Math.floor(p.gy);
+  const x1 = f ? f[0] + f[2] - 1 : x0, y1 = f ? f[1] + f[3] - 1 : y0;
+  for (let y = y0; y <= y1; y++) {
+    if (!solid[y]) continue;
+    for (let x = x0; x <= x1; x++) solid[y][x] = false;
+  }
+}
 // everything within the camera's tile window. A prop spanning several cells
 // appears in each of them, so results are stamped to keep them unique.
 let gatherStamp = 0;
@@ -284,19 +295,21 @@ function buildJunkyard() {
     boomBarrels.push({ gx: x, gy: y, alive: true, prop });
   }
 
+  // A car is 2.25 tiles long now that it is a real volume, so it blocks THREE
+  // tiles along its axis and one across, and it is anchored on the MIDDLE tile
+  // so the sprite stands on exactly the tiles it blocks.
   const carSpots = [[12, 10], [7, 15], [24, 13], [16, 25], [27, 8], [14, 18], [9, 20], [19, 28]];
   let carV = 0;
   for (const [cx, cy] of carSpots) {
-    if (reserved(cx, cy) || reserved(cx + 1, cy)) continue;
-    solid[cy][cx] = true; solid[cy][cx + 1] = true;
-    const prop = { gx: cx + 0.5, gy: cy, type: 'car', v: carV++ % 2 };
+    if (cx + 2 >= MAP_W - 1) continue;
+    if (reserved(cx, cy) || reserved(cx + 1, cy) || reserved(cx + 2, cy)) continue;
+    const prop = { gx: cx + 1, gy: cy, type: 'car', v: carV++ % 2, dir: 'x', foot: [cx, cy, 3, 1] };
     props.push(prop);
-    crushProps[cx + ',' + cy] = prop;
-    crushProps[(cx + 1) + ',' + cy] = prop;
+    for (let i = 0; i < 3; i++) { solid[cy][cx + i] = true; crushProps[(cx + i) + ',' + cy] = prop; }
   }
 
   for (const p of props) {
-    if (!p.foot) continue;
+    if (!p.foot || !p.type.startsWith('mound')) continue;   // cover to spawn behind
     const [x0, y0, fw, fh] = p.foot;
     for (const [sx, sy] of [[x0 + fw / 2, y0 - 1.2], [x0 - 1.2, y0 + fh / 2]]) {
       if (canStand(sx, sy, 0.35)) moundSpawns.push({ x: sx, y: sy });
@@ -522,18 +535,18 @@ function buildFringe() {
   // cars lie ALONG their road: dir 'x' east-west, 'y' north-south
   function car(cx, cy, v, dir) {
     if (dir === 'y') {
-      if (cy + 1 >= MAP_H - 1 || solid[cy][cx] || solid[cy + 1][cx]) return;
-      solid[cy][cx] = true; solid[cy + 1][cx] = true;
-      const p = { gx: cx, gy: cy + 0.5, type: 'car', v: v % 2, dir: 'y' };
+      if (cy + 2 >= MAP_H - 1) return;
+      for (let i = 0; i < 3; i++) if (solid[cy + i][cx]) return;
+      const p = { gx: cx, gy: cy + 1, type: 'car', v: v % 2, dir: 'y', foot: [cx, cy, 1, 3] };
       props.push(p);
-      crushProps[cx + ',' + cy] = p; crushProps[cx + ',' + (cy + 1)] = p;
+      for (let i = 0; i < 3; i++) { solid[cy + i][cx] = true; crushProps[cx + ',' + (cy + i)] = p; }
       return;
     }
-    if (cx + 1 >= MAP_W - 1 || solid[cy][cx] || solid[cy][cx + 1]) return;
-    solid[cy][cx] = true; solid[cy][cx + 1] = true;
-    const p = { gx: cx + 0.5, gy: cy, type: 'car', v: v % 2, dir: 'x' };
+    if (cx + 2 >= MAP_W - 1) return;
+    for (let i = 0; i < 3; i++) if (solid[cy][cx + i]) return;
+    const p = { gx: cx + 1, gy: cy, type: 'car', v: v % 2, dir: 'x', foot: [cx, cy, 3, 1] };
     props.push(p);
-    crushProps[cx + ',' + cy] = p; crushProps[(cx + 1) + ',' + cy] = p;
+    for (let i = 0; i < 3; i++) { solid[cy][cx + i] = true; crushProps[(cx + i) + ',' + cy] = p; }
   }
   let cv = 0;
   for (let x = 60; x < 190; x += 5 + ((rng() * 4) | 0)) car(x, 118 + ((rng() * 3) | 0), cv++, 'x');
