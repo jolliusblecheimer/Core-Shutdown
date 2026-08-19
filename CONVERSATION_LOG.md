@@ -350,3 +350,27 @@ and moved every piece of wall detail onto it. The big face quads still use
 **The rule is now consistent across the project: geometry big enough to have a
 silhouette may be a path; anything smaller than about ten pixels must be
 integer-filled.**
+
+### 71. Read-in — the saved prompts and every .md
+**Laurens:** "Familiarize yourself with the saved prompts and all md files in
+the repo."
+**Claude:** Read all sixteen markdown files (`CLAUDE.md`, `README.md`,
+`GAME_PLAN.md`, `PROJECT_STATE.md`, this log, and the eleven in `design/`) plus
+the headings of the two published artifacts (`city-blueprint.html`,
+`fringe-plan.html`). The "saved prompts" are this log — entries 1–70 of Session
+1 — since there is no separate prompt file in the repo or anywhere in its
+history. No code touched. Three drift items worth recording:
+- **`PROJECT_STATE.md` is stale.** It is stamped 2026-08-17 and stops at the
+  volumes rebuild (entry 62). Entries 64–70 — the angle pass, the local-only
+  HD-2D detail work, the twelve fixes and the four reverts, the four car
+  attempts, and the `hard()` integer-fill rule for wall detail — are in the log
+  but not in the state file, which is meant to be the "what is built right now"
+  page.
+- **The local-only art pass has no landing.** Entry 65 is marked *not pushed,
+  awaiting review*, and entry 66 reverted four of its neighbours' items, but
+  nothing records whether the courses/recessed-window work still exists locally
+  or died with the revert. Next session should ask before rebuilding it.
+- **The integer-fill rule earned in entries 69–70** — geometry with a
+  silhouette may be a `poly()` path, anything under ~10px must be integer-filled
+  — is written into `art-style.md`'s vehicle section but not into `CLAUDE.md`'s
+  hard-won rules, where the angle rule sits. It is the same class of rule.
