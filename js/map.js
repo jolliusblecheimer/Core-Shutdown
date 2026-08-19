@@ -767,50 +767,66 @@ function buildCandlelight() {
     groundVar[y][x] = (rng() * 6) | 0;
   }
   for (let y = 2; y < H - 1; y++) for (let x = 4; x <= 7; x++) ground[y][x] = 9;   // walked smooth
-  for (let y = 6; y <= 12; y++) for (let x = 1; x <= 2; x++) ground[y][x] = 10;    // straw
+  for (let y = 7; y <= 14; y++) for (let x = 1; x <= 2; x++) ground[y][x] = 10;    // straw, under the bays
 
   shellWalls(5, 6);
   const put = placer();
 
-  // ---- the arcade: four piers, not nine. Enough to say church, few enough
-  // that the middle of the room is still floor.
+  // ---- THE FOURTH RULE, and it is the one this pass is about: ONE THING PER
+  // TILE IS NOT ONE THING PER SCREEN. A 54px pier stands on a single tile and
+  // still paints over three tiles of the room behind it, because in this
+  // projection a tall sprite at (a,b) covers the whole diagonal x-y = a-b
+  // above it. So there are two spacings to keep, not one:
+  //
+  //   * COLUMN. Nothing worth looking at may sit in a pier's column (same
+  //     x-y) within about seven tiles of screen-depth above it. For the four
+  //     piers below that rules out (1,3) (2,4) (5,7) (6,8) (7,9) (5,2) (6,3)
+  //     (7,4) (1,8) (2,9) — and nothing else, so it is a cheap rule to keep.
+  //   * DEPTH. Two big props in the same narrow aisle need three tiles of
+  //     x+y between them, not one. Adjacent is what put the chest completely
+  //     behind the curtain and the crate completely behind Osk.
+  //
+  // Checked by the screen-space cover audit, not by eye.
   for (const [px2, py2] of [[3, 5], [8, 5], [3, 10], [8, 10]]) {
     put(px2, py2, 'pier');
     heavy[py2][px2] = true;
   }
 
-  // ---- NORTH: the chancel. Map table centre, hatch to the crypt in the corner.
+  // ---- NORTH: the chancel. Map table centre, hatch to the crypt in the
+  // corner, and the whole north-west corner left as floor — the hatch is the
+  // biggest sprite in the building and anything beside it stands on it.
   put(1, 1, 'stairDown');
   put(5, 1, 'mapTable', { foot: [5, 1, 2, 1] });
   put(3, 1, 'candles'); put(8, 1, 'candles');
 
-  // ---- WEST, north end: Bo's bench
-  put(1, 3, 'workbench', { foot: [1, 3, 2, 1] });
-  put(1, 4, 'shelf');
+  // ---- WEST, north end: Bo's bench, clear of the pier column at (1,3)
+  put(1, 5, 'workbench', { foot: [1, 5, 2, 1] });
 
   // ---- EAST, north end: the medbay
   put(10, 2, 'candles');
   put(10, 3, 'cot'); put(10, 5, 'cot');
   put(9, 3, 'table');
 
-  // ---- WEST, south end: the sleeping bays on straw, then the store
-  put(1, 6, 'chest', { open: false, loot: 'junk' });
-  put(1, 7, 'bedding'); put(1, 9, 'bedding'); put(1, 11, 'bedding');
-  put(2, 7, 'curtain', { dir: 'y' });
-  put(2, 11, 'sacks');
-  put(1, 13, 'crate'); put(1, 14, 'sacks');
+  // ---- WEST, south end: the sleeping bays on straw, then the store.
+  // Two tiles of gap between bays: the bedding is short enough to survive it,
+  // the curtain and the crate are not, so they take the odd rows.
+  // and the aisle walkway at x=2 stays open: nothing stands there except
+  // opposite a bay, or the bay next to it is walled in on all four sides
+  put(1, 7, 'curtain', { dir: 'y' }); put(2, 7, 'crate');
+  put(1, 9, 'bedding');
+  put(1, 11, 'bedding'); put(2, 11, 'sacks');
+  put(1, 13, 'bedding'); put(2, 13, 'chest', { open: false, loot: 'junk' });
 
   // ---- EAST, south end: the hearth and Halden's pitch
   put(10, 6, 'sacks');
   put(10, 8, 'hearth');
-  put(9, 9, 'table'); put(9, 12, 'stool');
+  put(9, 10, 'table'); put(9, 12, 'stool');
   put(10, 11, 'crate');
   put(9, 13, 'chest', { open: false, loot: 'scrap' });
 
   // ---- THE NAVE: fire, two pews, and otherwise floor
-  put(5, 7, 'brazier'); put(6, 11, 'brazier');
-  put(4, 13, 'pew', { dir: 'x' }); put(7, 13, 'pew', { dir: 'y' });
-  put(2, 13, 'candles');
+  put(5, 8, 'brazier'); put(6, 11, 'brazier');
+  put(4, 11, 'pew', { dir: 'x' }); put(7, 11, 'pew', { dir: 'y' });
 
   buildAO();
   buildSpatialIndex();
@@ -833,18 +849,23 @@ function buildCrypt() {
   wallRun(Array.from({ length: W }, (_, i) => [i, 0]), jk(W), 'x', false, true, true);
   wallRun(Array.from({ length: H }, (_, i) => [0, i]), jk(H), 'y', false, true, true);
   wallRun(Array.from({ length: H - 1 }, (_, i) => [W - 1, i]), lk(H - 1), 'y', false, true, true);
-  wallRun(Array.from({ length: W - 1 }, (_, i) => [i, H - 1]), lk(W - 1), 'x', false, true, true);
+  wallRun(Array.from({ length: W }, (_, i) => [i, H - 1]), lk(W), 'x', false, true, true);
 
+  // The crypt is the store, not a farm: nothing grows under a church. What is
+  // down here is what keeps — water off the roof, hay, jars, and one box the
+  // camp does not open.
   const put = placer();
   put(1, 1, 'stairUp');                       // straight under the hatch above
   put(8, 1, 'cistern');
-  put(4, 2, 'growBed', { foot: [4, 2, 2, 1] });
-  put(4, 5, 'growBed', { foot: [4, 5, 2, 1] });
+  put(4, 2, 'waterVat'); put(6, 2, 'waterVat');
+  // the bales are the tallest thing down here, so they take their own columns
+  put(4, 6, 'hayStack'); put(7, 6, 'hayStack');
   put(8, 3, 'preserves'); put(8, 5, 'preserves');
   put(1, 5, 'strongbox');
-  put(7, 6, 'chest', { open: false, loot: 'crypt' });
-  put(2, 3, 'candles'); put(6, 4, 'candles');
-  put(1, 3, 'barrel'); put(3, 6, 'sacks');
+  put(1, 6, 'chest', { open: false, loot: 'crypt' });
+  put(8, 6, 'chest', { open: false, loot: 'mre' });
+  put(3, 3, 'candles'); put(6, 3, 'candles');
+  put(1, 3, 'barrel');
 
   buildAO();
   buildSpatialIndex();

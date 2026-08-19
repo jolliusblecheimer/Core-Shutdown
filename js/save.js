@@ -126,8 +126,10 @@ function applySave(d) {
   player.active = p.active === 'gun' ? 'gun' : 'melee';
   // merge onto defaults so fields added in later updates keep their default
   player.owned = Object.assign({ pipe: false, knife: false, pistol: false }, p.owned || {});
-  player.inv = Object.assign({ scrap: 0, tech: 0, snack: 0, gateKey: false }, p.inv || {});
-  for (const k of ['scrap', 'tech', 'snack']) player.inv[k] = Math.max(0, num(player.inv[k], 0));
+  player.inv = Object.assign(
+    { scrap: 0, tech: 0, snack: 0, mreBeef: 0, mreChicken: 0, gateKey: false }, p.inv || {});
+  for (const k of ['scrap', 'tech', 'snack', 'mreBeef', 'mreChicken'])
+    player.inv[k] = Math.max(0, num(player.inv[k], 0));
   // transient state always starts clean
   player.dead = 0; player.iframes = 1; player.flash = 0;
   player.swing = 0; player.swingCd = 0; player.fireCd = 0; player.combatT = 99;

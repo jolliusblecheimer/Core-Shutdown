@@ -1,10 +1,11 @@
 # CANDLELIGHT — the inside of St Martin's
 
-**Status:** built, second layout. The first one was thrown away.
+**Status:** built, second layout, spaced out. The first one was thrown away.
 **Working:** both areas, the shell, the arcade, every fitting, seven people
-talking, the chests, and the map table that hands you the ring.
-**Not built:** trading (Halden, Bo), Ade healing, the sleeping bay re-anchoring
-respawn, the strongbox, Q2. Section 5 items 2, 6, 7.
+talking, the chests, the map table that hands you the ring, and **Tam's
+counter** — per-trader stock, so a new trader is a list and no UI work.
+**Not built:** Halden and Bo trading, Ade healing, the sleeping bay re-anchoring
+respawn, the strongbox, Q2. Section 5 items 6, 7.
 
 A cathedral is not the point. **A cathedral that people are living in** is the
 point — cold stone somebody has made warm, and it took work. You come out of a
@@ -38,6 +39,34 @@ the wrong object.** A stair legible at this scale ate a quarter of the room and
 stood taller than the people using it. A hatch in the floor does the same job
 in one tile.
 
+### 1b. And a fifth: one thing per tile is not one thing per screen
+
+The rule above stops two things standing on the same tile. It says nothing
+about one thing standing *in front of* another, and in this projection those
+are different questions. A sprite at (a, b) that is `n` pixels tall hides the
+whole diagonal **x − y = a − b** above it, for `n/8` tiles of depth. A 54px
+pier stands on one tile and paints over three tiles of room.
+
+The first screen-space audit of the second layout found a chest **100% hidden**
+behind a curtain, a crate 93% behind Osk, and Tam 77% behind a pier. So:
+
+- **Column.** Nothing worth looking at goes in a pier's column within about
+  seven tiles of screen-depth above it. For the four piers that rules out ten
+  tiles in the whole room, so it is cheap to keep.
+- **Depth.** Two big props in a narrow aisle need **three** tiles of x+y
+  between them, not one. Adjacent is what buried the chest.
+- **People are props too.** Somebody standing one tile down-screen of a
+  brazier hides the brazier.
+
+Checked by `cover.js`, which draws the room, records every `drawImage`, and
+reports every pair where the nearer sprite eats the further one. What is left
+is one bedroll 21% behind a pier shaft, which is what a church aisle looks
+like.
+
+And the one tall thing standing in open floor — the pier — **fades when it
+crosses the player**, on a screen-space test (`pierAlpha`), because the
+world-distance `occlusionAlpha` cannot reach four tiles.
+
 ---
 
 ## 2. The budget
@@ -49,13 +78,14 @@ in one tile.
 | North and west walls (full height) | 27 |
 | South and east kerb | 26 |
 | Piers | 4 |
-| Furniture and fittings | 29 |
-| **Floor left to walk on** | **107** |
+| Furniture and fittings | 25 |
+| **Floor left to walk on** | **110** |
 
-Verified in the build, not by eye: **no overlaps, all 107 walkable tiles reachable
-from the door, every usable fitting reachable, nobody standing in a wall.**
+Verified in the build, not by eye: **no overlaps, all 110 walkable tiles
+reachable from the door, every usable fitting reachable, nobody standing in a
+wall, and nothing significantly hidden behind anything else.**
 The crypt is 10 × 8 — it is under the chancel, so it is a fraction of the
-church — with 35 free tiles and 12 props.
+church — with 34 free tiles and 14 props.
 
 ---
 
@@ -65,30 +95,33 @@ church — with 35 free tiles and 12 props.
       x0  1  2  3  4  5  6  7  8  9 10 11
  y0    ####################################   north wall
  y1    #  HA .  ca .  MAP TBL .  ca .   |     hatch · candles · map table
- y2    #  .  .  .  .  IVAR .  .  .  ca  |     medbay candles
- y3    #  BENCH .  BO .  .  .  .  TB co |     Bo's bench · medbay
- y4    #  sh .  .  .  .  .  .  .  .  .  |
- y5    #  .  .  PR .  .  .  .  PR ADE co|     piers
- y6    #  ch .  .  .  .  .  .  .  .  sa |
- y7    #  bd cu .  .  BRZ .  .  .  .  . |     sleeping bays begin
- y8    #  .  .  .  .  .  TAM .  .  HAL he|    hearth
- y9    #  bd .  .  .  .  .  .  .  tb .  |
- y10   #  .  .  PR .  .  .  .  PR .  .  |
- y11   #  bd sa .  .  .  BRZ .  .  .  cr|
+ y2    #  .  .  .  .  .  .  IVAR .  ca  |     medbay candles
+ y3    #  .  .  .  .  .  .  .  tb co    |     medbay
+ y4    #  .  .  .  .  .  .  .  .  .  .  |
+ y5    #  BENCH .  PR .  .  .  PR ADE co|     Bo's bench · piers
+ y6    #  .  .  .  BO .  TAM .  .  .  sa|
+ y7    #  cu cr .  .  .  .  .  .  .  .  |     sleeping bays begin
+ y8    #  .  .  .  BRZ .  .  .  .  HAL he|    hearth
+ y9    #  bd .  .  .  .  .  .  .  .  .  |
+ y10   #  .  .  PR .  .  .  .  PR tb .  |
+ y11   #  bd sa .  PEW .  .  PEW .  .  cr|
  y12   #  .  .  .  .  .  .  .  .  st .  |
- y13   #  cr ca .  PEW .  .  PEW .  ch  |
- y14   #  sa OSK .  VESNA .  .  .  .  . |
+ y13   #  bd ch .  OSK .  .  .  VES .  ch|
+ y14   #  .  .  .  .  .  .  .  .  .  .  |
  y15   ==========  DOOR  ====================  kerb, with the west door
 ```
 
-North strip is the chancel: the map table on the altar, the crypt hatch in the
-corner, candles. West side is Bo's bench then the sleeping bays on straw, then
-the store by the door. East side is the medbay then the hearth. The middle is
-floor — four piers, two braziers, two pews, and otherwise room to walk.
+North strip is the chancel: the map table on the altar, the crypt hatch in its
+own corner with nothing beside it — it is the biggest sprite in the building
+and anything next to it stands on it. West side is Bo's bench, then the
+sleeping bays on straw with the walkway at x=2 kept open, then the store. East
+side is the medbay then the hearth. The middle is floor — four piers, two
+braziers, two pews, and otherwise room to walk.
 
 **The crypt** (10 × 8): the hatch comes down in the same corner it goes down
-from. Cistern, two grow beds under lamp strips, preserves, the padlocked
-strongbox, one chest.
+from. Nothing grows under a church, so it is a store, not a farm — the cistern,
+**two vats of roof-water and two stacks of hay**, preserve racks, the padlocked
+strongbox, and two chests: one of tech and scrap, one of beef MREs.
 
 ---
 
@@ -101,6 +134,7 @@ Four, and the point is which ones you may open.
 | West aisle, by the bays | scrap and a snack | free — junk nobody claimed |
 | By the door, east side | scrap | free |
 | Crypt | tech and scrap | free, and it should feel like taking |
+| Crypt, by the preserves | a beef MRE | free |
 | Crypt strongbox | the good stuff | locked. Later. |
 
 ---
@@ -115,8 +149,11 @@ Honest list, worst first.
    `npcs[]` array with per-entry sprite variant, home position, idle behaviour,
    dialogue, and optional trade stock. **This is the biggest single piece of
    work in the whole plan** and everything else waits on it.
-2. **Per-trader stock.** `Trade` is one global panel with a fixed list.
-   It needs to take a stock list from whichever NPC opened it.
+2. ~~**Per-trader stock.**~~ **Done.** `Trade` carries `{who, stock}` and the
+   panel draws whatever list it is handed — the rows, the prices and the
+   sold-out state all come off the stock. A trader is an entry in `STOCK` and
+   a `stock:` key on the folk record; there is no UI work in adding one.
+   Tam has the first one. Halden and Bo just need lists writing.
 3. **Interior areas.** Two `Areas` entries, their build functions, exits both
    ways, and a floor/wall tileset that is not the street set: flagstones, worn
    flagstones, timber, straw, crypt brick.
@@ -137,8 +174,8 @@ Braziers · candle banks · hay · bedroll · blanket line · tarpaulin curtain 
 crate and sack stacks · drum stove with flue · cooking pot · cots · surgical
 drape · bottle table · vice and bench · **the half-stripped drone** · tool wall
 · map table · chalkboard · pews whole and broken · font · altar · rope barrier ·
-crypt: cistern and tap, jerricans, grow beds with lamp strips, preserve racks,
-strongbox and grille, stone coffins.
+crypt: cistern and tap, jerricans, **hay bales**, **water vats**, preserve
+racks, strongbox and grille, stone coffins.
 
 All of it under the same rules as the outside: built in tile space, integer
 fills under about ten pixels, nothing axis-aligned that lies on the floor.

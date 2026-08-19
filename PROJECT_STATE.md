@@ -1,6 +1,6 @@
 # CORE SHUTDOWN — project state
 
-**Updated:** 2026-08-17 · **Live:** https://jolliusblecheimer.github.io/Core-Shutdown/
+**Updated:** 2026-08-19 · **Live:** https://jolliusblecheimer.github.io/Core-Shutdown/
 **Repo:** https://github.com/jolliusblecheimer/Core-Shutdown (public)
 **Boss arena:** https://jolliusblecheimer.github.io/Core-Shutdown/arena.html
 
@@ -76,15 +76,27 @@ sleeping bays on straw, a drum stove, a medbay of two cots, a bench with a
 half-stripped Hunter-Killer whose eye is still lit, pews part broken up for
 timber, a store nobody may open, and a one-tile hatch down to the crypt.
 **`crypt`** is 10×8 under the chancel: brick vaulting, bricked-up burial
-niches, a cistern fed off the roof, grow beds under salvaged lamp strips,
-preserves, a padlocked strongbox.
+niches, a cistern fed off the roof, two vats of roof-water you can drink from,
+two stacks of hay, preserves, a padlocked strongbox, and two chests — one of
+tech and scrap, one of beef MREs. Nothing grows under a church: it is the
+store, not a farm.
 The builder refuses to put two things on one tile, and the layout is checked
-for overlaps, reachability and people standing in walls.
+three ways: no shared tiles, every tile reachable from the door, and — new —
+**no sprite significantly hidden behind another on screen**, which is a
+different question in this projection and is what a tile check cannot see.
+The pier fades when it crosses the player.
 **Seven survivors** — Vesna, Osk, Bo, Sister Ade, Halden, Ivar, Tam — each with
 their own sprite and three lines, cycled one per talk. They are a `folk` list
 beside Marek rather than a rewrite of him.
+**Tam trades.** The counter takes its rows from whoever opened it now instead
+of having Marek's three items written into the drawing code, so Tam sells rifle
+rounds, a beef MRE, a chicken MRE and a low-quality tech part, and the next
+trader is a list with no UI work. MREs are food: `H` eats the worst thing that
+still helps, so the good ration survives until it matters.
 **The map table** on the old altar: reading it fills in the whole Fringe map
-(3350 fog cells), once, and it is saved.
+(3350 fog cells), once, and it is saved. Getting close enough to read it used
+to be nearly impossible — every interaction reach in the game was silently
+clamped to 1.1 tiles and measured to a prop's anchor corner. Fixed.
 
 ---
 
@@ -97,11 +109,11 @@ beside Marek rather than a rewrite of him.
    Marshal (rifle, bursts, takes cover), Bailiff (short-range flusher),
    Spotter (calls them in). Scrappers stay in the yard. Design in
    `design/fringe-plan.html`.
-3. **Candlelight — the rest of it.** The camp is IN (see below). Still to do
-   from `design/candlelight.md`: per-trader stock so Halden and Bo actually
-   trade, Ade healing for a price, the sleeping bay re-anchoring respawn, the
-   tower stair, the strongbox, and Q2 itself. Also the churchyard outside
-   (railings, gravestones, trees, a lych gate) and lit windows now that
+3. **Candlelight — the rest of it.** The camp is IN (see below), and so is
+   per-trader stock. Still to do from `design/candlelight.md`: stock lists for
+   Halden and Bo, Ade healing for a price, the sleeping bay re-anchoring
+   respawn, the tower stair, the strongbox, and Q2 itself. Also the churchyard
+   outside (railings, gravestones, trees, a lych gate) and lit windows now that
    somebody does live there.
 4. Interiors (enterable shops/houses, roof fade).
 5. Field 12 + the drone crash (Q3) and the Underpass to Ring 4.

@@ -1101,6 +1101,21 @@ function outlined(src) {
     px(sng, 1, 5, 10, 1, '#6a4326');
     Sprites.snackIcon = outlined(sn);
 
+    // MRE pouches — army ration foil, stencilled band. The band is the only
+    // thing that tells beef from chicken at twelve pixels, so it does the work.
+    const mre = (band, mark) => {
+      const c = makeCanvas(12, 9), g = c.getContext('2d');
+      px(g, 1, 1, 10, 7, '#6d6a52');       // foil
+      px(g, 1, 1, 10, 1, '#85826a');
+      px(g, 1, 7, 10, 1, '#55523f');
+      px(g, 1, 0, 10, 1, '#7d7a62');       // the crimped top seam
+      px(g, 2, 3, 8, 2, band);             // the stencil band
+      px(g, 4, 3, 2, 2, mark);
+      return outlined(c);
+    };
+    Sprites.mreBeef = mre('#7a3a2a', '#b8574a');
+    Sprites.mreChicken = mre('#8a7a3a', '#cdbb6a');
+
     // tech component (little green board)
     const tc = makeCanvas(10, 9), tcg = tc.getContext('2d');
     px(tcg, 1, 2, 8, 6, '#2e5a3c');
@@ -1369,16 +1384,68 @@ function outlined(src) {
       px(g, 13, 19, 5, 5, '#3f4a3a');                                    // a jerrican under it
       Sprites.cistern = outlined(c); }
 
-    { const c = makeCanvas(28, 16), g = c.getContext('2d');              // grow bed + lamp strip
-      px(g, 0, 3, 28, 2, '#6a6a72');                                     // the strip
-      px(g, 1, 5, 26, 1, 'rgba(190,160,255,0.55)');
-      px(g, 2, 9, 24, 6, '#3a2f22');                                     // the bed
-      px(g, 2, 9, 24, 1, '#463a2a');
-      for (let i = 0; i < 7; i++) {
-        const x = 3 + i * 3.4;
-        px(g, x | 0, 7 + (i % 2), 2, 3, i % 3 ? '#4e6a3a' : '#5d7a44');
+    // ---- HAY, AND WATER. Both are boxes standing on the floor, which means
+    // THE ANGLE RULE: a bale is longer than it is wide, so if it is drawn as a
+    // flat rectangle it lies across the iso grid instead of along it. Both are
+    // built in tile space and projected, like the hatch — top face, +x face,
+    // +y face, and nothing on the two sides the camera cannot see.
+    const volSprite = (w, h, ax, ay, draw) => {
+      const c = makeCanvas(w, h), g = c.getContext('2d');
+      const P = (tx, ty, z) => [ax + (tx - ty) * 16, ay + (tx + ty) * 8 - z];
+      const quad = (a, b, c2, d, col) => poly(g, [P(...a), P(...b), P(...c2), P(...d)], col);
+      // a box on the floor: only the top and the two faces turned towards you
+      const box = (x0, y0, x1, y1, z0, z1, top, sx, sy) => {
+        quad([x1, y0, z0], [x1, y1, z0], [x1, y1, z1], [x1, y0, z1], sx);   // +x face
+        quad([x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1], sy);   // +y face
+        quad([x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1], top);  // the lid
+      };
+      draw(g, P, quad, box);
+      return outlined(c);
+    };
+
+    // ---- a stack of hay bales. Two on the floor, one across the top.
+    // A bale is only a bale if you can see WHERE ONE ENDS: three beige boxes
+    // with no seam between them read as one lump. So each one gets a cut end
+    // with stubble across it, two twine straps down its long side, and a dark
+    // lip along its top-back edge that separates it from whatever is behind.
+    Sprites.hayStack = volSprite(34, 44, 17, 27, (g, P, quad, box) => {
+      const bale = (x0, y0, x1, y1, z0, z1, T, X, Y) => {
+        box(x0, y0, x1, y1, z0, z1, T, X, Y);
+        const h = z1 - z0;
+        for (let i = 1; i < 4; i++) {                                       // cut stubble
+          const z = z0 + h * i / 4;
+          quad([x1, y0, z], [x1, y1, z], [x1, y1, z + 1], [x1, y0, z + 1], '#94804a');
+        }
+        for (const t of [0.3, 0.72]) {                                      // twine
+          const tx = x0 + (x1 - x0) * t;
+          quad([tx, y1, z0], [tx + 0.05, y1, z0], [tx + 0.05, y1, z1], [tx, y1, z1], '#6b5a2c');
+        }
+        quad([x0, y0, z1], [x1, y0, z1], [x1, y0 + 0.07, z1], [x0, y0 + 0.07, z1], '#7d6b3c');
+      };
+      bale(0.06, 0.04, 0.94, 0.44, 0, 11, '#bfa963', '#a08c4c', '#7f6e3a');   // back
+      bale(0.06, 0.52, 0.94, 0.92, 0, 11, '#c8b26c', '#a89355', '#877441');   // front
+      bale(0.16, 0.24, 0.84, 0.66, 11, 21, '#d2bc76', '#b29c5c', '#907d48');  // on top
+    });
+
+    // ---- a vat of water: the roof run-off, held where people can dip it
+    Sprites.waterVat = volSprite(32, 36, 16, 19, (g, P, quad, box) => {
+      const x0 = 0.1, x1 = 0.9, y0 = 0.1, y1 = 0.9, H = 17;
+      box(x0, y0, x1, y1, 0, H, '#6b573a', '#5b4a32', '#463821');          // the tub
+      // iron hoops, one low one high
+      for (const z of [3, 12]) {
+        quad([x1, y0, z], [x1, y1, z], [x1, y1, z + 2], [x1, y0, z + 2], '#4a4a52');
+        quad([x0, y1, z], [x1, y1, z], [x1, y1, z + 2], [x0, y1, z + 2], '#3a3a42');
       }
-      Sprites.growBed = outlined(c); }
+      // the rim, then the water held down inside it. The rim has to be a
+      // lighter ring all the way round or the top face reads as a painted lid.
+      quad([x0 + 0.08, y0 + 0.08, H], [x1 - 0.08, y0 + 0.08, H],
+           [x1 - 0.08, y1 - 0.08, H], [x0 + 0.08, y1 - 0.08, H], '#312716');
+      quad([x0 + 0.14, y0 + 0.14, H], [x1 - 0.14, y0 + 0.14, H],
+           [x1 - 0.14, y1 - 0.14, H], [x0 + 0.14, y1 - 0.14, H], '#24454f');
+      quad([x0 + 0.18, y0 + 0.18, H], [x1 - 0.46, y0 + 0.18, H],
+           [x1 - 0.46, y1 - 0.52, H], [x0 + 0.18, y1 - 0.52, H], '#356874');  // the lit corner
+      quad([0.3, 0.34, H], [0.42, 0.34, H], [0.42, 0.4, H], [0.3, 0.4, H], '#79a4ac');
+    });
 
     { const c = makeCanvas(18, 16), g = c.getContext('2d');              // preserve rack
       px(g, 0, 1, 18, 14, '#4a3a26');
@@ -1438,10 +1505,13 @@ function outlined(src) {
       quad([0.14, 0.86, -7], [0.86, 0.86, -7], [0.86, 0.86, -14], [0.14, 0.86, -14], '#2b2823');
       // stone rim, on the two far sides only — put it near and it stands in
       // front of the hole it is framing
-      quad([-0.1, -0.1, 3], [1.1, -0.1, 3], [1.1, 0.06, 3], [-0.1, 0.06, 3], '#a8a191');
-      quad([-0.1, -0.1, 3], [0.06, -0.1, 3], [0.06, 1.1, 3], [-0.1, 1.1, 3], '#9a9384');
-      quad([1.1, -0.1, 3], [1.1, 1.1, 3], [1.1, 1.1, 0], [1.1, -0.1, 0], '#7c7669');
-      quad([1.1, 1.1, 3], [-0.1, 1.1, 3], [-0.1, 1.1, 0], [1.1, 1.1, 0], '#615c53');
+      // ...and in FLAGSTONE, not porcelain: at the old values this rim was the
+      // brightest thing in a dark room and the whole fitting read as a bathtub
+      // sunk in the floor rather than a way down
+      quad([-0.1, -0.1, 3], [1.1, -0.1, 3], [1.1, 0.06, 3], [-0.1, 0.06, 3], '#877f70');
+      quad([-0.1, -0.1, 3], [0.06, -0.1, 3], [0.06, 1.1, 3], [-0.1, 1.1, 3], '#7b7466');
+      quad([1.1, -0.1, 3], [1.1, 1.1, 3], [1.1, 1.1, 0], [1.1, -0.1, 0], '#635e53');
+      quad([1.1, 1.1, 3], [-0.1, 1.1, 3], [-0.1, 1.1, 0], [1.1, 1.1, 0], '#4c483f');
       // the lid, propped back against the north rim
       quad([0.06, -0.08, 3], [0.94, -0.08, 3], [0.94, -0.5, 17], [0.06, -0.5, 17], '#4a3a26');
       quad([0.06, -0.5, 17], [0.94, -0.5, 17], [0.94, -0.5, 15], [0.06, -0.5, 15], '#33260f');

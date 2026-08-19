@@ -13,7 +13,7 @@ const player = {
   active: 'melee',             // which equipped weapon LMB uses (scroll to switch)
   scrollHintT: 0,              // "scroll" HUD hint: 30s after getting the gun, then gone
   owned: { pipe: false, knife: false, pistol: false },
-  inv: { scrap: 0, tech: 0, snack: 0, gateKey: false },
+  inv: { scrap: 0, tech: 0, snack: 0, mreBeef: 0, mreChicken: 0, gateKey: false },
   respawnX: 6.5, respawnY: 26.5, homeSet: false,
 };
 
@@ -101,15 +101,15 @@ const npc = { x: 21.5, y: 6.5, animT: 0, frame: 0 };
 let folk = [];
 const FOLK = {
   camp: [
-    { key: 'vesna', name: 'VESNA', x: 4.5, y: 14.5, lines: [
+    { key: 'vesna', name: 'VESNA', x: 7.5, y: 13.5, lines: [
       "Door stays shut after dark. That is the one rule that matters.",
       "You walked the sign road, so you can read. That already puts you ahead.",
       "Anything of ours you want, you ask. Nobody here minds being asked." ] },
-    { key: 'osk', name: 'OSK', x: 2.5, y: 14.5, lines: [
+    { key: 'osk', name: 'OSK', x: 3.5, y: 13.5, lines: [
       "That lot's the camp's. Not yours.",
       "Nothing personal, stranger. I'd say it to my own brother.",
       "Ask Halden. He's the one allowed to give things away." ] },
-    { key: 'bo', name: 'BO', x: 3.5, y: 3.5, lines: [
+    { key: 'bo', name: 'BO', x: 3.5, y: 6.5, lines: [
       "Don't touch that. Its cell is still hot.",
       "They come apart easier than they look. Everything does.",
       "I keep the eye lit while I work. Tells me there's still charge in it." ] },
@@ -118,17 +118,23 @@ const FOLK = {
       "The name stuck because of the building. I was a vet's assistant.",
       "Two cots. One of them has been the same man for eleven days." ] },
     { key: 'halden', name: 'HALDEN', x: 9.5, y: 8.5, lines: [
-      "Sit if you want. There's soup, and there's a story, and the soup is better.",
+      "Stand by the drum a while. Nobody gets asked anything until they're warm.",
       "This place was cold for a year before we got the stove in.",
       "I'll trade you fair. I'm too old to be clever about it." ] },
-    { key: 'ivar', name: 'IVAR', x: 5.5, y: 2.5, lines: [
+    { key: 'ivar', name: 'IVAR', x: 7.5, y: 2.5, lines: [
       "You came up the sign road. People only do that with nothing left.",
       "Read the table. Everything this camp knows about the ring is on it.",
       "We don't ask what you did before. Nobody here would like the answer." ] },
-    { key: 'tam', name: 'TAM', x: 6.5, y: 8.5, lines: [
-      "Are you from the yard? The old man's yard?",
-      "Bo says the machines can't hear you if you crouch. Bo says a lot of things.",
-      "There's a room under the floor. I'm not allowed down but you might be." ] },
+    // Tam keeps the camp's counter. He never asks where you came from — he
+    // only knows what came up the road, which is that the way in is clear.
+    { key: 'tam', name: 'TAM', x: 6.5, y: 6.5, stock: 'tam', lines: [
+      ["Thank you for taking care of the bandits out there. The last three",
+       "runners in said that road couldn't be walked.",
+       "Anyway. I've got goods up for trade — are you interested?"],
+      ["Back again. Nothing's moved. Have a look.",
+       "Everything on the board is spoken for by somebody, so pay for it."],
+      ["Take what you need and leave the scrap. That's the whole system.",
+       "There's a room under the floor, too. I'm not allowed down. You might be."] ] },
   ],
   crypt: [],
 };
@@ -136,11 +142,17 @@ function buildFolk(kind) {
   folk = (FOLK[kind] || []).map(f => Object.assign({ animT: 0, frame: 0, said: 0 }, f));
 }
 // one line at a time, in order, then round again — so talking to somebody
-// twice is worth doing and talking to them nine times is not
+// twice is worth doing and talking to them nine times is not. An entry may be
+// several lines: a trader needs room to say what he is before he sells it.
 function talkToFolk(f) {
-  startDialog([f.name + ': ' + f.lines[f.said % f.lines.length]]);
+  const said = f.lines[f.said % f.lines.length];
+  const lines = Array.isArray(said) ? said.slice() : [said];
+  lines[0] = f.name + ': ' + lines[0];
+  startDialog(lines);
   f.said++;
   SFX.uiOpen();
+  // the counter opens when he has finished saying it, not over the top of it
+  if (f.stock && STOCK[f.stock]) Trade.pending = { who: f.name, stock: STOCK[f.stock] };
 }
 
 // the map table, and the rest of the camp's fittings
@@ -169,12 +181,13 @@ const USABLE = {
     "Padlocked, and the key is not in this room.",
     "Whatever the camp keeps in there, it keeps from everyone." ]),
   cistern: (p, ask) => ask ? 'E — drink' : drinkFromCistern(),
+  waterVat: (p, ask) => ask ? 'E — drink' : drinkFromCistern(),
+  hayStack: (p, ask) => ask ? 'E — look' : startDialog([
+    "Bales carried down a hatch one at a time, by somebody who is not young.",
+    "Bedding, and feed for animals this camp does not have yet." ]),
   workbench: (p, ask) => ask ? 'E — look' : startDialog([
     "A Hunter-Killer with its casing off and one arm in the vice.",
     "The eye is still lit. Whatever is in there has charge left." ]),
-  growBed: (p, ask) => ask ? 'E — look' : startDialog([
-    "Mushrooms, and something leggy going for the lamp.",
-    "Grown in a grave niche, under a strip light off a bus." ]),
   hearth: (p, ask) => ask ? 'E — look' : startDialog([
     "A drum with a fire in it and a flue punched through a boarded window.",
     "The first warm thing you have stood next to since the yard." ]),
@@ -198,6 +211,9 @@ function openChest(p) {
   } else if (p.loot === 'scrap') {
     player.inv.scrap += 4;
     showMsg('+4 scrap');
+  } else if (p.loot === 'mre') {
+    player.inv.mreBeef++;
+    showMsg('+1 beef MRE  (H to eat)');
   } else {
     player.inv.scrap += 2;
     if (player.inv.snack !== undefined) player.inv.snack++;
@@ -208,7 +224,10 @@ function openChest(p) {
 const Dialog = { active: false, lines: [], idx: 0 };
 function startDialog(lines) { Dialog.active = true; Dialog.lines = lines; Dialog.idx = 0; }
 
-const Trade = { open: false };
+// The counter. It used to be one panel with Marek's three items written into
+// the drawing code, which meant a second trader could not exist. Now the panel
+// is empty furniture and whoever opened it supplies the stock.
+const Trade = { open: false, who: 'SURVIVOR', stock: [], pending: null };
 const InvUI = { open: false };
 
 const mission = { state: 'none' };   // none -> active -> complete -> turned
@@ -355,18 +374,32 @@ function updatePlayer(dt) {
     }
   }
 
-  // ---- eat snack bar ----
+  // ---- eat something ----
   if (Input.pressed['KeyH']) {
     Input.pressed['KeyH'] = false;
-    if (player.inv.snack > 0 && player.hp < player.maxHp) {
-      player.inv.snack--;
-      player.hp = Math.min(player.maxHp, player.hp + 40);
-      showMsg('Ate a snack bar  (+40 HP)');
-      SFX.eat();
-    } else if (player.inv.snack <= 0) {
-      showMsg('No snack bars — the survivor trades them', 1.8);
-    }
+    eatSomething();
   }
+}
+
+// H eats the WORST thing you are carrying that still helps, so the good ration
+// is still in the pack when it matters. Cheapest first, never the last resort.
+const FOOD = [
+  { id: 'snack', heal: 40, label: 'a snack bar' },
+  { id: 'mreChicken', heal: 45, label: 'a chicken MRE' },
+  { id: 'mreBeef', heal: 60, label: 'a beef MRE' },
+];
+function eatSomething() {
+  const have = FOOD.filter(f => player.inv[f.id] > 0);
+  if (!have.length) { showMsg('Nothing to eat — the camp trades rations', 1.8); return; }
+  if (player.hp >= player.maxHp) { showMsg('Already at full health', 1.5); SFX.deny(); return; }
+  const f = have[0];
+  eatFood(f);
+}
+function eatFood(f) {
+  player.inv[f.id]--;
+  player.hp = Math.min(player.maxHp, player.hp + f.heal);
+  showMsg('Ate ' + f.label + '  (+' + f.heal + ' HP)');
+  SFX.eat();
 }
 
 // ---- interactions: items, NPC, lootable wrecks ----
@@ -374,36 +407,44 @@ function updateItems(dt) {
   Prompt = null;
   if (player.dead > 0) return;
 
-  let best = null, bestD = 1.1, bestKind = null;
-  for (const it of items) {
-    const d = Math.hypot(player.x - it.x, player.y - it.y);
-    if (d < bestD) { bestD = d; best = it; bestKind = 'item'; }
-  }
-  if (currentAreaDef().hasNpc) {
-    const npcD = Math.hypot(player.x - npc.x, player.y - npc.y);
-    if (npcD < 1.3 && npcD < bestD) { bestD = npcD; best = npc; bestKind = 'npc'; }
-  }
-  for (const f of folk) {
-    const d = Math.hypot(player.x - f.x, player.y - f.y);
-    if (d < 1.4 && d < bestD) { bestD = d; best = f; bestKind = 'folk'; }
-  }
+  // Each kind of thing has its own reach, and the CLOSEST RELATIVE TO ITS OWN
+  // REACH wins. It used to be one shared `bestD` seeded at 1.1, which quietly
+  // clamped every larger reach back down to 1.1 — the map table, two tiles
+  // wide and measured to its anchor CORNER, could not be stood close enough to
+  // at all. Distances are to the nearest tile of a prop's footprint now, and
+  // to tile centres, not corners.
+  let best = null, bestScore = Infinity, bestKind = null;
+  const consider = (obj, kind, d, reach) => {
+    if (d >= reach) return;
+    const score = d / reach;
+    if (score < bestScore) { bestScore = score; best = obj; bestKind = kind; }
+  };
+  // how far the player is from the nearest tile a prop actually stands on
+  const propDist = (p) => {
+    const f = p.foot || [p.gx, p.gy, 1, 1];
+    const tx = Math.max(f[0], Math.min(Math.floor(player.x), f[0] + f[2] - 1));
+    const ty = Math.max(f[1], Math.min(Math.floor(player.y), f[1] + f[3] - 1));
+    return Math.hypot(player.x - (tx + 0.5), player.y - (ty + 0.5));
+  };
+  for (const it of items) consider(it, 'item', Math.hypot(player.x - it.x, player.y - it.y), 1.1);
+  if (currentAreaDef().hasNpc)
+    consider(npc, 'npc', Math.hypot(player.x - npc.x, player.y - npc.y), 1.3);
+  for (const f of folk)
+    consider(f, 'folk', Math.hypot(player.x - f.x, player.y - f.y), 1.4);
   // the camp's fittings you can actually use
   if (currentAreaDef().indoors) {
     for (const p of props) {
       if (!USABLE[p.type]) continue;
-      const d = Math.hypot(player.x - p.gx, player.y - p.gy);
-      if (d < 1.5 && d < bestD) { bestD = d; best = p; bestKind = 'fitting'; }
+      consider(p, 'fitting', propDist(p), 1.4);
     }
   }
   // the yard gate (main game only, never during the fight or cutscene)
   if (!window.ARENA_MODE && currentArea === 'junkyard' && !GateCine.active &&
       !(boss.active && boss.state !== 'dead' && !bossDefeated)) {
-    const gd = Math.hypot(player.x - 30.3, player.y - 12.5);
-    if (gd < 1.7 && gd < bestD) { bestD = gd; best = 'gate'; bestKind = 'gate'; }
+    consider('gate', 'gate', Math.hypot(player.x - 30.3, player.y - 12.5), 1.7);
   }
   if (scrapper.state === 'dead' && !scrapper.looted) {
-    const d = Math.hypot(player.x - scrapper.x, player.y - scrapper.y);
-    if (d < 1.1 && d < bestD) { bestD = d; best = scrapper; bestKind = 'wreck'; }
+    consider(scrapper, 'wreck', Math.hypot(player.x - scrapper.x, player.y - scrapper.y), 1.1);
   }
 
   if (bestKind === 'gate') {
@@ -533,29 +574,58 @@ function talkToNpc() {
       "Read the signs. This city still says where it goes.",
     ]);
   } else {
-    Trade.open = true;
-    SFX.uiOpen();
+    openTrade('SURVIVOR', STOCK.marek);
   }
 }
 
+// ---------- what the traders keep on the board ----------
+// A row is: what it is called, what it costs, whether it is gone, and what
+// happens when you buy it. Nothing about it is drawn here — the panel reads
+// this list, so a new trader is a new list and no UI work at all.
+const STOCK = {
+  marek: [
+    { label: 'snack bar', icon: () => Sprites.snackIcon, cost: { scrap: 4 },
+      buy: () => { player.inv.snack++; showMsg('Bought a snack bar  (H to eat)'); } },
+    { label: '6 rounds', icon: () => Sprites.ammo, cost: { scrap: 6 },
+      buy: () => { player.ammo += 6; showMsg('Bought 6 rounds'); } },
+    { label: 'piercing knife', icon: () => Sprites.knifeIcon, cost: { tech: 2 },
+      sold: () => player.owned.knife,
+      buy: () => {
+        player.owned.knife = true; player.melee = 'knife';
+        showMsg('PIERCING KNIFE acquired');
+      } },
+  ],
+  // Tam's counter. Rations and rounds, and one tech part at a price that says
+  // he knows exactly what it is worth to somebody carrying a scrap pistol.
+  tam: [
+    { label: '8 rifle rounds', icon: () => Sprites.ammo, cost: { scrap: 5 },
+      buy: () => { player.ammo += 8; showMsg('Bought 8 rounds'); } },
+    { label: 'beef MRE', icon: () => Sprites.mreBeef, cost: { scrap: 6 },
+      buy: () => { player.inv.mreBeef++; showMsg('Bought a beef MRE  (H to eat)'); } },
+    { label: 'chicken MRE', icon: () => Sprites.mreChicken, cost: { scrap: 4 },
+      buy: () => { player.inv.mreChicken++; showMsg('Bought a chicken MRE  (H to eat)'); } },
+    { label: 'low-q tech part', icon: () => Sprites.techIcon, cost: { scrap: 9 },
+      buy: () => { player.inv.tech++; showMsg('Bought a low-quality tech component'); } },
+  ],
+};
+const COST_NAME = { scrap: 'scrap', tech: 'low-q tech' };
+const canAfford = (row) => Object.keys(row.cost).every(k => player.inv[k] >= row.cost[k]);
+const costText = (row) => Object.keys(row.cost)
+  .map(k => row.cost[k] + ' ' + COST_NAME[k]).join(' + ');
+
+function openTrade(who, stock) {
+  Trade.open = true; Trade.who = who; Trade.stock = stock; Trade.pending = null;
+  SFX.uiOpen();
+}
+
 function tradeBuy(n) {
-  const inv = player.inv;
-  if (n === 1) {
-    if (inv.scrap >= 4) { inv.scrap -= 4; inv.snack++; showMsg('Bought a snack bar  (H to eat)'); SFX.buy(); }
-    else { showMsg('Not enough scrap (need 4)', 1.5); SFX.deny(); return; }
-  } else if (n === 2) {
-    if (inv.scrap >= 6) { inv.scrap -= 6; player.ammo += 6; showMsg('Bought 6 rounds'); SFX.buy(); }
-    else { showMsg('Not enough scrap (need 6)', 1.5); SFX.deny(); return; }
-  } else if (n === 3) {
-    if (player.owned.knife) { showMsg('Already own the knife', 1.5); SFX.deny(); return; }
-    if (inv.tech >= 2) {
-      inv.tech -= 2;
-      player.owned.knife = true;
-      player.melee = 'knife';
-      showMsg('PIERCING KNIFE acquired');
-      SFX.buy();
-    } else { showMsg('Need 2 low-quality tech parts', 1.5); SFX.deny(); return; }
-  }
+  const row = Trade.stock[n - 1];
+  if (!row) return;
+  if (row.sold && row.sold()) { showMsg('Already sold', 1.5); SFX.deny(); return; }
+  if (!canAfford(row)) { showMsg('Not enough — ' + costText(row), 1.6); SFX.deny(); return; }
+  for (const k of Object.keys(row.cost)) player.inv[k] -= row.cost[k];
+  row.buy();
+  SFX.buy();
   saveGame();                    // every purchase is committed instantly
 }
 

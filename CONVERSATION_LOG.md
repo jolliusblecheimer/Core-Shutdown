@@ -772,3 +772,80 @@ usable fitting is reachable, nobody is standing in a wall. The first run found
 four one-tile pockets boxed in by furniture — a gap between two beds, one
 between two cots, two behind the hearth — and three props moved a tile to open
 them. 107 free, 107 reachable.
+
+### 84. One thing per tile is not one thing per screen
+**Laurens:** "So there are still some things covering up others — make sure all
+is nicely visible. Also remove the growing station in the cellar and add stacks
+of hay and vats of water instead, maybe a chest with a beef MRE. Make sure I can
+interact with the map to fill it in. One NPC's voice line about soup makes no
+sense. Also Tam's voice line asking if I'm from the yard makes no sense — how
+would he know. Make him say something like: thank you for taking care of the
+bandits out there, anyway I've got some goods up for trade, are you interested,
+opens menu, sells rifle ammo, beef and chicken MREs and a low quality tech part."
+
+**Claude:**
+
+**The covering-up, and why last session's audit missed it.** That audit proved
+no two props share a *tile*. It said nothing about the *screen*, and in this
+projection those are different questions: a 54-pixel pier stands on one tile and
+paints over three tiles of room behind it, because a tall sprite at (a,b) hides
+the whole diagonal `x-y = a-b` above it. So a second audit now draws each room
+for real, records every `drawImage` a prop makes, and reports the pairs where the
+nearer sprite eats the further one. First run, worst first:
+
+    100% of chest@1,6    behind curtain@2,7
+     93% of crate@1,13   behind OSK
+     77% of TAM          behind pier@8,10
+     64% of brazier@5,7  behind TAM
+     46% of workbench@1,3 behind pier@3,5
+
+The chest was *entirely invisible*. Two rules came out of it, written into
+`map.js`: nothing worth looking at goes in a pier's column within about seven
+tiles of screen-depth above it, and two big props in a narrow aisle need three
+tiles of `x+y` between them, not one. Re-laid both rooms against those and the
+list is down to one entry — 21% of a bedroll clipped by a pier shaft, which is
+what an aisle in a church actually looks like.
+
+**And the reachability audit, run again, found five one-tile pockets** — three
+bays walled in by their own furniture, and in the crypt a corner tile that
+belonged to *neither* wall run and so could never be reached at all.
+
+**The pier fades now.** It is the one tall thing standing in open floor, so it
+is the one thing you can walk behind and vanish into. `occlusionAlpha` could not
+do it: that measures world distance and a pier crosses you from four tiles away.
+`pierAlpha` measures where the two sprites actually land on screen instead.
+
+**The map table could barely be used, and that is a real bug.** The interaction
+picker seeded one shared `bestD` at 1.1 and then wrote `d < 1.5 && d < bestD`
+for fittings, `d < 1.4` for people, `d < 1.3` for Marek — every one of those
+larger reaches was dead code, silently clamped back to 1.1. On top of that the
+distance was measured to a prop's anchor **corner**, so the two-tile map table
+needed you inside it. Each kind of thing now has its own reach and the closest
+*relative to its own reach* wins; props measure to the nearest tile of their
+footprint, centre to centre. Verified by walking up and pressing E, not by
+calling the function: prompt appears, fog goes 29 → 3350 cells.
+
+**The cellar.** Nothing grows under a church. The grow beds are gone; in their
+place two vats of roof-water and two stacks of hay, both built in tile space and
+projected — a bale is longer than it is wide, so drawn flat it would lie across
+the iso grid instead of along it. First pass came out as beige blobs: three
+boxes with no seam read as one lump, so each bale got a cut end with stubble,
+twine down its long side, and a dark lip along its top-back edge. There is a
+chest of beef MREs down there too, and the vats can be drunk from.
+
+**The counter is per-trader now.** It was one panel with Marek's three items
+written into the *drawing* code, which is why a second trader could not exist.
+The panel is empty furniture now and whoever opened it supplies the stock, so
+Tam is a list and no UI work. He sells rifle rounds, a beef MRE, a chicken MRE
+and a low-quality tech part; Marek's three are unchanged and re-tested.
+
+**The two lines.** Halden's soup is gone. Tam no longer asks where you came
+from — he only knows what came up the road, which is that it can be walked
+now — and his pitch runs into the counter when he has finished saying it.
+
+**MREs are food.** `H` eats the *worst* thing that still helps, so the good
+ration is still in the pack when it matters. Old saves merge them in at zero.
+
+Verified in the browser under `TEST_MODE`: both audits clean, save migration
+from a pre-update save, round-trip of the new fields, and the real save slot
+never touched.
