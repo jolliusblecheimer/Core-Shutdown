@@ -450,30 +450,54 @@ function buildFringe() {
   placeBuilding(112, 96, 18, 13, 'T');
   placeBuilding(60, 96, 16, 12, 'N');
 
-  // ST MARTIN'S: the cathedral that becomes Candlelight. It sits well off the
+  // ST MARTIN'S: the church that becomes Candlelight. It sits well off the
   // gate road, north of the east cross — you get there by turning twice, not
   // by walking one straight line from the yard.
-  // The nave runs NORTH, so the west front — towers, portal, rose — faces
-  // SOUTH, at the parvis and the last sign of the trail. Everything about
-  // the approach depends on that: turn the church round and the player walks
-  // up to a blank flank.
-  const CH = { x: 50, y: 52, w: 12, h: 16 };
-  placeBuilding(CH.x, CH.y, CH.w, CH.h, 'C');
-  // the parvis: paved apron across the front and a strip down each flank
-  for (let y = CH.y + CH.h; y < CH.y + CH.h + 3; y++)
-    for (let x = CH.x - 3; x < CH.x + CH.w + 3; x++)
-      if (x > 0 && x < MAP_W - 1 && y < MAP_H - 1 && !solid[y][x]) ground[y][x] = 5;
-  for (let y = CH.y + 2; y < CH.y + CH.h; y++)
-    for (const x of [CH.x - 2, CH.x - 1, CH.x + CH.w, CH.x + CH.w + 1])
-      if (x > 0 && x < MAP_W - 1 && y < MAP_H - 1 && !solid[y][x]) ground[y][x] = 5;
-  // THE WEST DOOR. The portal sits on the facade's centre line (tx 6 of the
-  // volume), so these two tiles are the threshold: they come out of the solid
-  // block, and standing on them is what takes you inside.
-  for (const dx of [5, 6]) {
-    solid[CH.y + CH.h - 1][CH.x + dx] = false;
-    heavy[CH.y + CH.h - 1][CH.x + dx] = false;
-    ground[CH.y + CH.h - 1][CH.x + dx] = 5;
+  const CH = { x: 50, y: 54, w: 12, h: 14 };
+  placeBuilding(CH.x, CH.y, CH.w, CH.h, 'R');
+  for (let y = CH.y + CH.h; y < CH.y + CH.h + 2; y++)
+    for (let x = CH.x - 2; x < CH.x + CH.w + 2; x++)
+      if (x > 0 && x < MAP_W - 1 && y < MAP_H - 1 && !solid[y][x]) ground[y][x] = 5;  // forecourt paving
+
+  // walk each street and line it with buildings set back from the pavement
+  for (const s of STREETS) {
+    const vertical = s.x0 === s.x1;
+    const len = vertical ? Math.abs(s.y1 - s.y0) : Math.abs(s.x1 - s.x0);
+    const start = vertical ? Math.min(s.y0, s.y1) : Math.min(s.x0, s.x1);
+    for (const side of [-1, 1]) {
+      let t = start + 2 + ((rng() * 5) | 0);
+      while (t < start + len - 6) {
+        const run = 6 + ((rng() * 9) | 0);
+        const depth = 7 + ((rng() * 10) | 0);
+        const off = s.half + 3;
+        // main roads get shops; back streets are houses and the odd office
+        const main = s.half >= 4;
+        const roll = rng();
+        const kind = main ? (roll < 0.45 ? 'S' : roll < 0.6 ? 'G' : roll < 0.85 ? 'H' : 'O')
+                          : (roll < 0.62 ? 'H' : roll < 0.78 ? 'B' : roll < 0.9 ? 'S' : 'O');
+        if (vertical) {
+          const bx = side < 0 ? s.x0 - off - depth : s.x0 + off;
+          placeBuilding(bx, t, depth, run, kind);
+        } else {
+          const by = side < 0 ? s.y0 - off - depth : s.y0 + off;
+          placeBuilding(t, by, run, depth, kind);
+        }
+        t += run + 2 + ((rng() * 4) | 0);      // alley gap between terraces
+      }
+    }
   }
+
+  // fill the deep interior of each block too — a city is buildings, not lots
+  for (let gy = 4; gy < MAP_H - 12; gy += 12) {
+    for (let gx = 4; gx < MAP_W - 12; gx += 12) {
+      if (rng() < 0.18) continue;                    // the odd yard or car park
+      const w = 7 + ((rng() * 4) | 0), h = 7 + ((rng() * 4) | 0);
+      const r2 = rng();
+      placeBuilding(gx + ((rng() * 3) | 0), gy + ((rng() * 3) | 0), w, h,
+                    r2 < 0.66 ? 'H' : r2 < 0.85 ? 'B' : 'O');
+    }
+  }
+
 
   // ---------- THE CORDON: the road to the church, and only two ways in ----
   //
@@ -528,7 +552,7 @@ function buildFringe() {
         const roll = rng();
         const kind = roll < 0.46 ? 'H' : roll < 0.72 ? 'S' : roll < 0.9 ? 'B' : 'O';
         let placed = false;
-        for (let depth = 9; depth >= 2 && !placed; depth--) {
+        for (let depth = 9; depth >= 3 && !placed; depth -= 2) {
           const y0 = faceNorth ? row - depth + 1 : row;
           placed = placeBuilding(t, y0, run, depth, kind);
         }
@@ -546,46 +570,6 @@ function buildFringe() {
     yardWall(a, b, 68, 'x');
     yardWall(a, b, 69, 'x');
   }
-
-  // walk each street and line it with buildings set back from the pavement
-  for (const s of STREETS) {
-    const vertical = s.x0 === s.x1;
-    const len = vertical ? Math.abs(s.y1 - s.y0) : Math.abs(s.x1 - s.x0);
-    const start = vertical ? Math.min(s.y0, s.y1) : Math.min(s.x0, s.x1);
-    for (const side of [-1, 1]) {
-      let t = start + 2 + ((rng() * 5) | 0);
-      while (t < start + len - 6) {
-        const run = 6 + ((rng() * 9) | 0);
-        const depth = 7 + ((rng() * 10) | 0);
-        const off = s.half + 3;
-        // main roads get shops; back streets are houses and the odd office
-        const main = s.half >= 4;
-        const roll = rng();
-        const kind = main ? (roll < 0.45 ? 'S' : roll < 0.6 ? 'G' : roll < 0.85 ? 'H' : 'O')
-                          : (roll < 0.62 ? 'H' : roll < 0.78 ? 'B' : roll < 0.9 ? 'S' : 'O');
-        if (vertical) {
-          const bx = side < 0 ? s.x0 - off - depth : s.x0 + off;
-          placeBuilding(bx, t, depth, run, kind);
-        } else {
-          const by = side < 0 ? s.y0 - off - depth : s.y0 + off;
-          placeBuilding(t, by, run, depth, kind);
-        }
-        t += run + 2 + ((rng() * 4) | 0);      // alley gap between terraces
-      }
-    }
-  }
-
-  // fill the deep interior of each block too — a city is buildings, not lots
-  for (let gy = 4; gy < MAP_H - 12; gy += 12) {
-    for (let gx = 4; gx < MAP_W - 12; gx += 12) {
-      if (rng() < 0.18) continue;                    // the odd yard or car park
-      const w = 7 + ((rng() * 4) | 0), h = 7 + ((rng() * 4) | 0);
-      const r2 = rng();
-      placeBuilding(gx + ((rng() * 3) | 0), gy + ((rng() * 3) | 0), w, h,
-                    r2 < 0.66 ? 'H' : r2 < 0.85 ? 'B' : 'O');
-    }
-  }
-
 
   // ---------- one solid volume per building ----------
   for (const b of buildings) addBuildingProp(b);
@@ -728,10 +712,8 @@ function buildFringe() {
     { gx: 89, gy: 71, text: 'LEFT HERE. FOLLOW THE ROAD', kind: 'plank', dir: 'xm' },
     { gx: 76, gy: 71, text: 'ST MARTINS. NOT FAR NOW', kind: 'cloth', dir: 'xm' },
     { gx: 66, gy: 71, text: 'ALMOST THERE. KEEP ON', kind: 'plank', dir: 'xm' },
-    // The trail stops at the road. The last board used to stand on the parvis
-    // itself — "YOU MADE IT. KNOCK." — and a plank on poles in front of the
-    // west front just got in the way of the building. The turn-off board below
-    // is the last one you read; the cathedral says the rest by being there.
+    // and off the road to the door
+    { gx: 58, gy: 70, text: 'YOU MADE IT. KNOCK.', kind: 'cloth', dir: 'ym' },
   ];
   for (const s of SIGNS) {
     const x = s.gx | 0, y = s.gy | 0;
@@ -907,178 +889,6 @@ function buildFringe() {
 }
 
 // =====================================================================
-// AREA 3 — CANDLELIGHT, the inside of St Martin's
-// A cathedral is not the point. A cathedral people are living in is the point.
-// Plan: design/candlelight.md
-// =====================================================================
-// CANDLELIGHT, second layout. Three rules came out of the first one:
-//
-//   1. The floor is the footprint. 12x16 on the street, 12x16 inside.
-//   2. ONLY THE FAR WALLS ARE WALLS. The north and west sides get full height;
-//      the two the camera looks over get a ten-pixel kerb. A full wall there
-//      has to be faded to see past, and a faded wall reads as a sheet of glass
-//      lying across the floor with the people showing through it.
-//   3. One thing per tile, and the room proves it. `put` below refuses to
-//      stack anything and throws if the layout tries — the first pass had a
-//      bench, a shelf and a pier occupying the same corner of the screen.
-//
-// Budget: 192 tiles. 27 go to the two real walls, 27 to the kerb, ~34 to
-// furniture and piers. That leaves a bit over a hundred to walk on, which is
-// what stops a camp from being a warehouse full of crates.
-const CAND_W = 12, CAND_H = 16;
-function shellWalls(doorX0, doorX1) {
-  const W = MAP_W, H = MAP_H;
-  const ik = n => Array.from({ length: n }, () => 'I');
-  const lk = n => Array.from({ length: n }, () => 'L');
-  wallRun(Array.from({ length: W }, (_, i) => [i, 0]), ik(W), 'x', false, true, true);
-  wallRun(Array.from({ length: H }, (_, i) => [0, i]), ik(H), 'y', false, true, true);
-  // near sides: kerb only, and never `front` — nothing here needs fading
-  wallRun(Array.from({ length: H - 1 }, (_, i) => [W - 1, i]), lk(H - 1), 'y', false, true, true);
-  const sL = [], sR = [];
-  for (let x = 0; x < W; x++) {
-    if (x < doorX0) sL.push([x, H - 1]);
-    else if (x > doorX1) sR.push([x, H - 1]);
-  }
-  wallRun(sL, lk(sL.length), 'x', false, true, false);
-  wallRun(sR, lk(sR.length), 'x', false, false, true);
-}
-// one thing per tile, and it says so out loud if the layout is wrong
-function placer() {
-  const taken = new Set();
-  return (x, y, type, extra) => {
-    const foot = (extra && extra.foot) || [x, y, 1, 1];
-    for (let j = foot[1]; j < foot[1] + foot[3]; j++) {
-      for (let i = foot[0]; i < foot[0] + foot[2]; i++) {
-        const k = i + ',' + j;
-        if (taken.has(k) || solid[j][i]) {
-          console.warn('CANDLELIGHT: ' + type + ' wants ' + k + ', already occupied');
-          return null;
-        }
-        taken.add(k);
-        solid[j][i] = true;
-      }
-    }
-    const pr = Object.assign({ gx: x, gy: y, type }, extra || {});
-    props.push(pr);
-    return pr;
-  };
-}
-
-function buildCandlelight() {
-  const rng = mulberry32(31415);
-  resetMap(CAND_W, CAND_H, rng);
-  const W = MAP_W, H = MAP_H;
-
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-    ground[y][x] = 8;
-    groundVar[y][x] = (rng() * 6) | 0;
-  }
-  for (let y = 2; y < H - 1; y++) for (let x = 4; x <= 7; x++) ground[y][x] = 9;   // walked smooth
-  for (let y = 7; y <= 14; y++) for (let x = 1; x <= 2; x++) ground[y][x] = 10;    // straw, under the bays
-
-  shellWalls(5, 6);
-  const put = placer();
-
-  // ---- THE FOURTH RULE, and it is the one this pass is about: ONE THING PER
-  // TILE IS NOT ONE THING PER SCREEN. A 54px pier stands on a single tile and
-  // still paints over three tiles of the room behind it, because in this
-  // projection a tall sprite at (a,b) covers the whole diagonal x-y = a-b
-  // above it. So there are two spacings to keep, not one:
-  //
-  //   * COLUMN. Nothing worth looking at may sit in a pier's column (same
-  //     x-y) within about seven tiles of screen-depth above it. For the four
-  //     piers below that rules out (1,3) (2,4) (5,7) (6,8) (7,9) (5,2) (6,3)
-  //     (7,4) (1,8) (2,9) — and nothing else, so it is a cheap rule to keep.
-  //   * DEPTH. Two big props in the same narrow aisle need three tiles of
-  //     x+y between them, not one. Adjacent is what put the chest completely
-  //     behind the curtain and the crate completely behind Osk.
-  //
-  // Checked by the screen-space cover audit, not by eye.
-  for (const [px2, py2] of [[3, 5], [8, 5], [3, 10], [8, 10]]) {
-    put(px2, py2, 'pier');
-    heavy[py2][px2] = true;
-  }
-
-  // ---- NORTH: the chancel. Map table centre, hatch to the crypt in the
-  // corner, and the whole north-west corner left as floor — the hatch is the
-  // biggest sprite in the building and anything beside it stands on it.
-  put(1, 1, 'stairDown');
-  put(5, 1, 'mapTable', { foot: [5, 1, 2, 1] });
-  put(3, 1, 'candles'); put(8, 1, 'candles');
-
-  // ---- WEST, north end: Bo's bench, clear of the pier column at (1,3)
-  put(1, 5, 'workbench', { foot: [1, 5, 2, 1] });
-
-  // ---- EAST, north end: the medbay
-  put(10, 2, 'candles');
-  put(10, 3, 'cot'); put(10, 5, 'cot');
-  put(9, 3, 'table');
-
-  // ---- WEST, south end: the sleeping bays on straw, then the store.
-  // Two tiles of gap between bays: the bedding is short enough to survive it,
-  // the curtain and the crate are not, so they take the odd rows.
-  // and the aisle walkway at x=2 stays open: nothing stands there except
-  // opposite a bay, or the bay next to it is walled in on all four sides
-  put(1, 7, 'curtain', { dir: 'y' }); put(2, 7, 'crate');
-  put(1, 9, 'bedding');
-  put(1, 11, 'bedding'); put(2, 11, 'sacks');
-  put(1, 13, 'bedding'); put(2, 13, 'chest', { open: false, loot: 'junk' });
-
-  // ---- EAST, south end: the hearth and Halden's pitch
-  put(10, 6, 'sacks');
-  put(10, 8, 'hearth');
-  put(9, 10, 'table'); put(9, 12, 'stool');
-  put(10, 11, 'crate');
-  put(9, 13, 'chest', { open: false, loot: 'scrap' });
-
-  // ---- THE NAVE: fire, two pews, and otherwise floor
-  put(5, 8, 'brazier'); put(6, 11, 'brazier');
-  put(4, 11, 'pew', { dir: 'x' }); put(7, 11, 'pew', { dir: 'y' });
-
-  buildAO();
-  buildSpatialIndex();
-}
-
-// =====================================================================
-// AREA 4 — THE CRYPT. Under the chancel, so a fraction of the church.
-// =====================================================================
-const CRYPT_W = 10, CRYPT_H = 8;
-function buildCrypt() {
-  const rng = mulberry32(2718);
-  resetMap(CRYPT_W, CRYPT_H, rng);
-  const W = MAP_W, H = MAP_H;
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-    ground[y][x] = 11;
-    groundVar[y][x] = (rng() * 6) | 0;
-  }
-  const jk = n => Array.from({ length: n }, () => 'J');
-  const lk = n => Array.from({ length: n }, () => 'L');
-  wallRun(Array.from({ length: W }, (_, i) => [i, 0]), jk(W), 'x', false, true, true);
-  wallRun(Array.from({ length: H }, (_, i) => [0, i]), jk(H), 'y', false, true, true);
-  wallRun(Array.from({ length: H - 1 }, (_, i) => [W - 1, i]), lk(H - 1), 'y', false, true, true);
-  wallRun(Array.from({ length: W }, (_, i) => [i, H - 1]), lk(W), 'x', false, true, true);
-
-  // The crypt is the store, not a farm: nothing grows under a church. What is
-  // down here is what keeps — water off the roof, hay, jars, and one box the
-  // camp does not open.
-  const put = placer();
-  put(1, 1, 'stairUp');                       // straight under the hatch above
-  put(8, 1, 'cistern');
-  put(4, 2, 'waterVat'); put(6, 2, 'waterVat');
-  // the bales are the tallest thing down here, so they take their own columns
-  put(4, 6, 'hayStack'); put(7, 6, 'hayStack');
-  put(8, 3, 'preserves'); put(8, 5, 'preserves');
-  put(1, 5, 'strongbox');
-  put(1, 6, 'chest', { open: false, loot: 'crypt' });
-  put(8, 6, 'chest', { open: false, loot: 'mre' });
-  put(3, 3, 'candles'); put(6, 3, 'candles');
-  put(1, 3, 'barrel');
-
-  buildAO();
-  buildSpatialIndex();
-}
-
-// =====================================================================
 // AREA REGISTRY
 // =====================================================================
 const Areas = {
@@ -1104,37 +914,8 @@ const Areas = {
       { type: 'ammo', x: 62.5, y: 122.5, amount: 6, bob: 2.4 },
       { type: 'ammo', x: 33.5, y: 88.5, amount: 6, bob: 1.5 },
     ]),
-    // back through the yard gate, and in at the west door of St Martin's
-    exits: [
-      { x0: 196.4, y0: 117.6, x1: 201, y1: 122.4, to: 'junkyard', entry: { x: 29.6, y: 12.5 } },
-      { x0: 54.8, y0: 66.3, x1: 57.2, y1: 67.95, to: 'candlelight', entry: { x: 5.5, y: 13.4 } },
-    ],
-  },
-  candlelight: {
-    id: 'candlelight', name: 'CANDLELIGHT', build: buildCandlelight,
-    hasScrapper: false, hasBoss: false, hasNpc: false, folk: 'camp',
-    indoors: true,
-    tint: '#f0d4b0',        // firelight, but the stone still has to read as stone
-    makeItems: () => ([
-      { type: 'ammo', x: 6.5, y: 5.5, amount: 6, bob: 0.5 },
-    ]),
-    exits: [
-      { x0: 4.4, y0: 14.4, x1: 7.6, y1: 16, to: 'fringe', entry: { x: 56.5, y: 69.5 } },
-      // the hatch is one tile now, so the zone is the hatch and its doorstep
-      { x0: 0.6, y0: 0.6, x1: 2.4, y1: 2.4, to: 'crypt', entry: { x: 3.5, y: 2.5 } },
-    ],
-  },
-  crypt: {
-    id: 'crypt', name: 'THE CRYPT', build: buildCrypt,
-    hasScrapper: false, hasBoss: false, hasNpc: false, folk: 'crypt',
-    indoors: true,
-    tint: '#a9bccc',        // cold, and three lamps against it
-    makeItems: () => ([]),
-    exits: [
-      // the stair tile only. Land the player CLEAR of it coming down, or the
-      // zone they arrive in never disarms and the stair will not take them back.
-      { x0: 0.6, y0: 0.6, x1: 2.4, y1: 2.4, to: 'candlelight', entry: { x: 3.5, y: 2.5 } },
-    ],
+    // back through the yard gate
+    exits: [{ x0: 196.4, y0: 117.6, x1: 201, y1: 122.4, to: 'junkyard', entry: { x: 29.6, y: 12.5 } }],
   },
 };
 

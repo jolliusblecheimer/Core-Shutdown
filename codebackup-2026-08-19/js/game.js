@@ -241,8 +241,6 @@ function buildTilesets() {
   TILESETS[2] = Sprites.rubble;  TILESETS[3] = Sprites.planks;
   TILESETS[4] = Sprites.road;    TILESETS[5] = Sprites.pavement;
   TILESETS[6] = Sprites.verge;   TILESETS[7] = Sprites.forecourt;
-  TILESETS[8] = Sprites.flag;    TILESETS[9] = Sprites.flagWorn;
-  TILESETS[10] = Sprites.straw;  TILESETS[11] = Sprites.crypt;
 }
 buildTilesets();
 
@@ -328,8 +326,6 @@ function stashArea() {
     takenItems: (START_ITEMS_BY_AREA[currentArea] || []).filter(
       k => !items.some(it => itemKey(it) === k)),
     deadBandits: collectDeadBandits(),
-    // a chest you emptied stays empty when you come back through the door
-    openChests: props.filter(p => p.type === 'chest' && p.open).map(p => p.gx + ',' + p.gy),
   };
 }
 // A raider you killed stays killed. Respawning them would turn a roadblock
@@ -369,8 +365,6 @@ function restoreArea(id) {
   for (let i = items.length - 1; i >= 0; i--) {
     if (taken.has(itemKey(items[i]))) items.splice(i, 1);
   }
-  const opened = new Set(st.openChests || []);
-  for (const p of props) if (p.type === 'chest' && opened.has(p.gx + ',' + p.gy)) p.open = true;
 }
 
 function enterArea(id, entry) {
@@ -391,7 +385,6 @@ function enterArea(id, entry) {
   spawnBandits();
   restoreBandits(id);
   foeBullets.length = 0;
-  buildFolk(Areas[id].folk);
   if (entry) {
     player.x = entry.x; player.y = entry.y;
     if (!canStand(player.x, player.y, player.r)) {
@@ -604,11 +597,7 @@ function update(dt) {
       Input.pressed['KeyE'] = false;
       Dialog.idx++;
       SFX.blip();
-      if (Dialog.idx >= Dialog.lines.length) {
-        Dialog.active = false;
-        // a trader's pitch ends at his counter
-        if (Trade.pending) openTrade(Trade.pending.who, Trade.pending.stock);
-      }
+      if (Dialog.idx >= Dialog.lines.length) Dialog.active = false;
     }
     updateParticles(dt);
   } else if (Tut.active) {
@@ -623,10 +612,11 @@ function update(dt) {
     }
     updateParticles(dt);
   } else if (Trade.open) {
-    for (let n = 1; n <= Trade.stock.length; n++)
-      if (Input.pressed['Digit' + n]) tradeBuy(n);
+    if (Input.pressed['Digit1']) tradeBuy(1);
+    if (Input.pressed['Digit2']) tradeBuy(2);
+    if (Input.pressed['Digit3']) tradeBuy(3);
     if (Input.pressed['KeyE'] || Input.pressed['Escape']) { Trade.open = false; SFX.uiClose(); }
-    for (const k of ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'KeyE', 'Escape'])
+    for (const k of ['Digit1', 'Digit2', 'Digit3', 'KeyE', 'Escape'])
       Input.pressed[k] = false;
     updateParticles(dt);
   } else {
@@ -668,20 +658,11 @@ function update(dt) {
   }
 
   // camera: the player normally; the boss during its cutscenes; during the
-  // gate cutscene, first the gate lock — then whatever rises behind you.
-  //
-  // The lock used to be the literal pair of numbers (21.5, 30.0), which is
-  // where the gate stood when it was in the south wall. It has been in the
-  // EAST wall for a long time, so the first beat of the cutscene panned
-  // eighteen tiles to an empty corner of the yard, sat there while the lock
-  // ground, and then flew all the way back when the Compactor rose. It reads
-  // off the gate itself now, so moving the gate again cannot break it.
+  // gate cutscene, first the gate lock — then whatever rises behind you
   const cineOn = boss.active && (boss.state === 'cine2' || boss.state === 'cine3');
   let focus;
   if (GateCine.active) {
-    const lockX = gateProp ? gateProp.gx - 0.4 : player.x;
-    const lockY = gateProp ? gateProp.gy + 0.5 : player.y;
-    focus = GateCine.spawned ? isoToScreen(boss.x, boss.y) : isoToScreen(lockX, lockY);
+    focus = GateCine.spawned ? isoToScreen(boss.x, boss.y) : isoToScreen(21.5, 30.0);
   } else if (cineOn) {
     focus = isoToScreen(boss.x, boss.y);
   } else {
@@ -708,12 +689,9 @@ function invEntries() {
   }
   if (t === 1) return [];
   if (t === 2) {
-    const food = [
-      { id: 'snack', icon: Sprites.snackIcon, label: `Snack bar × ${player.inv.snack}` },
-      { id: 'mreChicken', icon: Sprites.mreChicken, label: `Chicken MRE × ${player.inv.mreChicken}` },
-      { id: 'mreBeef', icon: Sprites.mreBeef, label: `Beef MRE × ${player.inv.mreBeef}` },
-    ];
-    return food.filter(f => player.inv[f.id] > 0).map(f => ({ ...f, use: 'EAT' }));
+    return player.inv.snack > 0
+      ? [{ id: 'snack', icon: Sprites.snackIcon, label: `Snack bar × ${player.inv.snack}`, use: 'EAT' }]
+      : [];
   }
   const rows = [
     { id: 'scrap', icon: Sprites.scrapBit, label: `Scrap × ${player.inv.scrap}` },
@@ -729,10 +707,13 @@ function invAction(row) {
   } else if (row.id === 'pistol') {
     player.hasGun = !player.hasGun;
     SFX.switchW();
-  } else if (FOOD.some(f => f.id === row.id)) {
-    // in the pack you pick what to eat; H picks for you
-    if (player.hp >= player.maxHp) { showMsg('Already at full health', 1.5); SFX.deny(); return; }
-    eatFood(FOOD.find(f => f.id === row.id));
+  } else if (row.id === 'snack') {
+    if (player.hp < player.maxHp) {
+      player.inv.snack--;
+      player.hp = Math.min(player.maxHp, player.hp + 40);
+      showMsg('Ate a snack bar  (+40 HP)');
+      SFX.eat();
+    } else { showMsg('Already at full health', 1.5); SFX.deny(); return; }
   }
   saveGame();
 }
@@ -826,10 +807,6 @@ function render() {
     const s = isoToScreen(bd.x, bd.y);
     // bodies sort a hair behind the living, so nobody stands inside a corpse
     draws.push({ depth: s.y - (bd.dead ? 0.02 : 0), draw: () => drawBandit(bd, s.x - ox, s.y - oy) });
-  }
-  for (const f of folk) {
-    const s = isoToScreen(f.x, f.y);
-    draws.push({ depth: s.y, draw: () => drawFolk(f, s.x - ox, s.y - oy) });
   }
   for (const b of foeBullets) {
     const s = isoToScreen(b.x, b.y);
@@ -1009,18 +986,6 @@ function occlusionAlpha(p) {
   const d = Math.hypot(dx, dy);
   if (d > 3.2) return 1;
   return 0.3 + 0.7 * Math.min(1, Math.max(0, (d - 1.2) / 2));
-}
-
-// A pier is 54px of stone standing in open floor: it crosses the player from
-// four tiles away, which is outside occlusionAlpha's world-distance reach, and
-// only ever when it is in the same SCREEN column. So this one measures where
-// the sprites actually land instead of how far apart the tiles are.
-function pierAlpha(p) {
-  if (player.dead > 0) return 1;
-  const s = isoToScreen(p.gx + 0.5, p.gy + 0.5), q = isoToScreen(player.x, player.y);
-  const dx = Math.abs(s.x - q.x), dy = s.y - q.y;
-  if (dy < 0 || dx > 16 || dy > 50) return 1;      // behind, or nowhere near
-  return 0.35 + 0.65 * Math.max(dx / 16, dy / 50);
 }
 
 // A building's roof: a quad lifted to the facade height, styled by what the
@@ -1297,61 +1262,6 @@ function drawProp(p, x, y) {
     img = Sprites.stove; oyOff = -14; drawShadow(x, y, 6);
     addLight(x, y - 7, 0, 18 + Math.sin(gameTime * 9) * 3, '255,140,60', 0.35);
   }
-  // ---- CANDLELIGHT. Everything that burns puts light on the floor: the
-  // camp is the only warm room in the ring and it has to be lit that way,
-  // not tinted that way.
-  // A pier is the one tall thing standing in the open floor, so it is the one
-  // thing the player can walk behind and disappear into. It fades like the
-  // yard's posts and corner columns do.
-  else if (T === 'pier') {
-    drawShadow(x, y, 8);
-    const a = pierAlpha(p);
-    if (a < 1) ctx.globalAlpha = a;
-    ctx.drawImage(Sprites.pier, Math.round(x - Sprites.pier.width / 2), Math.round(y - 52));
-    ctx.globalAlpha = 1;
-    return;
-  }
-  else if (T === 'brazier') {
-    img = Sprites.brazier; oyOff = -19; drawShadow(x, y, 6);
-    addLight(x, y - 12, 0, 34 + Math.sin(gameTime * 7 + p.gx) * 4, '255,150,60', 0.44);
-  }
-  else if (T === 'candles') {
-    img = Sprites.candles; oyOff = -17; drawShadow(x, y, 6);
-    addLight(x, y - 10, 0, 20 + Math.sin(gameTime * 5 + p.gy) * 2, '255,210,140', 0.34);
-  }
-  else if (T === 'hearth') {
-    img = Sprites.hearth; oyOff = -28; drawShadow(x, y, 7);
-    addLight(x, y - 9, 0, 30 + Math.sin(gameTime * 8) * 3, '255,140,60', 0.40);
-  }
-  else if (T === 'bedding') { img = Sprites.bedding; oyOff = -11; drawShadow(x, y, 10); }
-  else if (T === 'sacks') { img = Sprites.sacks; oyOff = -12; drawShadow(x, y, 8); }
-  else if (T === 'curtain') { img = Sprites.curtain[p.dir === 'y' ? 'y' : 'x']; oyOff = -30; }
-  else if (T === 'pew') { img = Sprites.pew[p.dir === 'y' ? 'y' : 'x']; oyOff = -12; drawShadow(x, y, 13); }
-  else if (T === 'pewBroken') { img = Sprites.pewBroken[p.dir === 'y' ? 'y' : 'x']; oyOff = -12; drawShadow(x, y, 10); }
-  else if (T === 'workbench') {
-    img = Sprites.workbench; oyOff = -22; drawShadow(x, y, 15);
-    // the drone's eye, still live. What glows amber can be hurt — here it is
-    // with its lid off, which is the point of the whole vignette.
-    addLight(x + 4, y - 16, 0, 9 + Math.sin(gameTime * 3) * 2, '255,176,46', 0.30);
-  }
-  else if (T === 'mapTable') {
-    img = Sprites.mapTable; oyOff = -18; drawShadow(x, y, 14);
-    addLight(x + 10, y - 16, 0, 16, '255,210,140', 0.30);
-  }
-  else if (T === 'chest') { img = Sprites.chest[p.open ? 1 : 0]; oyOff = -13; drawShadow(x, y, 8); }
-  else if (T === 'stairDown' || T === 'stairUp') {
-    img = T === 'stairUp' ? Sprites.stairUp : Sprites.stairDown;
-    oyOff = -11;
-    addLight(x, y - 4, 0, 13, T === 'stairUp' ? '255,210,140' : '120,140,170', 0.22);
-  }
-  else if (T === 'rope') { img = Sprites.rope; oyOff = -7; }
-  else if (T === 'cistern') { img = Sprites.cistern; oyOff = -22; drawShadow(x, y, 9); }
-  // hay and water: built in tile space, so their anchor is the tile centre
-  // inside the sprite and the offset is arithmetic, not taste
-  else if (T === 'hayStack') { img = Sprites.hayStack; oyOff = -36; drawShadow(x, y, 13); }
-  else if (T === 'waterVat') { img = Sprites.waterVat; oyOff = -28; drawShadow(x, y, 9); }
-  else if (T === 'preserves') { img = Sprites.preserves; oyOff = -14; drawShadow(x, y, 8); }
-  else if (T === 'strongbox') { img = Sprites.strongbox; oyOff = -14; drawShadow(x, y, 8); }
   if (img) ctx.drawImage(img, Math.round(x - img.width / 2), Math.round(y + oyOff));
 }
 
@@ -1690,12 +1600,6 @@ function drawPlayer(x, y) {
   }
 }
 
-function drawFolk(f, x, y) {
-  drawShadow(x, y, 5);
-  const set = Sprites.folk[f.key] || Sprites.folk.vesna;
-  ctx.drawImage(set[f.frame], Math.round(x - 8), Math.round(y - 21));
-}
-
 function drawNpc(x, y) {
   drawShadow(x, y, 5);
   ctx.drawImage(Sprites.npc[npc.frame], Math.round(x - 8), Math.round(y - 21));
@@ -1745,23 +1649,13 @@ function drawBandit(b, x, y) {
   if (b.state === 'aim') {
     const ps = isoToScreen(player.x, player.y);
     const t = Math.min(1, b.aimT / (BANDIT_ROLES[b.role].aim || 1));
-    // DASHED, not a solid beam. Nobody on this road has a laser sight; this is
-    // the game telling you where a barrel is pointed, in the same grammar as
-    // the Scrapper's red blink before it swings.
-    ctx.setLineDash(b.role === 'rifle' ? [2, 3] : [1, 4]);
-    ctx.lineDashOffset = -gameTime * 22;
-    ctx.globalAlpha = (b.role === 'rifle' ? 0.14 + 0.42 * t : 0.08 + 0.2 * t);
+    ctx.globalAlpha = (b.role === 'rifle' ? 0.16 + 0.54 * t : 0.1 + 0.24 * t);
     ctx.strokeStyle = b.role === 'rifle' ? '#ff5a3c' : '#ffa07a';
     ctx.beginPath();
     ctx.moveTo(Math.round(x), Math.round(y - 12));
     ctx.lineTo(Math.round(ps.x - lastOx), Math.round(ps.y - lastOy - 10));
     ctx.stroke();
-    ctx.setLineDash([]);
     ctx.globalAlpha = 1;
-    if (b.role === 'rifle') {                 // and the same blink overhead
-      ctx.fillStyle = ((performance.now() / 90) | 0) % 2 ? '#ff5a3c' : '#ffb02e';
-      ctx.fillRect(Math.round(x - 1), Math.round(y - 25), 2, 2);
-    }
   }
   if (b.muzzle > 0) {
     ctx.fillStyle = '#ffe08a';
@@ -1989,7 +1883,6 @@ function drawHUD() {
   }
   for (const it of items) blip(it.x, it.y, '#ffd27a');
   if (currentAreaDef().hasNpc) blip(npc.x, npc.y, '#7ad27a');
-  for (const f of folk) blip(f.x, f.y, '#7ad27a');
   for (const ex of (currentAreaDef().exits || [])) {
     if (ex.needsGate && !(gateProp && gateProp.open)) continue;
     blip((ex.x0 + ex.x1) / 2, (ex.y0 + ex.y1) / 2, '#4fc3ff');
@@ -2180,7 +2073,7 @@ function drawHUD() {
     const rows = invEntries();
     if (rows.length === 0) {
       const emptyText = InvUI.tab === 1 ? 'No armour yet — the city will provide.'
-        : InvUI.tab === 2 ? 'No food. Traders keep rations.'
+        : InvUI.tab === 2 ? 'No food. The survivor trades snack bars.'
         : 'Nothing here yet.';
       ptext(emptyText, px0 + pw / 2, py0 + 52, 8, 'rgba(232,217,192,0.5)', 'center');
     }
@@ -2199,47 +2092,42 @@ function drawHUD() {
   }
 
   // trade panel + your items alongside it
-  // Nothing about any particular trader is written here any more: the rows,
-  // the prices and the sold-out state all come off Trade.stock.
   if (Trade.open) {
-    const rows = Trade.stock;
-    const pw = 168, sw = 78, gap = 6, ph = 18 + rows.length * 12 + 20;
+    const pw = 168, sw = 78, gap = 6, ph = 76;
     const total = pw + gap + sw;
     const px0 = (VIEW_W - total) / 2, py0 = (VIEW_H - ph) / 2 - 8;
-    const DIM = 'rgba(232,217,192,0.4)';
     uiFrame(px0, py0, pw, ph);
-    ptext('TRADE — ' + Trade.who, px0 + pw / 2, py0 + 5, 8, '#7ad27a', 'center');
-    rows.forEach((r, i) => {
-      const ry = py0 + 18 + i * 12;
-      const gone = r.sold && r.sold();
-      const col = (gone || !canAfford(r)) ? DIM : '#e8d9c0';
-      uiIcon(r.icon(), px0 + 7, ry + 1);
-      ptext('[' + (i + 1) + '] ' + r.label, px0 + 26, ry, 8, col);
-      ptext(gone ? 'SOLD' : costText(r), px0 + pw - 8, ry, 8, col, 'right');
-    });
-    ptext('E close', px0 + pw / 2, py0 + ph - 13, 7, 'rgba(232,217,192,0.6)', 'center');
+    ptext('TRADE — SURVIVOR', px0 + pw / 2, py0 + 5, 8, '#7ad27a', 'center');
+    const can = c => player.inv.scrap >= c ? '#e8d9c0' : 'rgba(232,217,192,0.4)';
+    uiIcon(Sprites.snackIcon, px0 + 8, py0 + 19);
+    ptext('[1] snack bar', px0 + 26, py0 + 18, 8, can(4));
+    ptext('4 scrap', px0 + pw - 8, py0 + 18, 8, can(4), 'right');
+    uiIcon(Sprites.ammo, px0 + 8, py0 + 31);
+    ptext('[2] 6 rounds', px0 + 26, py0 + 30, 8, can(6));
+    ptext('6 scrap', px0 + pw - 8, py0 + 30, 8, can(6), 'right');
+    uiIcon(Sprites.knifeIcon, px0 + 6, py0 + 43);
+    const canK = player.inv.tech >= 2 ? '#e8d9c0' : 'rgba(232,217,192,0.4)';
+    if (player.owned.knife) {
+      ptext('[3] piercing knife', px0 + 26, py0 + 42, 8, 'rgba(232,217,192,0.4)');
+      ptext('SOLD', px0 + pw - 8, py0 + 42, 8, 'rgba(232,217,192,0.4)', 'right');
+    } else {
+      ptext('[3] piercing knife', px0 + 26, py0 + 42, 8, canK);
+      ptext('2 low-q tech', px0 + pw - 8, py0 + 42, 8, canK, 'right');
+    }
+    ptext('E close', px0 + pw / 2, py0 + 63, 7, 'rgba(232,217,192,0.6)', 'center');
 
     // what you're carrying, right next to the offer
     const sx0 = px0 + pw + gap;
     uiFrame(sx0, py0, sw, ph);
     ptext('YOURS', sx0 + sw / 2, py0 + 5, 8, '#ffd27a', 'center');
-    const mine = [
-      [Sprites.scrapBit, player.inv.scrap],
-      [Sprites.techIcon, player.inv.tech],
-      [Sprites.ammo, player.ammo],
-      [Sprites.snackIcon, player.inv.snack],
-      [Sprites.mreBeef, player.inv.mreBeef],
-      [Sprites.mreChicken, player.inv.mreChicken],
-    ];
-    // scrap, tech and ammo always; rations only if you have any — and never
-    // more lines than the frame is tall, whoever's counter this is
-    const shown = mine.filter((m, i) => i < 3 || m[1] > 0)
-      .slice(0, Math.floor((ph - 26) / 12));
-    shown.forEach((m, i) => {
-      const ry = py0 + 18 + i * 12;
-      uiIcon(m[0], sx0 + 6, ry + 1);
-      ptext('× ' + m[1], sx0 + sw - 6, ry, 8, '#e8d9c0', 'right');
-    });
+    uiIcon(Sprites.scrapBit, sx0 + 6, py0 + 19);
+    ptext('× ' + player.inv.scrap, sx0 + sw - 6, py0 + 18, 8, '#e8d9c0', 'right');
+    uiIcon(Sprites.techIcon, sx0 + 5, py0 + 31);
+    ptext('× ' + player.inv.tech, sx0 + sw - 6, py0 + 31, 8, '#e8d9c0', 'right');
+    uiIcon(Sprites.snackIcon, sx0 + 5, py0 + 44);
+    ptext('× ' + player.inv.snack, sx0 + sw - 6, py0 + 44, 8, '#e8d9c0', 'right');
+    uiIcon(Sprites.ammo, sx0 + 5, py0 + 56);
+    ptext('× ' + player.ammo, sx0 + sw - 6, py0 + 56, 8, '#e8d9c0', 'right');
   }
 
   // dialogue box (word-wrapped)

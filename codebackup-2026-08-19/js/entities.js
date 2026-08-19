@@ -13,7 +13,7 @@ const player = {
   active: 'melee',             // which equipped weapon LMB uses (scroll to switch)
   scrollHintT: 0,              // "scroll" HUD hint: 30s after getting the gun, then gone
   owned: { pipe: false, knife: false, pistol: false },
-  inv: { scrap: 0, tech: 0, snack: 0, mreBeef: 0, mreChicken: 0, gateKey: false },
+  inv: { scrap: 0, tech: 0, snack: 0, gateKey: false },
   respawnX: 6.5, respawnY: 26.5, homeSet: false,
 };
 
@@ -117,143 +117,10 @@ function scrappersOff() { for (const s of scrappers) s.state = 'off'; }
 
 const npc = { x: 21.5, y: 6.5, animT: 0, frame: 0 };
 
-// ---------- THE CAMP ----------
-// This engine has had exactly one NPC in it since the beginning: Marek, above,
-// named directly by the interaction code. A camp needs several in one room, so
-// they are a LIST beside him rather than a rewrite of him — his mission, his
-// trade and his dialogue are untouched, and nothing that already works had to
-// be re-tested to get six more people standing in a church.
-// Nobody here learns the player's name. Traveller, stranger, or nothing.
-let folk = [];
-const FOLK = {
-  camp: [
-    { key: 'vesna', name: 'VESNA', x: 7.5, y: 13.5, lines: [
-      "Door stays shut after dark. That is the one rule that matters.",
-      "You walked the sign road, so you can read. That already puts you ahead.",
-      "Anything of ours you want, you ask. Nobody here minds being asked." ] },
-    { key: 'osk', name: 'OSK', x: 3.5, y: 13.5, lines: [
-      "That lot's the camp's. Not yours.",
-      "Nothing personal, stranger. I'd say it to my own brother.",
-      "Ask Halden. He's the one allowed to give things away." ] },
-    { key: 'bo', name: 'BO', x: 3.5, y: 6.5, lines: [
-      "Don't touch that. Its cell is still hot.",
-      "They come apart easier than they look. Everything does.",
-      "I keep the eye lit while I work. Tells me there's still charge in it." ] },
-    { key: 'ade', name: 'SISTER ADE', x: 9.5, y: 5.5, lines: [
-      "You're not bleeding. Come back when you are.",
-      "The name stuck because of the building. I was a vet's assistant.",
-      "Two cots. One of them has been the same man for eleven days." ] },
-    { key: 'halden', name: 'HALDEN', x: 9.5, y: 8.5, lines: [
-      "Stand by the drum a while. Nobody gets asked anything until they're warm.",
-      "This place was cold for a year before we got the stove in.",
-      "I'll trade you fair. I'm too old to be clever about it." ] },
-    { key: 'ivar', name: 'IVAR', x: 7.5, y: 2.5, lines: [
-      "You came up the sign road. People only do that with nothing left.",
-      "Read the table. Everything this camp knows about the ring is on it.",
-      "We don't ask what you did before. Nobody here would like the answer." ] },
-    // Tam keeps the camp's counter. He never asks where you came from — he
-    // only knows what came up the road, which is that the way in is clear.
-    { key: 'tam', name: 'TAM', x: 6.5, y: 6.5, stock: 'tam', lines: [
-      ["Thank you for taking care of the bandits out there. The last three",
-       "runners in said that road couldn't be walked.",
-       "Anyway. I've got goods up for trade — are you interested?"],
-      ["Back again. Nothing's moved. Have a look.",
-       "Everything on the board is spoken for by somebody, so pay for it."],
-      ["Take what you need and leave the scrap. That's the whole system.",
-       "There's a room under the floor, too. I'm not allowed down. You might be."] ] },
-  ],
-  crypt: [],
-};
-function buildFolk(kind) {
-  folk = (FOLK[kind] || []).map(f => Object.assign({ animT: 0, frame: 0, said: 0 }, f));
-}
-// one line at a time, in order, then round again — so talking to somebody
-// twice is worth doing and talking to them nine times is not. An entry may be
-// several lines: a trader needs room to say what he is before he sells it.
-function talkToFolk(f) {
-  const said = f.lines[f.said % f.lines.length];
-  const lines = Array.isArray(said) ? said.slice() : [said];
-  lines[0] = f.name + ': ' + lines[0];
-  startDialog(lines);
-  f.said++;
-  SFX.uiOpen();
-  // the counter opens when he has finished saying it, not over the top of it
-  if (f.stock && STOCK[f.stock]) Trade.pending = { who: f.name, stock: STOCK[f.stock] };
-}
-
-// the map table, and the rest of the camp's fittings
-let campMapRead = false;
-function readMapTable() {
-  if (campMapRead) {
-    startDialog(["The ring, drawn by people who walked it. You have it all copied down."]);
-    return;
-  }
-  campMapRead = true;
-  // THE payoff of finding this place: somebody else's legwork, handed over.
-  if (typeof exploredByArea !== 'undefined' && exploredByArea.fringe) exploredByArea.fringe.fill(1);
-  SFX.tech();
-  showMsg('THE RING, MAPPED  ·  M', 3.2);
-  startDialog([
-    "Streets, crossings, every way out, in three different hands.",
-    "Somebody walked all of this so the next one would not have to.",
-  ]);
-}
-// Fittings you can use. Each one answers twice: with `ask` it returns the
-// prompt, without it, it does the thing.
-const USABLE = {
-  mapTable: (p, ask) => ask ? 'E — read the map' : readMapTable(),
-  chest: (p, ask) => ask ? (p.open ? 'empty' : 'E — open') : openChest(p),
-  strongbox: (p, ask) => ask ? 'locked' : startDialog([
-    "Padlocked, and the key is not in this room.",
-    "Whatever the camp keeps in there, it keeps from everyone." ]),
-  cistern: (p, ask) => ask ? 'E — drink' : drinkFromCistern(),
-  waterVat: (p, ask) => ask ? 'E — drink' : drinkFromCistern(),
-  hayStack: (p, ask) => ask ? 'E — look' : startDialog([
-    "Bales carried down a hatch one at a time, by somebody who is not young.",
-    "Bedding, and feed for animals this camp does not have yet." ]),
-  workbench: (p, ask) => ask ? 'E — look' : startDialog([
-    "A Hunter-Killer with its casing off and one arm in the vice.",
-    "The eye is still lit. Whatever is in there has charge left." ]),
-  hearth: (p, ask) => ask ? 'E — look' : startDialog([
-    "A drum with a fire in it and a flue punched through a boarded window.",
-    "The first warm thing you have stood next to since the yard." ]),
-};
-
-function drinkFromCistern() {
-  const before = player.hp;
-  player.hp = Math.min(player.maxHp, player.hp + 12);
-  SFX.eat();
-  startDialog([player.hp > before
-    ? "Cold, and it tastes of the roof. You have had worse."
-    : "Cold, and it tastes of the roof."]);
-}
-function openChest(p) {
-  if (p.open) { startDialog(["Empty. You already had this one."]); return; }
-  p.open = true;
-  SFX.loot();
-  if (p.loot === 'crypt') {
-    player.inv.tech += 2; player.inv.scrap += 3;
-    showMsg('+2 tech  ·  +3 scrap');
-  } else if (p.loot === 'scrap') {
-    player.inv.scrap += 4;
-    showMsg('+4 scrap');
-  } else if (p.loot === 'mre') {
-    player.inv.mreBeef++;
-    showMsg('+1 beef MRE  (H to eat)');
-  } else {
-    player.inv.scrap += 2;
-    if (player.inv.snack !== undefined) player.inv.snack++;
-    showMsg('+2 scrap  ·  +1 snack bar');
-  }
-}
-
 const Dialog = { active: false, lines: [], idx: 0 };
 function startDialog(lines) { Dialog.active = true; Dialog.lines = lines; Dialog.idx = 0; }
 
-// The counter. It used to be one panel with Marek's three items written into
-// the drawing code, which meant a second trader could not exist. Now the panel
-// is empty furniture and whoever opened it supplies the stock.
-const Trade = { open: false, who: 'SURVIVOR', stock: [], pending: null };
+const Trade = { open: false };
 const InvUI = { open: false };
 
 const mission = { state: 'none' };   // none -> active -> complete -> turned
@@ -417,32 +284,18 @@ function updatePlayer(dt) {
     }
   }
 
-  // ---- eat something ----
+  // ---- eat snack bar ----
   if (Input.pressed['KeyH']) {
     Input.pressed['KeyH'] = false;
-    eatSomething();
+    if (player.inv.snack > 0 && player.hp < player.maxHp) {
+      player.inv.snack--;
+      player.hp = Math.min(player.maxHp, player.hp + 40);
+      showMsg('Ate a snack bar  (+40 HP)');
+      SFX.eat();
+    } else if (player.inv.snack <= 0) {
+      showMsg('No snack bars — the survivor trades them', 1.8);
+    }
   }
-}
-
-// H eats the WORST thing you are carrying that still helps, so the good ration
-// is still in the pack when it matters. Cheapest first, never the last resort.
-const FOOD = [
-  { id: 'snack', heal: 40, label: 'a snack bar' },
-  { id: 'mreChicken', heal: 45, label: 'a chicken MRE' },
-  { id: 'mreBeef', heal: 60, label: 'a beef MRE' },
-];
-function eatSomething() {
-  const have = FOOD.filter(f => player.inv[f.id] > 0);
-  if (!have.length) { showMsg('Nothing to eat — the camp trades rations', 1.8); return; }
-  if (player.hp >= player.maxHp) { showMsg('Already at full health', 1.5); SFX.deny(); return; }
-  const f = have[0];
-  eatFood(f);
-}
-function eatFood(f) {
-  player.inv[f.id]--;
-  player.hp = Math.min(player.maxHp, player.hp + f.heal);
-  showMsg('Ate ' + f.label + '  (+' + f.heal + ' HP)');
-  SFX.eat();
 }
 
 // ---- interactions: items, NPC, lootable wrecks ----
@@ -450,49 +303,30 @@ function updateItems(dt) {
   Prompt = null;
   if (player.dead > 0) return;
 
-  // Each kind of thing has its own reach, and the CLOSEST RELATIVE TO ITS OWN
-  // REACH wins. It used to be one shared `bestD` seeded at 1.1, which quietly
-  // clamped every larger reach back down to 1.1 — the map table, two tiles
-  // wide and measured to its anchor CORNER, could not be stood close enough to
-  // at all. Distances are to the nearest tile of a prop's footprint now, and
-  // to tile centres, not corners.
-  let best = null, bestScore = Infinity, bestKind = null;
-  const consider = (obj, kind, d, reach) => {
-    if (d >= reach) return;
-    const score = d / reach;
-    if (score < bestScore) { bestScore = score; best = obj; bestKind = kind; }
-  };
-  // how far the player is from the nearest tile a prop actually stands on
-  const propDist = (p) => {
-    const f = p.foot || [p.gx, p.gy, 1, 1];
-    const tx = Math.max(f[0], Math.min(Math.floor(player.x), f[0] + f[2] - 1));
-    const ty = Math.max(f[1], Math.min(Math.floor(player.y), f[1] + f[3] - 1));
-    return Math.hypot(player.x - (tx + 0.5), player.y - (ty + 0.5));
-  };
-  for (const it of items) consider(it, 'item', Math.hypot(player.x - it.x, player.y - it.y), 1.1);
-  if (currentAreaDef().hasNpc)
-    consider(npc, 'npc', Math.hypot(player.x - npc.x, player.y - npc.y), 1.3);
-  for (const f of folk)
-    consider(f, 'folk', Math.hypot(player.x - f.x, player.y - f.y), 1.4);
-  // the camp's fittings you can actually use
-  if (currentAreaDef().indoors) {
-    for (const p of props) {
-      if (!USABLE[p.type]) continue;
-      consider(p, 'fitting', propDist(p), 1.4);
-    }
+  let best = null, bestD = 1.1, bestKind = null;
+  for (const it of items) {
+    const d = Math.hypot(player.x - it.x, player.y - it.y);
+    if (d < bestD) { bestD = d; best = it; bestKind = 'item'; }
+  }
+  if (currentAreaDef().hasNpc) {
+    const npcD = Math.hypot(player.x - npc.x, player.y - npc.y);
+    if (npcD < 1.3 && npcD < bestD) { bestD = npcD; best = npc; bestKind = 'npc'; }
   }
   // the yard gate (main game only, never during the fight or cutscene)
   if (!window.ARENA_MODE && currentArea === 'junkyard' && !GateCine.active &&
       !(boss.active && boss.state !== 'dead' && !bossDefeated)) {
-    consider('gate', 'gate', Math.hypot(player.x - 30.3, player.y - 12.5), 1.7);
+    const gd = Math.hypot(player.x - 30.3, player.y - 12.5);
+    if (gd < 1.7 && gd < bestD) { bestD = gd; best = 'gate'; bestKind = 'gate'; }
   }
   for (const sc of scrappers) {
     if (sc.state !== 'dead' || sc.looted) continue;
-    consider(sc, 'wreck', Math.hypot(player.x - sc.x, player.y - sc.y), 1.1);
+    const d = Math.hypot(player.x - sc.x, player.y - sc.y);
+    if (d < 1.1 && d < bestD) { bestD = d; best = sc; bestKind = 'wreck'; }
   }
   for (const bd of bandits) {
     if (!bd.dead || bd.looted) continue;
-    consider(bd, 'body', Math.hypot(player.x - bd.x, player.y - bd.y), 1.1);
+    const d = Math.hypot(player.x - bd.x, player.y - bd.y);
+    if (d < 1.1 && d < bestD) { bestD = d; best = bd; bestKind = 'body'; }
   }
 
   if (bestKind === 'gate') {
@@ -520,14 +354,6 @@ function updateItems(dt) {
     const s = isoToScreen(npc.x, npc.y);
     Prompt = { sx: s.x, sy: s.y - 30, text: mission.state === 'turned' ? 'E — trade' : 'E — talk' };
     if (Input.pressed['KeyE']) { Input.pressed['KeyE'] = false; talkToNpc(); }
-  } else if (bestKind === 'folk') {
-    const s = isoToScreen(best.x, best.y);
-    Prompt = { sx: s.x, sy: s.y - 30, text: 'E — talk' };
-    if (Input.pressed['KeyE']) { Input.pressed['KeyE'] = false; talkToFolk(best); }
-  } else if (bestKind === 'fitting') {
-    const s = isoToScreen(best.gx, best.gy);
-    Prompt = { sx: s.x, sy: s.y - 26, text: USABLE[best.type](best, true) };
-    if (Input.pressed['KeyE']) { Input.pressed['KeyE'] = false; USABLE[best.type](best, false); }
   } else if (bestKind === 'wreck') {
     const wreck = best;
     const s = isoToScreen(wreck.x, wreck.y);
@@ -654,58 +480,29 @@ function talkToNpc() {
       "Read the signs. This city still says where it goes.",
     ]);
   } else {
-    openTrade('SURVIVOR', STOCK.marek);
+    Trade.open = true;
+    SFX.uiOpen();
   }
 }
 
-// ---------- what the traders keep on the board ----------
-// A row is: what it is called, what it costs, whether it is gone, and what
-// happens when you buy it. Nothing about it is drawn here — the panel reads
-// this list, so a new trader is a new list and no UI work at all.
-const STOCK = {
-  marek: [
-    { label: 'snack bar', icon: () => Sprites.snackIcon, cost: { scrap: 4 },
-      buy: () => { player.inv.snack++; showMsg('Bought a snack bar  (H to eat)'); } },
-    { label: '6 rounds', icon: () => Sprites.ammo, cost: { scrap: 6 },
-      buy: () => { player.ammo += 6; showMsg('Bought 6 rounds'); } },
-    { label: 'piercing knife', icon: () => Sprites.knifeIcon, cost: { tech: 2 },
-      sold: () => player.owned.knife,
-      buy: () => {
-        player.owned.knife = true; player.melee = 'knife';
-        showMsg('PIERCING KNIFE acquired');
-      } },
-  ],
-  // Tam's counter. Rations and rounds, and one tech part at a price that says
-  // he knows exactly what it is worth to somebody carrying a scrap pistol.
-  tam: [
-    { label: '8 rifle rounds', icon: () => Sprites.ammo, cost: { scrap: 5 },
-      buy: () => { player.ammo += 8; showMsg('Bought 8 rounds'); } },
-    { label: 'beef MRE', icon: () => Sprites.mreBeef, cost: { scrap: 6 },
-      buy: () => { player.inv.mreBeef++; showMsg('Bought a beef MRE  (H to eat)'); } },
-    { label: 'chicken MRE', icon: () => Sprites.mreChicken, cost: { scrap: 4 },
-      buy: () => { player.inv.mreChicken++; showMsg('Bought a chicken MRE  (H to eat)'); } },
-    { label: 'low-q tech part', icon: () => Sprites.techIcon, cost: { scrap: 9 },
-      buy: () => { player.inv.tech++; showMsg('Bought a low-quality tech component'); } },
-  ],
-};
-const COST_NAME = { scrap: 'scrap', tech: 'low-q tech' };
-const canAfford = (row) => Object.keys(row.cost).every(k => player.inv[k] >= row.cost[k]);
-const costText = (row) => Object.keys(row.cost)
-  .map(k => row.cost[k] + ' ' + COST_NAME[k]).join(' + ');
-
-function openTrade(who, stock) {
-  Trade.open = true; Trade.who = who; Trade.stock = stock; Trade.pending = null;
-  SFX.uiOpen();
-}
-
 function tradeBuy(n) {
-  const row = Trade.stock[n - 1];
-  if (!row) return;
-  if (row.sold && row.sold()) { showMsg('Already sold', 1.5); SFX.deny(); return; }
-  if (!canAfford(row)) { showMsg('Not enough — ' + costText(row), 1.6); SFX.deny(); return; }
-  for (const k of Object.keys(row.cost)) player.inv[k] -= row.cost[k];
-  row.buy();
-  SFX.buy();
+  const inv = player.inv;
+  if (n === 1) {
+    if (inv.scrap >= 4) { inv.scrap -= 4; inv.snack++; showMsg('Bought a snack bar  (H to eat)'); SFX.buy(); }
+    else { showMsg('Not enough scrap (need 4)', 1.5); SFX.deny(); return; }
+  } else if (n === 2) {
+    if (inv.scrap >= 6) { inv.scrap -= 6; player.ammo += 6; showMsg('Bought 6 rounds'); SFX.buy(); }
+    else { showMsg('Not enough scrap (need 6)', 1.5); SFX.deny(); return; }
+  } else if (n === 3) {
+    if (player.owned.knife) { showMsg('Already own the knife', 1.5); SFX.deny(); return; }
+    if (inv.tech >= 2) {
+      inv.tech -= 2;
+      player.owned.knife = true;
+      player.melee = 'knife';
+      showMsg('PIERCING KNIFE acquired');
+      SFX.buy();
+    } else { showMsg('Need 2 low-quality tech parts', 1.5); SFX.deny(); return; }
+  }
   saveGame();                    // every purchase is committed instantly
 }
 
@@ -1032,22 +829,17 @@ function aiMove(s, tx, ty, step, dt) {
 // it is the only place any of them can see you from.
 // =====================================================================
 const BANDIT_ROLES = {
-  // Tuned against a player standing in the gap doing nothing: four of them
-  // took a passive 100 HP down in about six seconds, which is a wall, not a
-  // fight. Softened to roughly nine — long enough that someone carrying only
-  // the pipe can back out through the chicane and take them a piece at a time,
-  // still short enough that standing in the open is a death sentence.
   knife: {
-    hp: 34, sight: 7.0, speed: 3.1, dmg: 10, reach: 1.15,
-    windup: 0.38, swing: 0.15, recover: 0.58,
+    hp: 34, sight: 7.0, speed: 3.1, dmg: 12, reach: 1.15,
+    windup: 0.34, swing: 0.15, recover: 0.42,
   },
   pistol: {
-    hp: 30, sight: 8.5, speed: 2.5, dmg: 7,
-    range: [2.6, 7.5], hold: 4.8, cd: 1.35, aim: 0.36, spread: 0.11, speedB: 10.5,
+    hp: 30, sight: 8.5, speed: 2.5, dmg: 8,
+    range: [2.6, 7.5], hold: 4.8, cd: 1.15, aim: 0.34, spread: 0.10, speedB: 10.5,
   },
   rifle: {
-    hp: 26, sight: 11.5, speed: 2.0, dmg: 16,
-    range: [3.2, 15.0], hold: 9.0, cd: 2.7, aim: 1.05, spread: 0.03, speedB: 17,
+    hp: 26, sight: 11.5, speed: 2.0, dmg: 20,
+    range: [3.2, 15.0], hold: 9.0, cd: 2.3, aim: 1.05, spread: 0.028, speedB: 17,
   },
 };
 
@@ -1157,13 +949,10 @@ function foeShot(b, tx, ty, cfg, sound) {
 // grind against their own wall and the fight never happens.
 function banditGoal(b, px, py) {
   const rb = b.block;
-  const side = (v) => (v - rb.lineX) * rb.facing > 0;   // true = the way in
-  if (side(b.x) === side(px)) return { x: px, y: py, via: false };
-  // Aim THROUGH the chicane, not AT it. Pointed at the gap itself they walked
-  // up, arrived, and stood in the hole forever — the whole block piled into
-  // the doorway and the player watched them from six feet away.
-  const dir = side(px) ? 1 : -1;
-  return { x: rb.gate.x + rb.facing * dir * 1.9, y: rb.gate.y, via: true };
+  const meOut = (b.x - rb.lineX) * rb.facing > 0;
+  const pOut = (px - rb.lineX) * rb.facing > 0;
+  if (meOut !== pOut) return { x: rb.gate.x, y: rb.gate.y, via: true };
+  return { x: px, y: py, via: false };
 }
 
 function updateBandits(dt) {
@@ -1195,10 +984,7 @@ function updateBandit(dt, b) {
     if (alive && dist < 1.8) b.alert = 1;
     else if (sees) b.alert += dt * (0.55 + 1.5 * (1 - dist / sight));
     else b.alert = Math.max(0, b.alert - dt * 0.7);
-    // NOT tutStealth() — that one says "a machine noticed movement", and
-    // these are not machines. It also freezes the world the moment the bar
-    // twitches, which left the whole block standing at ease while the player
-    // walked up and stood on their boots.
+    if (b.alert > 0.15) tutStealth();
     if (b.alert >= 1) {
       alertBlock(b.block, player.x, player.y, true);
       tutBandit();
@@ -1333,12 +1119,6 @@ function tutBandit() {
 function updateNpc(dt) {
   npc.animT += dt;
   if (npc.animT > 0.6) { npc.animT = 0; npc.frame = 1 - npc.frame; }
-  // the camp breathes on its own clock, so seven people are not all shifting
-  // their weight on the same frame
-  for (const f of folk) {
-    f.animT += dt;
-    if (f.animT > 0.55 + (f.x % 1) * 0.5) { f.animT = 0; f.frame = 1 - f.frame; }
-  }
 }
 
 function tutEnemy() {

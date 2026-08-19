@@ -772,8 +772,192 @@ usable fitting is reachable, nobody is standing in a wall. The first run found
 four one-tile pockets boxed in by furniture — a gap between two beds, one
 between two cots, two behind the hearth — and three props moved a tile to open
 them. 107 free, 107 reachable.
+### 84. Floating bits on the scrap mountains
+**Laurens:** "for some of the trash/scrap mountains there are some flying parts
+of it not connected, get rid of them it looks bad"
+**Claude:** Two causes, both fixed.
+The direct one: the pipes and girder ends poking out of a mound's crest were
+drawn at a *fixed* height near the top of the sprite (`y = 1 + rng()*5`),
+regardless of where the heap's surface actually was at that x. Toward the
+flanks the slope falls away fast, so a pipe placed there ended several pixels
+clear of the junk with nothing under it. They are now planted: the code solves
+the mound's own profile for the surface height at that x and buries the bottom
+of the pipe three pixels into it.
+The general one: `dropStrays()` — a connected-component pass (8-connected) run
+over every scatter-built sprite before it is outlined. It keeps the largest
+mass and erases everything else, so a stray speck thrown clear by the random
+scatter can never survive, in mounds or in the small scrap piles.
+Verified by re-running the component count on the built sprites: mound2, mound3
+and all three scrap piles now come back as exactly **1** island each (they were
+not all 1 before). Not screenshotted — the browser pane would not composite.
 
-### 84. One thing per tile is not one thing per screen
+### 85. The school bus
+**Laurens:** "We made the cars 3d but the schoolbusses still look like cardboard,
+fix"
+**Claude:** The bus had been left on the old path — `sheared(Sprites.bus)`, a
+side elevation with no roof at all, which is exactly why it read as cardboard.
+Rebuilt with the same iso construction the cars use (`isoFill`, integer
+scanlines, flat colours): a long passenger box with a real roof surface, a low
+bonnet set in from the sides at the front, a window band down the near flank
+with a pillar between each pair, the black stripe and skirt every school bus
+has, a windscreen standing above the bonnet, lamps and a bumper on the nose,
+and wheels behind the skirt. Both street directions.
+Verified structurally, not visually — the browser pane would not composite for
+a screenshot, so the sprite was read back as a character map to confirm the
+roof rhombus, flank and bonnet are all present and correctly placed, plus a
+connected-component check (1 island each) and a frame-time check (2.6ms).
+
+### 86. Car hitboxes, a second Scrapper, and a pity floor on tech
+**Laurens:** "small changes: 1. since the cars are now longer cardbord slates
+and acctually 3d their hitbox needs to be ajusted a bit 2. make it so there are
+alwys 2 scrappers at a time 3. make it is f you get unlucky with the chance
+that every 6th scrapper you kill you get a low quality tech piece, this is only
+for these early game robots and not for the later ones. The counter resets to 0
+if the player drops one"
+
+**Claude — 1. the car hitbox.** Two faults, not one. The car is 2.25 × 1.0
+tiles of ground but was still blocking the 2 × 1 tiles of the old flat sprite,
+*and* `carIso` anchored the sprite on `P(0,0)` instead of on the centre of its
+own footprint — `oy = -(OY + 1)`. The drawn car therefore sat three quarters of
+a tile down-screen of the tiles it blocked: you bumped into empty road on one
+side and walked through the nose on the other. Fixed by anchoring on the
+footprint centre (`oy = -(OY + (L + W) * 4)`, half the footprint diagonal at
+8px per tile), giving every car a `foot: [x0, y0, 3, 1]` so it is spatially
+indexed and depth-sorted across all three tiles, and moving `gx, gy` to the
+middle tile. Junkyard spots slide along their own axis (offsets 0, -1, +1, -2)
+when the third tile is already occupied, so no wreck is lost to the longer
+footprint — 6 cars in the yard, 41 in the fringe traffic jam, same as before.
+Crushing now calls the new `clearPropSolid(p)` in map.js instead of the
+hand-written `solid[ty][tx + 1] = false`, which was already wrong for anything
+bigger than two tiles. The school bus rebuilt last session had the identical
+anchor bug (`oy = -(OY + 1)` on a 3.3-tile volume) and got the same one-line
+fix — it was sitting most of a tile off its own three road tiles.
+
+**2. two Scrappers.** `scrapper` was a single object referenced from four
+files; it is now `scrappers[]` (`SCRAPPER_COUNT = 2`) built by `makeScrapper()`,
+with the tallies that outlive any one machine moved to `ScrapperStats`
+(`kills`, `techPity`). Each machine lives, dies and respawns on its own timer,
+so the yard is only briefly down to one wreck + one hunter. `pickSpawn(avoid)`
+keeps them at least 5 tiles apart so a pair never emerges from behind the same
+heap. A melee swing now damages **every** machine in its arc, a barrel blast
+can take both, and a bullet still only ever hits one.
+
+**3. the pity floor.** A wreck pays a low-quality tech component on a 1-in-5
+roll, but that roll can be lost six times running. `ScrapperStats.techPity`
+counts wrecks looted since the last component: the sixth dry wreck always pays
+out, and any drop — lucky or owed — resets it to 0. Deliberately only on the
+yard's starter robots; deeper-city drops stay pure chance. Both counters are in
+the save and default to 0 for saves written before they existed.
+
+**Verified in the browser** (`window.TEST_MODE = true` throughout; the real
+save was confirmed untouched afterwards). The preview pane would not composite,
+so frames were driven by hand and the canvas was posted to a throwaway capture
+server to get real screenshots — see below. Checked: no console errors; the
+car sprite's opaque bounding box sits symmetrically inside its footprint
+diamond with 4-6px of margin on every side (before the fix it overhung the
+south vertex by 8px); a collision probe along the car blocks exactly tiles
+16-18 of row 25 and nothing else; both Scrappers spawn, chase, die
+independently and respawn ~20s later 10 tiles apart; the loot roll forced to
+its unlucky value six times gives `1 2 3 4 5 → tech, counter 0`; a
+save/load round-trip returns `kills 2, pity 4`; crushing a fringe car frees all
+three of its tiles; the fringe still builds and renders with 41 cars.
+
+### 87. The roadblocks and the bandits
+**Laurens:** "Ok so we have the first part of the city. now its emty, draw up
+the exacr map of the city and on some crossroads add banit roadblocks, make it
+so you need to pass at least one of the 2 to get to the chrch. Choose where they
+go and start designing the roadblock and than the banit enemys, Make a roadblock
+have 2 banits armed with kifes and one with a srap pistol and one with a rifle,
+design it too. Make sure all is rendred right and at the right angle is is a
+large add so be thorrow"
+
+**Claude:** Mapped the city first, and the map is what decided the design.
+
+*The measurement that changed the plan.* Before writing anything I ran the real
+generator headlessly and flood-filled it from the yard gate using the player's
+own collision test. The Fringe was streets laid over open lots — the blocks
+between them were never closed — so cutting the east cross at **both** junctions
+still left St Martin's reachable by **46 of its 46** forecourt tiles. Two
+roadblocks on two crossroads would have gated nothing at all. The whole request
+depended on a fact that was not true yet.
+
+*So the fix is not a fence, it is city.* The east cross between the spine and
+the mid street became a proper street: continuous frontage on the lot rows at
+y 69 and y 81 from x 36–88 — terraces where a building fits, stone yard wall
+where it does not, which is what a real terrace does where it runs out of house
+— with exactly one opening in it, the church gate at x 50–61, flanked by stone
+piers on x 48–49 and x 62–63. The corridor then has two ends and both are
+crossroads. (First pass put the cordon after the block-interior filler and got
+36 tiles of wall to 5 of building on the north side; moving it *ahead* of the
+street terracing so it gets first claim on the ground turned that into 25
+building to 16 wall.)
+
+*The two blocks.* West at x 38 on the spine junction, chicane y 74–75; east at
+x 86 on the mid-street junction, chicane y 76–77. The siting is the point: the
+signed shelter trail — the planks somebody nailed up to guide people to
+Candlelight — says *left at the crossroads*, and that left turn is the east
+block. They set up where somebody else's arrows funnel the desperate. Take the
+long way down the spine instead and it only brings you to the other one.
+
+Verified on the generated map: either chicane open → 24/24 forecourt tiles;
+**both sealed → 0/24**; 509 tiles removed and nothing else in the city cut off.
+
+*The angle.* Every barricade piece lies along the carriageway, so none of it
+could be a sheared rectangle. Added an `isoPiece` helper — a canvas sized to a
+footprint of L×W tiles standing H pixels tall, plus the projector into it — and
+built sheet-steel panel, tall firing screen, sandbag stack, concrete barrier,
+razor coil and stone wall in face space with real x and y variants, the same
+construction the cars and buildings use. Only the burning oil drum and the flag
+pole are drawn straight, being free-standing and upright. Checked as a contact
+sheet at 8×: the x/y variants mirror correctly.
+
+*Two things that sheet caught.* The sandbags and the stone wall both came back
+as flat single-tone boxes — it is the tone-to-tone step between neighbours, not
+the seam line, that makes bags read as bags, so every bag and every stone now
+carries its own value. And the bandits ended in a dark blob: the legs were drawn
+almost the colour of the outline, so the stride vanished. Lifted the pant and
+boot values and split the legs a row earlier.
+
+*The four.* Two knives, a scrap pistol, a rifle. The important line in the file
+is that one of them seeing you *shouts* and the whole block turns at once — the
+machines in the yard hunt you as individuals, and that difference is what makes
+a checkpoint feel like a checkpoint. Everything they wear is cloth, skin and
+scavenged plate, nothing glows, and all four wear the same dirty red rag.
+
+*Two real bugs found by simulating the fight rather than assuming it worked.*
+The bandits were calling `tutStealth()` — which says "a machine noticed
+movement", and which freezes the world the moment the suspicion bar twitches. It
+left the entire block standing at ease while the player walked up and stood on
+their boots. And the pursuit waypoint was the gap *itself*, so they walked to
+the chicane, technically arrived, and stood in the hole forever; it now aims
+through it. Both fixed and re-verified.
+
+*Cover is real and it is the fight.* The barricade blocks line of sight both
+ways — standing behind the panels off the gap line, with the whole block awake,
+the player takes 0 damage over 12 seconds. The gap is the only place any of them
+can see you from. The rifle telegraphs with a dashed line and the same red blink
+the Scrapper uses; break the line and the shot is thrown away.
+
+*Tuning.* Four of them took a passive 100 HP down in six seconds — a wall, not a
+fight. Softened to about nine. A bot that fights back but never dodges, shoots
+or breaks line of sight clears 3 of 4 with the piercing knife before the rifle
+gets it. Wants a real playtest.
+
+Dead raiders stay dead, keyed by block and post rather than array index; a save
+predating the roadblocks loads with every post manned. Verified the round trip,
+a full clear latching, the junkyard untouched (no bandits, 2 scrappers, 3.1ms),
+and frame cost at 2.8ms at a roadblock against 4.3ms in the open street.
+
+Deliberately **not** decided: whether the rifleman drops his rifle as the ring's
+weapon upgrade. That is on the open-questions list in `PROJECT_STATE.md` and it
+is a progression call, not a side effect of this pass. He drops rounds.
+
+New docs: `design/city-map.md` (the exact map, with the street table and the
+verification) and `design/bandits.md`. **Not committed** — per the LOCAL FIRST
+rule this is a large visual addition and wants your eyes before it goes live.
+
+
+### 88. One thing per tile is not one thing per screen
 **Laurens:** "So there are still some things covering up others — make sure all
 is nicely visible. Also remove the growing station in the cellar and add stacks
 of hay and vats of water instead, maybe a chest with a beef MRE. Make sure I can

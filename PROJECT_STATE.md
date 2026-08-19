@@ -27,6 +27,12 @@ loot wrecks → meet Marek in the shack → mission (5 scrap) → he gives the
 scrap pistol + the gate key → trade (snacks, ammo, piercing knife for 2 tech)
 → unlock the gate → **THE COMPACTOR** ambush → gate opens to the city.
 
+**Two Scrappers patrol the yard at once** (`SCRAPPER_COUNT`), each on its own
+life/respawn timer and spawning at least 5 tiles apart. Wreck loot pays a
+low-quality tech component on a 1-in-5 roll with a **pity floor**: the sixth
+dry wreck in a row always pays, and any drop resets the counter. Both the kill
+tally and the pity counter survive a save.
+
 Systems shown here: stealth with detection meters and crouch (Shift), patrols
 that path heap-to-heap through a hub near the shack, 12s enemy memory,
 explosive barrels, melee/gun with scroll-wheel switching, BotW-style inventory
@@ -65,6 +71,35 @@ Paved parvis across the front and a strip down each flank.
 The churchyard (railings, graves, trees) is not built.
 Handmade sign trail (planks, bedsheet banners, painted road arrows) leading
 **only** to the shelter. Fog-of-war map on `M`.
+
+### Content — THE ROADBLOCKS + THE BANDITS (first pass)
+The first **people** you fight, and the first gate on a destination.
+
+The Fringe was streets over open lots, so you could reach St Martin's across
+waste ground without touching a road — measured: cutting the east cross at both
+junctions still left the church reachable by 46/46 forecourt tiles. So the east
+cross between the spine and the mid street was made a **proper street**:
+continuous frontage at y 69 and y 81 from x 36–88 (terraces where a building
+fits, stone yard wall where it does not), with **one** opening — the church
+gate, x 50–61, flanked by stone piers. The corridor's two ends are crossroads,
+and each now holds a **bandit roadblock**: west at x 38 (spine junction, chicane
+y 74–75), east at x 86 (mid-street junction, chicane y 76–77). The signed
+shelter trail walks you straight into the east one.
+
+Verified by flood fill from the yard gate: either chicane open → 24/24 forecourt
+tiles; **both sealed → 0/24**; nothing else in the city cut off.
+
+Four bandits per block — **two knives, one scrap pistol, one rifle**. One sees
+you and *shouts*; the whole block turns at once. The barricade blocks line of
+sight both ways, so the gap is the only place they can see you from, and that
+makes the gap the fight. The rifle telegraphs with a dashed aim line and a red
+blink; break the line and the shot is thrown away. Dead raiders stay dead,
+persisted by block + post. Full design in `design/bandits.md`, the exact map in
+`design/city-map.md`.
+
+New iso pieces, all built in face space with x/y variants: sheet-steel
+barricade, tall firing screen, sandbag stack, concrete barrier, razor coil,
+stone wall. Upright: burning oil drum, bandit flag pole.
 
 ### Content — CANDLELIGHT (interior, second layout)
 Two areas behind the west door, both built to the footprint of the building
@@ -105,7 +140,12 @@ clamped to 1.1 tiles and measured to a prop's anchor corner. Fixed.
 1. **Long props are still flat rectangles** — bus stop, dumpster, awning don't
    lie along the road. Rebuild them in face space like buildings, not by
    shearing. *(Laurens' item 4, partially done: facade/column heights fixed.)*
-2. **HHDs — Human-Hunter-Droids.** The streets are beautiful and empty.
+   When each one becomes a volume its **hitbox has to move with it** — anchor
+   the sprite on its footprint centre, give the prop a `foot`, and let
+   `clearPropSolid` free it. See the new section in `design/art-style.md`;
+   the cars and the bus have been through this, these have not.
+2. **HHDs — Human-Hunter-Droids.** Still outstanding: the roadblocks put
+   people on two crossroads, not machines on the streets between them.
    Marshal (rifle, bursts, takes cover), Bailiff (short-range flusher),
    Spotter (calls them in). Scrappers stay in the yard. Design in
    `design/fringe-plan.html`.
@@ -129,4 +169,8 @@ clamped to 1.1 tiles and measured to a prop's anchor corner. Fixed.
   from the front it has to come down about a third.
 - Compactor at 200 HP + full heal ≈ 334 damage budget; fine in the arena with
   60 rounds, possibly brutal at the gate with ~18. Tune when playtested.
-- The Fringe has no enemies yet, so the danger gradient doesn't exist.
+- Bandit damage is tuned against a bot that never dodges, shoots or breaks
+  line of sight. A pipe-only player holding the chicane died at 14s. Wants a
+  real playtest — the numbers live in `BANDIT_ROLES` in `js/entities.js`.
+- The Fringe's only enemies are the two roadblocks; the streets between them
+  are still empty, so the danger gradient exists at the gates and nowhere else.
