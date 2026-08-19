@@ -583,3 +583,28 @@ there. Say the word and it goes back, off to one side.
 
 The rule that made the piers read at all is kept in `art-style.md` in case they
 are ever wanted again: wider across the wall than they project out of it.
+
+### 78. No plinth, no piers
+**Laurens:** "The front looks better but the wider slate its on needs to go and
+the pillars on the side too"
+**Claude:** Both gone.
+
+**The plinth.** The church stood on a wide stone base that read as a slab of
+pavement stuck under the building. Every other building in the Fringe simply
+meets the ground; this one now does the same. `PL` — the foot of every wall and
+every opening — is 0 instead of 7, so the doors reach the pavement.
+
+**The flank piers.** That is five passes at buttresses now, four on the west
+front and one down the side, and the verdict was the same every time: at
+320×180 a pier is six pixels of stone next to a window. It cannot read as
+structure, only as clutter. They are all out and the `buttress()` function with
+them.
+
+With nothing projecting and nothing to stand on, the walls run out to the
+footprint: front at `h - 0.15`, aisles at `0.3` and `11.7`, and the nave runs
+from `0.3` so the building fills its ground instead of leaving a dirt margin.
+
+What carries the building now is what carried the reference all along: the
+openings. Portal, doors, lancets, rose, clerestory, belfries, and the roof.
+The proportion rule is still in `art-style.md` if anything is ever built that
+does project.

@@ -1583,14 +1583,14 @@ function outlined(src) {
   // =====================================================================
   // ST MARTIN'S — THE CATHEDRAL
   // Every other building is one box. This one is a composite: nave, two
-  // aisles, twin west towers, buttressed flank and the fleche over the
+  // aisles, twin west towers, a windowed flank and the fleche over the
   // crossing. It is still ONE sprite with ONE depth — nothing is assembled
   // at runtime, so nothing can drift out of line.
   //
   // It is built entirely in TILE SPACE — tx runs world +x (screen
   // right-down), ty runs world +y (screen left-down), z is real pixels
   // straight up — and projected once through S(). That is the angle rule
-  // enforced by construction: a ledge, a buttress, a string course or a
+  // enforced by construction: a ledge, a string course, a sill or a
   // window drawn through these helpers CANNOT come out axis-aligned,
   // because there is no rectangle anywhere in the code to shear. There are
   // only points in the world.
@@ -1613,23 +1613,21 @@ function outlined(src) {
     const OAK = '#5b4128', OAK_D = '#3a2a1a', IRON = '#3c3a36';
 
     // ---- the volume, in tiles ----
-    // THE WALLS ARE SET IN FROM THE FOOTPRINT, and the gap is what the
-    // buttresses live in. A buttress is a pier standing off the wall — if the
-    // wall sits on the edge of the footprint there is nowhere for it to stand,
-    // and clamping it to the edge (which is what stopped it hanging in the
-    // air) squashed it flat into the facade. So the west front comes back a
-    // whole tile, the towers come in, and the piers fill that band.
-    const BM = 0.1;                           // the plinth edge
-    const BX0 = BM, BX1 = w - BM, BY1 = h - BM;
-    const NF = h - 0.35;                      // the west front: the near wall
+    // The walls run out to the footprint, since nothing projects from them
+    // any more and there is no base for anything to stand on.
+    const NF = h - 0.15;                      // the west front: the near wall
     const NX0 = 3.0, NX1 = 9.0;               // nave walls
-    const AW0 = 1.0, AE1 = 11.0;              // aisle outer walls
-    const AY0 = 1.6, AY1 = NF - 3.0;          // aisles run back from the towers
-    const TL0 = 0.6, TL1 = 3.0;               // left (west) tower
-    const TR0 = 8.9, TR1 = 11.3;              // right (east) tower
+    const AW0 = 0.3, AE1 = 11.7;              // aisle outer walls
+    const AY0 = 0.3, AY1 = NF - 3.0;          // aisles run back from the towers
+    const TL0 = 0.15, TL1 = 3.0;              // left (west) tower
+    const TR0 = 8.85, TR1 = 11.7;             // right (east) tower
     const TY0 = NF - 3.0;                     // both towers start here
     // ---- and in pixels of height ----
-    const PL = 7;                             // the plinth every wall stands on
+    // NO PLINTH. The church stood on a wide stone base that read as a slab of
+    // pavement stuck under it, and every other building in the Fringe simply
+    // meets the ground. So do these walls: PL is the foot of every wall and
+    // every opening, and it is the ground.
+    const PL = 0;
     const AISLE = 58, AISLE_TOP = 72;         // aisle eaves · where its roof meets the nave
     const WALL = 104, RIDGE = 166;            // nave head · ridge. The pitch is
     // deliberately steeper than 1:2: at anything shallower the FAR slope turns
@@ -1815,40 +1813,12 @@ function outlined(src) {
         g.beginPath(); g.moveTo(b[0], b[1]); g.lineTo(ap[0], ap[1]); g.stroke();
       }
     };
-    // A BUTTRESS: a pier standing off the wall, stepped back once at a
-    // weathered set-off so rain runs off it instead of down the wall.
-    //
-    // Geometry alone will not make it read as standing OUT. Its front face
-    // points the same way as the wall behind it, so with the same stone
-    // colour it is the same colour, and the eye takes the whole thing for
-    // flutes cut INTO the facade. What sells it is what sells it in the
-    // reference drawing: the pier is LIGHTER than the wall it stands on, and
-    // it throws a hard shadow across that wall. Both, or neither works.
-    const P_LIT = shadeHex(ST_L, 1.12), P_SHD = shadeHex(ST_S, 1.26);
-    const P_TOP = shadeHex(ST_T, 1.06);
-    const buttress = (x0, y0, x1, y1, z, cap) => {
-      const sx = (x1 - x0) * 0.16, sy = (y1 - y0) * 0.16;
-      vol(x0, y0, x1, y1, PL, z * 0.55, P_TOP, P_LIT, P_SHD, '#1b1e22');
-      vol(x0 + sx, y0 + sy, x1 - sx, y1 - sy, z * 0.55, z, P_TOP, shadeHex(P_LIT, 1.05), P_SHD, '#1b1e22');
-      // a lit arris down the corner nearest the light, which is the one edge
-      // that tells you the two faces meet at a right angle coming towards you
-      const a = S(x1, y1, PL), b = S(x1, y1, z);
-      g.strokeStyle = 'rgba(255,246,224,0.30)'; g.lineWidth = 1;
-      g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke();
-      // no lit arris on the cap: on a pier this thin the highlight is three
-      // pixels of white in mid-air, and it reads as a speck of dirt
-      if (cap) spike((x0 + x1) / 2, (y0 + y1) / 2, (x1 - x0) / 2 - sx,
-                     z, z + cap, P_LIT, P_SHD, null);
-    };
 
     // =========================== THE BUILD ===========================
     // Back to front: west aisle, west tower, nave, east aisle, fleche, east
     // tower. Anything nearer is drawn later, so the near work paints over
     // the far work and the engaged corners close up properly.
 
-    // ---- the plinth the whole church stands on ----
-    vol(BX0, BM, BX1, BY1, 0, PL, ST_T, ST_L, ST_S, '#1b1e22');
-    R(SF(BY1, BX0), 0, 0, (BX1 - BX0) * 16, 2, 'rgba(0,0,0,0.25)');
 
     // ---- west aisle (far side): only its roof clears the nave ----
     vol(AW0, AY0, NX0, AY1, PL, AISLE, null, null, ST_S, '#1b1e22');
@@ -2021,7 +1991,7 @@ function outlined(src) {
       px(g, Math.round(ap[0]) - 4, Math.round(ap[1]) - 10, 8, 2, ST_T);
     }
 
-    // ---- east aisle: the flank the street sees, buttress by buttress ----
+    // ---- east aisle: the flank the street sees, bay by bay ----
     // It starts at the NAVE wall, not at the far side of the church: run it
     // the full width and its south end becomes a grey slab across the west
     // front, because that end is drawn after the facade it sits behind.
@@ -2039,13 +2009,6 @@ function outlined(src) {
       // the lean-to roof, from the aisle eaves up to the nave wall
       slates(S(NX1, AY0, AISLE_TOP), S(NX1, AY1, AISLE_TOP), S(AE1, AY1, AISLE), S(AE1, AY0, AISLE),
              SLATE_S, 5, 12, 10);
-      // a pier between every bay. They stand OFF the wall, so each one is a
-      // little volume of its own on the iso grid — not a stripe painted on
-      // the face, which is what a buttress becomes if you draw it flat.
-      for (let i = 0; i <= bays; i++) {
-        const ty = AY0 + (AY1 - AY0) * (i / bays);
-        buttress(AE1 - 0.2, ty - 0.42, AE1 + 0.4, ty + 0.42, AISLE - 8, 11);
-      }
       // the aisle's south end is engaged with the tower and never seen —
       // drawing it here is what put a grey slab across the west front
     }
@@ -2072,16 +2035,14 @@ function outlined(src) {
     // ---- east tower ----
     tower(TR0, TR1, 'full');
 
-    // ---- NO PIERS ON THE WEST FRONT ----
-    // Three passes at them — flush with the wall, then too deep, then wide and
-    // shallow — and each time Laurens' read was that they fought the facade
-    // instead of framing it. He is right: the front already carries the
-    // portal, the rose and two towers, and the piers were competing with all
-    // three at 320x180. The flank keeps its buttresses, where there is a long
-    // blank wall for them to break up and nothing to compete with.
-    // If they ever come back, the rule that made them read at all is in
-    // art-style.md: wider across the wall than they project out of it.
-    buttress(AE1 - 0.2, TY0 - 0.42, AE1 + 0.4, TY0 + 0.42, AISLE - 8, 11);
+    // ---- NO PIERS AT ALL ----
+    // Four passes on the west front and one down the flank, and the verdict
+    // each time was that they fought the building instead of articulating it.
+    // At 320x180 a pier is six pixels of stone next to a window: it cannot
+    // read as structure, only as clutter. The walls carry themselves.
+    // The rule that made them read as standing OUT rather than going in is
+    // kept in art-style.md, in case anything else ever needs to project:
+    // wider across the wall than it projects out of it.
 
     const res = { img: c, ax: AX, ay: AYo, h: WALL };
     buildingCache.set(key, res);
