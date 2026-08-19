@@ -1888,9 +1888,13 @@ function outlined(src) {
       buttress(cx0, NF - bs, x0 + bs, cy1, 148, 12);
       buttress(x1 - bs, NF - bs, cx1, cy1, 148, 12);
       if (east === 'full') buttress(x1 - bs, TY0 - 0.15, cx1, TY0 + bs, 148, 12);
-      // cornice, then the parapet standing above it
-      vol(x0 - 0.2, TY0 - 0.2, x1 + 0.2, NF + 0.2, TOW, TOWCAP, ST_T, ST_L, ST_S, '#1b1e22');
-      const PM = SF(NF + 0.2, x0 - 0.2), PW = (x1 - x0 + 0.4) * 16;
+      // Cornice, then the parapet standing above it. It oversails ONLY on the
+      // two sides the camera can see. Oversailing north or west puts a lip out
+      // over a face that is never drawn, and you see sky through the gap under
+      // it — that slot beside the west tower was a cornice hanging over
+      // nothing, not a piece of tower gone missing.
+      vol(x0, TY0, x1, NF + 0.2, TOW, TOWCAP, ST_T, ST_L, ST_S, '#1b1e22');
+      const PM = SF(NF + 0.2, x0), PW = (x1 - x0) * 16;
       for (let i = 0; i < 6; i++)                       // openwork parapet
         R(PM, PW * (i + 0.25) / 6, TOW + 2, PW * (i + 0.75) / 6, TOWCAP - 2, ST_DD);
       // four pinnacles and the spirelet between them
@@ -2035,12 +2039,18 @@ function outlined(src) {
 
     // ---- the fleche over the crossing ----
     {
-      const fx = rMid, fy = AY0 + (NF - AY0) * 0.5;
-      vol(fx - 0.55, fy - 0.55, fx + 0.55, fy + 0.55, RIDGE - 12, RIDGE + 16, null, SPIRE_L, SPIRE_S, '#1b1e22');
+      // It sits with its west face ON the ridge, not straddling it. The far
+      // slope of the roof is never drawn, so anything hanging west of the ridge
+      // hangs over sky — that was a hairline of daylight down the spire's edge.
+      // Its base starts well below the ridge so the roof swallows the join.
+      const fx = rMid + 0.55, fy = AY0 + (NF - AY0) * 0.5;
+      vol(fx - 0.55, fy - 0.55, fx + 0.55, fy + 0.55, RIDGE - 30, RIDGE + 16, null, SPIRE_L, SPIRE_S, '#1b1e22');
       const M = SF(fy + 0.55, fx - 0.55);
       louvre(M, 3, 14, RIDGE - 6, RIDGE + 8, RIDGE + 13);
-      spike(fx, fy, 0.62, RIDGE + 16, FLECHE, SPIRE_L, SPIRE_S, 'rgba(190,215,250,0.5)');
-      spike(fx, fy, 0.3, RIDGE + 16, FLECHE - 4, SPIRE_H, SPIRE_L, null);
+      // the spire is no wider than the box under it, or its west corner
+      // overhangs the ridge again and daylight comes back
+      spike(fx, fy, 0.55, RIDGE + 16, FLECHE, SPIRE_L, SPIRE_S, 'rgba(190,215,250,0.5)');
+      spike(fx, fy, 0.27, RIDGE + 16, FLECHE - 4, SPIRE_H, SPIRE_L, null);
       const ap = S(fx, fy, FLECHE);
       px(g, Math.round(ap[0]) - 1, Math.round(ap[1]) - (CROSSTOP - FLECHE), 2, CROSSTOP - FLECHE, '#b9b09c');
       px(g, Math.round(ap[0]) - 4, Math.round(ap[1]) - (CROSSTOP - FLECHE) + 3, 9, 2, '#b9b09c');

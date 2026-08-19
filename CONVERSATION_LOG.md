@@ -456,3 +456,41 @@ Four more found while in there:
 Verified the same way: 4× crops of the tower, the front, the flank and the base,
 then in-game at the parvis and the doors. Pushed to `main` on standing
 instruction. The viewer artifact was rebuilt on the fixed sprite.
+
+### 74. The tower gap, found properly this time
+**Laurens:** "fix the cathedral rendering, the left tower is missing a part, and
+the outside has some problems too. Check what and then push the fixes"
+**Claude:** Last session I fixed the west tower's missing east face by eye and
+called it done. It was not done — there was still a hole, and eyeballing a
+320×180 sprite at 2× was never going to find it.
+
+So this time it was measured, not looked at. Render the sprite over magenta,
+then walk every transparent pixel and flag the ones that have building to their
+left AND right in the same row and above AND below in the same column. Anything
+that comes back is a hole in the volume, wherever it is and however small. That
+test is now the way to check this building.
+
+It found two, both the same mistake in different places: **a piece that
+oversails something that is never drawn.**
+
+1. **The west tower's cornice** projected 0.2 tile on all four sides. On the two
+   camera-facing sides that is right — the lip hides wall. On the two facing
+   away there is no drawn surface underneath, so you saw sky through the strip
+   below the lip: a 7 × 57 pixel slot of daylight down the tower's back corner,
+   between the cornice and the nave roof. That is the missing part of the
+   tower. The cornice now oversails only toward the camera.
+2. **The fleche** straddled the ridge, and its spire was wider than the box
+   under it. The roof's far slope is never drawn, so everything hanging west of
+   the ridge hung over nothing — a hairline of daylight down the spire's west
+   edge. It now sits with its west face on the ridge, its spire no wider than
+   its base, and its base sunk 30 px into the roof.
+
+**The rule this gives us:** in a volume where back-facing surfaces are skipped,
+nothing may project past the silhouette on a side the camera cannot see. Cornices,
+copings, spires, lips — oversail toward the camera only.
+
+The one remaining flagged gap is real sky, between the cross's arm and the
+spire cone, and should stay.
+
+Verified: magenta render, hole scan clean, then in game from the parvis, the
+south-east corner and the north-west. Pushed to `main`.
