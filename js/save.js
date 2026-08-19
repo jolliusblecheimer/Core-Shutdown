@@ -35,6 +35,8 @@ function saveGame() {
       areas: collectAreaState(),
       fog: collectFog(),
       tut: { ...Tut.done },
+      // the camp's map table only pays out once
+      campMap: typeof campMapRead !== 'undefined' ? campMapRead : false,
     };
     localStorage.setItem(saveKey(), JSON.stringify(d));
   } catch (e) { /* storage full or blocked - play on without saving */ }
@@ -137,6 +139,7 @@ function applySave(d) {
   // saves written before the pity counter existed simply start it at zero
   ScrapperStats.techPity = Math.max(0, num(d.techPity, 0));
   if (d.bossDown) bossDefeated = true;
+  if (d.campMap) campMapRead = true;
 
   // per-area world state: remember every area, then load the one we're in
   for (const id of Object.keys(d.areas || {})) areaState[id] = d.areas[id];

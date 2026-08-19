@@ -865,6 +865,57 @@ function outlined(src) {
       px(g, ox, y + 24, 16, 2, '#2c2822');
       px(g, ox + 11, y + 7, 4, 4, RUST_D);
       px(g, ox + 3, y + 16, 3, 5, RUST);
+    } else if (kind === 'I') {                // CANDLELIGHT: inside face of the
+      // cathedral wall. Tall ashlar, a blind arch every bay, and every third
+      // one glazed — the coloured light on the floor is the whole reason the
+      // camp took this building.
+      const y = H - 44;
+      px(g, ox, y, 16, 44, '#5f5a50');
+      for (let r = 0; r < 8; r++) px(g, ox, y + 2 + r * 6, 16, 1, '#544f47');
+      px(g, ox, y, 16, 2, '#6d685c');
+      px(g, ox, y + 41, 16, 3, '#453f39');
+      const bay = ((ox / 16) | 0) % 3;
+      px(g, ox + 3, y + 10, 10, 26, '#4a453d');            // the recess
+      px(g, ox + 4, y + 8, 8, 4, '#4a453d');
+      px(g, ox + 5, y + 6, 6, 3, '#4a453d');
+      if (bay === 1) {                                      // glazed
+        px(g, ox + 5, y + 12, 6, 22, '#26365f');
+        px(g, ox + 5, y + 12, 2, 22, '#552027');
+        px(g, ox + 9, y + 20, 2, 14, '#382248');
+        px(g, ox + 7, y + 12, 1, 22, '#6b6355');            // mullion
+        px(g, ox + 5, y + 10, 6, 2, '#6b6355');
+      } else {
+        px(g, ox + 5, y + 12, 6, 22, '#3a352e');            // blind, just shadow
+        px(g, ox + 5, y + 12, 1, 22, '#454039');
+      }
+    } else if (kind === 'J') {                // THE CRYPT: brick vaulting. No
+      // glazing — it is underground, and the first version put stained glass
+      // windows in a cellar.
+      const y = H - 44;
+      px(g, ox, y, 16, 44, '#413a34');
+      for (let r = 0; r < 11; r++) {
+        const off = (r % 2) * 4;
+        for (let b = 0; b < 2; b++)
+          px(g, ox + off + b * 8, y + r * 4, 7, 3, r % 3 ? '#463f38' : '#3c3630');
+      }
+      px(g, ox, y, 16, 3, '#4c453d');
+      px(g, ox, y + 41, 16, 3, '#332e29');
+      if (((ox / 16) | 0) % 2 === 0) {          // a burial niche, bricked shut
+        px(g, ox + 4, y + 16, 8, 20, '#332e29');
+        px(g, ox + 5, y + 14, 6, 3, '#332e29');
+        px(g, ox + 5, y + 18, 6, 16, '#2a2622');
+        px(g, ox + 5, y + 18, 6, 1, '#3a352f');
+      }
+    } else if (kind === 'L') {                // INTERIOR: the low kerb that
+      // closes the two sides of a room the camera looks over. A full-height
+      // wall there has to be faded to be seen past, and a faded wall reads as
+      // a sheet of glass lying across the floor with people showing through
+      // it. Ten pixels of stone bounds the room and hides nothing.
+      const y = H - 12;
+      px(g, ox, y + 2, 16, 9, '#5f5a50');
+      px(g, ox, y, 16, 3, '#837d6f');
+      px(g, ox, y + 10, 16, 2, '#413d37');
+      px(g, ox + 5, y + 4, 6, 4, '#544f47');
     } else if (kind === 'B') {                // CITY: brick building wall (44)
       const y = H - 44;
       px(g, ox, y, 16, 44, '#4a3a35');
@@ -984,8 +1035,9 @@ function outlined(src) {
   Sprites._makeWallRun = function (kinds, axis, trimStart, trimEnd) {
     const n = kinds.length;
     const isWall = kinds[0] === 'W';
-    const isCity = 'BSGHKROTN'.includes(kinds[0]);
-    const H = isCity ? 44 : (isWall ? 28 : 20);
+    const isLow = kinds[0] === 'L';
+    const isCity = 'BSGHKROTNIJ'.includes(kinds[0]);
+    const H = isLow ? 14 : (isCity ? 44 : (isWall ? 28 : 20));
     const flat = makeCanvas(16 * n, H), g = flat.getContext('2d');
     kinds.forEach((k, i) => Sprites.paintSeg(g, k, i * 16, H));
     const out = outlined(flat);
@@ -1009,7 +1061,7 @@ function outlined(src) {
       img.getContext('2d').drawImage(F, a, 0, b - a, F.height, 0, 0, b - a, F.height);
       const off = dir > 0 ? 8 * si + 1 : 8 * (n - si);
       const dx = (a - 1 - 16 * si) - 8;
-      slices.push({ img, dx, dy: -off, lift: isCity ? 46 : (isWall ? 30 : 24) });
+      slices.push({ img, dx, dy: -off, lift: isLow ? 16 : (isCity ? 46 : (isWall ? 30 : 24)) });
     }
     return slices;
   };
@@ -1237,6 +1289,362 @@ function outlined(src) {
     Sprites.stove = outlined(fv);
   })();
 
+  // =====================================================================
+  // CANDLELIGHT — the inside of St Martin's, and what people have put in it.
+  // Floors first, then the furniture of a camp: fire, bedding, a bench with a
+  // machine on it, a map on an altar.
+  // =====================================================================
+  (function () {
+    const rng = mulberry32(90210);
+    // ---- floors. Same scanline diamond as the street tiles: no paths, no
+    // antialiasing, so tiles butt together without a seam.
+    const dRow = r => (r < 8 ? (r + 1) * 2 : (16 - r) * 2);
+    const dpx2 = (g, x, y, w, col) => {
+      if (y < 0 || y >= TILE_H) return;
+      const hw = dRow(y), x0 = Math.max(x, 16 - hw), x1 = Math.min(x + w, 16 + hw);
+      if (x1 > x0) px(g, x0, y, x1 - x0, 1, col);
+    };
+    const base = (col) => {
+      const c = makeCanvas(TILE_W, TILE_H), g = c.getContext('2d');
+      for (let r = 0; r < TILE_H; r++) { const hw = dRow(r); px(g, 16 - hw, r, hw * 2, 1, col); }
+      return { c, g };
+    };
+    const speck = (g, n, cols) => {
+      for (let i = 0; i < n; i++)
+        dpx2(g, (rng() * TILE_W) | 0, (rng() * TILE_H) | 0, 1 + ((rng() * 2) | 0),
+             cols[(rng() * cols.length) | 0]);
+    };
+    // the joint between flagstones, drawn ON the iso diagonals so the floor
+    // reads as slabs laid to the grid and not as a texture painted over it
+    const joints = (g, col) => {
+      for (let k = 0; k < 8; k++) {
+        dpx2(g, 16 - k * 2 - 2, k, 2, col);
+        dpx2(g, 16 + k * 2, k, 2, col);
+        dpx2(g, k * 2, 8 + k, 2, col);
+        dpx2(g, 30 - k * 2, 8 + k, 2, col);
+      }
+    };
+    Sprites.flag = []; Sprites.flagWorn = []; Sprites.straw = []; Sprites.crypt = [];
+    for (let v = 0; v < 6; v++) {
+      { const { c, g } = base('#5b564c');                 // cathedral flagstone
+        speck(g, 30, ['#645f54', '#524d45', '#6b665a', '#57524a']);
+        joints(g, '#413d37');
+        if (v % 3 === 0) speck(g, 8, ['#6e6a5e']);
+        Sprites.flag.push(c); }
+      { const { c, g } = base('#645e52');                 // walked smooth, paler
+        speck(g, 22, ['#6e6a5c', '#5c5750', '#736d5f']);
+        joints(g, '#4a463f');
+        speck(g, 10, ['rgba(220,205,175,0.10)']);
+        Sprites.flagWorn.push(c); }
+      { const { c, g } = base('#6b5f3c');                 // straw over stone
+        speck(g, 46, ['#7d7046', '#5d5333', '#877a4e', '#6a5f3a']);
+        for (let i = 0; i < 14; i++) {                    // loose stalks, on the grid
+          const r = (rng() * TILE_H) | 0, x = (rng() * TILE_W) | 0;
+          dpx2(g, x, r, 3 + ((rng() * 4) | 0), rng() < 0.5 ? '#8d8052' : '#574d2e');
+        }
+        Sprites.straw.push(c); }
+      { const { c, g } = base('#463f39');                 // crypt brick, damp
+        speck(g, 26, ['#4e4740', '#3e3832', '#524a42']);
+        joints(g, '#332e29');
+        if (v % 2 === 0) speck(g, 6, ['#3a4238']);        // the green of standing damp
+        Sprites.crypt.push(c); }
+    }
+
+    // ---- a brazier: a cut drum full of fire. Light is added at draw time.
+    { const c = makeCanvas(14, 20), g = c.getContext('2d');
+      px(g, 2, 16, 2, 4, '#2e2a26'); px(g, 10, 16, 2, 4, '#2e2a26');   // legs
+      px(g, 1, 6, 12, 11, '#41372e');
+      px(g, 1, 6, 12, 2, '#544639');
+      px(g, 2, 10, 10, 1, '#332b24');
+      px(g, 3, 4, 8, 3, '#7a2f10');                                     // hot rim
+      px(g, 4, 2, 6, 3, '#e0651c');
+      px(g, 5, 0, 4, 3, '#ffb02e');
+      px(g, 6, 0, 2, 2, '#ffe08a');
+      Sprites.brazier = outlined(c); }
+
+    // ---- a bank of candles on an old votive stand. This is the name of the
+    // place; there should be a lot of them and they should be the only clean
+    // light in the ring.
+    // Thin tapers, one pixel each. Two-pixel candles with three-pixel flames
+    // came out as a bonfire in a box; a votive stand is a lot of small
+    // flames, and small is the whole word.
+    { const c = makeCanvas(16, 16), g = c.getContext('2d');
+      px(g, 7, 10, 2, 6, '#4a423a');                                     // stem
+      px(g, 4, 15, 8, 1, '#4a423a');                                     // foot
+      px(g, 2, 8, 12, 2, '#5a5148');                                     // tray
+      px(g, 2, 8, 12, 1, '#6d6459');
+      for (let i = 0; i < 5; i++) {
+        const x = 3 + i * 2, h = 3 + ((i * 3) % 3);
+        px(g, x, 8 - h, 1, h, '#d9cfae');
+        px(g, x, 8 - h - 1, 1, 1, '#ffd27a');
+      }
+      Sprites.candles = outlined(c); }
+
+    // ---- bedding: straw heaped up, a blanket over it, somebody's boots
+    { const c = makeCanvas(22, 13), g = c.getContext('2d');
+      px(g, 1, 5, 20, 7, '#6a5f38');                                     // straw
+      px(g, 1, 5, 20, 1, '#7f7246');
+      px(g, 3, 3, 16, 5, '#4d5566');                                     // blanket
+      px(g, 3, 3, 16, 1, '#5d6678');
+      px(g, 6, 5, 5, 1, '#3c4351');
+      px(g, 4, 2, 5, 3, '#b8b0a0');                                      // rolled coat as a pillow
+      px(g, 17, 10, 4, 3, '#2f261c');                                    // boots
+      Sprites.bedding = outlined(c); }
+
+    // ---- a curtain of tarpaulin hung on wire. It hangs ALONG a wall, so it
+    // gets the two iso directions like every other long thing.
+    { const c = makeCanvas(26, 22), g = c.getContext('2d');
+      px(g, 0, 0, 26, 1, '#6a6258');                                     // the wire
+      px(g, 1, 1, 24, 20, '#4a4b42');
+      for (let i = 0; i < 6; i++) px(g, 2 + i * 4, 1, 1, 20, '#565749');  // folds
+      px(g, 1, 1, 24, 1, '#5c5d52');
+      px(g, 1, 19, 24, 2, '#3a3b34');
+      px(g, 9, 6, 5, 6, '#3e3f38');                                      // a patch
+      const cur = outlined(c);
+      Sprites.curtain = { x: sheared(cur, 1), y: sheared(cur, -1) }; }
+
+    // ---- a church pew: long, low, and it lies ALONG the floor, so both
+    // directions again. Some are whole; most have been broken up for timber.
+    const pew = (broken) => {
+      const c = makeCanvas(30, 14), g = c.getContext('2d');
+      px(g, 1, 6, broken ? 16 : 28, 4, '#4a3822');                       // seat
+      px(g, 1, 6, broken ? 16 : 28, 1, '#5c4830');
+      px(g, 1, 2, broken ? 13 : 28, 4, '#43331f');                       // back
+      px(g, 1, 2, broken ? 13 : 28, 1, '#54402a');
+      px(g, 2, 10, 2, 4, '#332616');
+      px(g, broken ? 14 : 26, 10, 2, 4, '#332616');
+      if (broken) { px(g, 18, 9, 7, 2, '#43331f'); px(g, 21, 11, 6, 2, '#3a2c1a'); }
+      return outlined(c);
+    };
+    Sprites.pew = { x: sheared(pew(false), 1), y: sheared(pew(false), -1) };
+    Sprites.pewBroken = { x: sheared(pew(true), 1), y: sheared(pew(true), -1) };
+
+    // ---- an arcade pier. This is what makes the inside read as a cathedral
+    // and not a hall: a row of them down each side of the nave.
+    { const c = makeCanvas(16, 54), g = c.getContext('2d');
+      px(g, 2, 4, 12, 46, '#6f6a5e');                                    // shaft
+      px(g, 2, 4, 5, 46, '#7f7a6c');                                     // lit side
+      px(g, 12, 4, 2, 46, '#524e46');                                    // shadow side
+      px(g, 1, 0, 14, 5, '#8b8577');                                     // capital
+      px(g, 1, 0, 14, 1, '#9d9788');
+      px(g, 0, 50, 16, 4, '#8b8577');                                    // base
+      px(g, 0, 50, 16, 1, '#9d9788');
+      for (let r = 9; r < 48; r += 7) px(g, 2, r, 12, 1, 'rgba(0,0,0,0.13)');  // courses
+      Sprites.pier = outlined(c); }
+
+    // ---- the hearth: an oil drum turned into a stove, flue up the wall
+    { const c = makeCanvas(20, 30), g = c.getContext('2d');
+      px(g, 13, 0, 3, 16, '#3e3a34'); px(g, 13, 0, 1, 16, '#4c4842');    // flue
+      px(g, 2, 12, 14, 16, '#43403a');
+      px(g, 2, 12, 14, 2, '#55514a');
+      px(g, 2, 12, 4, 16, '#4c4842');
+      px(g, 4, 19, 8, 5, '#171512');                                     // firebox
+      px(g, 5, 21, 6, 3, '#e0651c');
+      px(g, 6, 22, 4, 2, '#ffb02e');
+      px(g, 3, 9, 12, 3, '#5a5650');                                     // hotplate
+      px(g, 5, 5, 8, 5, '#6a665e');                                      // pot
+      px(g, 5, 5, 8, 1, '#7c7870');
+      px(g, 8, 3, 2, 2, '#7c7870');
+      Sprites.hearth = outlined(c); }
+
+    // ---- the bench, and the Hunter-Killer being taken apart on it.
+    // Its eye is still lit because the last cell has not come out yet: the
+    // thing you shoot at in the street, sitting on a table with its lid off.
+    { const c = makeCanvas(34, 24), g = c.getContext('2d');
+      px(g, 1, 10, 32, 5, '#5c4a2e');                                    // bench top
+      px(g, 1, 10, 32, 1, '#6e5a3a');
+      px(g, 2, 15, 3, 9, '#453722'); px(g, 29, 15, 3, 9, '#453722');     // legs
+      px(g, 3, 16, 28, 3, '#3d3222');                                    // tool shelf
+      px(g, 6, 3, 16, 7, '#575761');                                     // the hull, on its side
+      px(g, 6, 3, 16, 2, '#676773');
+      px(g, 8, 5, 5, 4, '#2a2a31');                                      // opened panel
+      px(g, 9, 6, 3, 2, '#8a8a92');                                      // ribs inside
+      px(g, 19, 5, 3, 3, '#1d1d22');                                     // the eye socket
+      px(g, 20, 6, 2, 2, '#ffb02e');                                     // and the eye
+      px(g, 23, 8, 7, 2, '#4a4a52');                                     // an arm in the vice
+      px(g, 26, 6, 4, 4, '#3a3a42');
+      px(g, 2, 6, 3, 4, '#6a6a72');                                      // pulled parts in a tray
+      px(g, 2, 6, 3, 1, '#8a8a92');
+      Sprites.workbench = outlined(c); }
+
+    // ---- the map table: the altar, with the ring pinned out over it.
+    // Reading it is the biggest single thing in the building.
+    { const c = makeCanvas(30, 20), g = c.getContext('2d');
+      px(g, 0, 6, 30, 8, '#6f6a5e');                                     // altar block
+      px(g, 0, 6, 30, 2, '#837d6f');
+      px(g, 0, 13, 30, 2, '#514d45');
+      px(g, 2, 2, 26, 6, '#8d8672');                                     // the map, laid over
+      px(g, 2, 2, 26, 1, '#a09880');
+      for (let i = 0; i < 5; i++) px(g, 4 + i * 5, 3, 1, 5, '#6d6551');   // streets
+      px(g, 3, 5, 24, 1, '#6d6551');
+      px(g, 12, 4, 3, 1, '#a33b2a');                                     // marks in red
+      px(g, 20, 6, 2, 1, '#a33b2a');
+      px(g, 6, 3, 2, 2, '#2f5f8a');                                      // and in blue
+      px(g, 24, 2, 3, 3, '#d9cfae');                                     // a candle standing on it
+      px(g, 25, 0, 1, 2, '#ffd27a');
+      Sprites.mapTable = outlined(c); }
+
+    // ---- crypt fittings: water, food, and the box nobody opens
+    { const c = makeCanvas(20, 24), g = c.getContext('2d');              // cistern and tap
+      px(g, 1, 2, 18, 18, '#4a5259');
+      px(g, 1, 2, 18, 2, '#5c656d');
+      px(g, 1, 2, 5, 18, '#545d64');
+      for (let r = 6; r < 19; r += 5) px(g, 1, r, 18, 1, '#3d454b');
+      px(g, 8, 20, 3, 3, '#6a6258');                                     // tap
+      px(g, 9, 22, 1, 2, '#7d8a92');
+      px(g, 13, 19, 5, 5, '#3f4a3a');                                    // a jerrican under it
+      Sprites.cistern = outlined(c); }
+
+    { const c = makeCanvas(28, 16), g = c.getContext('2d');              // grow bed + lamp strip
+      px(g, 0, 3, 28, 2, '#6a6a72');                                     // the strip
+      px(g, 1, 5, 26, 1, 'rgba(190,160,255,0.55)');
+      px(g, 2, 9, 24, 6, '#3a2f22');                                     // the bed
+      px(g, 2, 9, 24, 1, '#463a2a');
+      for (let i = 0; i < 7; i++) {
+        const x = 3 + i * 3.4;
+        px(g, x | 0, 7 + (i % 2), 2, 3, i % 3 ? '#4e6a3a' : '#5d7a44');
+      }
+      Sprites.growBed = outlined(c); }
+
+    { const c = makeCanvas(18, 16), g = c.getContext('2d');              // preserve rack
+      px(g, 0, 1, 18, 14, '#4a3a26');
+      px(g, 1, 2, 16, 12, '#3a2c1c');
+      for (let r = 0; r < 2; r++) {
+        px(g, 1, 7 + r * 5, 16, 1, '#5c4a2e');
+        for (let i = 0; i < 5; i++)
+          px(g, 2 + i * 3, 3 + r * 5, 2, 4, ['#7d5a2a', '#8a6a3a', '#5d6a35', '#7a3a2a', '#9a8a4a'][(r + i) % 5]);
+      }
+      Sprites.preserves = outlined(c); }
+
+    { const c = makeCanvas(18, 16), g = c.getContext('2d');              // strongbox behind a grille
+      px(g, 1, 4, 16, 11, '#3e4148');
+      px(g, 1, 4, 16, 2, '#4e525a');
+      px(g, 6, 8, 6, 4, '#2a2c31');
+      px(g, 8, 9, 2, 2, '#c9a24a');                                      // the lock, brass
+      for (let i = 0; i < 5; i++) px(g, 1 + i * 4, 0, 1, 16, '#5a5f66');  // grille bars
+      px(g, 0, 0, 18, 1, '#5a5f66');
+      Sprites.strongbox = outlined(c); }
+
+    // ---- a chest you may or may not be allowed to open
+    const chest = (open) => {
+      const c = makeCanvas(18, 15), g = c.getContext('2d');
+      px(g, 1, 5, 16, 9, '#4a3a26');
+      px(g, 1, 5, 16, 1, '#5c4a2e');
+      px(g, 1, 11, 16, 1, '#332616');
+      px(g, 7, 8, 4, 3, '#6a6258');                                      // hasp
+      if (open) { px(g, 1, 1, 16, 4, '#3a2c1c'); px(g, 3, 2, 12, 2, '#20242a'); }
+      else { px(g, 1, 2, 16, 4, '#54402a'); px(g, 1, 2, 16, 1, '#66502f'); }
+      return outlined(c);
+    };
+    Sprites.chest = [chest(false), chest(true)];
+
+    // ---- THE CRYPT STAIR.
+    // The first version was a stack of horizontal bars in a box, which is the
+    // flat-rectangle-on-an-iso-floor mistake in its purest form: a stair lies
+    // on the ground, so its treads have to run DOWN THE GRID. This one is
+    // built in tile space and projected, like everything else that touches
+    // the floor — two tiles of opening, five treads descending north, a kerb
+    // round the hole and a rail you can see from across the room.
+    // ---- THE CRYPT HATCH.
+    // A stair big enough to read at this scale is a stair that eats a quarter
+    // of the room: the last one was two tiles by two and stood taller than the
+    // people using it. A hatch in a church floor does the same job in ONE tile
+    // — a hole, two treads, the lid propped back, and light coming up out of
+    // it. Built in tile space like everything that touches the floor.
+    const hatch = (lit) => {
+      const c = makeCanvas(44, 40), g = c.getContext('2d');
+      const AX = 22, AY = 18;
+      const P = (tx, ty, z) => [AX + (tx - ty) * 16, AY + (tx + ty) * 8 - z];
+      const quad = (a, b, c2, d, col, edge) => poly(g, [P(...a), P(...b), P(...c2), P(...d)], col, edge);
+      quad([0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0], '#0c0a08');            // the hole
+      // two treads, coming towards you, so their risers face the camera
+      quad([0.14, 0.08, 0], [0.86, 0.08, 0], [0.86, 0.46, 0], [0.14, 0.46, 0], lit ? '#a49d8c' : '#847e71');
+      quad([0.14, 0.46, 0], [0.86, 0.46, 0], [0.86, 0.46, -7], [0.14, 0.46, -7], '#39352f');
+      quad([0.14, 0.46, -7], [0.86, 0.46, -7], [0.86, 0.86, -7], [0.14, 0.86, -7], lit ? '#7d7669' : '#5d584f');
+      quad([0.14, 0.86, -7], [0.86, 0.86, -7], [0.86, 0.86, -14], [0.14, 0.86, -14], '#2b2823');
+      // stone rim, on the two far sides only — put it near and it stands in
+      // front of the hole it is framing
+      quad([-0.1, -0.1, 3], [1.1, -0.1, 3], [1.1, 0.06, 3], [-0.1, 0.06, 3], '#a8a191');
+      quad([-0.1, -0.1, 3], [0.06, -0.1, 3], [0.06, 1.1, 3], [-0.1, 1.1, 3], '#9a9384');
+      quad([1.1, -0.1, 3], [1.1, 1.1, 3], [1.1, 1.1, 0], [1.1, -0.1, 0], '#7c7669');
+      quad([1.1, 1.1, 3], [-0.1, 1.1, 3], [-0.1, 1.1, 0], [1.1, 1.1, 0], '#615c53');
+      // the lid, propped back against the north rim
+      quad([0.06, -0.08, 3], [0.94, -0.08, 3], [0.94, -0.5, 17], [0.06, -0.5, 17], '#4a3a26');
+      quad([0.06, -0.5, 17], [0.94, -0.5, 17], [0.94, -0.5, 15], [0.06, -0.5, 15], '#33260f');
+      for (let i = 1; i < 4; i++) {
+        const t = i / 4;
+        const a = P(0.06 + t * 0.88, -0.08, 3), b = P(0.06 + t * 0.88, -0.5, 17);
+        g.strokeStyle = '#3a2c1c'; g.lineWidth = 1;
+        g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke();
+      }
+      if (lit) quad([0.14, 0.08, 0], [0.86, 0.08, 0], [0.86, 0.46, 0], [0.14, 0.46, 0],
+                    'rgba(255,220,160,0.30)');
+      return outlined(c);
+    };
+    Sprites.stairDown = hatch(false);
+    Sprites.stairUp = hatch(true);
+
+    { const c = makeCanvas(16, 8), g = c.getContext('2d');               // rope barrier
+      px(g, 1, 2, 2, 6, '#4a423a'); px(g, 13, 2, 2, 6, '#4a423a');
+      px(g, 2, 3, 12, 1, '#7a6a4a');
+      px(g, 5, 4, 6, 1, '#6a5c40');
+      Sprites.rope = outlined(c); }
+
+    // ---- sacks, because a camp is mostly sacks
+    { const c = makeCanvas(18, 14), g = c.getContext('2d');
+      px(g, 1, 5, 9, 9, '#7a6f52');
+      px(g, 1, 5, 9, 1, '#8b8060');
+      px(g, 9, 3, 8, 11, '#6e6449');
+      px(g, 9, 3, 8, 1, '#807554');
+      px(g, 3, 4, 4, 2, '#5d5540');
+      Sprites.sacks = outlined(c); }
+
+    // ---- THE PEOPLE.
+    // Marek is a specific man with a sprite of his own and he keeps it. A camp
+    // needs several who are visibly not each other, so this is one figure with
+    // a coat, a head and one thing they are carrying. At fifteen pixels wide
+    // that is as much difference as will read, and it is enough.
+    const person = (step, coat, head, hair, extra) => {
+      const c = makeCanvas(15, 20), g = c.getContext('2d');
+      const b = step ? 1 : 0;
+      const L = shadeHex(coat, 1.22), D = shadeHex(coat, 0.72);
+      // head
+      if (head === 'hood') {
+        px(g, 5, 0 + b, 5, 2, L); px(g, 4, 1 + b, 7, 3, coat);
+        px(g, 5, 4 + b, 5, 2, '#20242a');
+      } else {
+        px(g, 5, 0 + b, 5, 2, hair); px(g, 4, 1 + b, 7, 2, hair);
+        px(g, 4, 3 + b, 7, 3, '#a08872');                  // face
+        px(g, 5, 4 + b, 2, 1, '#2a2420'); px(g, 8, 4 + b, 2, 1, '#2a2420');
+        if (head === 'kerchief') { px(g, 4, 1 + b, 7, 2, '#8a4a44'); px(g, 4, 2 + b, 2, 2, '#8a4a44'); }
+        if (head === 'cap') { px(g, 4, 0 + b, 8, 2, '#3a3f45'); px(g, 3, 2 + b, 4, 1, '#3a3f45'); }
+      }
+      px(g, 4, 6 + b, 7, 1, D);                            // neck / collar
+      px(g, 3, 7 + b, 9, 1, L);                            // shoulders
+      px(g, 2, 8 + b, 11, 3, coat);
+      px(g, 2, 8 + b, 2, 3, L); px(g, 11, 8 + b, 2, 3, D);
+      px(g, 4, 10 + b, 7, 1, '#2e2118');                   // belt
+      px(g, 3, 11 + b, 9, 3, coat);
+      px(g, 3, 11 + b, 2, 3, D);
+      if (extra === 'apron') { px(g, 5, 9 + b, 5, 5, '#6e6449'); px(g, 5, 9 + b, 5, 1, '#807554'); }
+      if (extra === 'satchel') { px(g, 10, 10 + b, 3, 4, '#4a3a26'); px(g, 9, 10 + b, 4, 1, '#5c4a2e'); }
+      if (extra === 'lamp') { px(g, 12, 11 + b, 2, 3, '#6a6258'); px(g, 12, 12 + b, 2, 1, '#ffd27a'); }
+      px(g, 4, 14 + b, 3, 3, '#3c2f22'); px(g, 8, 14 + b, 3, 3, '#3c2f22');
+      px(g, 4, 17, 3, 3, '#241d16'); px(g, 8, 17, 3, 3, '#241d16');
+      return outlined(c);
+    };
+    Sprites.folk = {};
+    for (const [key, coat, head, hair, extra] of [
+      ['vesna',  '#4a5561', 'hood',     '#3a2f22', null],
+      ['halden', '#6b5236', 'bald',     '#9a9184', 'apron'],
+      ['bo',     '#3f4a44', 'cap',      '#4a3a26', 'satchel'],
+      ['ade',    '#57505e', 'kerchief', '#5a4636', null],
+      ['ivar',   '#5a4436', 'bald',     '#6a5a4a', 'satchel'],
+      ['tam',    '#7a5a3a', 'hair',     '#4a3a26', null],
+      ['osk',    '#4a4a42', 'cap',      '#3a3226', 'lamp'],
+    ]) Sprites.folk[key] = [person(0, coat, head, hair, extra), person(1, coat, head, hair, extra)];
+  })();
+
   // ---- THE COMPACTOR (boss): low crawler hull carried on four legs,
   // one big eye up front, four core vents behind, two grabber claws ----
   (function () {
@@ -1360,6 +1768,7 @@ function outlined(src) {
   // returns { img, ax, ay } — ax/ay is where the building's NORTH tile corner
   // sits inside the image
   Sprites.makeBuilding = function (w, h, kind, seed) {
+    if (kind === 'C') return Sprites.makeCathedral(w, h, seed);
     const key = w + 'x' + h + kind + (seed % 4);
     const hit = buildingCache.get(key);
     if (hit) return hit;
@@ -1702,6 +2111,481 @@ function outlined(src) {
 
     const res = { img: c, ax, ay, h: Hh };
     if (buildingCache.size < 400) buildingCache.set(key, res);
+    return res;
+  };
+
+  // =====================================================================
+  // ST MARTIN'S — THE CATHEDRAL
+  // Every other building is one box. This one is a composite: nave, two
+  // aisles, twin west towers, a windowed flank and the fleche over the
+  // crossing. It is still ONE sprite with ONE depth — nothing is assembled
+  // at runtime, so nothing can drift out of line.
+  //
+  // It is built entirely in TILE SPACE — tx runs world +x (screen
+  // right-down), ty runs world +y (screen left-down), z is real pixels
+  // straight up — and projected once through S(). That is the angle rule
+  // enforced by construction: a ledge, a string course, a sill or a
+  // window drawn through these helpers CANNOT come out axis-aligned,
+  // because there is no rectangle anywhere in the code to shear. There are
+  // only points in the world.
+  // =====================================================================
+  Sprites.makeCathedral = function (w, h, seed) {
+    const key = 'CATH' + w + 'x' + h;
+    const hit = buildingCache.get(key);
+    if (hit) return hit;
+    const rng = mulberry32((seed || 0) * 2654435761 + 7717);
+
+    // ---- the stone. Warm limestone, lichened and rained on for a century.
+    const ST_L = '#8e8779', ST_S = '#6f6a5e', ST_T = '#a69d8b';
+    const ST_D = '#4a463e', ST_DD = '#332f2a';
+    const SLATE_L = '#4d5972', SLATE_S = '#39435a';
+    const SPIRE_L = '#42638f', SPIRE_S = '#2f4a72', SPIRE_H = '#6288bd';
+    // Glass seen from OUTSIDE an unlit church is nearly black with the colour
+    // only just showing. Bright panes would read as lamps, and nothing is lit
+    // in here yet — Candlelight has not moved in.
+    const GLASS = ['#26365f', '#552027', '#382248', '#20453b', '#5c471f'];
+    const OAK = '#5b4128', OAK_D = '#3a2a1a', IRON = '#3c3a36';
+
+    // ---- the volume, in tiles ----
+    // The walls run out to the footprint, since nothing projects from them
+    // any more and there is no base for anything to stand on.
+    const NF = h - 0.15;                      // the west front: the near wall
+    const NX0 = 3.0, NX1 = 9.0;               // nave walls
+    const AW0 = 0.3, AE1 = 11.7;              // aisle outer walls
+    const AY0 = 0.3, AY1 = NF - 3.0;          // aisles run back from the towers
+    const TL0 = 0.15, TL1 = 3.0;              // left (west) tower
+    const TR0 = 8.85, TR1 = 11.7;             // right (east) tower
+    const TY0 = NF - 3.0;                     // both towers start here
+    // ---- and in pixels of height ----
+    // NO PLINTH. The church stood on a wide stone base that read as a slab of
+    // pavement stuck under it, and every other building in the Fringe simply
+    // meets the ground. So do these walls: PL is the foot of every wall and
+    // every opening, and it is the ground.
+    const PL = 0;
+    const AISLE = 58, AISLE_TOP = 72;         // aisle eaves · where its roof meets the nave
+    const WALL = 104, RIDGE = 166;            // nave head · ridge. The pitch is
+    // deliberately steeper than 1:2: at anything shallower the FAR slope turns
+    // back towards the camera and shows as a grey sliver above the ridge.
+    const TOW = 178, TOWCAP = 190, PIN = 214, TIP = 248;
+    const FLECHE = 244, CROSSTOP = 256;
+
+    const AX = h * 16, AYo = 152;
+    const c = makeCanvas((w + h) * 16, AYo + (w + h) * 8 + 16), g = c.getContext('2d');
+    const S = (tx, ty, z) => [AX + (tx - ty) * 16, AYo + (tx + ty) * 8 - z];
+
+    // the two faces of a box the camera can see, plus its top
+    const vol = (x0, y0, x1, y1, z0, z1, top, east, south, edge) => {
+      if (top) poly(g, [S(x0, y0, z1), S(x1, y0, z1), S(x1, y1, z1), S(x0, y1, z1)], top, edge);
+      if (east) poly(g, [S(x1, y0, z1), S(x1, y1, z1), S(x1, y1, z0), S(x1, y0, z0)], east, edge);
+      if (south) poly(g, [S(x1, y1, z1), S(x0, y1, z1), S(x0, y1, z0), S(x1, y1, z0)], south, edge);
+    };
+    // A WALL FACE AS (u, v): u runs ALONG the wall in screen pixels — so it
+    // carries the wall's iso slope with it — and v runs straight up. Every
+    // piece of ornament below is placed in these coordinates.
+    const SF = (ty, tx0) => { const o = S(tx0, ty, 0); return (u, v) => [o[0] + u, o[1] + u * 0.5 - v]; };
+    const EF = (tx, ty0) => { const o = S(tx, ty0, 0); return (u, v) => [o[0] - u, o[1] + u * 0.5 - v]; };
+    // detail is INTEGER-FILLED, never a path: a mullion is one pixel wide and
+    // an antialiased edge at that size reads as a smear, not as a soft edge
+    const F = (M, pts, col) => isoFill(g, pts.map(p => M(p[0], p[1])), col);
+    const R = (M, u0, v0, u1, v1, col) => F(M, [[u0, v0], [u1, v0], [u1, v1], [u0, v1]], col);
+
+    // a two-centre gothic arch: each side struck from the opposite springer,
+    // which is what gives the point at the crown
+    const archPts = (u0, u1, vb, vs, va) => {
+      const W2 = u1 - u0, K = (va - vs) / (0.8660254 * W2), N = 8;
+      const pts = [[u0, vb], [u0, vs]];
+      for (let i = 1; i <= N; i++) {
+        const u = u0 + W2 * 0.5 * (i / N);
+        pts.push([u, vs + Math.sqrt(Math.max(0, W2 * W2 - (u - u1) * (u - u1))) * K]);
+      }
+      for (let i = N - 1; i >= 0; i--) {
+        const u = u1 - W2 * 0.5 * (i / N);
+        pts.push([u, vs + Math.sqrt(Math.max(0, W2 * W2 - (u - u0) * (u - u0))) * K]);
+      }
+      pts.push([u1, vb]);
+      return pts;
+    };
+    // coursed ashlar + the grime that runs down a wall under every ledge
+    const ashlar = (M, u0, u1, v0, v1, step) => {
+      for (let v = v0 + step; v < v1; v += step) R(M, u0, v, u1, v + 1, 'rgba(0,0,0,0.09)');
+    };
+    const grime = (M, u0, u1, v0, v1, n) => {
+      for (let i = 0; i < n; i++) {
+        const u = u0 + rng() * (u1 - u0), len = (v1 - v0) * (0.25 + rng() * 0.6);
+        R(M, u, v1 - len, u + 0.9 + rng() * 1.4, v1, 'rgba(46,50,42,0.13)');
+      }
+    };
+    // a moulded band running the width of a face: lit top edge, shadow under
+    const band = (M, u0, u1, v, t) => {
+      R(M, u0, v, u1, v + t, ST_T);
+      R(M, u0, v + t, u1, v + t + 1.2, 'rgba(255,244,220,0.20)');
+      R(M, u0, v - 1.4, u1, v, 'rgba(0,0,0,0.28)');
+    };
+    // a glazed pointed window in a splayed reveal
+    const lancet = (M, u0, u1, vb, vs, va, glass) => {
+      F(M, archPts(u0 - 2, u1 + 2, vb, vs - 2, va + 4), ST_D);
+      F(M, archPts(u0 - 1, u1 + 1, vb, vs - 1, va + 2), ST_DD);
+      F(M, archPts(u0, u1, vb, vs, va), glass);
+      const mid = (u0 + u1) / 2;
+      R(M, mid - 0.7, vb, mid + 0.7, va - 2, ST_S);                       // mullion
+      R(M, u0, vb + (va - vb) * 0.42, u1, vb + (va - vb) * 0.42 + 1.3, ST_S);   // transom
+      R(M, u0, vb, u0 + 1.3, vs, shadeHex(glass, 1.55));                  // light down one jamb
+      R(M, u1 - 1, vb, u1, vs, shadeHex(glass, 0.6));
+    };
+    // a louvred belfry opening — dark, with the slats catching light
+    const louvre = (M, u0, u1, vb, vs, va) => {
+      F(M, archPts(u0 - 2, u1 + 2, vb, vs - 2, va + 4), ST_D);
+      F(M, archPts(u0, u1, vb, vs, va), ST_DD);
+      for (let v = vb + 2; v < va - 3; v += 4) {
+        R(M, u0 + 0.5, v, u1 - 0.5, v + 1.4, '#5d5749');
+        R(M, u0 + 0.5, v + 1.4, u1 - 0.5, v + 2.2, '#2a2723');
+      }
+      R(M, (u0 + u1) / 2 - 0.7, vb, (u0 + u1) / 2 + 0.7, va - 2, ST_S);
+    };
+    // A SAINT. The first version was a pale capsule with a hairline of niche
+    // round it, and at this size that reads as a lozenge stuck on the wall,
+    // not a figure standing in it. Three things fix it: the niche has to be
+    // properly dark and wider than the figure, the figure has to be stone in
+    // shadow (DARKER than the sunlit wall, never brighter), and it has to
+    // stand on a corbel — anything with nothing under it floats.
+    const figure = (M, cu, vb, hgt) => {
+      const bh = hgt * 0.64, hd = Math.max(1.6, hgt * 0.17);
+      R(M, cu - 1.5, vb, cu + 1.5, vb + bh, '#7a7365');                 // robe
+      R(M, cu - 1.5, vb, cu - 0.5, vb + bh, '#8f8878');                 // lit down one side
+      R(M, cu + 0.85, vb, cu + 1.5, vb + bh, '#4e4941');                // shadow down the other
+      R(M, cu - 1.5, vb + bh - 1.1, cu + 1.5, vb + bh, '#413d36');      // shoulder line
+      R(M, cu - 0.85, vb + bh, cu + 0.85, vb + bh + hd, '#867f70');     // head
+      R(M, cu - 0.85, vb + bh, cu - 0.2, vb + bh + hd, '#9a9282');
+    };
+    const statue = (M, cu, vb, hgt) => {
+      const w2 = Math.max(2.8, hgt * 0.22);
+      F(M, archPts(cu - w2 - 1.7, cu + w2 + 1.7, vb - 3.6, vb + hgt * 0.6, vb + hgt + 6), ST_T);
+      F(M, archPts(cu - w2 - 0.7, cu + w2 + 0.7, vb - 2.6, vb + hgt * 0.6, vb + hgt + 4.5), ST_S);
+      F(M, archPts(cu - w2, cu + w2, vb - 2, vb + hgt * 0.58, vb + hgt + 3), ST_D);
+      F(M, archPts(cu - w2 + 0.9, cu + w2 - 0.9, vb - 2, vb + hgt * 0.58, vb + hgt + 2), '#26241f');
+      R(M, cu - w2 + 0.3, vb - 2, cu + w2 - 0.3, vb - 0.4, ST_T);       // the corbel it stands on
+      R(M, cu - w2 + 1.2, vb - 3.4, cu + w2 - 1.2, vb - 2, ST_S);
+      figure(M, cu, vb, hgt);
+    };
+    const rose = (M, cu, cv, r) => {
+      const ring = (rr, n) => {
+        const p = [];
+        for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; p.push([cu + Math.cos(a) * rr, cv + Math.sin(a) * rr]); }
+        return p;
+      };
+      F(M, ring(r + 4, 24), ST_T);
+      F(M, ring(r + 2, 24), ST_D);
+      // Tracery, not a pinwheel: the stone between the lights is as wide as
+      // the lights, and a second ring cuts every spoke in two.
+      for (let k = 0; k < 10; k++) {
+        const a0 = k / 10 * Math.PI * 2 + 0.16, a1 = (k + 1) / 10 * Math.PI * 2 - 0.16;
+        const col = GLASS[k % 2 ? 0 : (k % 4 === 0 ? 1 : 2)];
+        for (const [r0, r1] of [[5.5, r * 0.6 - 0.8], [r * 0.6 + 0.8, r]])
+          F(M, [[cu + Math.cos(a0) * r0, cv + Math.sin(a0) * r0],
+                [cu + Math.cos(a0) * r1, cv + Math.sin(a0) * r1],
+                [cu + Math.cos(a1) * r1, cv + Math.sin(a1) * r1],
+                [cu + Math.cos(a1) * r0, cv + Math.sin(a1) * r0]], col);
+      }
+      F(M, ring(5.6, 12), ST_T);
+      F(M, ring(4, 10), GLASS[1]);
+    };
+    const clock = (M, cu, cv, r) => {
+      const ring = (rr, n, col) => {
+        const p = [];
+        for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; p.push([cu + Math.cos(a) * rr, cv + Math.sin(a) * rr]); }
+        F(M, p, col);
+      };
+      ring(r + 2, 20, ST_T);
+      ring(r, 20, '#cdc6b3');
+      for (let i = 0; i < 12; i++) {                       // hour marks
+        const a = i / 12 * Math.PI * 2;
+        R(M, cu + Math.cos(a) * (r - 1.6) - 0.6, cv + Math.sin(a) * (r - 1.6) - 0.6,
+          cu + Math.cos(a) * (r - 1.6) + 0.6, cv + Math.sin(a) * (r - 1.6) + 0.6, '#4a4438');
+      }
+      R(M, cu - 0.7, cv, cu + 0.7, cv + r * 0.7, '#2e2a24');            // hands, stopped
+      R(M, cu - 0.7, cv - 0.7, cu + r * 0.55, cv + 0.7, '#2e2a24');
+    };
+    // slates laid down a roof slope, in the slope's own space so the courses
+    // follow the pitch instead of the screen
+    const slates = (rFar, rNear, eNear, eFar, base, rows, cols, wear) => {
+      poly(g, [rFar, rNear, eNear, eFar], base, '#1b1e22');
+      const L = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+      for (let r = 1; r < rows; r++) {
+        const t = r / rows, a = L(rFar, eFar, t), b = L(rNear, eNear, t);
+        g.lineWidth = 1;
+        g.strokeStyle = 'rgba(0,0,0,0.24)';
+        g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke();
+        const a2 = L(rFar, eFar, t + 0.014), b2 = L(rNear, eNear, t + 0.014);
+        g.strokeStyle = 'rgba(206,224,248,0.08)';
+        g.beginPath(); g.moveTo(a2[0], a2[1]); g.lineTo(b2[0], b2[1]); g.stroke();
+      }
+      for (let k = 1; k < cols; k++) {
+        const t = k / cols, a = L(rFar, rNear, t), b = L(eFar, eNear, t);
+        g.strokeStyle = 'rgba(0,0,0,0.13)'; g.lineWidth = 1;
+        g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke();
+      }
+      // patches: slates relaid in a different batch, and holes where a course
+      // has come off. A roof this old is never one flat colour.
+      const at = (uu, vv) => L(L(rFar, eFar, vv), L(rNear, eNear, vv), uu);
+      for (let i = 0; i < (wear || 0); i++) {
+        const u = rng() * 0.9, v = rng() * 0.88;
+        // small patches only: a tenth of a roof this size is not a relaid
+        // batch of slates, it is a smudge
+        const uw = 0.025 + rng() * 0.055, vh = 0.03 + rng() * 0.06;
+        poly(g, [at(u, v), at(u + uw, v), at(u + uw, v + vh), at(u, v + vh)],
+          rng() < 0.42 ? 'rgba(0,0,0,0.13)' : 'rgba(196,216,246,0.055)');
+      }
+    };
+    // a tapered spike — pinnacle, spirelet, fleche. Two faces and a lit arris.
+    const spike = (cx, cy, s, z0, z1, lit, dark, hi) => {
+      const ap = S(cx, cy, z1);
+      poly(g, [S(cx + s, cy - s, z0), S(cx + s, cy + s, z0), ap], lit);
+      poly(g, [S(cx + s, cy + s, z0), S(cx - s, cy + s, z0), ap], dark);
+      if (hi) {
+        g.strokeStyle = hi; g.lineWidth = 1;
+        const b = S(cx + s, cy + s, z0);
+        g.beginPath(); g.moveTo(b[0], b[1]); g.lineTo(ap[0], ap[1]); g.stroke();
+      }
+    };
+
+    // =========================== THE BUILD ===========================
+    // Back to front: west aisle, west tower, nave, east aisle, fleche, east
+    // tower. Anything nearer is drawn later, so the near work paints over
+    // the far work and the engaged corners close up properly.
+
+
+    // ---- west aisle (far side): only its roof clears the nave ----
+    vol(AW0, AY0, NX0, AY1, PL, AISLE, null, null, ST_S, '#1b1e22');
+
+    // Tower body, shared by both. `east` draws the +x face: 'full' for the east
+    // tower, which stands clear, and 'plain' for the west one.
+    // The west tower needs that face too. Skipping it left a hole in the sky
+    // between the nave head and the belfry — its cornice hung there over
+    // nothing, which is the missing corner of the tower. It gets the face but
+    // not the ornament, because the nave and its gable are drawn after this
+    // and swallow the bottom two thirds of it; a clock cut in half by a roof
+    // is worse than no clock.
+    const tower = (x0, x1, east) => {
+      const TW = (x1 - x0) * 16, TD = (NF - TY0) * 16;
+      vol(x0, TY0, x1, NF, PL, TOW, null, east ? ST_L : null, ST_S, '#1b1e22');
+      const M = SF(NF, x0);
+      ashlar(M, 0, TW, PL, TOW, 7);
+      grime(M, 2, TW - 2, PL, TOW, 9);
+      band(M, 0, TW, 46, 2.4);
+      band(M, 0, TW, 88, 2.4);
+      band(M, 0, TW, 128, 2.4);
+      // stage 1: a blind arcade at street level
+      for (let i = 0; i < 3; i++) {
+        const cu = TW * (i + 0.5) / 3;
+        F(M, archPts(cu - 5, cu + 5, PL + 4, 24, 38), ST_D);
+        F(M, archPts(cu - 3.6, cu + 3.6, PL + 5, 24, 36), ST_DD);
+      }
+      // stage 2: saints under canopies
+      statue(M, TW * 0.28, 54, 22);
+      statue(M, TW * 0.72, 54, 22);
+      // stage 3: the clock, stopped
+      clock(M, TW / 2, 106, 11);
+      // stage 4: the belfry
+      louvre(M, TW * 0.22, TW * 0.42, 134, 158, 170);
+      louvre(M, TW * 0.58, TW * 0.78, 134, 158, 170);
+      if (east) {
+        const E = EF(x1, TY0);
+        ashlar(E, 0, TD, PL, TOW, 7);
+        grime(E, 2, TD - 2, PL, TOW, 7);
+        band(E, 0, TD, 128, 2.4);
+        louvre(E, TD * 0.2, TD * 0.4, 134, 158, 170);
+        louvre(E, TD * 0.6, TD * 0.8, 134, 158, 170);
+        if (east === 'full') {
+          band(E, 0, TD, 46, 2.4); band(E, 0, TD, 88, 2.4);
+          for (let i = 0; i < 2; i++) {
+            const cu = TD * (i + 0.5) / 2;
+            F(E, archPts(cu - 5, cu + 5, PL + 4, 24, 38), ST_D);
+          }
+          statue(E, TD * 0.3, 54, 22); statue(E, TD * 0.7, 54, 22);
+          clock(E, TD / 2, 106, 11);
+        }
+      }
+      // Cornice, then the parapet standing above it. It oversails ONLY on the
+      // two sides the camera can see. Oversailing north or west puts a lip out
+      // over a face that is never drawn, and you see sky through the gap under
+      // it — that slot beside the west tower was a cornice hanging over
+      // nothing, not a piece of tower gone missing.
+      vol(x0, TY0, x1, NF + 0.2, TOW, TOWCAP, ST_T, ST_L, ST_S, '#1b1e22');
+      const PM = SF(NF + 0.2, x0), PW = (x1 - x0) * 16;
+      for (let i = 0; i < 6; i++)                       // openwork parapet
+        R(PM, PW * (i + 0.25) / 6, TOW + 2, PW * (i + 0.75) / 6, TOWCAP - 2, ST_DD);
+      // THE SPIRE SPRINGS FROM THE PARAPET — it does not sit in it.
+      // Its base used to be a tile narrower than the tower each way, which
+      // left a flat ledge of cornice showing all round the foot of it, and
+      // the whole cap read as a pyramid dropped into a tray. The base now
+      // fills the tower, so the slope starts where the coping ends.
+      // Order matters: far pinnacles, spire, near pinnacles. The spire is a
+      // mass standing between them, so the two nearest have to come after it.
+      const pin = (px2, py2) => spike(px2, py2, 0.32, TOWCAP, PIN, ST_L, ST_S, 'rgba(255,246,224,0.40)');
+      pin(x0 + 0.3, TY0 + 0.3); pin(x1 - 0.3, TY0 + 0.3);
+      // slated like the roofs. Only the fleche is lead-blue — one accent, or
+      // the whole skyline turns into a fairground.
+      spike((x0 + x1) / 2, (TY0 + NF) / 2, Math.min(x1 - x0, NF - TY0) / 2 - 0.05,
+            TOWCAP, TIP, SLATE_L, SLATE_S, 'rgba(200,220,248,0.35)');
+      pin(x0 + 0.3, NF - 0.3); pin(x1 - 0.3, NF - 0.3);
+    };
+
+    tower(TL0, TL1, 'plain');
+
+    // ---- the nave: walls, then the steep slate roof ----
+    vol(NX0, AY0, NX1, NF, PL, WALL, null, ST_L, ST_S, '#1b1e22');
+    {
+      const E = EF(NX1, AY0), EL = (NF - AY0) * 16;
+      ashlar(E, 0, EL, PL, WALL, 7);
+      grime(E, 2, EL - 2, AISLE_TOP, WALL, 12);
+      band(E, 0, EL, 75, 2.2);
+      band(E, 0, EL, WALL - 4, 2.6);
+      // clerestory: the row of windows above the aisle roof, which is the
+      // whole point of a nave — light in over the top of the aisle
+      const bays = 5;
+      for (let i = 0; i < bays; i++) {
+        const cu = EL * (i + 0.5) / bays;
+        lancet(E, cu - 7, cu + 7, AISLE_TOP + 8, 92, 99, GLASS[i % GLASS.length]);
+      }
+    }
+    // the roof. Ridge runs north–south along the nave, so the west front
+    // gets a gable and the flank gets one long slope.
+    const rMid = (NX0 + NX1) / 2;
+    slates(S(rMid, AY0, RIDGE), S(rMid, NF, RIDGE), S(NX1, NF, WALL), S(NX1, AY0, WALL),
+           SLATE_L, 13, 16, 26);
+    poly(g, [S(NX0, AY0, WALL), S(NX1, AY0, WALL), S(rMid, AY0, RIDGE)], SLATE_S);   // far gable
+    { // ridge cap and its crockets
+      const a = S(rMid, AY0, RIDGE), b = S(rMid, NF, RIDGE);
+      g.strokeStyle = ST_T; g.lineWidth = 2;
+      g.beginPath(); g.moveTo(a[0], a[1] - 1); g.lineTo(b[0], b[1] - 1); g.stroke();
+      g.strokeStyle = '#20242c'; g.lineWidth = 1;
+      g.beginPath(); g.moveTo(a[0], a[1] + 1); g.lineTo(b[0], b[1] + 1); g.stroke();
+      for (let t = 0.06; t < 0.98; t += 0.075) {
+        const p = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+        px(g, Math.round(p[0]) - 1, Math.round(p[1]) - 4, 2, 4, '#7f8ba3');
+      }
+    }
+
+    // ---- THE WEST FRONT ----
+    // The face the road brings you to. Portal, two doors, the rose, and a
+    // gallery of saints under the gable.
+    {
+      const M = SF(NF, NX0), FW = (NX1 - NX0) * 16;      // 96 px of wall
+      ashlar(M, 0, FW, PL, WALL, 7);
+      grime(M, 2, FW - 2, PL, WALL, 14);
+
+      // the great door, in four recessed orders
+      for (let o = 0; o < 4; o++) {
+        const s2 = o * 1.9;
+        F(M, archPts(30 - s2 + 5.7, 66 + s2 - 5.7, PL, 40 - s2 * 0.4, 58 + s2 * 0.9),
+          o % 2 ? ST_D : ST_S);
+      }
+      F(M, archPts(37, 59, PL, 40, 56), ST_DD);          // the opening itself
+      R(M, 38, PL, 47.4, 44, OAK); R(M, 48.6, PL, 58, 44, OAK);   // two door leaves
+      for (let v = PL + 3; v < 42; v += 5) { R(M, 38, v, 58, v + 1.2, OAK_D); }
+      R(M, 47.4, PL, 48.6, 46, IRON);                    // the meeting stile
+      R(M, 40, 20, 45, 21.6, IRON); R(M, 51, 20, 56, 21.6, IRON);  // strap hinges
+      F(M, archPts(38, 58, 43, 47, 56), ST_DD);          // tympanum over the doors
+      figure(M, 48, 45, 11);                             // the figure in it
+      band(M, 26, 70, 60, 2.2);
+
+      // the flanking doors, and the tall windows over them
+      for (const cu of [16, 80]) {
+        F(M, archPts(cu - 9, cu + 9, PL, 26, 36), ST_D);
+        F(M, archPts(cu - 7, cu + 7, PL, 26, 34), ST_DD);
+        R(M, cu - 6, PL, cu - 0.6, 27, OAK); R(M, cu + 0.6, PL, cu + 6, 27, OAK);
+        R(M, cu - 0.6, PL, cu + 0.6, 29, IRON);
+        band(M, cu - 12, cu + 12, 40, 2);
+        lancet(M, cu - 7, cu + 7, 50, 84, 96, GLASS[cu > 48 ? 1 : 0]);
+        statue(M, cu - 13.5, 52, 16);
+        statue(M, cu + 13.5, 52, 16);
+      }
+
+      // the rose
+      rose(M, 48, 82, 17);
+
+      // the gable above the wall head, and the gallery of saints in it
+      poly(g, [S(NX0, NF, WALL), S(NX1, NF, WALL), S(rMid, NF, RIDGE)], ST_S, '#1b1e22');
+      const gable = M;
+      band(gable, 0, FW, WALL - 4, 2.6);
+      // coursed stone that stops at the rake, since the gable is a triangle
+      for (let v = WALL + 5; v < RIDGE - 6; v += 7) {
+        const hw = (1 - (v - WALL) / (RIDGE - WALL)) * (FW / 2) - 2;
+        if (hw > 3) R(gable, 48 - hw, v, 48 + hw, v + 1, 'rgba(0,0,0,0.09)');
+      }
+      for (const cu of [33, 48, 63]) statue(gable, cu, WALL + 6, 15);
+      // the gable rakes: a moulded coping either side, meeting at the apex
+      for (const s2 of [-1, 1]) {
+        const a = S(s2 < 0 ? NX0 : NX1, NF, WALL), b = S(rMid, NF, RIDGE);
+        g.strokeStyle = ST_T; g.lineWidth = 2;
+        g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke();
+      }
+      // an oculus in the gable, and the cross on the apex
+      const OCV = WALL + 38, ring = [];
+      for (let i = 0; i < 14; i++) { const a = i / 14 * Math.PI * 2; ring.push([48 + Math.cos(a) * 6.5, OCV + Math.sin(a) * 6.5]); }
+      F(gable, ring, ST_D);
+      const ring2 = ring.map(p => [48 + (p[0] - 48) * 0.7, OCV + (p[1] - OCV) * 0.7]);
+      F(gable, ring2, GLASS[0]);
+      const ap = S(rMid, NF, RIDGE);
+      px(g, Math.round(ap[0]) - 1, Math.round(ap[1]) - 13, 2, 13, ST_T);
+      px(g, Math.round(ap[0]) - 4, Math.round(ap[1]) - 10, 8, 2, ST_T);
+    }
+
+    // ---- east aisle: the flank the street sees, bay by bay ----
+    // It starts at the NAVE wall, not at the far side of the church: run it
+    // the full width and its south end becomes a grey slab across the west
+    // front, because that end is drawn after the facade it sits behind.
+    vol(NX1, AY0, AE1, AY1, PL, AISLE, null, ST_L, null, '#1b1e22');
+    {
+      const E = EF(AE1, AY0), AL = (AY1 - AY0) * 16;
+      ashlar(E, 0, AL, PL, AISLE, 7);
+      grime(E, 2, AL - 2, PL, AISLE, 8);
+      const bays = 5;
+      for (let i = 0; i < bays; i++) {
+        const cu = AL * (i + 0.5) / bays;
+        lancet(E, cu - 6, cu + 6, 18, 40, 50, GLASS[(i + 2) % GLASS.length]);
+      }
+      band(E, 0, AL, AISLE - 7, 2.4);
+      // the lean-to roof, from the aisle eaves up to the nave wall
+      slates(S(NX1, AY0, AISLE_TOP), S(NX1, AY1, AISLE_TOP), S(AE1, AY1, AISLE), S(AE1, AY0, AISLE),
+             SLATE_S, 5, 12, 10);
+      // the aisle's south end is engaged with the tower and never seen —
+      // drawing it here is what put a grey slab across the west front
+    }
+
+    // ---- the fleche over the crossing ----
+    {
+      // It sits with its west face ON the ridge, not straddling it. The far
+      // slope of the roof is never drawn, so anything hanging west of the ridge
+      // hangs over sky — that was a hairline of daylight down the spire's edge.
+      // Its base starts well below the ridge so the roof swallows the join.
+      const fx = rMid + 0.55, fy = AY0 + (NF - AY0) * 0.5;
+      vol(fx - 0.55, fy - 0.55, fx + 0.55, fy + 0.55, RIDGE - 30, RIDGE + 16, null, SPIRE_L, SPIRE_S, '#1b1e22');
+      const M = SF(fy + 0.55, fx - 0.55);
+      louvre(M, 3, 14, RIDGE - 6, RIDGE + 8, RIDGE + 13);
+      // the spire is no wider than the box under it, or its west corner
+      // overhangs the ridge again and daylight comes back
+      spike(fx, fy, 0.55, RIDGE + 16, FLECHE, SPIRE_L, SPIRE_S, 'rgba(190,215,250,0.5)');
+      spike(fx, fy, 0.27, RIDGE + 16, FLECHE - 4, SPIRE_H, SPIRE_L, null);
+      const ap = S(fx, fy, FLECHE);
+      px(g, Math.round(ap[0]) - 1, Math.round(ap[1]) - (CROSSTOP - FLECHE), 2, CROSSTOP - FLECHE, '#b9b09c');
+      px(g, Math.round(ap[0]) - 4, Math.round(ap[1]) - (CROSSTOP - FLECHE) + 3, 9, 2, '#b9b09c');
+    }
+
+    // ---- east tower ----
+    tower(TR0, TR1, 'full');
+
+    // ---- NO PIERS AT ALL ----
+    // Four passes on the west front and one down the flank, and the verdict
+    // each time was that they fought the building instead of articulating it.
+    // At 320x180 a pier is six pixels of stone next to a window: it cannot
+    // read as structure, only as clutter. The walls carry themselves.
+    // The rule that made them read as standing OUT rather than going in is
+    // kept in art-style.md, in case anything else ever needs to project:
+    // wider across the wall than it projects out of it.
+
+    const res = { img: c, ax: AX, ay: AYo, h: WALL };
+    buildingCache.set(key, res);
     return res;
   };
 

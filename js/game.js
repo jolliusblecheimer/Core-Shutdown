@@ -241,6 +241,8 @@ function buildTilesets() {
   TILESETS[2] = Sprites.rubble;  TILESETS[3] = Sprites.planks;
   TILESETS[4] = Sprites.road;    TILESETS[5] = Sprites.pavement;
   TILESETS[6] = Sprites.verge;   TILESETS[7] = Sprites.forecourt;
+  TILESETS[8] = Sprites.flag;    TILESETS[9] = Sprites.flagWorn;
+  TILESETS[10] = Sprites.straw;  TILESETS[11] = Sprites.crypt;
 }
 buildTilesets();
 
@@ -326,6 +328,8 @@ function stashArea() {
     takenItems: (START_ITEMS_BY_AREA[currentArea] || []).filter(
       k => !items.some(it => itemKey(it) === k)),
     deadBandits: collectDeadBandits(),
+    // a chest you emptied stays empty when you come back through the door
+    openChests: props.filter(p => p.type === 'chest' && p.open).map(p => p.gx + ',' + p.gy),
   };
 }
 // A raider you killed stays killed. Respawning them would turn a roadblock
@@ -365,6 +369,8 @@ function restoreArea(id) {
   for (let i = items.length - 1; i >= 0; i--) {
     if (taken.has(itemKey(items[i]))) items.splice(i, 1);
   }
+  const opened = new Set(st.openChests || []);
+  for (const p of props) if (p.type === 'chest' && opened.has(p.gx + ',' + p.gy)) p.open = true;
 }
 
 function enterArea(id, entry) {
@@ -385,6 +391,7 @@ function enterArea(id, entry) {
   spawnBandits();
   restoreBandits(id);
   foeBullets.length = 0;
+  buildFolk(Areas[id].folk);
   if (entry) {
     player.x = entry.x; player.y = entry.y;
     if (!canStand(player.x, player.y, player.r)) {
@@ -658,11 +665,20 @@ function update(dt) {
   }
 
   // camera: the player normally; the boss during its cutscenes; during the
-  // gate cutscene, first the gate lock — then whatever rises behind you
+  // gate cutscene, first the gate lock — then whatever rises behind you.
+  //
+  // The lock used to be the literal pair of numbers (21.5, 30.0), which is
+  // where the gate stood when it was in the south wall. It has been in the
+  // EAST wall for a long time, so the first beat of the cutscene panned
+  // eighteen tiles to an empty corner of the yard, sat there while the lock
+  // ground, and then flew all the way back when the Compactor rose. It reads
+  // off the gate itself now, so moving the gate again cannot break it.
   const cineOn = boss.active && (boss.state === 'cine2' || boss.state === 'cine3');
   let focus;
   if (GateCine.active) {
-    focus = GateCine.spawned ? isoToScreen(boss.x, boss.y) : isoToScreen(21.5, 30.0);
+    const lockX = gateProp ? gateProp.gx - 0.4 : player.x;
+    const lockY = gateProp ? gateProp.gy + 0.5 : player.y;
+    focus = GateCine.spawned ? isoToScreen(boss.x, boss.y) : isoToScreen(lockX, lockY);
   } else if (cineOn) {
     focus = isoToScreen(boss.x, boss.y);
   } else {
@@ -807,6 +823,10 @@ function render() {
     const s = isoToScreen(bd.x, bd.y);
     // bodies sort a hair behind the living, so nobody stands inside a corpse
     draws.push({ depth: s.y - (bd.dead ? 0.02 : 0), draw: () => drawBandit(bd, s.x - ox, s.y - oy) });
+  }
+  for (const f of folk) {
+    const s = isoToScreen(f.x, f.y);
+    draws.push({ depth: s.y, draw: () => drawFolk(f, s.x - ox, s.y - oy) });
   }
   for (const b of foeBullets) {
     const s = isoToScreen(b.x, b.y);
@@ -1262,6 +1282,51 @@ function drawProp(p, x, y) {
     img = Sprites.stove; oyOff = -14; drawShadow(x, y, 6);
     addLight(x, y - 7, 0, 18 + Math.sin(gameTime * 9) * 3, '255,140,60', 0.35);
   }
+  // ---- CANDLELIGHT. Everything that burns puts light on the floor: the
+  // camp is the only warm room in the ring and it has to be lit that way,
+  // not tinted that way.
+  else if (T === 'pier') { img = Sprites.pier; oyOff = -52; drawShadow(x, y, 8); }
+  else if (T === 'brazier') {
+    img = Sprites.brazier; oyOff = -19; drawShadow(x, y, 6);
+    addLight(x, y - 12, 0, 34 + Math.sin(gameTime * 7 + p.gx) * 4, '255,150,60', 0.44);
+  }
+  else if (T === 'candles') {
+    img = Sprites.candles; oyOff = -17; drawShadow(x, y, 6);
+    addLight(x, y - 10, 0, 20 + Math.sin(gameTime * 5 + p.gy) * 2, '255,210,140', 0.34);
+  }
+  else if (T === 'hearth') {
+    img = Sprites.hearth; oyOff = -28; drawShadow(x, y, 7);
+    addLight(x, y - 9, 0, 30 + Math.sin(gameTime * 8) * 3, '255,140,60', 0.40);
+  }
+  else if (T === 'bedding') { img = Sprites.bedding; oyOff = -11; drawShadow(x, y, 10); }
+  else if (T === 'sacks') { img = Sprites.sacks; oyOff = -12; drawShadow(x, y, 8); }
+  else if (T === 'curtain') { img = Sprites.curtain[p.dir === 'y' ? 'y' : 'x']; oyOff = -30; }
+  else if (T === 'pew') { img = Sprites.pew[p.dir === 'y' ? 'y' : 'x']; oyOff = -12; drawShadow(x, y, 13); }
+  else if (T === 'pewBroken') { img = Sprites.pewBroken[p.dir === 'y' ? 'y' : 'x']; oyOff = -12; drawShadow(x, y, 10); }
+  else if (T === 'workbench') {
+    img = Sprites.workbench; oyOff = -22; drawShadow(x, y, 15);
+    // the drone's eye, still live. What glows amber can be hurt — here it is
+    // with its lid off, which is the point of the whole vignette.
+    addLight(x + 4, y - 16, 0, 9 + Math.sin(gameTime * 3) * 2, '255,176,46', 0.30);
+  }
+  else if (T === 'mapTable') {
+    img = Sprites.mapTable; oyOff = -18; drawShadow(x, y, 14);
+    addLight(x + 10, y - 16, 0, 16, '255,210,140', 0.30);
+  }
+  else if (T === 'chest') { img = Sprites.chest[p.open ? 1 : 0]; oyOff = -13; drawShadow(x, y, 8); }
+  else if (T === 'stairDown' || T === 'stairUp') {
+    img = T === 'stairUp' ? Sprites.stairUp : Sprites.stairDown;
+    oyOff = -11;
+    addLight(x, y - 4, 0, 13, T === 'stairUp' ? '255,210,140' : '120,140,170', 0.22);
+  }
+  else if (T === 'rope') { img = Sprites.rope; oyOff = -7; }
+  else if (T === 'cistern') { img = Sprites.cistern; oyOff = -22; drawShadow(x, y, 9); }
+  else if (T === 'growBed') {
+    img = Sprites.growBed; oyOff = -14; drawShadow(x, y, 13);
+    addLight(x, y - 12, 0, 20, '190,160,255', 0.32);
+  }
+  else if (T === 'preserves') { img = Sprites.preserves; oyOff = -14; drawShadow(x, y, 8); }
+  else if (T === 'strongbox') { img = Sprites.strongbox; oyOff = -14; drawShadow(x, y, 8); }
   if (img) ctx.drawImage(img, Math.round(x - img.width / 2), Math.round(y + oyOff));
 }
 
@@ -1600,6 +1665,12 @@ function drawPlayer(x, y) {
   }
 }
 
+function drawFolk(f, x, y) {
+  drawShadow(x, y, 5);
+  const set = Sprites.folk[f.key] || Sprites.folk.vesna;
+  ctx.drawImage(set[f.frame], Math.round(x - 8), Math.round(y - 21));
+}
+
 function drawNpc(x, y) {
   drawShadow(x, y, 5);
   ctx.drawImage(Sprites.npc[npc.frame], Math.round(x - 8), Math.round(y - 21));
@@ -1893,6 +1964,7 @@ function drawHUD() {
   }
   for (const it of items) blip(it.x, it.y, '#ffd27a');
   if (currentAreaDef().hasNpc) blip(npc.x, npc.y, '#7ad27a');
+  for (const f of folk) blip(f.x, f.y, '#7ad27a');
   for (const ex of (currentAreaDef().exits || [])) {
     if (ex.needsGate && !(gateProp && gateProp.open)) continue;
     blip((ex.x0 + ex.x1) / 2, (ex.y0 + ex.y1) / 2, '#4fc3ff');

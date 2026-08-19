@@ -117,6 +117,120 @@ function scrappersOff() { for (const s of scrappers) s.state = 'off'; }
 
 const npc = { x: 21.5, y: 6.5, animT: 0, frame: 0 };
 
+// ---------- THE CAMP ----------
+// This engine has had exactly one NPC in it since the beginning: Marek, above,
+// named directly by the interaction code. A camp needs several in one room, so
+// they are a LIST beside him rather than a rewrite of him — his mission, his
+// trade and his dialogue are untouched, and nothing that already works had to
+// be re-tested to get six more people standing in a church.
+// Nobody here learns the player's name. Traveller, stranger, or nothing.
+let folk = [];
+const FOLK = {
+  camp: [
+    { key: 'vesna', name: 'VESNA', x: 4.5, y: 14.5, lines: [
+      "Door stays shut after dark. That is the one rule that matters.",
+      "You walked the sign road, so you can read. That already puts you ahead.",
+      "Anything of ours you want, you ask. Nobody here minds being asked." ] },
+    { key: 'osk', name: 'OSK', x: 2.5, y: 14.5, lines: [
+      "That lot's the camp's. Not yours.",
+      "Nothing personal, stranger. I'd say it to my own brother.",
+      "Ask Halden. He's the one allowed to give things away." ] },
+    { key: 'bo', name: 'BO', x: 3.5, y: 3.5, lines: [
+      "Don't touch that. Its cell is still hot.",
+      "They come apart easier than they look. Everything does.",
+      "I keep the eye lit while I work. Tells me there's still charge in it." ] },
+    { key: 'ade', name: 'SISTER ADE', x: 9.5, y: 5.5, lines: [
+      "You're not bleeding. Come back when you are.",
+      "The name stuck because of the building. I was a vet's assistant.",
+      "Two cots. One of them has been the same man for eleven days." ] },
+    { key: 'halden', name: 'HALDEN', x: 9.5, y: 8.5, lines: [
+      "Sit if you want. There's soup, and there's a story, and the soup is better.",
+      "This place was cold for a year before we got the stove in.",
+      "I'll trade you fair. I'm too old to be clever about it." ] },
+    { key: 'ivar', name: 'IVAR', x: 5.5, y: 2.5, lines: [
+      "You came up the sign road. People only do that with nothing left.",
+      "Read the table. Everything this camp knows about the ring is on it.",
+      "We don't ask what you did before. Nobody here would like the answer." ] },
+    { key: 'tam', name: 'TAM', x: 6.5, y: 8.5, lines: [
+      "Are you from the yard? The old man's yard?",
+      "Bo says the machines can't hear you if you crouch. Bo says a lot of things.",
+      "There's a room under the floor. I'm not allowed down but you might be." ] },
+  ],
+  crypt: [],
+};
+function buildFolk(kind) {
+  folk = (FOLK[kind] || []).map(f => Object.assign({ animT: 0, frame: 0, said: 0 }, f));
+}
+// one line at a time, in order, then round again — so talking to somebody
+// twice is worth doing and talking to them nine times is not
+function talkToFolk(f) {
+  startDialog([f.name + ': ' + f.lines[f.said % f.lines.length]]);
+  f.said++;
+  SFX.uiOpen();
+}
+
+// the map table, and the rest of the camp's fittings
+let campMapRead = false;
+function readMapTable() {
+  if (campMapRead) {
+    startDialog(["The ring, drawn by people who walked it. You have it all copied down."]);
+    return;
+  }
+  campMapRead = true;
+  // THE payoff of finding this place: somebody else's legwork, handed over.
+  if (typeof exploredByArea !== 'undefined' && exploredByArea.fringe) exploredByArea.fringe.fill(1);
+  SFX.tech();
+  showMsg('THE RING, MAPPED  ·  M', 3.2);
+  startDialog([
+    "Streets, crossings, every way out, in three different hands.",
+    "Somebody walked all of this so the next one would not have to.",
+  ]);
+}
+// Fittings you can use. Each one answers twice: with `ask` it returns the
+// prompt, without it, it does the thing.
+const USABLE = {
+  mapTable: (p, ask) => ask ? 'E — read the map' : readMapTable(),
+  chest: (p, ask) => ask ? (p.open ? 'empty' : 'E — open') : openChest(p),
+  strongbox: (p, ask) => ask ? 'locked' : startDialog([
+    "Padlocked, and the key is not in this room.",
+    "Whatever the camp keeps in there, it keeps from everyone." ]),
+  cistern: (p, ask) => ask ? 'E — drink' : drinkFromCistern(),
+  workbench: (p, ask) => ask ? 'E — look' : startDialog([
+    "A Hunter-Killer with its casing off and one arm in the vice.",
+    "The eye is still lit. Whatever is in there has charge left." ]),
+  growBed: (p, ask) => ask ? 'E — look' : startDialog([
+    "Mushrooms, and something leggy going for the lamp.",
+    "Grown in a grave niche, under a strip light off a bus." ]),
+  hearth: (p, ask) => ask ? 'E — look' : startDialog([
+    "A drum with a fire in it and a flue punched through a boarded window.",
+    "The first warm thing you have stood next to since the yard." ]),
+};
+
+function drinkFromCistern() {
+  const before = player.hp;
+  player.hp = Math.min(player.maxHp, player.hp + 12);
+  SFX.eat();
+  startDialog([player.hp > before
+    ? "Cold, and it tastes of the roof. You have had worse."
+    : "Cold, and it tastes of the roof."]);
+}
+function openChest(p) {
+  if (p.open) { startDialog(["Empty. You already had this one."]); return; }
+  p.open = true;
+  SFX.loot();
+  if (p.loot === 'crypt') {
+    player.inv.tech += 2; player.inv.scrap += 3;
+    showMsg('+2 tech  ·  +3 scrap');
+  } else if (p.loot === 'scrap') {
+    player.inv.scrap += 4;
+    showMsg('+4 scrap');
+  } else {
+    player.inv.scrap += 2;
+    if (player.inv.snack !== undefined) player.inv.snack++;
+    showMsg('+2 scrap  ·  +1 snack bar');
+  }
+}
+
 const Dialog = { active: false, lines: [], idx: 0 };
 function startDialog(lines) { Dialog.active = true; Dialog.lines = lines; Dialog.idx = 0; }
 
@@ -312,6 +426,18 @@ function updateItems(dt) {
     const npcD = Math.hypot(player.x - npc.x, player.y - npc.y);
     if (npcD < 1.3 && npcD < bestD) { bestD = npcD; best = npc; bestKind = 'npc'; }
   }
+  for (const f of folk) {
+    const d = Math.hypot(player.x - f.x, player.y - f.y);
+    if (d < 1.4 && d < bestD) { bestD = d; best = f; bestKind = 'folk'; }
+  }
+  // the camp's fittings you can actually use
+  if (currentAreaDef().indoors) {
+    for (const p of props) {
+      if (!USABLE[p.type]) continue;
+      const d = Math.hypot(player.x - p.gx, player.y - p.gy);
+      if (d < 1.5 && d < bestD) { bestD = d; best = p; bestKind = 'fitting'; }
+    }
+  }
   // the yard gate (main game only, never during the fight or cutscene)
   if (!window.ARENA_MODE && currentArea === 'junkyard' && !GateCine.active &&
       !(boss.active && boss.state !== 'dead' && !bossDefeated)) {
@@ -354,6 +480,14 @@ function updateItems(dt) {
     const s = isoToScreen(npc.x, npc.y);
     Prompt = { sx: s.x, sy: s.y - 30, text: mission.state === 'turned' ? 'E — trade' : 'E — talk' };
     if (Input.pressed['KeyE']) { Input.pressed['KeyE'] = false; talkToNpc(); }
+  } else if (bestKind === 'folk') {
+    const s = isoToScreen(best.x, best.y);
+    Prompt = { sx: s.x, sy: s.y - 30, text: 'E — talk' };
+    if (Input.pressed['KeyE']) { Input.pressed['KeyE'] = false; talkToFolk(best); }
+  } else if (bestKind === 'fitting') {
+    const s = isoToScreen(best.gx, best.gy);
+    Prompt = { sx: s.x, sy: s.y - 26, text: USABLE[best.type](best, true) };
+    if (Input.pressed['KeyE']) { Input.pressed['KeyE'] = false; USABLE[best.type](best, false); }
   } else if (bestKind === 'wreck') {
     const wreck = best;
     const s = isoToScreen(wreck.x, wreck.y);
@@ -1130,6 +1264,12 @@ function tutBandit() {
 function updateNpc(dt) {
   npc.animT += dt;
   if (npc.animT > 0.6) { npc.animT = 0; npc.frame = 1 - npc.frame; }
+  // the camp breathes on its own clock, so seven people are not all shifting
+  // their weight on the same frame
+  for (const f of folk) {
+    f.animT += dt;
+    if (f.animT > 0.55 + (f.x % 1) * 0.5) { f.animT = 0; f.frame = 1 - f.frame; }
+  }
 }
 
 function tutEnemy() {

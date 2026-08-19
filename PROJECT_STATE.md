@@ -53,9 +53,22 @@ streetlights (20 of 60 lit and casting light), traffic lights, bus stops,
 dumpsters, hydrants, postboxes, queued traffic, a slewed bus.
 **Buildings are single pre-rendered volumes** — 9 styles (house, brick, shop,
 shutter, office, school, church, hotel, bank) with faces + roof sharing real
-corners. Landmarks: Aldergrove Primary, St Martin's church (future
-Candlelight), The Regent Hotel, City & County Bank, and a proper gas station
-(canopy on six pillars, kerbed islands, detonating pumps, pylon totem).
+corners. Landmarks: Aldergrove Primary, The Regent Hotel, City & County Bank,
+and a proper gas station (canopy on six pillars, kerbed islands, detonating
+pumps, pylon totem).
+
+### Content — ST MARTIN'S, the cathedral (exterior, complete)
+The landmark the whole sign trail leads to, at (50, 52), 12×16 tiles, building
+kind `C`. Not a box with a steeple: a composite volume built in tile space and
+projected once (`Sprites.makeCathedral`) — nave with a steep slated roof, aisles
+either side under lean-tos, twin west towers, a buttressed east flank, and the
+lead-blue fleche over the crossing. The west front faces SOUTH, at the parvis
+and the last sign of the trail: portal in four recessed orders with oak doors
+and strap hinges, two flanking doors, stained lancets, a traceried rose, saints
+in the gable, cross on the apex. Towers carry blind arcades, saints, a stopped
+clock on each face, louvred belfries, an openwork parapet and pinnacles.
+Paved parvis across the front and a strip down each flank.
+The churchyard (railings, graves, trees) is not built.
 Handmade sign trail (planks, bedsheet banners, painted road arrows) leading
 **only** to the shelter. Fog-of-war map on `M`.
 
@@ -88,6 +101,26 @@ New iso pieces, all built in face space with x/y variants: sheet-steel
 barricade, tall firing screen, sandbag stack, concrete barrier, razor coil,
 stone wall. Upright: burning oil drum, bandit flag pole.
 
+### Content — CANDLELIGHT (interior, second layout)
+Two areas behind the west door, both built to the footprint of the building
+outside. **`candlelight`** is **12×16 — the same tiles as the volume on the
+street** — with 107 of its 192 tiles left to walk on: flagstone, four piers,
+**full-height walls on the north and west only and a ten-pixel kerb on the two
+sides the camera looks over**, and the camp in it — braziers and votive stands,
+sleeping bays on straw, a drum stove, a medbay of two cots, a bench with a
+half-stripped Hunter-Killer whose eye is still lit, pews part broken up for
+timber, a store nobody may open, and a one-tile hatch down to the crypt.
+**`crypt`** is 10×8 under the chancel: brick vaulting, bricked-up burial
+niches, a cistern fed off the roof, grow beds under salvaged lamp strips,
+preserves, a padlocked strongbox.
+The builder refuses to put two things on one tile, and the layout is checked
+for overlaps, reachability and people standing in walls.
+**Seven survivors** — Vesna, Osk, Bo, Sister Ade, Halden, Ivar, Tam — each with
+their own sprite and three lines, cycled one per talk. They are a `folk` list
+beside Marek rather than a rewrite of him.
+**The map table** on the old altar: reading it fills in the whole Fringe map
+(3350 fog cells), once, and it is saved.
+
 ---
 
 ## Outstanding — next session starts here
@@ -104,8 +137,12 @@ stone wall. Upright: burning oil drum, bandit flag pole.
    Marshal (rifle, bursts, takes cover), Bailiff (short-range flusher),
    Spotter (calls them in). Scrappers stay in the yard. Design in
    `design/fringe-plan.html`.
-3. **Candlelight camp + Q2** inside St Martin's: trader, workbench, med
-   station, respawn re-anchor, mission board.
+3. **Candlelight — the rest of it.** The camp is IN (see below). Still to do
+   from `design/candlelight.md`: per-trader stock so Halden and Bo actually
+   trade, Ade healing for a price, the sleeping bay re-anchoring respawn, the
+   tower stair, the strongbox, and Q2 itself. Also the churchyard outside
+   (railings, gravestones, trees, a lych gate) and lit windows now that
+   somebody does live there.
 4. Interiors (enterable shops/houses, roof fade).
 5. Field 12 + the drone crash (Q3) and the Underpass to Ring 4.
 6. Open questions never answered: HHDs dropping their rifles as the ring's
@@ -113,6 +150,11 @@ stone wall. Upright: burning oil drum, bandit flag pole.
    piston maul vs grabber claw vs eye lens).
 
 ## Known risks
+- The cathedral is ~250 px tall and the viewport is 180. From the parvis you
+  get the doors, the rose and the foot of a tower; the tower tops and the
+  fleche sit above the screen edge unless you are up-screen of the building.
+  That is inherent to the projection, not a bug — but if it should read whole
+  from the front it has to come down about a third.
 - Compactor at 200 HP + full heal ≈ 334 damage budget; fine in the arena with
   60 rounds, possibly brutal at the gate with ~18. Tune when playtested.
 - Bandit damage is tuned against a bot that never dodges, shoots or breaks
