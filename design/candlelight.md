@@ -1,7 +1,11 @@
 # CANDLELIGHT — the inside of St Martin's
 
-**Status:** plan, not built. Written 2026-08-19, after the exterior went live.
-**Approval:** waiting on Laurens.
+**Status:** phases A and B built and in the game, plus the map table.
+Written 2026-08-19, approved the same day, first build the same day.
+**Built:** both areas, the shell, the arcade, every fitting, all seven people
+talking, the chests, and the map table that hands you the ring.
+**Not built yet:** trading (Halden, Bo), Ade healing, the sleeping bay
+re-anchoring respawn, the tower stair, the strongbox. Section 5 items 2, 6, 7.
 
 A cathedral is not the point. **A cathedral that people are living in** is the
 point. Everything below is chosen so that the first ten seconds inside say:

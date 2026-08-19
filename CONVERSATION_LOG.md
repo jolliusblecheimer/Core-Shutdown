@@ -638,3 +638,47 @@ everything else in the plan waits on that refactor. Said so plainly rather than
 costing it as an afterthought.
 
 Not built. Five questions at the end need Laurens before phase A starts.
+
+### 80. Building Candlelight — phases A and B
+**Laurens:** "Ok start building the interior"
+**Claude:** Built and in the game: the shell, the camp, the people, and the map
+table. Verified by walking it, not by reasoning about it.
+
+**Two areas.** `candlelight` (28×40) and `crypt` (18×14), with four working
+doors between them and the Fringe. The west door needed two tiles cut out of
+the cathedral's solid block on the facade's centre line — that threshold is
+what makes the portal a door rather than a picture of one.
+
+**The room.** Flagstone, an arcade of piers down both sides (without those it
+is a hall, not a church), walls with blind arches and every third bay glazed.
+Then the camp: braziers and votive stands, curtained bays on straw, a drum
+stove with its flue through a boarded window, two cots behind a surgical drape,
+a bench with a Hunter-Killer half stripped and its eye still lit, pews part
+broken up for timber. The crypt got its own wall kind after the first render
+put **stained glass windows in a cellar**.
+
+**Seven people.** Vesna, Osk, Bo, Sister Ade, Halden, Ivar, Tam — one figure
+sprite parameterised by coat, head and the one thing they carry, which at
+fifteen pixels wide is as much difference as will read. Three lines each,
+cycled one per talk. Nobody learns the player's name.
+
+**The decision worth recording:** the plan called the single-NPC refactor the
+biggest piece of work in the document. I did not do that refactor. Marek is a
+`const npc` named directly by the interaction code, and the camp is a `folk`
+LIST beside him. Same result on screen, none of his mission, trade or dialogue
+re-tested. If a second area ever needs Marek-like behaviour, do it properly
+then.
+
+**The map table works.** Reading it fills the Fringe fog: 36 explored cells to
+3350, once, saved.
+
+Two bugs found by testing, both mine:
+- The crypt's entry point sat inside the crypt's own exit zone, so the stair
+  never re-armed and would not take you back up. Land the player CLEAR of the
+  zone they arrive in.
+- The first pass at the tower-top candles came out as a bonfire in a box.
+  Tapers are one pixel wide.
+
+Not built, and named so it does not look finished: trading (Halden and Bo have
+the lines but no stock), Ade healing, the sleeping bay re-anchoring respawn,
+the tower stair, the strongbox, Q2. Section 5 items 2, 6 and 7 of the plan.

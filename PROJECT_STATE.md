@@ -62,9 +62,25 @@ and strap hinges, two flanking doors, stained lancets, a traceried rose, saints
 in the gable, cross on the apex. Towers carry blind arcades, saints, a stopped
 clock on each face, louvred belfries, an openwork parapet and pinnacles.
 Paved parvis across the front and a strip down each flank.
-Interior, Candlelight and the churchyard (railings, graves, trees) are not built.
+The churchyard (railings, graves, trees) is not built.
 Handmade sign trail (planks, bedsheet banners, painted road arrows) leading
 **only** to the shelter. Fog-of-war map on `M`.
+
+### Content — CANDLELIGHT (interior, first pass)
+Two new areas behind the west door. **`candlelight`** (28×40) is the church
+floor: flagstone, an arcade of piers down both sides, walls with blind arches
+and stained lancets, and the camp in it — braziers and votive stands for light,
+curtained sleeping bays on straw, a drum stove, a medbay of two cots behind a
+surgical drape, a bench with a half-stripped Hunter-Killer whose eye is still
+lit, pews part broken up for timber, a store nobody may open. **`crypt`**
+(18×14) is under the chancel: brick vaulting, bricked-up burial niches, a
+cistern fed off the roof, grow beds under salvaged lamp strips, preserves, and
+a padlocked strongbox.
+**Seven survivors** — Vesna, Osk, Bo, Sister Ade, Halden, Ivar, Tam — each with
+their own sprite and three lines, cycled one per talk. They are a `folk` list
+beside Marek rather than a rewrite of him.
+**The map table** on the old altar: reading it fills in the whole Fringe map
+(3350 fog cells), once, and it is saved.
 
 ---
 
@@ -77,15 +93,12 @@ Handmade sign trail (planks, bedsheet banners, painted road arrows) leading
    Marshal (rifle, bursts, takes cover), Bailiff (short-range flusher),
    Spotter (calls them in). Scrappers stay in the yard. Design in
    `design/fringe-plan.html`.
-3. **Candlelight camp + Q2** inside St Martin's. **Planned in full:
-   `design/candlelight.md`** — two interior areas, six survivors, two traders,
-   sleeping bays that re-anchor respawn, a medbay, a bench with a half-stripped
-   drone on it, a crypt with water and grow beds, and a map table that fills in
-   the Fringe map when you read it. Waiting on approval; the biggest piece of
-   engine work in it is turning the single global `npc` into a list.
-   Still outstanding either way: the churchyard (railings, gravestones, trees,
-   a lych gate) and the glow of a camp behind the glass — the windows are
-   deliberately unlit because nobody lives there yet.
+3. **Candlelight — the rest of it.** The camp is IN (see below). Still to do
+   from `design/candlelight.md`: per-trader stock so Halden and Bo actually
+   trade, Ade healing for a price, the sleeping bay re-anchoring respawn, the
+   tower stair, the strongbox, and Q2 itself. Also the churchyard outside
+   (railings, gravestones, trees, a lych gate) and lit windows now that
+   somebody does live there.
 4. Interiors (enterable shops/houses, roof fade).
 5. Field 12 + the drone crash (Q3) and the Underpass to Ring 4.
 6. Open questions never answered: HHDs dropping their rifles as the ring's
