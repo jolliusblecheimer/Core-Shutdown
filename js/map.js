@@ -427,14 +427,22 @@ function buildFringe() {
   placeBuilding(112, 96, 18, 13, 'T');
   placeBuilding(60, 96, 16, 12, 'N');
 
-  // ST MARTIN'S: the church that becomes Candlelight. It sits well off the
+  // ST MARTIN'S: the cathedral that becomes Candlelight. It sits well off the
   // gate road, north of the east cross — you get there by turning twice, not
   // by walking one straight line from the yard.
-  const CH = { x: 50, y: 54, w: 12, h: 14 };
-  placeBuilding(CH.x, CH.y, CH.w, CH.h, 'R');
-  for (let y = CH.y + CH.h; y < CH.y + CH.h + 2; y++)
-    for (let x = CH.x - 2; x < CH.x + CH.w + 2; x++)
-      if (x > 0 && x < MAP_W - 1 && y < MAP_H - 1 && !solid[y][x]) ground[y][x] = 5;  // forecourt paving
+  // The nave runs NORTH, so the west front — towers, portal, rose — faces
+  // SOUTH, at the parvis and the last sign of the trail. Everything about
+  // the approach depends on that: turn the church round and the player walks
+  // up to a blank flank.
+  const CH = { x: 50, y: 52, w: 12, h: 16 };
+  placeBuilding(CH.x, CH.y, CH.w, CH.h, 'C');
+  // the parvis: paved apron across the front and a strip down each flank
+  for (let y = CH.y + CH.h; y < CH.y + CH.h + 3; y++)
+    for (let x = CH.x - 3; x < CH.x + CH.w + 3; x++)
+      if (x > 0 && x < MAP_W - 1 && y < MAP_H - 1 && !solid[y][x]) ground[y][x] = 5;
+  for (let y = CH.y + 2; y < CH.y + CH.h; y++)
+    for (const x of [CH.x - 2, CH.x - 1, CH.x + CH.w, CH.x + CH.w + 1])
+      if (x > 0 && x < MAP_W - 1 && y < MAP_H - 1 && !solid[y][x]) ground[y][x] = 5;
 
   // walk each street and line it with buildings set back from the pavement
   for (const s of STREETS) {

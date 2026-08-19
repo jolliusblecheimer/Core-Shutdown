@@ -47,9 +47,22 @@ streetlights (20 of 60 lit and casting light), traffic lights, bus stops,
 dumpsters, hydrants, postboxes, queued traffic, a slewed bus.
 **Buildings are single pre-rendered volumes** — 9 styles (house, brick, shop,
 shutter, office, school, church, hotel, bank) with faces + roof sharing real
-corners. Landmarks: Aldergrove Primary, St Martin's church (future
-Candlelight), The Regent Hotel, City & County Bank, and a proper gas station
-(canopy on six pillars, kerbed islands, detonating pumps, pylon totem).
+corners. Landmarks: Aldergrove Primary, The Regent Hotel, City & County Bank,
+and a proper gas station (canopy on six pillars, kerbed islands, detonating
+pumps, pylon totem).
+
+### Content — ST MARTIN'S, the cathedral (exterior, complete)
+The landmark the whole sign trail leads to, at (50, 52), 12×16 tiles, building
+kind `C`. Not a box with a steeple: a composite volume built in tile space and
+projected once (`Sprites.makeCathedral`) — nave with a steep slated roof, aisles
+either side under lean-tos, twin west towers, a buttressed east flank, and the
+lead-blue fleche over the crossing. The west front faces SOUTH, at the parvis
+and the last sign of the trail: portal in four recessed orders with oak doors
+and strap hinges, two flanking doors, stained lancets, a traceried rose, saints
+in the gable, cross on the apex. Towers carry blind arcades, saints, a stopped
+clock on each face, louvred belfries, an openwork parapet and pinnacles.
+Paved parvis across the front and a strip down each flank.
+Interior, Candlelight and the churchyard (railings, graves, trees) are not built.
 Handmade sign trail (planks, bedsheet banners, painted road arrows) leading
 **only** to the shelter. Fog-of-war map on `M`.
 
@@ -65,7 +78,10 @@ Handmade sign trail (planks, bedsheet banners, painted road arrows) leading
    Spotter (calls them in). Scrappers stay in the yard. Design in
    `design/fringe-plan.html`.
 3. **Candlelight camp + Q2** inside St Martin's: trader, workbench, med
-   station, respawn re-anchor, mission board.
+   station, respawn re-anchor, mission board. The exterior is now built; the
+   churchyard around it (railings, gravestones, trees, a lych gate) and the
+   glow of a camp behind the glass are still to do — the windows are
+   deliberately unlit because nobody lives there yet.
 4. Interiors (enterable shops/houses, roof fade).
 5. Field 12 + the drone crash (Q3) and the Underpass to Ring 4.
 6. Open questions never answered: HHDs dropping their rifles as the ring's
@@ -73,6 +89,11 @@ Handmade sign trail (planks, bedsheet banners, painted road arrows) leading
    piston maul vs grabber claw vs eye lens).
 
 ## Known risks
+- The cathedral is ~250 px tall and the viewport is 180. From the parvis you
+  get the doors, the rose and the foot of a tower; the tower tops and the
+  fleche sit above the screen edge unless you are up-screen of the building.
+  That is inherent to the projection, not a bug — but if it should read whole
+  from the front it has to come down about a third.
 - Compactor at 200 HP + full heal ≈ 334 damage budget; fine in the arena with
   60 rounds, possibly brutal at the gate with ~18. Tune when playtested.
 - The Fringe has no enemies yet, so the danger gradient doesn't exist.

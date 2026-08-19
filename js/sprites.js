@@ -1234,6 +1234,7 @@ function outlined(src) {
   // returns { img, ax, ay } — ax/ay is where the building's NORTH tile corner
   // sits inside the image
   Sprites.makeBuilding = function (w, h, kind, seed) {
+    if (kind === 'C') return Sprites.makeCathedral(w, h, seed);
     const key = w + 'x' + h + kind + (seed % 4);
     const hit = buildingCache.get(key);
     if (hit) return hit;
@@ -1576,6 +1577,448 @@ function outlined(src) {
 
     const res = { img: c, ax, ay, h: Hh };
     if (buildingCache.size < 400) buildingCache.set(key, res);
+    return res;
+  };
+
+  // =====================================================================
+  // ST MARTIN'S — THE CATHEDRAL
+  // Every other building is one box. This one is a composite: nave, two
+  // aisles, twin west towers, buttressed flank and the fleche over the
+  // crossing. It is still ONE sprite with ONE depth — nothing is assembled
+  // at runtime, so nothing can drift out of line.
+  //
+  // It is built entirely in TILE SPACE — tx runs world +x (screen
+  // right-down), ty runs world +y (screen left-down), z is real pixels
+  // straight up — and projected once through S(). That is the angle rule
+  // enforced by construction: a ledge, a buttress, a string course or a
+  // window drawn through these helpers CANNOT come out axis-aligned,
+  // because there is no rectangle anywhere in the code to shear. There are
+  // only points in the world.
+  // =====================================================================
+  Sprites.makeCathedral = function (w, h, seed) {
+    const key = 'CATH' + w + 'x' + h;
+    const hit = buildingCache.get(key);
+    if (hit) return hit;
+    const rng = mulberry32((seed || 0) * 2654435761 + 7717);
+
+    // ---- the stone. Warm limestone, lichened and rained on for a century.
+    const ST_L = '#8e8779', ST_S = '#6f6a5e', ST_T = '#a69d8b';
+    const ST_D = '#4a463e', ST_DD = '#332f2a';
+    const SLATE_L = '#4d5972', SLATE_S = '#39435a';
+    const SPIRE_L = '#42638f', SPIRE_S = '#2f4a72', SPIRE_H = '#6288bd';
+    // Glass seen from OUTSIDE an unlit church is nearly black with the colour
+    // only just showing. Bright panes would read as lamps, and nothing is lit
+    // in here yet — Candlelight has not moved in.
+    const GLASS = ['#26365f', '#552027', '#382248', '#20453b', '#5c471f'];
+    const OAK = '#5b4128', OAK_D = '#3a2a1a', IRON = '#3c3a36';
+
+    // ---- the volume, in tiles ----
+    const NF = h - 0.2;                       // the west front: the near wall
+    const NX0 = 3.0, NX1 = 9.0;               // nave walls
+    const AW0 = 0.6, AE1 = 11.4;              // aisle outer walls
+    const AY0 = 1.6, AY1 = h - 3.4;           // aisles run back from the towers
+    const TL0 = 0.2, TL1 = 3.0;               // left (west) tower
+    const TR0 = 8.8, TR1 = 11.8;              // right (east) tower
+    const TY0 = h - 3.4;                      // both towers start here
+    // ---- and in pixels of height ----
+    const PL = 7;                             // the plinth every wall stands on
+    const AISLE = 58, AISLE_TOP = 78;         // aisle eaves · where its roof meets the nave
+    const WALL = 104, RIDGE = 166;            // nave head · ridge. The pitch is
+    // deliberately steeper than 1:2: at anything shallower the FAR slope turns
+    // back towards the camera and shows as a grey sliver above the ridge.
+    const TOW = 178, TOWCAP = 190, PIN = 214, TIP = 248;
+    const FLECHE = 244, CROSSTOP = 256;
+
+    const AX = h * 16, AYo = 152;
+    const c = makeCanvas((w + h) * 16, AYo + (w + h) * 8 + 16), g = c.getContext('2d');
+    const S = (tx, ty, z) => [AX + (tx - ty) * 16, AYo + (tx + ty) * 8 - z];
+
+    // the two faces of a box the camera can see, plus its top
+    const vol = (x0, y0, x1, y1, z0, z1, top, east, south, edge) => {
+      if (top) poly(g, [S(x0, y0, z1), S(x1, y0, z1), S(x1, y1, z1), S(x0, y1, z1)], top, edge);
+      if (east) poly(g, [S(x1, y0, z1), S(x1, y1, z1), S(x1, y1, z0), S(x1, y0, z0)], east, edge);
+      if (south) poly(g, [S(x1, y1, z1), S(x0, y1, z1), S(x0, y1, z0), S(x1, y1, z0)], south, edge);
+    };
+    // A WALL FACE AS (u, v): u runs ALONG the wall in screen pixels — so it
+    // carries the wall's iso slope with it — and v runs straight up. Every
+    // piece of ornament below is placed in these coordinates.
+    const SF = (ty, tx0) => { const o = S(tx0, ty, 0); return (u, v) => [o[0] + u, o[1] + u * 0.5 - v]; };
+    const EF = (tx, ty0) => { const o = S(tx, ty0, 0); return (u, v) => [o[0] - u, o[1] + u * 0.5 - v]; };
+    // detail is INTEGER-FILLED, never a path: a mullion is one pixel wide and
+    // an antialiased edge at that size reads as a smear, not as a soft edge
+    const F = (M, pts, col) => isoFill(g, pts.map(p => M(p[0], p[1])), col);
+    const R = (M, u0, v0, u1, v1, col) => F(M, [[u0, v0], [u1, v0], [u1, v1], [u0, v1]], col);
+
+    // a two-centre gothic arch: each side struck from the opposite springer,
+    // which is what gives the point at the crown
+    const archPts = (u0, u1, vb, vs, va) => {
+      const W2 = u1 - u0, K = (va - vs) / (0.8660254 * W2), N = 8;
+      const pts = [[u0, vb], [u0, vs]];
+      for (let i = 1; i <= N; i++) {
+        const u = u0 + W2 * 0.5 * (i / N);
+        pts.push([u, vs + Math.sqrt(Math.max(0, W2 * W2 - (u - u1) * (u - u1))) * K]);
+      }
+      for (let i = N - 1; i >= 0; i--) {
+        const u = u1 - W2 * 0.5 * (i / N);
+        pts.push([u, vs + Math.sqrt(Math.max(0, W2 * W2 - (u - u0) * (u - u0))) * K]);
+      }
+      pts.push([u1, vb]);
+      return pts;
+    };
+    // coursed ashlar + the grime that runs down a wall under every ledge
+    const ashlar = (M, u0, u1, v0, v1, step) => {
+      for (let v = v0 + step; v < v1; v += step) R(M, u0, v, u1, v + 1, 'rgba(0,0,0,0.09)');
+    };
+    const grime = (M, u0, u1, v0, v1, n) => {
+      for (let i = 0; i < n; i++) {
+        const u = u0 + rng() * (u1 - u0), len = (v1 - v0) * (0.25 + rng() * 0.6);
+        R(M, u, v1 - len, u + 0.9 + rng() * 1.4, v1, 'rgba(46,50,42,0.13)');
+      }
+    };
+    // a moulded band running the width of a face: lit top edge, shadow under
+    const band = (M, u0, u1, v, t) => {
+      R(M, u0, v, u1, v + t, ST_T);
+      R(M, u0, v + t, u1, v + t + 1.2, 'rgba(255,244,220,0.20)');
+      R(M, u0, v - 1.4, u1, v, 'rgba(0,0,0,0.28)');
+    };
+    // a glazed pointed window in a splayed reveal
+    const lancet = (M, u0, u1, vb, vs, va, glass) => {
+      F(M, archPts(u0 - 2, u1 + 2, vb, vs - 2, va + 4), ST_D);
+      F(M, archPts(u0 - 1, u1 + 1, vb, vs - 1, va + 2), ST_DD);
+      F(M, archPts(u0, u1, vb, vs, va), glass);
+      const mid = (u0 + u1) / 2;
+      R(M, mid - 0.7, vb, mid + 0.7, va - 2, ST_S);                       // mullion
+      R(M, u0, vb + (va - vb) * 0.42, u1, vb + (va - vb) * 0.42 + 1.3, ST_S);   // transom
+      R(M, u0, vb, u0 + 1.3, vs, shadeHex(glass, 1.55));                  // light down one jamb
+      R(M, u1 - 1, vb, u1, vs, shadeHex(glass, 0.6));
+    };
+    // a louvred belfry opening — dark, with the slats catching light
+    const louvre = (M, u0, u1, vb, vs, va) => {
+      F(M, archPts(u0 - 2, u1 + 2, vb, vs - 2, va + 4), ST_D);
+      F(M, archPts(u0, u1, vb, vs, va), ST_DD);
+      for (let v = vb + 2; v < va - 3; v += 4) {
+        R(M, u0 + 0.5, v, u1 - 0.5, v + 1.4, '#5d5749');
+        R(M, u0 + 0.5, v + 1.4, u1 - 0.5, v + 2.2, '#2a2723');
+      }
+      R(M, (u0 + u1) / 2 - 0.7, vb, (u0 + u1) / 2 + 0.7, va - 2, ST_S);
+    };
+    // a saint in a canopied niche. Three pixels of shoulder and a head —
+    // at this size that is a person, and a dozen of them is a west front.
+    const statue = (M, cu, vb, hgt) => {
+      F(M, archPts(cu - 3.4, cu + 3.4, vb - 1, vb + hgt * 0.62, vb + hgt + 4), ST_D);
+      F(M, archPts(cu - 2.6, cu + 2.6, vb, vb + hgt * 0.6, vb + hgt + 2.5), ST_DD);
+      R(M, cu - 1.6, vb + 1, cu + 1.6, vb + hgt * 0.74, '#9a9385');       // robe
+      R(M, cu - 0.9, vb + hgt * 0.74, cu + 0.9, vb + hgt * 0.9, '#a9a294'); // head
+      R(M, cu - 1.6, vb + 1, cu - 0.6, vb + hgt * 0.74, '#b0a996');        // lit side
+      R(M, cu + 0.8, vb + 1, cu + 1.6, vb + hgt * 0.74, '#6f6a5c');        // and its shadow
+    };
+    const rose = (M, cu, cv, r) => {
+      const ring = (rr, n) => {
+        const p = [];
+        for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; p.push([cu + Math.cos(a) * rr, cv + Math.sin(a) * rr]); }
+        return p;
+      };
+      F(M, ring(r + 4, 24), ST_T);
+      F(M, ring(r + 2, 24), ST_D);
+      // Tracery, not a pinwheel: the stone between the lights is as wide as
+      // the lights, and a second ring cuts every spoke in two.
+      for (let k = 0; k < 10; k++) {
+        const a0 = k / 10 * Math.PI * 2 + 0.16, a1 = (k + 1) / 10 * Math.PI * 2 - 0.16;
+        const col = GLASS[k % 2 ? 0 : (k % 4 === 0 ? 1 : 2)];
+        for (const [r0, r1] of [[5.5, r * 0.6 - 0.8], [r * 0.6 + 0.8, r]])
+          F(M, [[cu + Math.cos(a0) * r0, cv + Math.sin(a0) * r0],
+                [cu + Math.cos(a0) * r1, cv + Math.sin(a0) * r1],
+                [cu + Math.cos(a1) * r1, cv + Math.sin(a1) * r1],
+                [cu + Math.cos(a1) * r0, cv + Math.sin(a1) * r0]], col);
+      }
+      F(M, ring(5.6, 12), ST_T);
+      F(M, ring(4, 10), GLASS[1]);
+    };
+    const clock = (M, cu, cv, r) => {
+      const ring = (rr, n, col) => {
+        const p = [];
+        for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; p.push([cu + Math.cos(a) * rr, cv + Math.sin(a) * rr]); }
+        F(M, p, col);
+      };
+      ring(r + 2, 20, ST_T);
+      ring(r, 20, '#cdc6b3');
+      for (let i = 0; i < 12; i++) {                       // hour marks
+        const a = i / 12 * Math.PI * 2;
+        R(M, cu + Math.cos(a) * (r - 1.6) - 0.6, cv + Math.sin(a) * (r - 1.6) - 0.6,
+          cu + Math.cos(a) * (r - 1.6) + 0.6, cv + Math.sin(a) * (r - 1.6) + 0.6, '#4a4438');
+      }
+      R(M, cu - 0.7, cv, cu + 0.7, cv + r * 0.7, '#2e2a24');            // hands, stopped
+      R(M, cu - 0.7, cv - 0.7, cu + r * 0.55, cv + 0.7, '#2e2a24');
+    };
+    // slates laid down a roof slope, in the slope's own space so the courses
+    // follow the pitch instead of the screen
+    const slates = (rFar, rNear, eNear, eFar, base, rows, cols, wear) => {
+      poly(g, [rFar, rNear, eNear, eFar], base, '#1b1e22');
+      const L = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+      for (let r = 1; r < rows; r++) {
+        const t = r / rows, a = L(rFar, eFar, t), b = L(rNear, eNear, t);
+        g.lineWidth = 1;
+        g.strokeStyle = 'rgba(0,0,0,0.24)';
+        g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke();
+        const a2 = L(rFar, eFar, t + 0.014), b2 = L(rNear, eNear, t + 0.014);
+        g.strokeStyle = 'rgba(206,224,248,0.08)';
+        g.beginPath(); g.moveTo(a2[0], a2[1]); g.lineTo(b2[0], b2[1]); g.stroke();
+      }
+      for (let k = 1; k < cols; k++) {
+        const t = k / cols, a = L(rFar, rNear, t), b = L(eFar, eNear, t);
+        g.strokeStyle = 'rgba(0,0,0,0.13)'; g.lineWidth = 1;
+        g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke();
+      }
+      // patches: slates relaid in a different batch, and holes where a course
+      // has come off. A roof this old is never one flat colour.
+      const at = (uu, vv) => L(L(rFar, eFar, vv), L(rNear, eNear, vv), uu);
+      for (let i = 0; i < (wear || 0); i++) {
+        const u = rng() * 0.86, v = rng() * 0.82;
+        const uw = 0.04 + rng() * 0.1, vh = 0.05 + rng() * 0.11;
+        poly(g, [at(u, v), at(u + uw, v), at(u + uw, v + vh), at(u, v + vh)],
+          rng() < 0.42 ? 'rgba(0,0,0,0.17)' : 'rgba(196,216,246,0.06)');
+      }
+    };
+    // a tapered spike — pinnacle, spirelet, fleche. Two faces and a lit arris.
+    const spike = (cx, cy, s, z0, z1, lit, dark, hi) => {
+      const ap = S(cx, cy, z1);
+      poly(g, [S(cx + s, cy - s, z0), S(cx + s, cy + s, z0), ap], lit);
+      poly(g, [S(cx + s, cy + s, z0), S(cx - s, cy + s, z0), ap], dark);
+      if (hi) {
+        g.strokeStyle = hi; g.lineWidth = 1;
+        const b = S(cx + s, cy + s, z0);
+        g.beginPath(); g.moveTo(b[0], b[1]); g.lineTo(ap[0], ap[1]); g.stroke();
+      }
+    };
+    // a buttress: a pier standing off the wall, stepped back once at a
+    // weathered set-off, so rain runs off it instead of down the wall
+    const buttress = (x0, y0, x1, y1, z, cap) => {
+      const sx = (x1 - x0) * 0.16, sy = (y1 - y0) * 0.16;
+      vol(x0, y0, x1, y1, PL, z * 0.55, ST_T, ST_L, ST_S, '#1b1e22');
+      vol(x0 + sx, y0 + sy, x1 - sx, y1 - sy, z * 0.55, z, ST_T, shadeHex(ST_L, 1.04), ST_S, '#1b1e22');
+      if (cap) spike((x0 + x1) / 2, (y0 + y1) / 2, (x1 - x0) / 2 - sx,
+                     z, z + cap, ST_L, ST_S, 'rgba(255,246,224,0.35)');
+    };
+
+    // =========================== THE BUILD ===========================
+    // Back to front: west aisle, west tower, nave, east aisle, fleche, east
+    // tower. Anything nearer is drawn later, so the near work paints over
+    // the far work and the engaged corners close up properly.
+
+    // ---- the plinth the whole church stands on ----
+    vol(0.15, 0.15, w - 0.15, h - 0.15, 0, PL, ST_T, ST_L, ST_S, '#1b1e22');
+    R(SF(h - 0.15, 0.15), 0, 0, (w - 0.3) * 16, 2, 'rgba(0,0,0,0.25)');
+
+    // ---- west aisle (far side): only its roof clears the nave ----
+    vol(AW0, AY0, NX0, AY1, PL, AISLE, null, null, ST_S, '#1b1e22');
+
+    // tower body, shared by both. `east` draws the +x face — the west tower
+    // is engaged with the nave on that side, so it has none to show.
+    const tower = (x0, x1, east) => {
+      const TW = (x1 - x0) * 16, TD = (NF - TY0) * 16;
+      vol(x0, TY0, x1, NF, PL, TOW, null, east ? ST_L : null, ST_S, '#1b1e22');
+      const M = SF(NF, x0);
+      ashlar(M, 0, TW, PL, TOW, 7);
+      grime(M, 2, TW - 2, PL, TOW, 9);
+      band(M, 0, TW, 46, 2.4);
+      band(M, 0, TW, 88, 2.4);
+      band(M, 0, TW, 128, 2.4);
+      // stage 1: a blind arcade at street level
+      for (let i = 0; i < 3; i++) {
+        const cu = TW * (i + 0.5) / 3;
+        F(M, archPts(cu - 5, cu + 5, PL + 4, 24, 38), ST_D);
+        F(M, archPts(cu - 3.6, cu + 3.6, PL + 5, 24, 36), ST_DD);
+      }
+      // stage 2: saints under canopies
+      statue(M, TW * 0.28, 54, 22);
+      statue(M, TW * 0.72, 54, 22);
+      // stage 3: the clock, stopped
+      clock(M, TW / 2, 106, 11);
+      // stage 4: the belfry
+      louvre(M, TW * 0.22, TW * 0.42, 134, 158, 170);
+      louvre(M, TW * 0.58, TW * 0.78, 134, 158, 170);
+      if (east) {
+        const E = EF(x1, TY0);
+        ashlar(E, 0, TD, PL, TOW, 7);
+        grime(E, 2, TD - 2, PL, TOW, 7);
+        band(E, 0, TD, 46, 2.4); band(E, 0, TD, 88, 2.4); band(E, 0, TD, 128, 2.4);
+        for (let i = 0; i < 2; i++) {
+          const cu = TD * (i + 0.5) / 2;
+          F(E, archPts(cu - 5, cu + 5, PL + 4, 24, 38), ST_D);
+        }
+        statue(E, TD * 0.3, 54, 22); statue(E, TD * 0.7, 54, 22);
+        clock(E, TD / 2, 106, 11);
+        louvre(E, TD * 0.2, TD * 0.4, 134, 158, 170);
+        louvre(E, TD * 0.6, TD * 0.8, 134, 158, 170);
+      }
+      // corner buttresses, clasping the tower right up to the belfry
+      const bs = 0.55;
+      buttress(x0 - 0.15, NF - bs, x0 + bs, NF + 0.15, 148, 12);
+      buttress(x1 - bs, NF - bs, x1 + 0.15, NF + 0.15, 148, 12);
+      if (east) buttress(x1 - bs, TY0 - 0.15, x1 + 0.15, TY0 + bs, 148, 12);
+      // cornice, then the parapet standing above it
+      vol(x0 - 0.2, TY0 - 0.2, x1 + 0.2, NF + 0.2, TOW, TOWCAP, ST_T, ST_L, ST_S, '#1b1e22');
+      const PM = SF(NF + 0.2, x0 - 0.2), PW = (x1 - x0 + 0.4) * 16;
+      for (let i = 0; i < 6; i++)                       // openwork parapet
+        R(PM, PW * (i + 0.25) / 6, TOW + 2, PW * (i + 0.75) / 6, TOWCAP - 2, ST_DD);
+      // four pinnacles and the spirelet between them
+      for (const [px2, py2] of [[x0 + 0.3, TY0 + 0.3], [x1 - 0.3, TY0 + 0.3],
+                                [x0 + 0.3, NF - 0.3], [x1 - 0.3, NF - 0.3]])
+        spike(px2, py2, 0.32, TOWCAP, PIN, ST_L, ST_S, 'rgba(255,246,224,0.40)');
+      // the tower caps are slated like the roofs. Only the fleche is lead-blue
+      // — one accent, or the whole skyline turns into a fairground.
+      spike((x0 + x1) / 2, (TY0 + NF) / 2, (x1 - x0) / 2 - 0.55, TOWCAP, TIP,
+            SLATE_L, SLATE_S, 'rgba(200,220,248,0.35)');
+    };
+
+    tower(TL0, TL1, false);
+
+    // ---- the nave: walls, then the steep slate roof ----
+    vol(NX0, AY0, NX1, NF, PL, WALL, null, ST_L, ST_S, '#1b1e22');
+    {
+      const E = EF(NX1, AY0), EL = (NF - AY0) * 16;
+      ashlar(E, 0, EL, PL, WALL, 7);
+      grime(E, 2, EL - 2, AISLE_TOP, WALL, 12);
+      band(E, 0, EL, 79, 2.2);
+      band(E, 0, EL, WALL - 4, 2.6);
+      // clerestory: the row of windows above the aisle roof, which is the
+      // whole point of a nave — light in over the top of the aisle
+      const bays = 5;
+      for (let i = 0; i < bays; i++) {
+        const cu = EL * (i + 0.5) / bays;
+        lancet(E, cu - 7, cu + 7, AISLE_TOP + 4, 92, 100, GLASS[i % GLASS.length]);
+      }
+    }
+    // the roof. Ridge runs north–south along the nave, so the west front
+    // gets a gable and the flank gets one long slope.
+    const rMid = (NX0 + NX1) / 2;
+    slates(S(rMid, AY0, RIDGE), S(rMid, NF, RIDGE), S(NX1, NF, WALL), S(NX1, AY0, WALL),
+           SLATE_L, 13, 16, 26);
+    poly(g, [S(NX0, AY0, WALL), S(NX1, AY0, WALL), S(rMid, AY0, RIDGE)], SLATE_S);   // far gable
+    { // ridge cap and its crockets
+      const a = S(rMid, AY0, RIDGE), b = S(rMid, NF, RIDGE);
+      g.strokeStyle = ST_T; g.lineWidth = 2;
+      g.beginPath(); g.moveTo(a[0], a[1] - 1); g.lineTo(b[0], b[1] - 1); g.stroke();
+      g.strokeStyle = '#20242c'; g.lineWidth = 1;
+      g.beginPath(); g.moveTo(a[0], a[1] + 1); g.lineTo(b[0], b[1] + 1); g.stroke();
+      for (let t = 0.06; t < 0.98; t += 0.075) {
+        const p = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+        px(g, Math.round(p[0]) - 1, Math.round(p[1]) - 4, 2, 4, '#7f8ba3');
+      }
+    }
+
+    // ---- THE WEST FRONT ----
+    // The face the road brings you to. Portal, two doors, the rose, and a
+    // gallery of saints under the gable.
+    {
+      const M = SF(NF, NX0), FW = (NX1 - NX0) * 16;      // 96 px of wall
+      ashlar(M, 0, FW, PL, WALL, 7);
+      grime(M, 2, FW - 2, PL, WALL, 14);
+
+      // the great door, in four recessed orders
+      for (let o = 0; o < 4; o++) {
+        const s2 = o * 1.9;
+        F(M, archPts(30 - s2 + 5.7, 66 + s2 - 5.7, PL, 40 - s2 * 0.4, 58 + s2 * 0.9),
+          o % 2 ? ST_D : ST_S);
+      }
+      F(M, archPts(37, 59, PL, 40, 56), ST_DD);          // the opening itself
+      R(M, 38, PL, 47.4, 44, OAK); R(M, 48.6, PL, 58, 44, OAK);   // two door leaves
+      for (let v = PL + 3; v < 42; v += 5) { R(M, 38, v, 58, v + 1.2, OAK_D); }
+      R(M, 47.4, PL, 48.6, 46, IRON);                    // the meeting stile
+      R(M, 40, 20, 45, 21.6, IRON); R(M, 51, 20, 56, 21.6, IRON);  // strap hinges
+      F(M, archPts(38, 58, 43, 47, 56), ST_DD);          // tympanum over the doors
+      statue(M, 48, 45, 9);                              // the figure in it
+      band(M, 26, 70, 60, 2.2);
+
+      // the flanking doors, and the tall windows over them
+      for (const cu of [14, 82]) {
+        F(M, archPts(cu - 9, cu + 9, PL, 26, 36), ST_D);
+        F(M, archPts(cu - 7, cu + 7, PL, 26, 34), ST_DD);
+        R(M, cu - 6, PL, cu - 0.6, 27, OAK); R(M, cu + 0.6, PL, cu + 6, 27, OAK);
+        R(M, cu - 0.6, PL, cu + 0.6, 29, IRON);
+        band(M, cu - 12, cu + 12, 40, 2);
+        lancet(M, cu - 7, cu + 7, 50, 84, 96, GLASS[cu > 48 ? 1 : 0]);
+        statue(M, cu - 13.5, 52, 16);
+        statue(M, cu + 13.5, 52, 16);
+      }
+
+      // the rose
+      rose(M, 48, 82, 17);
+
+      // the gable above the wall head, and the gallery of saints in it
+      poly(g, [S(NX0, NF, WALL), S(NX1, NF, WALL), S(rMid, NF, RIDGE)], ST_S, '#1b1e22');
+      const gable = M;
+      band(gable, 0, FW, WALL - 4, 2.6);
+      // coursed stone that stops at the rake, since the gable is a triangle
+      for (let v = WALL + 5; v < RIDGE - 6; v += 7) {
+        const hw = (1 - (v - WALL) / (RIDGE - WALL)) * (FW / 2) - 2;
+        if (hw > 3) R(gable, 48 - hw, v, 48 + hw, v + 1, 'rgba(0,0,0,0.09)');
+      }
+      for (const cu of [33, 48, 63]) statue(gable, cu, WALL + 6, 15);
+      // the gable rakes: a moulded coping either side, meeting at the apex
+      for (const s2 of [-1, 1]) {
+        const a = S(s2 < 0 ? NX0 : NX1, NF, WALL), b = S(rMid, NF, RIDGE);
+        g.strokeStyle = ST_T; g.lineWidth = 2;
+        g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke();
+      }
+      // an oculus in the gable, and the cross on the apex
+      const OCV = WALL + 38, ring = [];
+      for (let i = 0; i < 14; i++) { const a = i / 14 * Math.PI * 2; ring.push([48 + Math.cos(a) * 6.5, OCV + Math.sin(a) * 6.5]); }
+      F(gable, ring, ST_D);
+      const ring2 = ring.map(p => [48 + (p[0] - 48) * 0.7, OCV + (p[1] - OCV) * 0.7]);
+      F(gable, ring2, GLASS[0]);
+      const ap = S(rMid, NF, RIDGE);
+      px(g, Math.round(ap[0]) - 1, Math.round(ap[1]) - 13, 2, 13, ST_T);
+      px(g, Math.round(ap[0]) - 4, Math.round(ap[1]) - 10, 8, 2, ST_T);
+    }
+
+    // ---- east aisle: the flank the street sees, buttress by buttress ----
+    // It starts at the NAVE wall, not at the far side of the church: run it
+    // the full width and its south end becomes a grey slab across the west
+    // front, because that end is drawn after the facade it sits behind.
+    vol(NX1, AY0, AE1, AY1, PL, AISLE, null, ST_L, null, '#1b1e22');
+    {
+      const E = EF(AE1, AY0), AL = (AY1 - AY0) * 16;
+      ashlar(E, 0, AL, PL, AISLE, 7);
+      grime(E, 2, AL - 2, PL, AISLE, 8);
+      const bays = 5;
+      for (let i = 0; i < bays; i++) {
+        const cu = AL * (i + 0.5) / bays;
+        lancet(E, cu - 6, cu + 6, 18, 40, 50, GLASS[(i + 2) % GLASS.length]);
+      }
+      band(E, 0, AL, AISLE - 7, 2.4);
+      // the lean-to roof, from the aisle eaves up to the nave wall
+      slates(S(NX1, AY0, AISLE_TOP), S(NX1, AY1, AISLE_TOP), S(AE1, AY1, AISLE), S(AE1, AY0, AISLE),
+             SLATE_S, 5, 12, 10);
+      // a pier between every bay. They stand OFF the wall, so each one is a
+      // little volume of its own on the iso grid — not a stripe painted on
+      // the face, which is what a buttress becomes if you draw it flat.
+      for (let i = 0; i <= bays; i++) {
+        const ty = AY0 + (AY1 - AY0) * (i / bays);
+        buttress(AE1 - 0.05, ty - 0.26, AE1 + 0.4, ty + 0.26, AISLE - 8, 11);
+      }
+      // the aisle's south end is engaged with the tower and never seen —
+      // drawing it here is what put a grey slab across the west front
+    }
+
+    // ---- the fleche over the crossing ----
+    {
+      const fx = rMid, fy = AY0 + (NF - AY0) * 0.5;
+      vol(fx - 0.55, fy - 0.55, fx + 0.55, fy + 0.55, RIDGE - 12, RIDGE + 16, null, SPIRE_L, SPIRE_S, '#1b1e22');
+      const M = SF(fy + 0.55, fx - 0.55);
+      louvre(M, 3, 14, RIDGE - 6, RIDGE + 8, RIDGE + 13);
+      spike(fx, fy, 0.62, RIDGE + 16, FLECHE, SPIRE_L, SPIRE_S, 'rgba(190,215,250,0.5)');
+      spike(fx, fy, 0.3, RIDGE + 16, FLECHE - 4, SPIRE_H, SPIRE_L, null);
+      const ap = S(fx, fy, FLECHE);
+      px(g, Math.round(ap[0]) - 1, Math.round(ap[1]) - (CROSSTOP - FLECHE), 2, CROSSTOP - FLECHE, '#b9b09c');
+      px(g, Math.round(ap[0]) - 4, Math.round(ap[1]) - (CROSSTOP - FLECHE) + 3, 9, 2, '#b9b09c');
+    }
+
+    // ---- east tower, nearest of all ----
+    tower(TR0, TR1, true);
+
+    const res = { img: c, ax: AX, ay: AYo, h: WALL };
+    buildingCache.set(key, res);
     return res;
   };
 

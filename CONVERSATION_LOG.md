@@ -368,3 +368,52 @@ integer-filled.**
   Candlelight (trader, workbench, med station, respawn re-anchor, mission
   board) + Q2 remain outstanding item 3 in `PROJECT_STATE.md`.
 No code touched.
+
+### 72. Build the cathedral — exterior
+**Laurens:** "Create the cathedral, if you can run a localhost on ipad do that,
+if not code on github instantly, just start with the exterior for now." — with
+two references: a gothic west front (twin towers, rose window, spire, statues,
+stained glass) and a small pixel-art church.
+**Claude:** A localhost in this container cannot be reached from the iPad, so
+the loop was: build → render headless in Chromium → read the screenshot →
+fix → push. Four render passes.
+
+`Sprites.makeCathedral` replaces the church box at St Martin's (building kind
+`C`, footprint grown to 12×16 at (50, 52), with a paved parvis across the front
+and a strip down each flank). It is a **composite** volume — nave, two aisles,
+twin west towers, buttressed east flank, fleche over the crossing — but still
+ONE sprite with ONE depth, so nothing is assembled at runtime.
+
+The method is the thing worth keeping: everything is built in **tile space**
+(`tx`, `ty`, `z`) and projected once through `S()`. That makes the angle rule
+structural rather than a check — there is no rectangle in the code to shear, so
+a buttress is a box in the world, a string course is a band on a wall in the
+world, and the rose window is a circle in a wall plane that comes out sheared
+because the wall is. Written up in `art-style.md`.
+
+The west front faces SOUTH, because that is where the parvis, the trail and the
+last sign ("YOU MADE IT. KNOCK.") are. Turn the church round and the player
+walks two miles of signs to a blank flank.
+
+Three bugs found by looking at the render, all worth remembering:
+- A grey slab across the rose window — the east aisle was run the full width of
+  the church, so its south end was drawn on top of the facade it stands behind.
+  Engaged faces must not be drawn.
+- The fleche was clipped by the top of the sprite canvas.
+- The far roof slope showed as a sliver above the ridge until the pitch was
+  made steeper than 1:2, which is where that slope turns away from the camera.
+
+Glass is nearly black with the colour only just showing: nothing is lit in
+there yet — Candlelight has not moved in.
+
+**Verified in the browser** (Chromium, `TEST_MODE` set before any game code ran,
+so the real save was never touched): no console errors; shot at the doors, on
+the parvis, along the flank and from the road. **Honest limitation:** the
+building is ~250 px tall and the viewport is 180, so from the front you see the
+portal, the doors and the rose, and the towers run off the top of the screen.
+That is the projection, not a bug — but it can come down a third if it should
+read whole from the parvis.
+
+Pushed rather than held back for approval, against the local-first rule, on
+Laurens' explicit instruction ("code on github instantly"). Interior,
+Candlelight, and the churchyard (railings, graves, trees) are not built.
