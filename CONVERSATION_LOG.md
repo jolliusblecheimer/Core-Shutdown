@@ -350,3 +350,45 @@ and moved every piece of wall detail onto it. The big face quads still use
 **The rule is now consistent across the project: geometry big enough to have a
 silhouette may be a path; anything smaller than about ten pixels must be
 integer-filled.**
+
+## Session 2 — 2026-08-19
+
+### 71. Read the docs, then: the church looks like a hotel
+**Laurens:** Read all the .md files. Then: do you have everything you need to
+build a custom building for the city? — and the building is **St Martin's**:
+*"the church for the main quest looks more like a hotel, make it look more like
+a cathedral"*, with two references (a gothic west front — twin towers, rose
+window, great portal, stained lancets, buttresses, churchyard — and a small
+pixel church with a verdigris copper spire).
+**Claude:** Read all sixteen docs, then traced the church through the code
+before proposing anything.
+
+**The diagnosis:** the church is `kind: 'R'` running through the *same generic
+path as every other building*. `BUILD_STYLE.R` changes six colours, the height
+and the ridge; everything else is shared code — including `winRow`'s grid of
+small dark rectangles, which is precisely what makes a building read as a hotel.
+Plus the generic `isSouth` door (one 14%-wide rectangle) instead of a portal, no
+vertical articulation, and a 14px ridge cross as the only church cue in the
+whole building. It is a hotel with a cross on it.
+
+**Found dead code while checking:** `drawRoof()`'s pitched branch
+(`game.js:963`) and the `kind === 'R'` facade panel (`sprites.js:797`) both
+still carry their own church drawing from the retired wall-panel system — only
+`canopy` calls `drawRoof` now. Inert, but a trap for whoever edits the church
+next. To be deleted with this work.
+
+**Plan written to `design/cathedral.md`, awaiting approval.** The key move is
+orientation, not detail: the camera shows the south and east faces, and the
+player arrives from the south off the east cross — so the footprint goes
+**12×14 → 10 wide × 22 long**, making the south face the **west front** (towers,
+rose, portal, seen three-quarters on) and the east face the **nave flank**
+(buttressed bays receding). The near-square box cannot produce that composition
+at any level of detail. Then: twin towers at ~1.7× nave height, recessed pointed
+portal, buttress fins with pinnacles, tall stained lancets with a warm glow
+(Candlelight is lit from inside — story-true), ridge 20 → 34, and a verdigris
+copper flèche. Still **one pre-rendered volume from shared corners**, towers
+included, so the panel rule is untouched; all detail integer-filled, with a new
+scanline disc helper for the rose window because `ctx.arc` would scuff exactly
+like the walls did in #70. Churchyard held back as a second pass.
+No code written yet — plan first, and this is a big art change, so it gets built
+locally and screenshotted before any push.
