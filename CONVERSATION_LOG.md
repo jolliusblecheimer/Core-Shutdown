@@ -374,3 +374,33 @@ history. No code touched. Three drift items worth recording:
   silhouette may be a `poly()` path, anything under ~10px must be integer-filled
   — is written into `art-style.md`'s vehicle section but not into `CLAUDE.md`'s
   hard-won rules, where the angle rule sits. It is the same class of rule.
+
+### 72. Map UI overhaul — the plan
+**Laurens:** Overhaul the map UI. The minimap always shows the area you are in,
+and so does `M` — but you can zoom out to see every area you have knowledge of,
+the whole map. Little icons for what is where; camps get their own icon, and
+clicking one explains the camp and offers fast travel. NPCs off the minimap. The
+quest hint is a good idea — keep the junkyard green, but make it a **dot, not a
+pixel**, and clicking it on `M` explains the current quest ("talk to the
+survivor", "reach the cathedral camp", "clear the bandits").
+**Claude:** Read the existing map code and wrote `design/map-ui.md` — plan only,
+nothing built. Three things in the existing code make it cheaper than it looks:
+the world already freezes while `M` is open, `#ui` is `pointer-events:none` so
+clicks land in view space with no plumbing, and **fog of war is already saved per
+area** — so "have I discovered this place" and "can I fast travel there" both
+derive from data already in the save. **No save version bump, no migration.**
+The shape: one POI registry keyed on fog for discovery; six 7×7 integer-filled
+icons; a `currentObjective()` that feeds the HUD line, the minimap dot and the
+map dot from one source, replacing the hard-coded objective string. The
+Compactor is deliberately never marked — a dot would give away the gate ambush.
+**Laurens' answers to the three open questions:**
+- **True relative scale** — and *"make it so i can zoom in and out with scroll
+  weel"*. So not two fixed view levels: one world coordinate space, continuous
+  wheel zoom about the cursor, drag to pan, with icons at fixed pixel size and
+  decluttering by zoom band.
+- **Fast travel from anywhere**, blocked while anything is hunting you. Camps
+  only as a destination. This closes the open question in `world-map.md`.
+- **Fog the minimap**, softly dimmed rather than black, so the two maps finally
+  agree about what the traveller knows.
+Six-step build order in the doc; steps 1–3 stand alone if the rest is deferred.
+Awaiting approval before any code.
