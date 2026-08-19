@@ -1241,13 +1241,16 @@ function drawProp(p, x, y) {
     addLight(x + 10, y - 16, 0, 16, '255,210,140', 0.30);
   }
   else if (T === 'chest') { img = Sprites.chest[p.open ? 1 : 0]; oyOff = -13; drawShadow(x, y, 8); }
-  else if (T === 'stairDown') { img = Sprites.stairDown; oyOff = -14; }
-  else if (T === 'stairUp') { img = Sprites.stairDown; oyOff = -14; }
+  else if (T === 'stairDown' || T === 'stairUp') {
+    img = T === 'stairUp' ? Sprites.stairUp : Sprites.stairDown;
+    oyOff = -11;
+    addLight(x, y - 4, 0, 13, T === 'stairUp' ? '255,210,140' : '120,140,170', 0.22);
+  }
   else if (T === 'rope') { img = Sprites.rope; oyOff = -7; }
   else if (T === 'cistern') { img = Sprites.cistern; oyOff = -22; drawShadow(x, y, 9); }
   else if (T === 'growBed') {
     img = Sprites.growBed; oyOff = -14; drawShadow(x, y, 13);
-    addLight(x, y - 12, 0, 16, '190,160,255', 0.24);
+    addLight(x, y - 12, 0, 20, '190,160,255', 0.32);
   }
   else if (T === 'preserves') { img = Sprites.preserves; oyOff = -14; drawShadow(x, y, 8); }
   else if (T === 'strongbox') { img = Sprites.strongbox; oyOff = -14; drawShadow(x, y, 8); }

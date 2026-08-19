@@ -1401,14 +1401,54 @@ function outlined(src) {
     };
     Sprites.chest = [chest(false), chest(true)];
 
-    // ---- stairs down to the crypt, and the roped stair up the tower
-    { const c = makeCanvas(28, 20), g = c.getContext('2d');
-      px(g, 0, 0, 28, 20, '#2a2724');                                    // the hole
-      for (let i = 0; i < 5; i++) {
-        px(g, 2 + i * 2, 3 + i * 3, 24 - i * 4, 3, '#6f6a5e');
-        px(g, 2 + i * 2, 3 + i * 3, 24 - i * 4, 1, '#837d6f');
+    // ---- THE CRYPT STAIR.
+    // The first version was a stack of horizontal bars in a box, which is the
+    // flat-rectangle-on-an-iso-floor mistake in its purest form: a stair lies
+    // on the ground, so its treads have to run DOWN THE GRID. This one is
+    // built in tile space and projected, like everything else that touches
+    // the floor — two tiles of opening, five treads descending north, a kerb
+    // round the hole and a rail you can see from across the room.
+    const isoStair = (down) => {
+      const c = makeCanvas(90, 76), g = c.getContext('2d');
+      const AX = 40, AY = 16;
+      const P = (tx, ty, z) => [AX + (tx - ty) * 16, AY + (tx + ty) * 8 - z];
+      const quad = (a, b, c2, d, col, edge) => poly(g, [P(...a), P(...b), P(...c2), P(...d)], col, edge);
+      // Two tiles wide and TWO deep, and the flight descends towards the
+      // camera. That is the only direction stairs read from in this
+      // projection: every riser then faces +y, straight at you, and you are
+      // looking into the flight instead of edge-on across it.
+      quad([0, 0, 0], [2, 0, 0], [2, 2, 0], [0, 2, 0], '#0e0c0a');
+      for (let i = 0; i < 4; i++) {
+        const t0 = 0.06 + i * 0.47, t1 = t0 + 0.47, z = -i * 10;
+        quad([0.12, t0, z], [1.88, t0, z], [1.88, t1, z], [0.12, t1, z],
+             ['#a8a191', '#8b8577', '#6e695e', '#565149'][i]);                 // tread
+        quad([0.12, t1, z], [1.88, t1, z], [1.88, t1, z - 10], [0.12, t1, z - 10],
+             ['#4a453d', '#3e3a33', '#332f2a', '#2a2724'][i]);                 // riser, facing you
       }
-      Sprites.stairDown = outlined(c); }
+      // coping on the FAR two sides only. Put it on the near sides and it
+      // stands in front of the flight and hides the thing it is framing.
+      const lip = (x0, y0, x1, y1) => {
+        quad([x0, y0, 7], [x1, y0, 7], [x1, y1, 7], [x0, y1, 7], '#b0a898');
+        quad([x1, y0, 7], [x1, y1, 7], [x1, y1, 0], [x1, y0, 0], '#8b8577');
+        quad([x1, y1, 7], [x0, y1, 7], [x0, y1, 0], [x1, y1, 0], '#6e695e');
+      };
+      lip(-0.18, -0.18, 2.18, 0.04);
+      lip(-0.18, -0.18, 0.04, 2.18);
+      // handrail down the east side, on posts. The one bright diagonal is what
+      // says "stairs" at a glance, before any of the treads register.
+      for (let i = 0; i < 4; i++) {
+        const a = P(1.94, 0.1 + i * 0.6, 0), b = P(1.94, 0.1 + i * 0.6, 22 - i * 8);
+        px(g, Math.round(a[0]) - 1, Math.round(b[1]), 2, Math.max(2, Math.round(a[1] - b[1])), '#6a6258');
+      }
+      g.strokeStyle = '#c2b9a5'; g.lineWidth = 2;
+      const r0 = P(1.94, 0.1, 22), r1 = P(1.94, 1.9, -2);
+      g.beginPath(); g.moveTo(r0[0], r0[1]); g.lineTo(r1[0], r1[1]); g.stroke();
+      if (!down) quad([0.12, 0.06, 0], [1.88, 0.06, 0], [1.88, 0.53, 0], [0.12, 0.53, 0],
+                      'rgba(255,220,160,0.30)');
+      return outlined(c);
+    };
+    Sprites.stairDown = isoStair(true);
+    Sprites.stairUp = isoStair(false);
 
     { const c = makeCanvas(16, 8), g = c.getContext('2d');               // rope barrier
       px(g, 1, 2, 2, 6, '#4a423a'); px(g, 13, 2, 2, 6, '#4a423a');

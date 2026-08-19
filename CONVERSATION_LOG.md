@@ -682,3 +682,40 @@ Two bugs found by testing, both mine:
 Not built, and named so it does not look finished: trading (Halden and Bo have
 the lines but no stock), Ade healing, the sleeping bay re-anchoring respawn,
 the tower stair, the strongbox, Q2. Section 5 items 2, 6 and 7 of the plan.
+
+### 81. Compacting Candlelight, and stairs that read as stairs
+**Laurens:** "Try making it a bit more compact the interior is multiple times as
+big as the exterior. Fix the stairs they are barely visible and the wrong angle.
+Also there is too much empty space... Make sure the floor of the cathedral is as
+big as from the exterior"
+**Claude:** All three, and the first one caused the third.
+
+**The floor is the footprint now.** It was 28×40 while the building outside is
+12×16 — seven times the area. You walked in and the cathedral became a
+warehouse, and half of it was empty because there is nowhere near enough camp
+to fill seven times the building. It is 12×16 exactly, and the crypt went from
+18×14 to 10×8 (it is under the chancel; it should be a fraction of the church).
+Everything the plan asked for is still in there. It is all just within arm's
+reach, which is what a camp squeezed into a church should feel like anyway.
+Three piers a side instead of nine — at this size any more and there is no
+floor left to stand on, and three still say "church".
+
+**The stairs.** Two things were wrong.
+1. **The angle.** A stack of horizontal bars in a box: the flat-rectangle-on-an-
+   iso-floor mistake in its purest form. They are built in tile space and
+   projected now, like everything else that touches the floor.
+2. **They could not be seen**, and that was two separate causes. The first
+   version descended NORTH — away from the camera — so you looked edge-on
+   across the flight and saw no risers at all. It descends TOWARDS the camera
+   now, two tiles deep, and every riser faces you. And it sat in the north-EAST
+   corner, behind the near wall, which is drawn over everything behind it: it
+   was hidden for its whole life. Both stairs are in the north-west corner now,
+   against the far walls.
+
+Three more things learned putting it right: coping goes on the FAR sides of a
+stairwell only (put it near and it stands in front of the flight it frames);
+three treads read where five vanish at three pixels each; and the handrail is
+what says "stairs" at a glance, before any tread registers.
+
+All four doors re-tested end to end, and the map table still hands over the
+ring.

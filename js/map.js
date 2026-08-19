@@ -704,7 +704,14 @@ function buildFringe() {
 // A cathedral is not the point. A cathedral people are living in is the point.
 // Plan: design/candlelight.md
 // =====================================================================
-const CAND_W = 28, CAND_H = 40;
+// THE FLOOR IS THE FOOTPRINT. The first pass made this room 28x40 while the
+// building outside is 12x16, so the inside was seven times the area of the
+// outside — you walked in and the cathedral became a warehouse, and half of it
+// was empty because there was nothing like enough camp to fill it. It is the
+// same twelve by sixteen tiles as the volume on the street now. Everything the
+// plan asked for is still here; it is all just within arm's reach, which is
+// what a camp squeezed into a church should feel like anyway.
+const CAND_W = 12, CAND_H = 16;
 function buildCandlelight() {
   const rng = mulberry32(31415);
   resetMap(CAND_W, CAND_H, rng);
@@ -712,119 +719,86 @@ function buildCandlelight() {
 
   // ---------- floor ----------
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-    ground[y][x] = 8;                                    // flagstone throughout
+    ground[y][x] = 8;
     groundVar[y][x] = (rng() * 6) | 0;
   }
-  // the line everybody walks: door to chancel, worn smooth
-  for (let y = 3; y < H - 1; y++) for (let x = 11; x <= 16; x++) ground[y][x] = 9;
-  // straw over the sleeping bays
-  for (let y = 15; y <= 30; y++) for (let x = 1; x <= 7; x++) ground[y][x] = 10;
+  for (let y = 2; y < H - 1; y++) for (let x = 4; x <= 7; x++) ground[y][x] = 9;   // the walked line
+  for (let y = 7; y <= 12; y++) for (let x = 1; x <= 2; x++) ground[y][x] = 10;    // straw under the bays
 
   // ---------- the shell ----------
-  // North and west walls stand; south and east are marked `front` so they fade
-  // out when the player is behind them, the same way the shack's near wall does.
   const ik = n => Array.from({ length: n }, () => 'I');
   wallRun(Array.from({ length: W }, (_, i) => [i, 0]), ik(W), 'x', false, true, true);
   wallRun(Array.from({ length: H }, (_, i) => [0, i]), ik(H), 'y', false, true, true);
   wallRun(Array.from({ length: H }, (_, i) => [W - 1, i]), ik(H), 'y', true, true, true);
-  // the south wall, broken by the west door at x 13..14
-  const doorX0 = 13, doorX1 = 14;
   const sL = [], sR = [];
   for (let x = 0; x < W; x++) {
-    if (x < doorX0) sL.push([x, H - 1]);
-    else if (x > doorX1) sR.push([x, H - 1]);
+    if (x < 5) sL.push([x, H - 1]);
+    else if (x > 6) sR.push([x, H - 1]);
   }
   wallRun(sL, ik(sL.length), 'x', true, true, false);
   wallRun(sR, ik(sR.length), 'x', true, false, true);
 
   // ---------- the arcade ----------
-  // Two rows of piers down the nave. Without these it is a hall, not a church.
-  for (let y = 8; y <= 32; y += 3) {
-    for (const x of [8, 19]) {
-      solid[y][x] = true; heavy[y][x] = true;
-      props.push({ gx: x, gy: y, type: 'pier' });
-    }
+  // Three piers a side. Fewer than a real nave, but at this size any more and
+  // there is no floor left to stand on, and three still say "church".
+  for (const [px2, py2] of [[2, 4], [9, 4], [2, 7], [9, 7], [2, 10], [9, 10]]) {
+    solid[py2][px2] = true; heavy[py2][px2] = true;
+    props.push({ gx: px2, gy: py2, type: 'pier' });
   }
 
-  // ---------- furniture ----------
-  // Everything here marks its tile solid, so the camp is something you walk
-  // around rather than through.
   const put = (x, y, type, extra) => {
-    if (x < 0 || y < 0 || x >= W || y >= H) return null;
+    if (x < 0 || y < 0 || x >= W || y >= H) return;
     solid[y][x] = true;
-    const p = Object.assign({ gx: x, gy: y, type }, extra || {});
-    props.push(p);
-    return p;
+    props.push(Object.assign({ gx: x, gy: y, type }, extra || {}));
   };
 
-  // THE CHANCEL — the map table on the old altar, and the light on it
-  put(13, 3, 'mapTable', { foot: [12, 3, 2, 1] });
-  solid[3][12] = true;
-  put(10, 3, 'candles'); put(17, 3, 'candles');
-  put(10, 5, 'candles'); put(17, 5, 'candles');
-  // the crypt stair, north-east
-  put(24, 3, 'stairDown', { foot: [23, 3, 2, 1] });
-  solid[3][23] = false;                                   // you walk in from the west
-  put(22, 2, 'rope');
+  // CHANCEL — the map table on the altar, and the crypt stair.
+  // The stair goes against the NORTH-WEST corner, not the north-east. The two
+  // near walls are drawn over everything behind them, so anything tucked into
+  // that corner is a thing the camera never sees — the first stair was hidden
+  // behind the east wall for its whole life.
+  put(5, 1, 'mapTable', { foot: [4, 1, 2, 1] }); solid[1][4] = true;
+  put(2, 1, 'stairDown', { foot: [1, 1, 2, 2] }); solid[2][1] = true; solid[2][2] = true;
+  put(8, 1, 'candles');
 
-  // WEST TRANSEPT — Bo's bench, with the drone on it
-  put(3, 9, 'workbench', { foot: [2, 9, 2, 1] });
-  solid[9][2] = true;
-  put(2, 8, 'shelf'); put(6, 8, 'brazier');
-  put(2, 12, 'crate'); put(5, 12, 'barrel'); put(6, 11, 'tires');
+  // WEST AISLE, north — Bo's bench with the drone on it
+  put(1, 3, 'workbench', { foot: [1, 3, 2, 1] }); solid[3][2] = true;
+  put(1, 2, 'shelf');
+  put(1, 5, 'crate'); put(2, 5, 'barrel');
 
-  // EAST TRANSEPT — the medbay, curtained off
-  put(21, 8, 'curtain', { dir: 'x' }); put(22, 8, 'curtain', { dir: 'x' });
-  put(21, 10, 'cot'); put(21, 12, 'cot');
-  put(24, 10, 'table'); put(25, 12, 'shelf');
-  put(24, 8, 'candles');
+  // EAST AISLE, north — the medbay
+  put(10, 3, 'cot'); put(10, 5, 'cot');
+  put(9, 3, 'table'); put(10, 2, 'candles');
+  put(10, 6, 'curtain', { dir: 'y' });
 
-  // WEST AISLE — the sleeping bays. Four lived in, one empty.
-  for (const by of [16, 19, 22, 25, 28]) {
-    put(3, by, 'bedding');
-    if (by !== 28) put(6, by + 1, rng() < 0.5 ? 'crate' : 'sacks');
-    put(7, by - 1, 'curtain', { dir: 'y' });
-  }
-  put(5, 30, 'brazier');
+  // WEST AISLE, south — the sleeping bays on straw
+  put(1, 8, 'bedding'); put(1, 10, 'bedding'); put(1, 12, 'bedding');
+  put(2, 9, 'curtain', { dir: 'y' }); put(2, 12, 'sacks');
+  put(1, 6, 'chest', { open: false, loot: 'junk' });
 
-  // EAST AISLE — the hearth, and Halden's pitch
-  put(25, 20, 'hearth');
-  put(23, 21, 'table'); put(23, 22, 'stool');
-  put(24, 18, 'crate'); put(22, 25, 'sacks'); put(25, 16, 'shelf');
-  put(21, 27, 'brazier');
-  put(24, 28, 'chest', { open: false, loot: 'scrap' });
+  // EAST AISLE, south — the hearth, and Halden's pitch
+  put(10, 8, 'hearth');
+  put(9, 9, 'table'); put(10, 10, 'stool');
+  put(10, 12, 'sacks'); put(9, 12, 'crate');
 
   // THE NAVE — fire, and the pews that have not been broken up yet
-  put(11, 14, 'brazier'); put(16, 21, 'brazier'); put(11, 27, 'brazier');
-  for (const [px, py, d] of [[10, 31, 'x'], [16, 31, 'y'], [10, 34, 'x'], [16, 34, 'y']])
-    put(px, py, 'pew', { dir: d });
-  put(12, 24, 'pewBroken', { dir: 'x' });
-  put(15, 17, 'pewBroken', { dir: 'y' });
-  put(9, 24, 'chest', { open: false, loot: 'junk' });
+  put(4, 6, 'brazier'); put(7, 10, 'brazier');
+  put(3, 13, 'pew', { dir: 'x' }); put(7, 13, 'pew', { dir: 'y' });
+  put(5, 9, 'pewBroken', { dir: 'x' });
+  put(8, 13, 'chest', { open: false, loot: 'scrap' });
 
-  // THE NARTHEX — where you come in
-  put(11, 37, 'candles'); put(16, 37, 'candles');
-  put(10, 36, 'pew', { dir: 'x' });
-
-  // WEST TOWER BASE — the store, and the man who says no
-  for (const [sx, sy, t] of [[2, 33, 'crate'], [3, 33, 'sacks'], [5, 33, 'crate'],
-                             [2, 35, 'sacks'], [4, 35, 'crate'], [6, 34, 'shelf'],
-                             [2, 37, 'barrel'], [5, 36, 'sacks']])
-    put(sx, sy, t);
-  put(4, 31, 'rope');
-
-  // EAST TOWER BASE — the stair up the tower, roped off. A door for later.
-  put(23, 34, 'rope'); put(24, 34, 'rope');
-  put(25, 36, 'crate'); put(22, 37, 'barrel');
+  // THE NARTHEX and the store, either side of the door
+  put(3, 14, 'candles'); put(8, 14, 'candles');
+  put(1, 13, 'crate'); put(1, 14, 'sacks'); put(2, 14, 'crate');
 
   buildAO();
   buildSpatialIndex();
 }
 
 // =====================================================================
-// AREA 4 — THE CRYPT, under the chancel
+// AREA 4 — THE CRYPT, under the chancel and no bigger than the chancel
 // =====================================================================
-const CRYPT_W = 18, CRYPT_H = 14;
+const CRYPT_W = 10, CRYPT_H = 8;
 function buildCrypt() {
   const rng = mulberry32(2718);
   resetMap(CRYPT_W, CRYPT_H, rng);
@@ -843,20 +817,16 @@ function buildCrypt() {
     solid[y][x] = true;
     props.push(Object.assign({ gx: x, gy: y, type }, extra || {}));
   };
-  // water: the roof drains into the old font sump
-  put(3, 3, 'cistern'); put(2, 5, 'barrel'); put(4, 5, 'barrel');
-  // food: grow beds in the burial niches, under salvaged lamp strips
-  put(8, 2, 'growBed', { foot: [7, 2, 2, 1] }); solid[2][7] = true;
-  put(13, 2, 'growBed', { foot: [12, 2, 2, 1] }); solid[2][12] = true;
-  put(8, 5, 'growBed', { foot: [7, 5, 2, 1] }); solid[5][7] = true;
-  put(15, 6, 'preserves'); put(15, 8, 'preserves');
-  // the box nobody opens
-  put(15, 11, 'strongbox');
-  put(13, 11, 'chest', { open: false, loot: 'crypt' });
-  put(5, 9, 'candles'); put(11, 8, 'candles');
-  put(2, 11, 'crate'); put(3, 12, 'sacks');
-  // the way back up
-  props.push({ gx: 9, gy: 12, type: 'stairUp' });
+  // the way back up goes against the far wall too, for the same reason
+  props.push({ gx: 2, gy: 1, type: 'stairUp', foot: [1, 1, 2, 2] });
+  solid[1][2] = true; solid[2][1] = true; solid[2][2] = true;
+  put(8, 1, 'cistern'); put(8, 6, 'barrel');
+  put(5, 3, 'growBed', { foot: [4, 3, 2, 1] }); solid[3][4] = true;
+  put(5, 5, 'growBed', { foot: [4, 5, 2, 1] }); solid[5][4] = true;
+  put(8, 3, 'preserves'); put(1, 5, 'strongbox');
+  put(7, 6, 'chest', { open: false, loot: 'crypt' });
+  put(1, 3, 'candles'); put(7, 4, 'candles');
+  put(6, 1, 'crate'); put(3, 6, 'sacks'); put(8, 5, 'preserves');
 
   buildAO();
   buildSpatialIndex();
@@ -891,7 +861,7 @@ const Areas = {
     // back through the yard gate, and in at the west door of St Martin's
     exits: [
       { x0: 196.4, y0: 117.6, x1: 201, y1: 122.4, to: 'junkyard', entry: { x: 29.6, y: 12.5 } },
-      { x0: 54.8, y0: 66.3, x1: 57.2, y1: 67.95, to: 'candlelight', entry: { x: 13.5, y: 36.5 } },
+      { x0: 54.8, y0: 66.3, x1: 57.2, y1: 67.95, to: 'candlelight', entry: { x: 5.5, y: 13.4 } },
     ],
   },
   candlelight: {
@@ -900,11 +870,11 @@ const Areas = {
     indoors: true,
     tint: '#f0d4b0',        // firelight, but the stone still has to read as stone
     makeItems: () => ([
-      { type: 'ammo', x: 6.5, y: 11.5, amount: 6, bob: 0.5 },
+      { type: 'ammo', x: 6.5, y: 5.5, amount: 6, bob: 0.5 },
     ]),
     exits: [
-      { x0: 12.4, y0: 37.4, x1: 15.6, y1: 40, to: 'fringe', entry: { x: 56.5, y: 69.5 } },
-      { x0: 23.4, y0: 2.4, x1: 25.6, y1: 4.6, to: 'crypt', entry: { x: 9.5, y: 10.2 } },
+      { x0: 4.4, y0: 14.4, x1: 7.6, y1: 16, to: 'fringe', entry: { x: 56.5, y: 69.5 } },
+      { x0: 0.6, y0: 0.4, x1: 3.4, y1: 3.4, to: 'crypt', entry: { x: 2.5, y: 4.4 } },
     ],
   },
   crypt: {
@@ -916,7 +886,7 @@ const Areas = {
     exits: [
       // the stair tile only. Land the player CLEAR of it coming down, or the
       // zone they arrive in never disarms and the stair will not take them back.
-      { x0: 8.4, y0: 11.4, x1: 10.6, y1: 12.9, to: 'candlelight', entry: { x: 22.5, y: 4.5 } },
+      { x0: 0.6, y0: 0.4, x1: 3.4, y1: 3.4, to: 'candlelight', entry: { x: 5.5, y: 4.5 } },
     ],
   },
 };
