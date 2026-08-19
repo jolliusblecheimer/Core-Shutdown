@@ -350,3 +350,21 @@ and moved every piece of wall detail onto it. The big face quads still use
 **The rule is now consistent across the project: geometry big enough to have a
 silhouette may be a path; anything smaller than about ten pixels must be
 integer-filled.**
+
+### 71. "Status on cathedral build?"
+**Laurens:** "Status on cathedral build?"
+**Claude:** Status only, nothing built. Two things in the project answer to
+"cathedral":
+- **The Console Cathedral** (Ring 0, Q11) — the final room. **Not started.** It
+  exists as design text only: one row in `design/city-blueprint.html` and the
+  final-cutscene paragraph in `design/main-story.md`. `Areas` in `js/map.js`
+  still holds exactly two entries, `junkyard` and `fringe`, and per
+  `GAME_PLAN.md` Rings 1–0 are the last build phase. Nothing about it is
+  blocked — it is simply five rings away.
+- **St Martin's church**, the cathedral-shaped landmark in the Fringe — **built
+  as a shell.** Placed at gx 50, gy 54, 12×14, building style `R` (stone with
+  arched windows), forecourt paving laid to its south, and the handmade sign
+  trail already routes to it. It is a solid volume: not enterable, and
+  Candlelight (trader, workbench, med station, respawn re-anchor, mission
+  board) + Q2 remain outstanding item 3 in `PROJECT_STATE.md`.
+No code touched.
