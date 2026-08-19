@@ -139,6 +139,12 @@ const SFX = (() => {
     absorbTick() { tone('triangle', 620, 900, 0.08, 0.12); },
     // player
     hurt() { tone('triangle', 160, 70, 0.15, 0.3); noise(0.08, 0.25, 'lowpass', 500); },
+    // ---- the roadblocks. These are people, so none of it is a machine
+    // sound: a voice calling the others on, a heavier rifle, a soft fall.
+    shout() { tone('sawtooth', 300, 175, 0.19, 0.15); tone('sawtooth', 430, 250, 0.13, 0.09, 0.06); },
+    rifleShot() { noise(0.14, 0.42, 'lowpass', 3400); tone('square', 150, 52, 0.17, 0.3); noise(0.32, 0.11, 'lowpass', 900, 0.06); },
+    banditDie() { tone('sawtooth', 250, 85, 0.34, 0.17); noise(0.2, 0.15, 'lowpass', 780, 0.04); },
+    thud() { noise(0.07, 0.2, 'lowpass', 430); tone('sine', 130, 88, 0.1, 0.17); },
     die() { tone('sawtooth', 280, 40, 0.8, 0.3); noise(0.3, 0.2, 'lowpass', 600); },
     eat() { noise(0.05, 0.25, 'lowpass', 900); noise(0.05, 0.22, 'lowpass', 700, 0.13); },
     step(quiet) { noise(0.035, quiet ? 0.025 : 0.06, 'lowpass', 600 + Math.random() * 200); },

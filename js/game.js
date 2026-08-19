@@ -325,7 +325,30 @@ function stashArea() {
     deadBarrels: boomBarrels.filter(b => !b.alive).map(b => b.gx + ',' + b.gy),
     takenItems: (START_ITEMS_BY_AREA[currentArea] || []).filter(
       k => !items.some(it => itemKey(it) === k)),
+    deadBandits: collectDeadBandits(),
   };
+}
+// A raider you killed stays killed. Respawning them would turn a roadblock
+// into a wall you can never actually get past, and dying halfway through a
+// fight would cost you the whole fight — so the dead are world state, keyed
+// by which block and which post they held rather than by array index.
+function collectDeadBandits() {
+  return bandits.filter(b => b.dead).map(b => banditKey(b) + (b.looted ? '!' : ''));
+}
+function restoreBandits(id) {
+  const st = areaState[id];
+  if (!st || !st.deadBandits) return;
+  const down = new Set(st.deadBandits.map(k => k.replace('!', '')));
+  const looted = new Set(st.deadBandits.filter(k => k.endsWith('!')).map(k => k.slice(0, -1)));
+  for (const b of bandits) {
+    const k = banditKey(b);
+    if (!down.has(k)) continue;
+    b.dead = true; b.state = 'dead'; b.hp = 0; b.fell = 0;
+    b.looted = looted.has(k);
+  }
+  for (const rb of roadblocks) {
+    rb.cleared = bandits.every(b => b.block !== rb || b.dead);
+  }
 }
 function restoreArea(id) {
   const st = areaState[id];
@@ -355,10 +378,13 @@ function enterArea(id, entry) {
   initFog(id);
   // entities that don't belong here stand down
   boss.active = false; boss.state = 'hidden'; boss.shots.length = 0;
-  bullets.length = 0; Particles.length = 0;
+  bullets.length = 0; Particles.length = 0; foeBullets.length = 0;
   explosions.length = 0; fuses.length = 0;
   if (Areas[id].hasScrapper && mission.state !== 'none') spawnScrappers();
   else scrappersOff();
+  spawnBandits();
+  restoreBandits(id);
+  foeBullets.length = 0;
   if (entry) {
     player.x = entry.x; player.y = entry.y;
     if (!canStand(player.x, player.y, player.r)) {
@@ -599,6 +625,7 @@ function update(dt) {
     if (!bossCine) {
       updatePlayer(dt);
       updateScrappers(dt);
+      updateBandits(dt);
       updateItems(dt);
       checkExits(dt);
       markExplored(player.x, player.y, 9);
@@ -608,6 +635,7 @@ function update(dt) {
     updateBoss(dt);
     updateNpc(dt);
     updateBullets(dt);
+    updateFoeBullets(dt);
     updateExplosions(dt);
     updateMission();
     updateParticles(dt);
@@ -774,6 +802,21 @@ function render() {
         addLight(ss.x - ox, ss.y - oy - 5, 0, 9, '255,140,60', 0.3);
       }});
     }
+  }
+  for (const bd of bandits) {
+    const s = isoToScreen(bd.x, bd.y);
+    // bodies sort a hair behind the living, so nobody stands inside a corpse
+    draws.push({ depth: s.y - (bd.dead ? 0.02 : 0), draw: () => drawBandit(bd, s.x - ox, s.y - oy) });
+  }
+  for (const b of foeBullets) {
+    const s = isoToScreen(b.x, b.y);
+    draws.push({ depth: s.y + 1, draw: () => {
+      // theirs are red-hot, yours are amber — never confuse the two
+      ctx.fillStyle = b.heavy ? '#ff6a4a' : '#ffa88c';
+      const w = b.heavy ? 3 : 2;
+      ctx.fillRect(Math.round(s.x - ox - 1), Math.round(s.y - oy - 6), w, w);
+      addLight(s.x - ox, s.y - oy - 5, 0, b.heavy ? 13 : 9, '255,110,80', 0.32);
+    }});
   }
   if (currentAreaDef().hasNpc) {
     const s = isoToScreen(npc.x, npc.y);
@@ -1178,6 +1221,24 @@ function drawProp(p, x, y) {
     img = Sprites.fuelPump; oyOff = -22; drawShadow(x, y, 6);
     addLight(x + 1, y - 14, 0, 7, '122,210,122', 0.16);
   }
+  // ---- roadblock furniture. Each of these was BUILT along one street
+  // axis, so it must be DRAWN on that axis too: pick the variant by p.dir and
+  // let the sprite's own oy put its footprint back under it.
+  else if (T === 'barricade' || T === 'barricadeTall' || T === 'sandbags' ||
+           T === 'conBlock' || T === 'razorWire' || T === 'stoneWall') {
+    const set = Sprites[T];
+    img = p.dir === 'y' ? set.y : set.x;
+    oyOff = img.oy;
+    drawShadow(x, y, T === 'razorWire' ? 10 : 13);
+  }
+  else if (T === 'brazier') {
+    img = Sprites.brazier; oyOff = -19; drawShadow(x, y, 5);
+    // the fire is the only warm light on this street, and it flickers
+    const fl = 0.82 + 0.18 * Math.sin(gameTime * 9 + p.gx * 2.1) * Math.sin(gameTime * 3.7 + p.gy);
+    addLight(x, y - 17, 0, 32 * fl, '255,146,66', 0.52 * fl);
+    addLight(x, y - 2, 0, 20, '255,146,66', 0.18 * fl);
+  }
+  else if (T === 'banditFlag') { img = Sprites.banditFlag; oyOff = -34; drawShadow(x, y, 3); }
   else if (T === 'pillar') { img = Sprites.pillar; oyOff = -40; drawShadow(x, y, 5); }
   else if (T === 'boom') { img = Sprites.boomBarrel; oyOff = -15; drawShadow(x, y, 5); }
   else if (T === 'scrap') { img = Sprites.scrapPiles[p.v]; oyOff = -20; drawShadow(x, y, 9); }
@@ -1548,6 +1609,93 @@ function drawNpc(x, y) {
     ctx.fillRect(Math.round(x - 1), Math.round(y - 28 + bobY), 2, 4);
     ctx.fillRect(Math.round(x - 1), Math.round(y - 23 + bobY), 2, 1);
     addLight(x, y - 25, 0, 10, '255,210,120', 0.25);
+  }
+}
+
+// A raider. Deliberately NOT drawn like a machine: no eye glow, no amber
+// hurt-light, and the hit flash is a pale wash rather than a shower of sparks.
+// The only thing that lights up on this street is the rifle's aim line.
+function drawBandit(b, x, y) {
+  if (b.dead) {
+    const im = Sprites.banditDead;
+    ctx.globalAlpha = b.looted ? 0.5 : 1;
+    ctx.drawImage(im, Math.round(x - im.width / 2), Math.round(y - im.height + 4));
+    ctx.globalAlpha = 1;
+    return;
+  }
+  drawShadow(x, y, 6);
+  const attacking = b.state === 'windup' || b.state === 'swing';
+  let img;
+  if (b.role === 'knife') {
+    const set = Sprites.banditKnife[b.v % Sprites.banditKnife.length];
+    img = attacking ? set[2] : set[b.frame];
+  } else if (b.role === 'pistol') {
+    img = b.state === 'aim' ? Sprites.banditPistol[2] : Sprites.banditPistol[b.frame];
+  } else {
+    img = b.state === 'aim' ? Sprites.banditRifle[2] : Sprites.banditRifle[b.frame];
+  }
+  const dx = Math.round(x - img.width / 2), dy = Math.round(y - img.height + 1);
+  ctx.drawImage(img, dx, dy);
+  if (b.hitFlash > 0) {
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = 0.55;
+    ctx.drawImage(img, dx, dy);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  // THE TELL. The rifle takes a full second to line you up and it shows you
+  // the line while it does. Break it — step behind the barricade, put a wreck
+  // between you — and the shot is thrown away. This is the whole counterplay.
+  if (b.state === 'aim') {
+    const ps = isoToScreen(player.x, player.y);
+    const t = Math.min(1, b.aimT / (BANDIT_ROLES[b.role].aim || 1));
+    // DASHED, not a solid beam. Nobody on this road has a laser sight; this is
+    // the game telling you where a barrel is pointed, in the same grammar as
+    // the Scrapper's red blink before it swings.
+    ctx.setLineDash(b.role === 'rifle' ? [2, 3] : [1, 4]);
+    ctx.lineDashOffset = -gameTime * 22;
+    ctx.globalAlpha = (b.role === 'rifle' ? 0.14 + 0.42 * t : 0.08 + 0.2 * t);
+    ctx.strokeStyle = b.role === 'rifle' ? '#ff5a3c' : '#ffa07a';
+    ctx.beginPath();
+    ctx.moveTo(Math.round(x), Math.round(y - 12));
+    ctx.lineTo(Math.round(ps.x - lastOx), Math.round(ps.y - lastOy - 10));
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
+    if (b.role === 'rifle') {                 // and the same blink overhead
+      ctx.fillStyle = ((performance.now() / 90) | 0) % 2 ? '#ff5a3c' : '#ffb02e';
+      ctx.fillRect(Math.round(x - 1), Math.round(y - 25), 2, 2);
+    }
+  }
+  if (b.muzzle > 0) {
+    ctx.fillStyle = '#ffe08a';
+    ctx.fillRect(Math.round(x + 6), Math.round(y - 13), 3, 2);
+    addLight(x + 7, y - 12, 0, 16, '255,210,130', 0.5);
+  }
+  if (b.state === 'windup') {
+    ctx.fillStyle = ((performance.now() / 80) | 0) % 2 ? '#ff5a3c' : '#ffb02e';
+    ctx.fillRect(Math.round(x - 1), Math.round(y - 25), 2, 2);
+  }
+  // suspicion, in the same language the machines use — eye plus bar
+  if (b.state === 'guard' && b.alert > 0.03) {
+    const ay = Math.round(y - 29);
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(Math.round(x - 12), ay - 1, 24, 5);
+    ctx.fillStyle = '#e8eef5';
+    ctx.fillRect(Math.round(x - 10), ay, 3, 3);
+    ctx.fillStyle = '#1a1c22';
+    ctx.fillRect(Math.round(x - 9), ay + 1, 1, 1);
+    ctx.fillStyle = '#3a3e48';
+    ctx.fillRect(Math.round(x - 5), ay + 1, 14, 2);
+    ctx.fillStyle = b.alert > 0.7 ? '#ff5a3c' : '#e8eef5';
+    ctx.fillRect(Math.round(x - 5), ay + 1, Math.round(14 * Math.min(1, b.alert)), 2);
+  }
+  if (b.hp < b.maxHp) {
+    const frac = Math.max(0, b.hp / b.maxHp);
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(Math.round(x - 8), Math.round(y - 23), 16, 2);
+    ctx.fillStyle = `hsl(${Math.round(112 * frac)}, 62%, 46%)`;
+    ctx.fillRect(Math.round(x - 8), Math.round(y - 23), Math.round(16 * frac), 2);
   }
 }
 

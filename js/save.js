@@ -55,6 +55,7 @@ function collectAreaState() {
     deadBarrels: boomBarrels.filter(b => !b.alive).map(b => b.gx + ',' + b.gy),
     takenItems: (START_ITEMS_BY_AREA[currentArea] || []).filter(
       k => !items.some(it => itemKey(it) === k)),
+    deadBandits: collectDeadBandits(),
   };
   return all;
 }
@@ -173,6 +174,12 @@ function applySave(d) {
   // robots re-enter fresh (never saved mid-chase)
   if (mission.state !== 'none' && currentAreaDef().hasScrapper) spawnScrappers();
   else scrappersOff();
+  // raiders re-enter fresh too — standing at their posts, not mid-fight —
+  // but the ones you already put down stay down. A save written before the
+  // roadblocks existed simply has no list, and every post is manned.
+  spawnBandits();
+  restoreBandits(currentArea);
+  foeBullets.length = 0;
 }
 
 // nearest open tile, spiralling outward

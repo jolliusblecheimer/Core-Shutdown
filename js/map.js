@@ -15,6 +15,7 @@ const decals = [];
 const moundSpawns = [];   // hidden enemy spawn points
 const boomBarrels = [];   // explosive barrels — shoot to detonate
 const patrolPoints = [];  // waypoints robots patrol between
+let roadblocks = [];      // bandit checkpoints — see THE CORDON in buildFringe
 let patrolCenter = { x: 16, y: 16 };
 let aoGrid = [];
 let gateProp = null;      // the junkyard gate
@@ -61,6 +62,7 @@ function resetMap(w, h, rng) {
   ground.length = 0; groundVar.length = 0; solid.length = 0; heavy.length = 0;
   props.length = 0; decals.length = 0; moundSpawns.length = 0;
   boomBarrels.length = 0; patrolPoints.length = 0;
+  roadblocks = [];
   crushProps = {};
   gateProp = null; SHACK = null;
   for (let y = 0; y < h; y++) {
@@ -457,6 +459,78 @@ function buildFringe() {
     for (let x = CH.x - 2; x < CH.x + CH.w + 2; x++)
       if (x > 0 && x < MAP_W - 1 && y < MAP_H - 1 && !solid[y][x]) ground[y][x] = 5;  // forecourt paving
 
+  // ---------- THE CORDON: the road to the church, and only two ways in ----
+  //
+  // Why this exists. The Fringe was drawn as streets laid over open lots, so
+  // you could walk to St Martin's across the waste ground between blocks and
+  // never touch a road. Two roadblocks on two crossroads would have gated
+  // nothing at all — measured before any of this was written: cutting the
+  // east cross at both junctions still left the church reachable by 46 of its
+  // 46 forecourt tiles.
+  //
+  // So the fix is not a fence, it is CITY. The east cross between the spine
+  // and the mid street becomes a proper street — continuous building frontage
+  // on both sides, the way a real one has — with exactly one opening in it,
+  // and that opening is the churchyard gate. The corridor then has two ends,
+  // and both ends are crossroads. Put a roadblock on each and every route to
+  // the church runs through one of them. Verified by flood fill from the yard
+  // gate: both blocks shut, 0 of 24 forecourt tiles reachable; either one
+  // open, all 24. Nothing else in the city is cut off by it.
+  //
+  //        spine                mid street
+  //          |                       |
+  //   =======+===[WEST BLOCK]==...===+=======   <- east cross (y 75)
+  //          |         ^             |
+  //        (30,75)     |           (92,75)
+  //                 churchyard gate, north side
+  const CORR = { x0: 36, x1: 88, gate: [50, 61], north: 69, south: 81 };
+  const PIERS = [[48, 49], [62, 63]];            // churchyard gate piers
+
+  // a gap too small for a building becomes a yard wall — which is exactly
+  // what a real terrace does where it runs out of house
+  function yardWall(x0, x1, y, dir) {
+    for (let x = x0; x <= x1; x++) {
+      if (x < 1 || x >= MAP_W - 1 || solid[y][x]) continue;
+      solid[y][x] = true; heavy[y][x] = true;
+      props.push({ gx: x, gy: y, type: 'stoneWall', dir: dir || 'x' });
+    }
+  }
+
+  // close one side of the corridor: walk the frontage row and fill every hole
+  function frontageRun(row, faceNorth) {
+    let x = CORR.x0;
+    const skip = (t) => faceNorth &&
+      ((t >= CORR.gate[0] && t <= CORR.gate[1]) ||
+       PIERS.some(pr => t >= pr[0] && t <= pr[1]));
+    while (x <= CORR.x1) {
+      if (skip(x) || solid[row][x]) { x++; continue; }
+      let x2 = x;
+      while (x2 <= CORR.x1 && !solid[row][x2] && !skip(x2)) x2++;
+      let t = x;
+      while (t < x2) {
+        const run = Math.min(x2 - t, 5 + ((rng() * 7) | 0));
+        const roll = rng();
+        const kind = roll < 0.46 ? 'H' : roll < 0.72 ? 'S' : roll < 0.9 ? 'B' : 'O';
+        let placed = false;
+        for (let depth = 9; depth >= 2 && !placed; depth--) {
+          const y0 = faceNorth ? row - depth + 1 : row;
+          placed = placeBuilding(t, y0, run, depth, kind);
+        }
+        if (!placed) yardWall(t, t + run - 1, row, 'x');
+        t += run;
+      }
+      x = x2;
+    }
+  }
+  frontageRun(CORR.north, true);
+  frontageRun(CORR.south, false);
+  // the churchyard's own wall, returning to the street either side of the
+  // gate. Two tiles deep, so from the road it reads as a pair of stone piers.
+  for (const [a, b] of PIERS) {
+    yardWall(a, b, 68, 'x');
+    yardWall(a, b, 69, 'x');
+  }
+
   // walk each street and line it with buildings set back from the pavement
   for (const s of STREETS) {
     const vertical = s.x0 === s.x1;
@@ -495,6 +569,7 @@ function buildFringe() {
                     r2 < 0.66 ? 'H' : r2 < 0.85 ? 'B' : 'O');
     }
   }
+
 
   // ---------- one solid volume per building ----------
   for (const b of buildings) addBuildingProp(b);
@@ -675,6 +750,117 @@ function buildFringe() {
   props.push({ gx: MAP_W - 4, gy: 117, type: 'sign', kind: 'plank', dir: 'xp', text: 'JUNKYARD' });
   signs.push({ gx: MAP_W - 4, gy: 117, text: 'JUNKYARD', kind: 'plank' });
 
+
+  // ---------- THE TWO ROADBLOCKS ----------
+  // One on each crossroads that ends the church corridor: the spine junction
+  // in the west, the mid-street junction in the east. The signed shelter trail
+  // walks you straight into the EAST one — the bandits sited it exactly where
+  // somebody else's arrows funnel frightened people — and the long way round,
+  // back down the spine, only brings you to the other.
+  //
+  // Each is one tile thick and spans the full street, pavement to pavement,
+  // with a two-tile chicane left open in it. You are meant to get through:
+  // the gap is the door, the four of them standing behind it are the lock.
+  //
+  // ANGLE: the barricade runs along world +y, so every piece takes its 'y'
+  // variant. Nothing here is an upright rectangle except the braziers and the
+  // flag, which are free-standing and may be drawn straight.
+  function clearFor(x0, x1, y0, y1) {
+    for (let i = props.length - 1; i >= 0; i--) {
+      const q = props[i];
+      if (q.type === 'building' || q.type === 'wallSlice' || q.type === 'canopy') continue;
+      const f = q.foot;
+      const qx0 = f ? f[0] : q.gx, qy0 = f ? f[1] : q.gy;
+      const qx1 = f ? f[0] + f[2] - 1 : q.gx, qy1 = f ? f[1] + f[3] - 1 : q.gy;
+      if (qx1 < x0 || qx0 > x1 || qy1 < y0 || qy0 > y1) continue;
+      for (let y = qy0; y <= qy1; y++)
+        for (let x = qx0; x <= qx1; x++) {
+          if (x >= 0 && y >= 0 && x < MAP_W && y < MAP_H) solid[y][x] = false;
+          delete crushProps[x + ',' + y];
+        }
+      props.splice(i, 1);
+    }
+    for (let y = y0; y <= y1; y++)
+      for (let x = x0; x <= x1; x++)
+        if (!heavy[y][x]) solid[y][x] = false;
+  }
+  function blockProp(x, y, type, extra) {
+    if (x < 1 || y < 1 || x >= MAP_W - 1 || y >= MAP_H - 1) return null;
+    if (heavy[y][x]) return null;                    // never bury a building
+    solid[y][x] = true;
+    const p = Object.assign({ gx: x, gy: y, type }, extra || {});
+    props.push(p);
+    return p;
+  }
+  // dressing that must NOT close the street — skipped if its tile is needed
+  function dressProp(x, y, type, extra) {
+    if (x < 1 || y < 1 || x >= MAP_W - 1 || y >= MAP_H - 1) return null;
+    if (solid[y][x] || heavy[y][x]) return null;
+    return blockProp(x, y, type, extra);
+  }
+
+  function buildRoadblock(id, lineX, gap, facing, label) {
+    const Y0 = 70, Y1 = 80;                          // pavement to pavement
+    clearFor(lineX - 1, lineX + 1, Y0, Y1);
+    // the barricade line, mixed materials — nobody builds one of these out of
+    // a single thing, they build it out of whatever was in the street
+    const PLAN = {};
+    PLAN[Y0] = 'sandbags'; PLAN[Y0 + 1] = 'barricade'; PLAN[Y0 + 2] = 'barricade';
+    PLAN[Y0 + 3] = 'barricadeTall'; PLAN[Y0 + 6] = 'conBlock';
+    PLAN[Y0 + 7] = 'barricade'; PLAN[Y0 + 8] = 'barricade';
+    PLAN[Y0 + 9] = 'sandbags'; PLAN[Y0 + 10] = 'sandbags';
+    for (let y = Y0; y <= Y1; y++) {
+      if (y >= gap[0] && y <= gap[1]) continue;       // the chicane
+      blockProp(lineX, y, PLAN[y] || 'barricade', { dir: 'y' });
+    }
+    // razor coils flanking the gap on the APPROACH side, so the way through
+    // reads as a throat you are funnelled into rather than a hole in a wall
+    dressProp(lineX + facing, gap[0] - 1, 'razorWire', { dir: 'y' });
+    dressProp(lineX + facing, gap[1] + 1, 'razorWire', { dir: 'y' });
+    // fire either side of it: this is lit and it is watched, day and night
+    dressProp(lineX + facing * 2, gap[0] - 1, 'brazier');
+    dressProp(lineX - facing * 2, gap[1] + 1, 'brazier');
+    dressProp(lineX - facing, Y0 + 1, 'banditFlag');
+    // a wreck dragged in behind the line to thicken it, lying ALONG the street
+    car(lineX - facing * 2, Y0 + 7, 3, 'y');
+    // and a board nailed up facing the way you come in, in the same handmade
+    // language as the rest of this road — except it is not trying to help you
+    const sx = lineX + facing * 3, sy = Y1 - 1;
+    if (!solid[sy][sx] && !heavy[sy][sx]) {
+      solid[sy][sx] = true;
+      const dir = facing < 0 ? 'xp' : 'xm';   // the way you are walking
+      props.push({ gx: sx, gy: sy, type: 'sign', kind: 'plank', dir, text: label });
+      signs.push({ gx: sx, gy: sy, text: label, kind: 'plank' });
+    }
+    // where the four of them stand: behind their own line, on their own side
+    const inX = (n) => lineX - facing * n;
+    const mid = (gap[0] + gap[1]) / 2 + 0.5;
+    const posts = [
+      { x: inX(3) + 0.5, y: mid - 1.5, role: 'knife', v: 0 },
+      { x: inX(3) + 0.5, y: mid + 1.5, role: 'knife', v: 1 },
+      { x: inX(6) + 0.5, y: mid + 0.5, role: 'pistol' },
+      { x: inX(9) + 0.5, y: mid - 0.5, role: 'rifle' },
+    ];
+    // nudge anybody standing in something onto ground they can actually hold
+    for (const p of posts) {
+      if (canStand(p.x, p.y, 0.3)) continue;
+      for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0], [0, 2], [0, -2], [2, 0], [-2, 0]]) {
+        if (canStand(p.x + dx, p.y + dy, 0.3)) { p.x += dx; p.y += dy; break; }
+      }
+    }
+    roadblocks.push({
+      id, lineX, gap, facing, posts,
+      gate: { x: lineX + 0.5, y: mid },              // the hole in the line
+      cleared: false,
+    });
+  }
+  // `facing` points from the line toward the side you ARRIVE from. The west
+  // block sits at the spine crossroads and is walked into heading east, so it
+  // faces west; the east block at the mid-street crossroads faces east. Their
+  // chicanes sit at different heights so the pair never reads as copy-paste.
+  buildRoadblock('west', 38, [74, 75], -1, 'TOLL. LEAVE WHAT YOU CARRY');
+  buildRoadblock('east', 86, [76, 77], 1, 'THIS ROAD IS OURS. PAY OR TURN BACK');
+
   // ---------- patrol routes: junctions and the forecourt ----------
   for (const [px2, py2] of [[30, 120], [92, 120], [165, 120], [30, 75], [92, 75], [165, 75],
                             [30, 36], [92, 36], [172, 36], [GX + 9, GY + 6], [60, 120], [30, 96]]) {
@@ -721,7 +907,7 @@ const Areas = {
   },
   fringe: {
     id: 'fringe', name: 'THE FRINGE', build: buildFringe,
-    hasScrapper: false, hasBoss: false, hasNpc: false,
+    hasScrapper: false, hasBoss: false, hasNpc: false, hasBandits: true,
     tint: '#efe0cc',      // thinner, cooler, brighter than the yard's dusk
     makeItems: () => ([
       { type: 'ammo', x: 150.5, y: 130.5, amount: 6, bob: 0.8 },

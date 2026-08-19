@@ -266,6 +266,22 @@ function updatePlayer(dt) {
       SFX.clang();
       if (sc.hp <= 0) killScrapper(sc);
     }
+    // the same swing, every raider standing in the arc. A knife punches
+    // through a machine's plate; against a person it simply cuts, so the
+    // stab bonus is the same number but it staggers them far less.
+    for (const bd of bandits) {
+      if (bd.dead) continue;
+      const dx = bd.x - player.x, dy = bd.y - player.y;
+      const d = Math.hypot(dx, dy);
+      if (d >= m.range) continue;
+      const bs = isoToScreen(bd.x, bd.y);
+      const a = Math.atan2(bs.y - ps.y, bs.x - ps.x);
+      let diff = Math.abs(a - player.angle);
+      if (diff > Math.PI) diff = Math.PI * 2 - diff;
+      if (diff >= 1.3) continue;
+      banditHit(bd, m.dmg, dx / (d || 1), dy / (d || 1), m.stab);
+      addShake(2);
+    }
   }
 
   // ---- eat snack bar ----
@@ -306,6 +322,11 @@ function updateItems(dt) {
     if (sc.state !== 'dead' || sc.looted) continue;
     const d = Math.hypot(player.x - sc.x, player.y - sc.y);
     if (d < 1.1 && d < bestD) { bestD = d; best = sc; bestKind = 'wreck'; }
+  }
+  for (const bd of bandits) {
+    if (!bd.dead || bd.looted) continue;
+    const d = Math.hypot(player.x - bd.x, player.y - bd.y);
+    if (d < 1.1 && d < bestD) { bestD = d; best = bd; bestKind = 'body'; }
   }
 
   if (bestKind === 'gate') {
@@ -361,6 +382,29 @@ function updateItems(dt) {
       tutShow('loot',
         ['Dead machines can be looted for scrap', 'and rare tech components.', 'Press I to open your pack.'],
         ['KeyI', 'Tab'], 'PRESS I');
+    }
+  } else if (bestKind === 'body') {
+    const bd = best;
+    const bs = isoToScreen(bd.x, bd.y);
+    Prompt = { sx: bs.x, sy: bs.y - 18, text: 'E — search body' };
+    if (Input.pressed['KeyE']) {
+      Input.pressed['KeyE'] = false;
+      // they carried what they took off everyone else who came this way
+      const n = 1 + ((Math.random() * 3) | 0);
+      player.inv.scrap += n;
+      let extra = '';
+      if (bd.role !== 'knife') {                 // the shooters carried rounds
+        const rounds = bd.role === 'rifle' ? 4 + ((Math.random() * 4) | 0)
+                                           : 2 + ((Math.random() * 4) | 0);
+        player.ammo += rounds;
+        extra += `  · +${rounds} rounds`;
+      }
+      if (Math.random() < 0.3) { player.inv.snack++; extra += '  · +1 snack bar'; }
+      showMsg(`Searched the body — ${n} scrap${extra}`);
+      spawnSparks(bd.x, bd.y, 4, ['#a8342c', '#b89a54']);
+      SFX.loot();
+      bd.looted = true;
+      saveGame();
     }
   } else if (bestKind === 'item') {
     const s = isoToScreen(best.x, best.y);
@@ -517,6 +561,15 @@ function explodeBarrel(b) {
     if (sc.hp <= 0) killScrapper(sc);
     else sc.state = 'chase';
   }
+  // a fuel pump going up beside a checkpoint is a legitimate way to take one
+  for (const bd of bandits) {
+    if (bd.dead) continue;
+    const bdd = Math.hypot(bd.x - cx, bd.y - cy);
+    if (bdd >= R) continue;
+    alertBlock(bd.block, player.x, player.y, true);
+    banditHit(bd, Math.round(30 + 60 * (1 - bdd / R)),
+              (bd.x - cx) / (bdd || 1), (bd.y - cy) / (bdd || 1), false);
+  }
   // chain reaction with nearby barrels
   for (const ob of boomBarrels) {
     if (ob.alive && Math.hypot(ob.gx - b.gx, ob.gy - b.gy) < R) {
@@ -573,6 +626,15 @@ function updateBullets(dt) {
         SFX.hitMetal();
         if (sc.hp <= 0) killScrapper(sc);
         break;                          // one bullet, one machine
+      }
+    }
+    if (!hit) {
+      for (const bd of bandits) {
+        if (bd.dead) continue;
+        if (Math.hypot(b.x - bd.x, b.y - bd.y) >= 0.45) continue;
+        hit = true;
+        banditHit(bd, 10, b.vx * 0.1, b.vy * 0.1, false);
+        break;                          // one bullet, one raider
       }
     }
     if (hit) bullets.splice(i, 1);
@@ -744,6 +806,325 @@ function aiMove(s, tx, ty, step, dt) {
       }
     }
   }
+}
+
+
+// =====================================================================
+// THE BANDITS — four to a roadblock, holding the road to the church.
+//
+// They are the first PEOPLE you fight, and everything about how they behave
+// is meant to say so. The machines in the yard hunt you as individuals: each
+// Scrapper notices you on its own and comes on its own. These do not. One of
+// them sees you and SHOUTS, and the whole block turns at once — that is the
+// difference between a patrol and a gang, and it is the thing that makes a
+// checkpoint feel like a checkpoint.
+//
+// The four roles are a rock-paper-scissors you read at a glance:
+//   two KNIVES   come at you and will not stop; fast, fragile, no reach
+//   one PISTOL   holds the middle distance and keeps walking to hold it
+//   one RIFLE    stands furthest back behind the tall screen and takes
+//                the whole road under aim; the slowest and hardest hit
+// Kill order is the skill: rush the rifle and the knives are on you, hold
+// back and the rifle picks you apart. The gap in the barricade is the fight —
+// it is the only place any of them can see you from.
+// =====================================================================
+const BANDIT_ROLES = {
+  // Tuned against a player standing in the gap doing nothing: four of them
+  // took a passive 100 HP down in about six seconds, which is a wall, not a
+  // fight. Softened to roughly nine — long enough that someone carrying only
+  // the pipe can back out through the chicane and take them a piece at a time,
+  // still short enough that standing in the open is a death sentence.
+  knife: {
+    hp: 34, sight: 7.0, speed: 3.1, dmg: 10, reach: 1.15,
+    windup: 0.38, swing: 0.15, recover: 0.58,
+  },
+  pistol: {
+    hp: 30, sight: 8.5, speed: 2.5, dmg: 7,
+    range: [2.6, 7.5], hold: 4.8, cd: 1.35, aim: 0.36, spread: 0.11, speedB: 10.5,
+  },
+  rifle: {
+    hp: 26, sight: 11.5, speed: 2.0, dmg: 16,
+    range: [3.2, 15.0], hold: 9.0, cd: 2.7, aim: 1.05, spread: 0.03, speedB: 17,
+  },
+};
+
+const bandits = [];
+const foeBullets = [];        // theirs, so they can be told from yours on sight
+
+function makeBandit(block, post, idx) {
+  const cfg = BANDIT_ROLES[post.role];
+  return {
+    x: post.x, y: post.y, r: 0.26,
+    homeX: post.x, homeY: post.y,
+    block, idx, role: post.role, v: post.v || 0,
+    hp: cfg.hp, maxHp: cfg.hp,
+    state: 'guard', t: 0, cd: 0, aimT: 0,
+    animT: 0, frame: 0, hitFlash: 0, muzzle: 0,
+    alert: 0, memory: 0, lastPX: post.x, lastPY: post.y,
+    kbx: 0, kby: 0, detour: 0, detourX: 0, detourY: 0,
+    idleT: Math.random() * 2, sway: Math.random() * 6.28,
+    dead: false, looted: false, fell: 0,
+  };
+}
+
+function spawnBandits() {
+  bandits.length = 0;
+  foeBullets.length = 0;
+  if (!currentAreaDef().hasBandits) return;
+  for (const rb of roadblocks) {
+    rb.cleared = false;
+    rb.posts.forEach((post, i) => bandits.push(makeBandit(rb, post, i)));
+  }
+}
+// a body that is already down when you arrive — restored from the save
+function banditKey(b) { return b.block.id + ':' + b.idx; }
+
+// ---- can this one actually see that spot, or is its own barricade in the way?
+function losClear(x0, y0, x1, y1) {
+  const dx = x1 - x0, dy = y1 - y0;
+  const n = Math.ceil(Math.hypot(dx, dy) * 3);
+  for (let i = 1; i < n; i++) {
+    const t = i / n;
+    if (isSolid(x0 + dx * t, y0 + dy * t)) return false;
+  }
+  return true;
+}
+
+// One of them calls it and the whole block comes. This is the single most
+// important line in the file: without it four bandits are four separate
+// fights, and a roadblock stops being a roadblock.
+function alertBlock(block, px, py, shout) {
+  let woke = false;
+  for (const b of bandits) {
+    if (b.block !== block || b.dead) continue;
+    if (b.memory <= 0) woke = true;
+    b.memory = 14;
+    b.lastPX = px; b.lastPY = py;
+    if (b.state === 'guard') { b.state = 'fight'; b.alert = 1; }
+  }
+  if (woke && shout) SFX.shout();
+}
+
+function killBandit(b) {
+  b.dead = true;
+  b.state = 'dead';
+  b.looted = false;
+  b.fell = 0.35;
+  SFX.banditDie();
+  addShake(2);
+  spawnSmoke(b.x, b.y, 3);
+  const rb = b.block;
+  if (!rb.cleared && bandits.every(o => o.block !== rb || o.dead)) {
+    rb.cleared = true;
+    showMsg('THE ROAD IS CLEAR', 3);
+    SFX.chime();
+  }
+  saveGame();
+}
+
+function banditHit(b, dmg, kx, ky, stab) {
+  if (b.dead) return;
+  b.hp -= dmg;
+  b.hitFlash = 0.09;
+  b.kbx += kx * (stab ? 0.06 : 0.11);
+  b.kby += ky * (stab ? 0.06 : 0.11);
+  // they are not machines: no sparks, no glow, a dull sound and a stagger
+  spawnSparks(b.x, b.y, 4, ['#7d211c', '#a8342c', '#4a3d32']);
+  SFX.thud();
+  alertBlock(b.block, player.x, player.y, true);
+  if (b.hp <= 0) killBandit(b);
+}
+
+function foeShot(b, tx, ty, cfg, sound) {
+  const dx = tx - b.x, dy = ty - b.y;
+  const d = Math.hypot(dx, dy) || 1;
+  const a = Math.atan2(dy, dx) + (Math.random() - 0.5) * cfg.spread * 2;
+  foeBullets.push({
+    x: b.x + Math.cos(a) * 0.4, y: b.y + Math.sin(a) * 0.4,
+    vx: Math.cos(a) * cfg.speedB, vy: Math.sin(a) * cfg.speedB,
+    life: 1.1, dmg: cfg.dmg, heavy: b.role === 'rifle',
+  });
+  b.muzzle = 0.07;
+  if (sound) sound();
+  addShake(b.role === 'rifle' ? 1.4 : 0.7);
+}
+
+// Where should this one walk to? If the player is on the far side of the
+// barricade, the answer is NOT "at the player" — it is "at the gap", or they
+// grind against their own wall and the fight never happens.
+function banditGoal(b, px, py) {
+  const rb = b.block;
+  const side = (v) => (v - rb.lineX) * rb.facing > 0;   // true = the way in
+  if (side(b.x) === side(px)) return { x: px, y: py, via: false };
+  // Aim THROUGH the chicane, not AT it. Pointed at the gap itself they walked
+  // up, arrived, and stood in the hole forever — the whole block piled into
+  // the doorway and the player watched them from six feet away.
+  const dir = side(px) ? 1 : -1;
+  return { x: rb.gate.x + rb.facing * dir * 1.9, y: rb.gate.y, via: true };
+}
+
+function updateBandits(dt) {
+  if (!currentAreaDef().hasBandits) return;
+  for (const b of bandits) updateBandit(dt, b);
+}
+
+function updateBandit(dt, b) {
+  b.hitFlash -= dt;
+  b.muzzle -= dt;
+  if (b.kbx || b.kby) {
+    tryMove(b, b.kbx, b.kby);
+    b.kbx *= 0.7; b.kby *= 0.7;
+    if (Math.abs(b.kbx) + Math.abs(b.kby) < 0.001) { b.kbx = 0; b.kby = 0; }
+  }
+  if (b.dead) { if (b.fell > 0) b.fell -= dt; return; }
+
+  const cfg = BANDIT_ROLES[b.role];
+  const dist = Math.hypot(player.x - b.x, player.y - b.y);
+  const alive = player.dead <= 0;
+  b.animT += dt;
+  if (b.animT > 0.2) { b.animT = 0; b.frame = 1 - b.frame; }
+  b.cd -= dt;
+
+  // ---- noticing you ----
+  if (b.state === 'guard') {
+    const sight = player.crouch ? cfg.sight * 0.45 : cfg.sight;
+    const sees = alive && dist < sight && losClear(b.x, b.y, player.x, player.y);
+    if (alive && dist < 1.8) b.alert = 1;
+    else if (sees) b.alert += dt * (0.55 + 1.5 * (1 - dist / sight));
+    else b.alert = Math.max(0, b.alert - dt * 0.7);
+    // NOT tutStealth() — that one says "a machine noticed movement", and
+    // these are not machines. It also freezes the world the moment the bar
+    // twitches, which left the whole block standing at ease while the player
+    // walked up and stood on their boots.
+    if (b.alert >= 1) {
+      alertBlock(b.block, player.x, player.y, true);
+      tutBandit();
+      return;
+    }
+    // idling at the post: they shift their weight and look up and down the road
+    b.sway += dt;
+    if (b.idleT > 0) { b.idleT -= dt; return; }
+    const dh = Math.hypot(b.homeX - b.x, b.homeY - b.y);
+    if (dh > 0.6) aiMove(b, b.homeX, b.homeY, cfg.speed * 0.5 * dt, dt);
+    else { b.idleT = 1.2 + Math.random() * 2.2; b.frame = 0; }
+    return;
+  }
+
+  // ---- fighting ----
+  const seen = alive && dist < cfg.sight * 1.25 && losClear(b.x, b.y, player.x, player.y);
+  if (seen) { b.memory = 14; b.lastPX = player.x; b.lastPY = player.y; }
+  else b.memory -= dt;
+  if (b.memory <= 0 && b.state !== 'windup' && b.state !== 'swing') {
+    b.state = 'guard'; b.alert = 0.3; b.aimT = 0;
+    return;
+  }
+  player.combatT = 0;
+  const tx = seen ? player.x : b.lastPX, ty = seen ? player.y : b.lastPY;
+
+  if (b.role === 'knife') {
+    switch (b.state) {
+      case 'fight': {
+        const goal = banditGoal(b, tx, ty);
+        aiMove(b, goal.x, goal.y, cfg.speed * dt, dt);
+        if (seen && dist < cfg.reach * 0.82) {
+          b.state = 'windup'; b.t = cfg.windup;
+          SFX.charge();
+        }
+        break;
+      }
+      case 'windup':
+        b.t -= dt;
+        if (b.t <= 0) { b.state = 'swing'; b.t = cfg.swing; b.didHit = false; SFX.stab(); }
+        break;
+      case 'swing':
+        if (!b.didHit) {
+          b.didHit = true;
+          if (dist < cfg.reach && player.iframes <= 0 && player.dead <= 0) hurtPlayer(cfg.dmg, b.x, b.y);
+        }
+        b.t -= dt;
+        if (b.t <= 0) { b.state = 'recover'; b.t = cfg.recover; }
+        break;
+      case 'recover':
+        b.t -= dt;
+        if (b.t <= 0) b.state = 'fight';
+        break;
+      default: b.state = 'fight';
+    }
+    return;
+  }
+
+  // ---- the two shooters. Same shape, very different numbers: the pistol
+  // fidgets in and out of its band and fires often, the rifle plants itself,
+  // takes a long visible aim and hits like a truck.
+  const clear = seen && dist >= cfg.range[0] && dist <= cfg.range[1];
+  if (b.state === 'aim') {
+    b.aimT += dt;
+    b.t -= dt;
+    // lose sight mid-aim and the shot is thrown away — break the line and live
+    if (!clear) { b.state = 'fight'; b.aimT = 0; b.cd = 0.35; }
+    else if (b.t <= 0) {
+      foeShot(b, player.x, player.y, cfg, b.role === 'rifle' ? SFX.rifleShot : SFX.shot);
+      b.state = 'fight'; b.aimT = 0; b.cd = cfg.cd;
+    }
+    return;
+  }
+  b.aimT = 0;
+  // hold the band: too close and they give ground, too far and they close in
+  const goal = banditGoal(b, tx, ty);
+  if (goal.via) {
+    aiMove(b, goal.x, goal.y, cfg.speed * dt, dt);
+  } else if (dist < cfg.range[0]) {
+    aiMove(b, b.x - (player.x - b.x), b.y - (player.y - b.y), cfg.speed * 1.15 * dt, dt);
+  } else if (dist > cfg.hold || !seen) {
+    aiMove(b, tx, ty, cfg.speed * dt, dt);
+  } else if (b.cd > 0) {
+    // sidestep while reloading, so a shooter is never a stationary target
+    const a = Math.atan2(player.y - b.y, player.x - b.x) + Math.PI / 2;
+    aiMove(b, b.x + Math.cos(a), b.y + Math.sin(a), cfg.speed * 0.55 * dt, dt);
+  }
+  if (clear && b.cd <= 0) { b.state = 'aim'; b.t = cfg.aim; }
+}
+
+function hurtPlayer(dmg, fromX, fromY) {
+  player.hp -= dmg;
+  player.combatT = 0;
+  player.iframes = 0.45; player.flash = 0.28;
+  addShake(4);
+  spawnSparks(player.x, player.y, 5, ['#ff5a3c', '#ffb02e']);
+  const d = Math.hypot(player.x - fromX, player.y - fromY) || 1;
+  tryMove(player, ((player.x - fromX) / d) * 0.45, ((player.y - fromY) / d) * 0.45);
+  SFX.hurt();
+  if (player.hp <= 0) { player.hp = 0; player.dead = 2; SFX.die(); }
+}
+
+function updateFoeBullets(dt) {
+  for (let i = foeBullets.length - 1; i >= 0; i--) {
+    const b = foeBullets[i];
+    b.life -= dt;
+    b.x += b.vx * dt; b.y += b.vy * dt;
+    let hit = b.life <= 0;
+    if (isSolid(b.x, b.y)) {
+      hit = true;
+      spawnSparks(b.x, b.y, 3, ['#ffd27a', '#c9c9d2']);
+      SFX.ricochet();
+      for (const bb of boomBarrels) {
+        if (bb.alive && Math.hypot(b.x - bb.gx - 0.5, b.y - bb.gy - 0.5) < 0.8) { explodeBarrel(bb); break; }
+      }
+    }
+    if (!hit && player.dead <= 0 && player.iframes <= 0 &&
+        Math.hypot(b.x - player.x, b.y - player.y) < 0.42) {
+      hit = true;
+      hurtPlayer(b.dmg, b.x - b.vx, b.y - b.vy);
+    }
+    if (hit) foeBullets.splice(i, 1);
+  }
+}
+
+function tutBandit() {
+  tutShow('bandit',
+    ['Raiders hold this road. One sees you,', 'they all come. The knives reach you first —',
+     'the rifle at the back is the one to fear.'],
+    'any', 'PRESS ANY KEY');
 }
 
 function updateNpc(dt) {

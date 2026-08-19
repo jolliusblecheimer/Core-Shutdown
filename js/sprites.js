@@ -1844,4 +1844,422 @@ function outlined(src) {
     Sprites.decals.arrowYm = arrow(0, -1);   // toward -y  (up-right)
     Sprites.decals.paintArrow = Sprites.decals.arrowXm;
   })();
+
+  // =====================================================================
+  // THE ROADBLOCKS — bandit checkpoints across the church road.
+  //
+  // THE ANGLE RULE: every piece below lies ON or ALONG the carriageway, so
+  // none of it may be an axis-aligned rectangle. Each one is built in FACE
+  // SPACE from its own footprint — the same construction the cars, the bus
+  // and the buildings use — and comes in an 'x' and a 'y' variant so the
+  // barricade runs along whichever street it is blocking.
+  // =====================================================================
+
+  // a canvas sized to a footprint of L x W tiles standing H pixels tall,
+  // plus the projector into it. t runs along the piece, v across it, h up.
+  function isoPiece(along, L, W, H, pad) {
+    const p = pad || 0;
+    const lx = along === 'x' ? L : W, ly = along === 'x' ? W : L;
+    const OX = Math.ceil(ly * 16) + 2, OY = H + 2 + p;
+    const c = makeCanvas(Math.ceil((lx + ly) * 16) + 4,
+                         Math.ceil((lx + ly) * 8) + H + 5 + p);
+    const g = c.getContext('2d');
+    const P = (t, v, h) => {
+      const a = t * L, b = v * W;
+      const wx = along === 'x' ? a : b, wy = along === 'x' ? b : a;
+      return [(wx - wy) * 16 + OX, (wx + wy) * 8 - h + OY];
+    };
+    // top face, near flank and end cap of a box within the footprint
+    const box = (t0, t1, v0, v1, h0, h1, top, side, end) => {
+      isoFill(g, [P(t0, v0, h1), P(t1, v0, h1), P(t1, v1, h1), P(t0, v1, h1)], top);
+      if (side) isoFill(g, [P(t0, v1, h1), P(t1, v1, h1), P(t1, v1, h0), P(t0, v1, h0)], side);
+      if (end) isoFill(g, [P(t1, v0, h1), P(t1, v1, h1), P(t1, v1, h0), P(t1, v0, h0)], end);
+    };
+    // anchor on the CENTRE of the footprint, exactly as the cars do
+    const finish = () => {
+      const o = outlined(c);
+      o.oy = -(OY + Math.round((L + W) * 4));
+      return o;
+    };
+    return { c, g, P, box, finish };
+  }
+
+  // integer-plotted ellipse outline — a razor coil is far too small for a
+  // stroked path, which would fur its edges into grey mush
+  function ring(g, cx, cy, rx, ry, col) {
+    g.fillStyle = col;
+    for (let a = 0; a < 360; a += 6) {
+      const r = a * Math.PI / 180;
+      g.fillRect(Math.round(cx + Math.cos(r) * rx), Math.round(cy + Math.sin(r) * ry), 1, 1);
+    }
+  }
+
+  const BR_STEEL = '#6f7480', BR_STEEL_L = '#8b909b', BR_STEEL_D = '#4b4f59';
+  const BR_WOOD = '#6a4c31', BR_WOOD_L = '#846247', BR_WOOD_D = '#493320';
+  const BR_RUST = '#8a4a28';
+
+  // ---- corrugated sheet-steel panel on a timber frame ----
+  function barricadePanel(along, tall) {
+    const L = 1.0, W = 0.26, H = tall ? 22 : 16;
+    const { g, P, box, finish } = isoPiece(along, L, W, H, 4);
+    box(0, 1, 0, 1, 0, H, BR_STEEL_L, BR_STEEL, BR_STEEL_D);
+    // corrugation: alternating ribs down the near flank, in face space so
+    // they lean with the panel instead of standing bolt upright on screen
+    for (let i = 0; i < 9; i++) {
+      const t0 = i / 9, t1 = t0 + 0.055;
+      isoFill(g, [P(t0, 1.01, H - 1), P(t1, 1.01, H - 1), P(t1, 1.01, 1), P(t0, 1.01, 1)],
+              i % 2 ? BR_STEEL_D : BR_STEEL_L);
+    }
+    // timber cap rail and a diagonal brace nailed across the sheet
+    isoFill(g, [P(0, 0, H + 3), P(1, 0, H + 3), P(1, 1, H + 3), P(0, 1, H + 3)], BR_WOOD_L);
+    isoFill(g, [P(0, 1, H + 3), P(1, 1, H + 3), P(1, 1, H), P(0, 1, H)], BR_WOOD);
+    for (let i = 0; i < 7; i++) {
+      const t = 0.1 + i * 0.13, h = 2 + i * (H - 6) / 7;
+      isoFill(g, [P(t, 1.02, h + 2.6), P(t + 0.12, 1.02, h + 2.6),
+                  P(t + 0.12, 1.02, h), P(t, 1.02, h)], BR_WOOD_D);
+    }
+    // rust bleeding from the fixings
+    isoFill(g, [P(0.28, 1.03, H - 3), P(0.36, 1.03, H - 3),
+                P(0.36, 1.03, H - 9), P(0.28, 1.03, H - 9)], BR_RUST);
+    if (tall) {
+      // a firing slot cut through it at chest height — the shooter's screen
+      isoFill(g, [P(0.34, 1.04, H - 4), P(0.72, 1.04, H - 4),
+                  P(0.72, 1.04, H - 8), P(0.34, 1.04, H - 8)], '#14161b');
+    }
+    return finish();
+  }
+  Sprites.barricade = { x: barricadePanel('x', false), y: barricadePanel('y', false) };
+  Sprites.barricadeTall = { x: barricadePanel('x', true), y: barricadePanel('y', true) };
+
+  // ---- sandbag stack: three courses, each bag its own small volume ----
+  function sandbagStack(along) {
+    const L = 1.0, W = 0.5, H = 14;
+    const { g, P, box, finish } = isoPiece(along, L, W, H, 2);
+    // Every bag gets its own tone. Filled with one colour the whole stack
+    // reads as a single tan slab — it is the tone-to-tone step between
+    // neighbours, not the seam line, that makes them read as bags.
+    const TONES = ['#9a8a63', '#8d7d58', '#a5946c', '#847653'];
+    const BAG_D = '#5f5440', SEAM = '#4a4133';
+    const r = mulberry32(along === 'x' ? 7 : 23);
+    for (let course = 0; course < 3; course++) {
+      const h0 = course * 4.6, h1 = h0 + 4.6;
+      const n = 4, off = course % 2 ? 0.5 / n : 0;      // bags break joint
+      for (let i = 0; i < n; i++) {
+        const t0 = i / n + off, t1 = Math.min(1, t0 + 1 / n - 0.02);
+        if (t0 >= 1) continue;
+        const tone = TONES[(r() * TONES.length) | 0];
+        box(t0, t1, 0, 1, h0, h1, shadeHex(tone, 1.22), tone, BAG_D);
+        // a bag is soft: the top of each one catches the light along its length
+        isoFill(g, [P(t0, 0.98, h1), P(t1, 0.98, h1),
+                    P(t1, 0.98, h1 - 0.9), P(t0, 0.98, h1 - 0.9)], shadeHex(tone, 1.34));
+        // and it sags at the bottom, where the one under it takes the weight
+        isoFill(g, [P(t0, 1.02, h0 + 1.1), P(t1, 1.02, h0 + 1.1),
+                    P(t1, 1.02, h0), P(t0, 1.02, h0)], shadeHex(tone, 0.72));
+        // the seam where it is tied
+        isoFill(g, [P(t1 - 0.016, 1.03, h1 - 0.4), P(t1, 1.03, h1 - 0.4),
+                    P(t1, 1.03, h0 + 0.4), P(t1 - 0.016, 1.03, h0 + 0.4)], SEAM);
+      }
+    }
+    return finish();
+  }
+  Sprites.sandbags = { x: sandbagStack('x'), y: sandbagStack('y') };
+
+  // ---- concrete barrier, dragged out of a roadworks ----
+  function jerseyBlock(along) {
+    const L = 1.0, W = 0.44, H = 15;
+    const { g, P, box, finish } = isoPiece(along, L, W, H, 2);
+    const CON = '#8e8b84', CON_L = '#a5a29a', CON_D = '#63615c';
+    box(0, 1, 0, 1, 0, 5, CON_L, CON, CON_D);                 // splayed foot
+    box(0.04, 0.96, 0.22, 0.78, 5, H, CON_L, CON, CON_D);     // narrower body
+    // hazard chevrons, painted onto the near flank so they lie with it
+    for (let i = 0; i < 4; i++) {
+      const t0 = 0.08 + i * 0.22;
+      isoFill(g, [P(t0, 0.79, H - 2), P(t0 + 0.1, 0.79, H - 2),
+                  P(t0 + 0.1, 0.79, 6), P(t0, 0.79, 6)], i % 2 ? '#c8b23c' : '#3a3733');
+    }
+    isoFill(g, [P(0.4, 0.79, 12), P(0.62, 0.79, 12),
+                P(0.62, 0.79, 9), P(0.4, 0.79, 9)], BR_RUST);
+    return finish();
+  }
+  Sprites.conBlock = { x: jerseyBlock('x'), y: jerseyBlock('y') };
+
+  // ---- razor coil: loops marching along the run, not a flat rectangle ----
+  function razorCoil(along) {
+    const L = 1.0, W = 0.3, H = 13;
+    const { g, P, finish } = isoPiece(along, L, W, H, 3);
+    for (let i = 0; i < 6; i++) {
+      const [cx, cy] = P((i + 0.5) / 6, 0.5, 6);
+      ring(g, cx, cy, 5, 6, '#565b63');                 // the shaded far side
+      ring(g, cx, cy - 1, 5, 6, '#a8aeb8');             // the lit near side
+      g.fillStyle = '#d2d8e0';
+      for (const a of [0.5, 1.7, 2.9, 4.1, 5.3]) {      // barbs
+        g.fillRect(Math.round(cx + Math.cos(a) * 6), Math.round(cy - 1 + Math.sin(a) * 7), 1, 1);
+      }
+    }
+    return finish();
+  }
+  Sprites.razorWire = { x: razorCoil('x'), y: razorCoil('y') };
+
+  // ---- burning oil drum: free-standing and upright, so drawn straight ----
+  (function () {
+    const c = makeCanvas(13, 19), g = c.getContext('2d');
+    px(g, 2, 5, 9, 13, '#4a3a2c');
+    px(g, 2, 5, 3, 13, '#5e4a37');                       // lit side
+    px(g, 9, 5, 2, 13, '#33281e');
+    px(g, 2, 8, 9, 1, '#2a2118'); px(g, 2, 14, 9, 1, '#2a2118');   // rolling hoops
+    px(g, 3, 11, 3, 2, BR_RUST);
+    px(g, 2, 4, 9, 2, '#5a4634');                        // rim
+    px(g, 3, 4, 7, 1, '#1a1410');                        // the dark mouth
+    // fire: three tongues, brightest at the core
+    px(g, 4, 1, 2, 3, '#ff8b45'); px(g, 7, 0, 2, 4, '#ffb02e');
+    px(g, 5, 2, 3, 2, '#ffe08a');
+    px(g, 3, 3, 2, 1, '#ff5a3c'); px(g, 9, 2, 1, 2, '#ff7a2e');
+    Sprites.brazier = outlined(c);
+  })();
+
+  // ---- a red rag on a scaffold pole: this block is claimed ----
+  (function () {
+    const c = makeCanvas(13, 34), g = c.getContext('2d');
+    px(g, 5, 4, 2, 30, '#5c5952');                       // pole
+    px(g, 5, 4, 1, 30, '#7a766d');
+    px(g, 7, 5, 5, 7, '#a8342c');                        // the rag
+    px(g, 7, 5, 5, 1, '#c4463a');
+    px(g, 10, 9, 2, 3, '#7d211c');                       // torn tail
+    px(g, 7, 12, 3, 2, '#7d211c');
+    Sprites.banditFlag = outlined(c);
+  })();
+
+  // ---- churchyard wall: low coursed stone, running along one axis ----
+  function stoneRun(along) {
+    const L = 1.0, W = 0.3, H = 13;
+    const { g, P, box, finish } = isoPiece(along, L, W, H, 2);
+    // The stones need real separation from each other. Within a shade or two
+    // the whole run flattens back into a plain grey box, which is exactly
+    // what the first pass did.
+    const S = '#7d7a70', S_L = '#95928a', S_D = '#5a5850';
+    const FACE = ['#8e8b82', '#7a7770', '#9c9890', '#6d6a63', '#87847b'];
+    const MORTAR = '#4e4c46';
+    const r = mulberry32(along === 'x' ? 11 : 29);
+    box(0, 1, 0, 1, 0, H, S_L, S, S_D);
+    isoFill(g, [P(0, 1.01, H), P(1, 1.01, H), P(1, 1.01, 0), P(0, 1.01, 0)], MORTAR);
+    for (let course = 0; course < 3; course++) {
+      const h0 = 0.9 + course * 4.1, h1 = h0 + 3.2;
+      let t = course % 2 ? 0.11 : 0;
+      while (t < 1) {
+        const t1 = Math.min(1, t + 0.15 + r() * 0.13);
+        const face = FACE[(r() * FACE.length) | 0];
+        isoFill(g, [P(t, 1.02, h1), P(t1 - 0.022, 1.02, h1),
+                    P(t1 - 0.022, 1.02, h0), P(t, 1.02, h0)], face);
+        // a lit top edge on each stone, so the course reads as courses
+        isoFill(g, [P(t, 1.03, h1), P(t1 - 0.022, 1.03, h1),
+                    P(t1 - 0.022, 1.03, h1 - 0.7), P(t, 1.03, h1 - 0.7)], shadeHex(face, 1.2));
+        t = t1;
+      }
+    }
+    // coping course along the top
+    isoFill(g, [P(0, 0, H + 2), P(1, 0, H + 2), P(1, 1, H + 2), P(0, 1, H + 2)], '#a9a69d');
+    isoFill(g, [P(0, 1, H + 2), P(1, 1, H + 2), P(1, 1, H), P(0, 1, H)], '#6e6c64');
+    return finish();
+  }
+  Sprites.stoneWall = { x: stoneRun('x'), y: stoneRun('y') };
+
+  // =====================================================================
+  // THE BANDITS — human raiders, four to a roadblock.
+  //
+  // Upright figures, so THE ANGLE RULE does not bind them: they are drawn
+  // straight, exactly like the player and the survivor. Same 20px height and
+  // the same level of detail as those two, so all three read as one species.
+  // The canvas is 19 wide rather than 15 because the rifle needs the room;
+  // the body is centred on x=9 in every frame, so the four line up.
+  //
+  // Faction language: everything the machines wear glows. Nothing here does.
+  // These are people — cloth, skin, scavenged plate — and every one of them
+  // wears the same DIRTY RED RAG, so you know at a glance who they belong to.
+  // =====================================================================
+  const BD_COAT = '#5e3230', BD_COAT_L = '#79433f', BD_COAT_D = '#3d1f1d';
+  const BD_SKIN = '#c09070', BD_SKIN_D = '#9a7055';
+  const BD_RAG = '#a8342c', BD_RAG_L = '#c4463a', BD_RAG_D = '#7d211c';
+  const BD_PLATE = '#6a6a72', BD_PLATE_D = '#494951';
+  // The legs are the whole lower third of the figure and they were drawn
+  // almost the colour of the outline, so the bandits ended in a dark blob
+  // with no stride in it. Lifted until each leg carries its own value.
+  const BD_PANT = '#544a40', BD_PANT_D = '#3c342c';
+  const BD_BOOT = '#2c241d', BD_BOOT_L = '#4a3d32';
+  const BD_STEEL = '#b0b6be', BD_STEEL_D = '#767c85';
+  const BD_GRIP = '#2e2018', BD_STOCK = '#6b4a2e';
+
+  // the shared body: torso, arms, legs, boots. Heads and weapons differ.
+  function banditTorso(g, b, coat, coatL, coatD, plated) {
+    px(g, 5, 7 + b, 9, 1, coatL);                        // shoulders
+    px(g, 4, 8 + b, 11, 5, coat);
+    px(g, 13, 9 + b, 2, 4, coatD);                       // shaded right side
+    px(g, 4, 9 + b, 1, 4, coatL);                        // lit left edge
+    px(g, 6, 10 + b, 7, 1, BD_RAG_D);                    // rag sash at the chest
+    px(g, 6, 10 + b, 3, 1, BD_RAG);
+    px(g, 4, 12 + b, 11, 1, coatD);                      // belt line
+    if (plated) {                                        // scrap shoulder plate
+      px(g, 4, 7 + b, 4, 2, BD_PLATE);
+      px(g, 4, 7 + b, 4, 1, '#83838c');
+      px(g, 5, 9 + b, 2, 1, BD_PLATE_D);
+    }
+    px(g, 5, 13 + b, 9, 1, coat);                        // jacket hem
+    px(g, 5, 14 + b, 3, 1, coatD); px(g, 11, 14 + b, 3, 1, coatD);   // ragged tails
+    px(g, 8, 14 + b, 3, 1, BD_PANT);
+    // the legs part HERE, not two rows further down: the split is what tells
+    // you this is a person walking rather than a sack standing on the road
+    px(g, 6, 15 + b, 3, 1, BD_PANT); px(g, 10, 15 + b, 3, 1, BD_PANT);
+    px(g, 6, 16 + b, 3, 1, BD_PANT_D); px(g, 10, 16 + b, 3, 1, BD_PANT_D);
+    px(g, 9, 15 + b, 1, 2, '#181310');                   // the gap between them
+  }
+  function banditLegs(g, step) {
+    if (step) {                                          // mid-stride, legs apart
+      px(g, 5, 17, 3, 1, BD_PANT_D); px(g, 11, 17, 3, 1, BD_PANT_D);
+      px(g, 5, 18, 4, 2, BD_BOOT); px(g, 10, 18, 4, 2, BD_BOOT);
+      px(g, 5, 18, 4, 1, BD_BOOT_L); px(g, 10, 18, 4, 1, BD_BOOT_L);
+      px(g, 9, 18, 1, 2, '#181310');
+    } else {                                             // stood, feet together
+      px(g, 6, 17, 3, 1, BD_PANT_D); px(g, 10, 17, 3, 1, BD_PANT_D);
+      px(g, 6, 18, 3, 2, BD_BOOT); px(g, 10, 18, 3, 2, BD_BOOT);
+      px(g, 6, 18, 3, 1, BD_BOOT_L); px(g, 10, 18, 3, 1, BD_BOOT_L);
+      px(g, 9, 18, 1, 2, '#181310');
+    }
+  }
+  // the weapons, in the figure's right hand (screen right)
+  function drawKnife(g, b, x0, thrust) {
+    if (thrust) {                                        // arm out, blade level
+      px(g, 14, 11 + b, 3, 1, BD_COAT_D);
+      px(g, 16, 10 + b, 1, 2, BD_SKIN);
+      px(g, 17, 10 + b, 2, 1, BD_STEEL);
+      px(g, 17, 11 + b, 2, 1, BD_STEEL_D);
+    } else {                                             // held low, point down
+      px(g, x0, 11 + b, 1, 2, BD_SKIN);
+      px(g, x0, 13 + b, 1, 1, BD_GRIP);
+      px(g, x0, 14 + b, 1, 3, BD_STEEL);
+      px(g, x0 + 1, 15 + b, 1, 2, BD_STEEL_D);
+    }
+  }
+  function drawPistol(g, b, raised) {
+    if (raised) {
+      px(g, 14, 9 + b, 3, 1, BD_COAT);                   // arm out
+      px(g, 16, 9 + b, 1, 1, BD_SKIN);
+      px(g, 17, 8 + b, 2, 2, BD_STEEL_D);                // slab-sided receiver
+      px(g, 17, 8 + b, 2, 1, BD_STEEL);
+      px(g, 17, 10 + b, 1, 2, BD_GRIP);                  // grip
+    } else {
+      px(g, 14, 11 + b, 1, 2, BD_SKIN);
+      px(g, 14, 13 + b, 2, 2, BD_STEEL_D);
+      px(g, 14, 13 + b, 2, 1, BD_STEEL);
+    }
+  }
+  function drawRifle(g, b, aimed) {
+    if (aimed) {                                         // shouldered and level
+      px(g, 5, 10 + b, 14, 1, BD_STEEL_D);               // the barrel line
+      px(g, 12, 10 + b, 7, 1, BD_STEEL);
+      px(g, 5, 10 + b, 3, 2, BD_STOCK);                  // butt into the shoulder
+      px(g, 8, 11 + b, 2, 1, BD_STOCK);                  // fore-end
+      px(g, 10, 11 + b, 1, 2, BD_GRIP);                  // pistol grip
+      px(g, 9, 9 + b, 1, 1, BD_STEEL);                   // rear sight
+      px(g, 17, 9 + b, 1, 1, BD_STEEL);                  // fore sight
+    } else {                                             // slung across the body
+      px(g, 3, 15 + b, 3, 2, BD_STOCK);
+      px(g, 6, 13 + b, 2, 2, BD_STOCK);
+      px(g, 5, 14 + b, 9, 1, BD_STEEL_D);
+      px(g, 12, 11 + b, 5, 1, BD_STEEL_D);
+      px(g, 15, 10 + b, 3, 1, BD_STEEL);
+      px(g, 8, 13 + b, 1, 2, BD_GRIP);
+    }
+  }
+
+  // ---- KNIFER: the two that come at you. Hooded, or shaved and banded. ----
+  function knifer(step, thrust, variant) {
+    const c = makeCanvas(19, 20), g = c.getContext('2d');
+    const b = step ? 1 : 0;
+    if (variant === 0) {
+      px(g, 8, 0 + b, 3, 1, BD_COAT_L);                  // hood peak
+      px(g, 7, 1 + b, 5, 1, BD_COAT);
+      px(g, 6, 2 + b, 7, 2, BD_COAT); px(g, 6, 2 + b, 1, 1, BD_COAT_L);
+      px(g, 7, 4 + b, 5, 1, BD_SKIN_D);                  // face deep in the hood
+      px(g, 8, 4 + b, 1, 1, '#141014'); px(g, 10, 4 + b, 1, 1, '#141014');
+      px(g, 7, 5 + b, 5, 2, BD_RAG);                     // red face wrap
+      px(g, 7, 5 + b, 5, 1, BD_RAG_L);
+    } else {
+      px(g, 7, 1 + b, 5, 2, BD_SKIN);                    // shaved head
+      px(g, 7, 1 + b, 5, 1, '#d3a583');
+      px(g, 7, 3 + b, 5, 1, BD_RAG);                     // red headband
+      px(g, 7, 3 + b, 2, 1, BD_RAG_L);
+      px(g, 7, 4 + b, 5, 1, BD_SKIN);
+      px(g, 8, 4 + b, 1, 1, '#141014'); px(g, 10, 4 + b, 1, 1, '#141014');
+      px(g, 7, 5 + b, 5, 1, BD_SKIN_D);                  // stubbled jaw
+      px(g, 8, 6 + b, 3, 1, '#8a6248');
+    }
+    px(g, 6, 6 + b, 7, 1, BD_COAT_D);                    // collar
+    banditTorso(g, b, BD_COAT, BD_COAT_L, BD_COAT_D, variant === 1);
+    drawKnife(g, b, variant === 1 ? 15 : 14, thrust);
+    banditLegs(g, step);
+    return outlined(c);
+  }
+  Sprites.banditKnife = [
+    [knifer(0, false, 0), knifer(1, false, 0), knifer(0, true, 0)],
+    [knifer(0, false, 1), knifer(1, false, 1), knifer(0, true, 1)],
+  ];
+
+  // ---- PISTOLEER: flat cap, bandolier, the gang's scrap sidearm ----
+  function pistoleer(step, raised) {
+    const c = makeCanvas(19, 20), g = c.getContext('2d');
+    const b = step ? 1 : 0;
+    const CO = '#4a4436', CO_L = '#5f5947', CO_D = '#332f26';
+    px(g, 6, 1 + b, 7, 1, '#3d382c');                    // flat cap
+    px(g, 6, 2 + b, 8, 1, '#2f2b22');                    // peak, pulled forward
+    px(g, 7, 3 + b, 5, 1, BD_SKIN);
+    px(g, 8, 3 + b, 1, 1, '#141014'); px(g, 10, 3 + b, 1, 1, '#141014');
+    px(g, 7, 4 + b, 5, 1, BD_SKIN_D);
+    px(g, 7, 5 + b, 5, 2, BD_RAG);                       // red neckerchief
+    px(g, 7, 5 + b, 5, 1, BD_RAG_L);
+    px(g, 6, 6 + b, 7, 1, CO_D);
+    banditTorso(g, b, CO, CO_L, CO_D, false);
+    for (let i = 0; i < 5; i++) px(g, 5 + i * 2, 9 + i + b, 2, 1, '#b89a54');  // bandolier
+    drawPistol(g, b, raised);
+    banditLegs(g, step);
+    return outlined(c);
+  }
+  Sprites.banditPistol = [pistoleer(0, false), pistoleer(1, false), pistoleer(0, true)];
+
+  // ---- RIFLEMAN: long coat, scarf, the reach of the whole roadblock ----
+  function rifleman(step, aimed) {
+    const c = makeCanvas(19, 20), g = c.getContext('2d');
+    const b = step ? 1 : 0;
+    const CO = '#3f4a44', CO_L = '#526059', CO_D = '#2b332f';
+    px(g, 7, 0 + b, 5, 1, '#39423d');                    // crown
+    px(g, 6, 1 + b, 7, 2, '#2c332f');
+    px(g, 5, 3 + b, 9, 1, '#242a26');                    // the brim
+    px(g, 7, 4 + b, 5, 1, BD_SKIN_D);
+    px(g, 8, 4 + b, 1, 1, '#141014'); px(g, 10, 4 + b, 1, 1, '#141014');
+    px(g, 7, 5 + b, 5, 2, BD_RAG);                       // red scarf over the face
+    px(g, 7, 5 + b, 5, 1, BD_RAG_L);
+    px(g, 11, 6 + b, 2, 2, BD_RAG_D);                    // trailing end
+    px(g, 6, 7 + b, 7, 1, CO_D);
+    banditTorso(g, b, CO, CO_L, CO_D, true);
+    px(g, 5, 15 + b, 9, 2, CO_D);                        // long coat tails
+    px(g, 5, 16 + b, 2, 1, CO);
+    drawRifle(g, b, aimed);
+    banditLegs(g, step);
+    return outlined(c);
+  }
+  Sprites.banditRifle = [rifleman(0, false), rifleman(1, false), rifleman(0, true)];
+
+  // ---- down: a slumped figure. No glow — this one was a person. ----
+  (function () {
+    const c = makeCanvas(20, 11), g = c.getContext('2d');
+    px(g, 4, 5, 12, 4, BD_COAT_D);                       // body on its side
+    px(g, 4, 5, 12, 1, BD_COAT);
+    px(g, 3, 4, 4, 3, BD_COAT);                          // shoulder
+    px(g, 15, 6, 4, 3, BD_PANT);                         // legs folded under
+    px(g, 17, 8, 2, 1, BD_BOOT);
+    px(g, 1, 5, 3, 3, BD_SKIN_D);                        // head, turned away
+    px(g, 1, 5, 3, 1, BD_SKIN);
+    px(g, 5, 4, 4, 1, BD_RAG_D);                         // the rag, still on them
+    px(g, 9, 8, 3, 1, BD_PLATE_D);
+    Sprites.banditDead = outlined(c);
+  })();
+
 })();

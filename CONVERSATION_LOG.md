@@ -440,3 +440,97 @@ independently and respawn ~20s later 10 tiles apart; the loot roll forced to
 its unlucky value six times gives `1 2 3 4 5 → tech, counter 0`; a
 save/load round-trip returns `kills 2, pity 4`; crushing a fringe car frees all
 three of its tiles; the fringe still builds and renders with 41 cars.
+
+### 73. The roadblocks and the bandits
+**Laurens:** "Ok so we have the first part of the city. now its emty, draw up
+the exacr map of the city and on some crossroads add banit roadblocks, make it
+so you need to pass at least one of the 2 to get to the chrch. Choose where they
+go and start designing the roadblock and than the banit enemys, Make a roadblock
+have 2 banits armed with kifes and one with a srap pistol and one with a rifle,
+design it too. Make sure all is rendred right and at the right angle is is a
+large add so be thorrow"
+
+**Claude:** Mapped the city first, and the map is what decided the design.
+
+*The measurement that changed the plan.* Before writing anything I ran the real
+generator headlessly and flood-filled it from the yard gate using the player's
+own collision test. The Fringe was streets laid over open lots — the blocks
+between them were never closed — so cutting the east cross at **both** junctions
+still left St Martin's reachable by **46 of its 46** forecourt tiles. Two
+roadblocks on two crossroads would have gated nothing at all. The whole request
+depended on a fact that was not true yet.
+
+*So the fix is not a fence, it is city.* The east cross between the spine and
+the mid street became a proper street: continuous frontage on the lot rows at
+y 69 and y 81 from x 36–88 — terraces where a building fits, stone yard wall
+where it does not, which is what a real terrace does where it runs out of house
+— with exactly one opening in it, the church gate at x 50–61, flanked by stone
+piers on x 48–49 and x 62–63. The corridor then has two ends and both are
+crossroads. (First pass put the cordon after the block-interior filler and got
+36 tiles of wall to 5 of building on the north side; moving it *ahead* of the
+street terracing so it gets first claim on the ground turned that into 25
+building to 16 wall.)
+
+*The two blocks.* West at x 38 on the spine junction, chicane y 74–75; east at
+x 86 on the mid-street junction, chicane y 76–77. The siting is the point: the
+signed shelter trail — the planks somebody nailed up to guide people to
+Candlelight — says *left at the crossroads*, and that left turn is the east
+block. They set up where somebody else's arrows funnel the desperate. Take the
+long way down the spine instead and it only brings you to the other one.
+
+Verified on the generated map: either chicane open → 24/24 forecourt tiles;
+**both sealed → 0/24**; 509 tiles removed and nothing else in the city cut off.
+
+*The angle.* Every barricade piece lies along the carriageway, so none of it
+could be a sheared rectangle. Added an `isoPiece` helper — a canvas sized to a
+footprint of L×W tiles standing H pixels tall, plus the projector into it — and
+built sheet-steel panel, tall firing screen, sandbag stack, concrete barrier,
+razor coil and stone wall in face space with real x and y variants, the same
+construction the cars and buildings use. Only the burning oil drum and the flag
+pole are drawn straight, being free-standing and upright. Checked as a contact
+sheet at 8×: the x/y variants mirror correctly.
+
+*Two things that sheet caught.* The sandbags and the stone wall both came back
+as flat single-tone boxes — it is the tone-to-tone step between neighbours, not
+the seam line, that makes bags read as bags, so every bag and every stone now
+carries its own value. And the bandits ended in a dark blob: the legs were drawn
+almost the colour of the outline, so the stride vanished. Lifted the pant and
+boot values and split the legs a row earlier.
+
+*The four.* Two knives, a scrap pistol, a rifle. The important line in the file
+is that one of them seeing you *shouts* and the whole block turns at once — the
+machines in the yard hunt you as individuals, and that difference is what makes
+a checkpoint feel like a checkpoint. Everything they wear is cloth, skin and
+scavenged plate, nothing glows, and all four wear the same dirty red rag.
+
+*Two real bugs found by simulating the fight rather than assuming it worked.*
+The bandits were calling `tutStealth()` — which says "a machine noticed
+movement", and which freezes the world the moment the suspicion bar twitches. It
+left the entire block standing at ease while the player walked up and stood on
+their boots. And the pursuit waypoint was the gap *itself*, so they walked to
+the chicane, technically arrived, and stood in the hole forever; it now aims
+through it. Both fixed and re-verified.
+
+*Cover is real and it is the fight.* The barricade blocks line of sight both
+ways — standing behind the panels off the gap line, with the whole block awake,
+the player takes 0 damage over 12 seconds. The gap is the only place any of them
+can see you from. The rifle telegraphs with a dashed line and the same red blink
+the Scrapper uses; break the line and the shot is thrown away.
+
+*Tuning.* Four of them took a passive 100 HP down in six seconds — a wall, not a
+fight. Softened to about nine. A bot that fights back but never dodges, shoots
+or breaks line of sight clears 3 of 4 with the piercing knife before the rifle
+gets it. Wants a real playtest.
+
+Dead raiders stay dead, keyed by block and post rather than array index; a save
+predating the roadblocks loads with every post manned. Verified the round trip,
+a full clear latching, the junkyard untouched (no bandits, 2 scrappers, 3.1ms),
+and frame cost at 2.8ms at a roadblock against 4.3ms in the open street.
+
+Deliberately **not** decided: whether the rifleman drops his rifle as the ring's
+weapon upgrade. That is on the open-questions list in `PROJECT_STATE.md` and it
+is a progression call, not a side effect of this pass. He drops rounds.
+
+New docs: `design/city-map.md` (the exact map, with the street table and the
+verification) and `design/bandits.md`. **Not committed** — per the LOCAL FIRST
+rule this is a large visual addition and wants your eyes before it goes live.
