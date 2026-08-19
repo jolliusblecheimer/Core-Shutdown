@@ -35,8 +35,16 @@ tally and the pity counter survive a save.
 
 Systems shown here: stealth with detection meters and crouch (Shift), patrols
 that path heap-to-heap through a hub near the shack, 12s enemy memory,
-explosive barrels, melee/gun with scroll-wheel switching, BotW-style inventory
-(I), thought bubbles, staged freeze-frame tutorials, passive regen.
+explosive barrels, melee/gun with scroll-wheel switching, **the pack** (I),
+thought bubbles, staged freeze-frame tutorials, passive regen.
+
+**THE PACK** is a BotW-style grid, not a list: 26px tiles in a 5x4 grid, one
+description panel that explains whatever the cursor is on, counts badged on the
+tile, and **nothing you have none of** — an item spent to zero disappears, and
+a tab with nothing left in it disappears with it. One cursor, driven by the
+arrows *or* the mouse. `Q`/`R`, a click or the wheel change tab; `E` equips or
+eats. What an item IS lives in `js/items.js`; `js/game.js` only lays it out.
+Design and the built-vs-planned diff in `design/inventory-botw.md`.
 
 ### Content — THE COMPACTOR (first boss, complete)
 Hidden in the junk until you unlock the gate; four-legged crawler, one big
