@@ -608,3 +608,33 @@ What carries the building now is what carried the reference all along: the
 openings. Portal, doors, lancets, rose, clerestory, belfries, and the roof.
 The proportion rule is still in `art-style.md` if anything is ever built that
 does project.
+
+### 79. Tower caps, and the plan for the inside
+**Laurens:** ringed the top of both towers — "The towers have a small problem"
+— and then asked for a detailed plan for the interior: not just a cathedral, a
+cathedral turned survival camp. Survivor NPCs, some trading, chests, a sleeping
+place with hay and blankets, a cellar with water and food and valuables, a
+command centre whose map fills in your own map of the city, a makeshift medbay,
+and if there is room, someone stripping a small bot for parts.
+
+**The towers.** The spire's base was a tile narrower than the tower each way,
+so a flat ledge of cornice showed all round its foot and the cap read as a
+pyramid dropped into a tray. The base now fills the tower — the slope starts
+where the coping ends. Order had to change with it: far pinnacles, then the
+spire, then the near pinnacles, because the spire is a mass standing between
+them and the two nearest have to be drawn after it.
+
+**The plan** is `design/candlelight.md`, and it is written against the systems
+as they actually are rather than as I would like them to be. Two new areas
+(`candlelight`, `crypt`), nine places, six named survivors, four chests with
+the interesting question being which ones you may open, and the map table —
+`exploredByArea['fringe'].fill(1)` behind one interaction, which is the
+cheapest thing in the document and the best value in it.
+
+The honest part of the plan is section 5. **There is exactly one NPC in this
+engine** — `const npc = {...}`, one position, one dialogue path, one trade
+panel, named directly by the interaction code. A camp needs a list, and
+everything else in the plan waits on that refactor. Said so plainly rather than
+costing it as an afterthought.
+
+Not built. Five questions at the end need Laurens before phase A starts.

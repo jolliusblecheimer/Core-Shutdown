@@ -1880,14 +1880,20 @@ function outlined(src) {
       const PM = SF(NF + 0.2, x0), PW = (x1 - x0) * 16;
       for (let i = 0; i < 6; i++)                       // openwork parapet
         R(PM, PW * (i + 0.25) / 6, TOW + 2, PW * (i + 0.75) / 6, TOWCAP - 2, ST_DD);
-      // four pinnacles and the spirelet between them
-      for (const [px2, py2] of [[x0 + 0.3, TY0 + 0.3], [x1 - 0.3, TY0 + 0.3],
-                                [x0 + 0.3, NF - 0.3], [x1 - 0.3, NF - 0.3]])
-        spike(px2, py2, 0.32, TOWCAP, PIN, ST_L, ST_S, 'rgba(255,246,224,0.40)');
-      // the tower caps are slated like the roofs. Only the fleche is lead-blue
-      // — one accent, or the whole skyline turns into a fairground.
-      spike((x0 + x1) / 2, (TY0 + NF) / 2, (x1 - x0) / 2 - 0.55, TOWCAP, TIP,
-            SLATE_L, SLATE_S, 'rgba(200,220,248,0.35)');
+      // THE SPIRE SPRINGS FROM THE PARAPET — it does not sit in it.
+      // Its base used to be a tile narrower than the tower each way, which
+      // left a flat ledge of cornice showing all round the foot of it, and
+      // the whole cap read as a pyramid dropped into a tray. The base now
+      // fills the tower, so the slope starts where the coping ends.
+      // Order matters: far pinnacles, spire, near pinnacles. The spire is a
+      // mass standing between them, so the two nearest have to come after it.
+      const pin = (px2, py2) => spike(px2, py2, 0.32, TOWCAP, PIN, ST_L, ST_S, 'rgba(255,246,224,0.40)');
+      pin(x0 + 0.3, TY0 + 0.3); pin(x1 - 0.3, TY0 + 0.3);
+      // slated like the roofs. Only the fleche is lead-blue — one accent, or
+      // the whole skyline turns into a fairground.
+      spike((x0 + x1) / 2, (TY0 + NF) / 2, Math.min(x1 - x0, NF - TY0) / 2 - 0.05,
+            TOWCAP, TIP, SLATE_L, SLATE_S, 'rgba(200,220,248,0.35)');
+      pin(x0 + 0.3, NF - 0.3); pin(x1 - 0.3, NF - 0.3);
     };
 
     tower(TL0, TL1, 'plain');

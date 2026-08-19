@@ -77,10 +77,14 @@ Handmade sign trail (planks, bedsheet banners, painted road arrows) leading
    Marshal (rifle, bursts, takes cover), Bailiff (short-range flusher),
    Spotter (calls them in). Scrappers stay in the yard. Design in
    `design/fringe-plan.html`.
-3. **Candlelight camp + Q2** inside St Martin's: trader, workbench, med
-   station, respawn re-anchor, mission board. The exterior is now built; the
-   churchyard around it (railings, gravestones, trees, a lych gate) and the
-   glow of a camp behind the glass are still to do — the windows are
+3. **Candlelight camp + Q2** inside St Martin's. **Planned in full:
+   `design/candlelight.md`** — two interior areas, six survivors, two traders,
+   sleeping bays that re-anchor respawn, a medbay, a bench with a half-stripped
+   drone on it, a crypt with water and grow beds, and a map table that fills in
+   the Fringe map when you read it. Waiting on approval; the biggest piece of
+   engine work in it is turning the single global `npc` into a list.
+   Still outstanding either way: the churchyard (railings, gravestones, trees,
+   a lych gate) and the glow of a camp behind the glass — the windows are
    deliberately unlit because nobody lives there yet.
 4. Interiors (enterable shops/houses, roof fade).
 5. Field 12 + the drone crash (Q3) and the Underpass to Ring 4.
