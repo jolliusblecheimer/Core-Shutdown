@@ -790,6 +790,16 @@ function outlined(src) {
         px(g, ox + 5, y + 18, 6, 16, '#2a2622');
         px(g, ox + 5, y + 18, 6, 1, '#3a352f');
       }
+    } else if (kind === 'L') {                // INTERIOR: the low kerb that
+      // closes the two sides of a room the camera looks over. A full-height
+      // wall there has to be faded to be seen past, and a faded wall reads as
+      // a sheet of glass lying across the floor with people showing through
+      // it. Ten pixels of stone bounds the room and hides nothing.
+      const y = H - 12;
+      px(g, ox, y + 2, 16, 9, '#5f5a50');
+      px(g, ox, y, 16, 3, '#837d6f');
+      px(g, ox, y + 10, 16, 2, '#413d37');
+      px(g, ox + 5, y + 4, 6, 4, '#544f47');
     } else if (kind === 'B') {                // CITY: brick building wall (44)
       const y = H - 44;
       px(g, ox, y, 16, 44, '#4a3a35');
@@ -909,8 +919,9 @@ function outlined(src) {
   Sprites._makeWallRun = function (kinds, axis, trimStart, trimEnd) {
     const n = kinds.length;
     const isWall = kinds[0] === 'W';
+    const isLow = kinds[0] === 'L';
     const isCity = 'BSGHKROTNIJ'.includes(kinds[0]);
-    const H = isCity ? 44 : (isWall ? 28 : 20);
+    const H = isLow ? 14 : (isCity ? 44 : (isWall ? 28 : 20));
     const flat = makeCanvas(16 * n, H), g = flat.getContext('2d');
     kinds.forEach((k, i) => Sprites.paintSeg(g, k, i * 16, H));
     const out = outlined(flat);
@@ -934,7 +945,7 @@ function outlined(src) {
       img.getContext('2d').drawImage(F, a, 0, b - a, F.height, 0, 0, b - a, F.height);
       const off = dir > 0 ? 8 * si + 1 : 8 * (n - si);
       const dx = (a - 1 - 16 * si) - 8;
-      slices.push({ img, dx, dy: -off, lift: isCity ? 46 : (isWall ? 30 : 24) });
+      slices.push({ img, dx, dy: -off, lift: isLow ? 16 : (isCity ? 46 : (isWall ? 30 : 24)) });
     }
     return slices;
   };
@@ -1408,47 +1419,44 @@ function outlined(src) {
     // built in tile space and projected, like everything else that touches
     // the floor — two tiles of opening, five treads descending north, a kerb
     // round the hole and a rail you can see from across the room.
-    const isoStair = (down) => {
-      const c = makeCanvas(90, 76), g = c.getContext('2d');
-      const AX = 40, AY = 16;
+    // ---- THE CRYPT HATCH.
+    // A stair big enough to read at this scale is a stair that eats a quarter
+    // of the room: the last one was two tiles by two and stood taller than the
+    // people using it. A hatch in a church floor does the same job in ONE tile
+    // — a hole, two treads, the lid propped back, and light coming up out of
+    // it. Built in tile space like everything that touches the floor.
+    const hatch = (lit) => {
+      const c = makeCanvas(44, 40), g = c.getContext('2d');
+      const AX = 22, AY = 18;
       const P = (tx, ty, z) => [AX + (tx - ty) * 16, AY + (tx + ty) * 8 - z];
       const quad = (a, b, c2, d, col, edge) => poly(g, [P(...a), P(...b), P(...c2), P(...d)], col, edge);
-      // Two tiles wide and TWO deep, and the flight descends towards the
-      // camera. That is the only direction stairs read from in this
-      // projection: every riser then faces +y, straight at you, and you are
-      // looking into the flight instead of edge-on across it.
-      quad([0, 0, 0], [2, 0, 0], [2, 2, 0], [0, 2, 0], '#0e0c0a');
-      for (let i = 0; i < 4; i++) {
-        const t0 = 0.06 + i * 0.47, t1 = t0 + 0.47, z = -i * 10;
-        quad([0.12, t0, z], [1.88, t0, z], [1.88, t1, z], [0.12, t1, z],
-             ['#a8a191', '#8b8577', '#6e695e', '#565149'][i]);                 // tread
-        quad([0.12, t1, z], [1.88, t1, z], [1.88, t1, z - 10], [0.12, t1, z - 10],
-             ['#4a453d', '#3e3a33', '#332f2a', '#2a2724'][i]);                 // riser, facing you
+      quad([0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0], '#0c0a08');            // the hole
+      // two treads, coming towards you, so their risers face the camera
+      quad([0.14, 0.08, 0], [0.86, 0.08, 0], [0.86, 0.46, 0], [0.14, 0.46, 0], lit ? '#a49d8c' : '#847e71');
+      quad([0.14, 0.46, 0], [0.86, 0.46, 0], [0.86, 0.46, -7], [0.14, 0.46, -7], '#39352f');
+      quad([0.14, 0.46, -7], [0.86, 0.46, -7], [0.86, 0.86, -7], [0.14, 0.86, -7], lit ? '#7d7669' : '#5d584f');
+      quad([0.14, 0.86, -7], [0.86, 0.86, -7], [0.86, 0.86, -14], [0.14, 0.86, -14], '#2b2823');
+      // stone rim, on the two far sides only — put it near and it stands in
+      // front of the hole it is framing
+      quad([-0.1, -0.1, 3], [1.1, -0.1, 3], [1.1, 0.06, 3], [-0.1, 0.06, 3], '#a8a191');
+      quad([-0.1, -0.1, 3], [0.06, -0.1, 3], [0.06, 1.1, 3], [-0.1, 1.1, 3], '#9a9384');
+      quad([1.1, -0.1, 3], [1.1, 1.1, 3], [1.1, 1.1, 0], [1.1, -0.1, 0], '#7c7669');
+      quad([1.1, 1.1, 3], [-0.1, 1.1, 3], [-0.1, 1.1, 0], [1.1, 1.1, 0], '#615c53');
+      // the lid, propped back against the north rim
+      quad([0.06, -0.08, 3], [0.94, -0.08, 3], [0.94, -0.5, 17], [0.06, -0.5, 17], '#4a3a26');
+      quad([0.06, -0.5, 17], [0.94, -0.5, 17], [0.94, -0.5, 15], [0.06, -0.5, 15], '#33260f');
+      for (let i = 1; i < 4; i++) {
+        const t = i / 4;
+        const a = P(0.06 + t * 0.88, -0.08, 3), b = P(0.06 + t * 0.88, -0.5, 17);
+        g.strokeStyle = '#3a2c1c'; g.lineWidth = 1;
+        g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke();
       }
-      // coping on the FAR two sides only. Put it on the near sides and it
-      // stands in front of the flight and hides the thing it is framing.
-      const lip = (x0, y0, x1, y1) => {
-        quad([x0, y0, 7], [x1, y0, 7], [x1, y1, 7], [x0, y1, 7], '#b0a898');
-        quad([x1, y0, 7], [x1, y1, 7], [x1, y1, 0], [x1, y0, 0], '#8b8577');
-        quad([x1, y1, 7], [x0, y1, 7], [x0, y1, 0], [x1, y1, 0], '#6e695e');
-      };
-      lip(-0.18, -0.18, 2.18, 0.04);
-      lip(-0.18, -0.18, 0.04, 2.18);
-      // handrail down the east side, on posts. The one bright diagonal is what
-      // says "stairs" at a glance, before any of the treads register.
-      for (let i = 0; i < 4; i++) {
-        const a = P(1.94, 0.1 + i * 0.6, 0), b = P(1.94, 0.1 + i * 0.6, 22 - i * 8);
-        px(g, Math.round(a[0]) - 1, Math.round(b[1]), 2, Math.max(2, Math.round(a[1] - b[1])), '#6a6258');
-      }
-      g.strokeStyle = '#c2b9a5'; g.lineWidth = 2;
-      const r0 = P(1.94, 0.1, 22), r1 = P(1.94, 1.9, -2);
-      g.beginPath(); g.moveTo(r0[0], r0[1]); g.lineTo(r1[0], r1[1]); g.stroke();
-      if (!down) quad([0.12, 0.06, 0], [1.88, 0.06, 0], [1.88, 0.53, 0], [0.12, 0.53, 0],
-                      'rgba(255,220,160,0.30)');
+      if (lit) quad([0.14, 0.08, 0], [0.86, 0.08, 0], [0.86, 0.46, 0], [0.14, 0.46, 0],
+                    'rgba(255,220,160,0.30)');
       return outlined(c);
     };
-    Sprites.stairDown = isoStair(true);
-    Sprites.stairUp = isoStair(false);
+    Sprites.stairDown = hatch(false);
+    Sprites.stairUp = hatch(true);
 
     { const c = makeCanvas(16, 8), g = c.getContext('2d');               // rope barrier
       px(g, 1, 2, 2, 6, '#4a423a'); px(g, 13, 2, 2, 6, '#4a423a');

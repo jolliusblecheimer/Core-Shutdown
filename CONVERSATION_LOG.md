@@ -739,3 +739,36 @@ four-tile pan west onto the boss as it rises, then back to the player.
 It reads off `gateProp` now instead of carrying a copy of its position, so
 moving the gate again cannot break it. That is the actual fix — the numbers
 were only the symptom.
+
+### 83. Restarting the interior
+**Laurens:** "There are multiple rendering errors in the wall and most
+definitely the stairs which are also much too large. Restart the interior. Make
+a new interior plan based on the amount of space you have, make it compact and
+efficient but also leave space to walk and don't have multiple objects on each
+other"
+**Claude:** Restarted. Both faults found by looking at a 4× crop first.
+
+**The walls.** The two near sides were full-height walls marked `front`, so
+`occlusionAlpha` faded them — and a faded 44-pixel wall does not read as a wall
+you can see past. It reads as **a sheet of glass lying across the floor**, with
+flagstones, a candle rack and a person showing through it. Fixed by not putting
+a wall there at all: north and west get full height, the two sides the camera
+looks over get a **ten-pixel kerb** that bounds the room and hides nothing.
+
+**The stairs.** Two tiles by two, taller than the people using it, sitting over
+a pier and half the map table. The lesson is more useful than the fix:
+**anything that has to be big to read is the wrong object.** A stair legible at
+this scale eats a quarter of the room. A **hatch in the floor** does the same
+job in one tile — hole, two treads, the lid propped back, light coming up.
+
+**The new layout is a budget, not a sketch.** 192 tiles: 53 to walls and kerb,
+4 to piers, 29 to furniture, **107 left to walk on**. Written into
+`design/candlelight.md` as a tile grid.
+
+**And the room proves itself.** `put()` refuses to stack anything and warns if
+the layout tries. On top of that an audit runs the build and checks: no two
+things share a tile, every walkable tile is reachable from the door, every
+usable fitting is reachable, nobody is standing in a wall. The first run found
+four one-tile pockets boxed in by furniture — a gap between two beds, one
+between two cots, two behind the hearth — and three props moved a tile to open
+them. 107 free, 107 reachable.

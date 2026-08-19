@@ -101,15 +101,15 @@ const npc = { x: 21.5, y: 6.5, animT: 0, frame: 0 };
 let folk = [];
 const FOLK = {
   camp: [
-    { key: 'vesna', name: 'VESNA', x: 4.5, y: 13.5, lines: [
+    { key: 'vesna', name: 'VESNA', x: 4.5, y: 14.5, lines: [
       "Door stays shut after dark. That is the one rule that matters.",
       "You walked the sign road, so you can read. That already puts you ahead.",
       "Anything of ours you want, you ask. Nobody here minds being asked." ] },
-    { key: 'osk', name: 'OSK', x: 2.5, y: 13.5, lines: [
+    { key: 'osk', name: 'OSK', x: 2.5, y: 14.5, lines: [
       "That lot's the camp's. Not yours.",
       "Nothing personal, stranger. I'd say it to my own brother.",
       "Ask Halden. He's the one allowed to give things away." ] },
-    { key: 'bo', name: 'BO', x: 1.5, y: 4.5, lines: [
+    { key: 'bo', name: 'BO', x: 3.5, y: 3.5, lines: [
       "Don't touch that. Its cell is still hot.",
       "They come apart easier than they look. Everything does.",
       "I keep the eye lit while I work. Tells me there's still charge in it." ] },
@@ -121,11 +121,11 @@ const FOLK = {
       "Sit if you want. There's soup, and there's a story, and the soup is better.",
       "This place was cold for a year before we got the stove in.",
       "I'll trade you fair. I'm too old to be clever about it." ] },
-    { key: 'ivar', name: 'IVAR', x: 5.5, y: 3.5, lines: [
+    { key: 'ivar', name: 'IVAR', x: 5.5, y: 2.5, lines: [
       "You came up the sign road. People only do that with nothing left.",
       "Read the table. Everything this camp knows about the ring is on it.",
       "We don't ask what you did before. Nobody here would like the answer." ] },
-    { key: 'tam', name: 'TAM', x: 6.5, y: 11.5, lines: [
+    { key: 'tam', name: 'TAM', x: 6.5, y: 8.5, lines: [
       "Are you from the yard? The old man's yard?",
       "Bo says the machines can't hear you if you crouch. Bo says a lot of things.",
       "There's a room under the floor. I'm not allowed down but you might be." ] },

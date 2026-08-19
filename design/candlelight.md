@@ -1,162 +1,107 @@
 # CANDLELIGHT — the inside of St Martin's
 
-**Status:** phases A and B built and in the game, plus the map table.
-Written 2026-08-19, approved the same day, first build the same day.
-**Built:** both areas, the shell, the arcade, every fitting, all seven people
+**Status:** built, second layout. The first one was thrown away.
+**Working:** both areas, the shell, the arcade, every fitting, seven people
 talking, the chests, and the map table that hands you the ring.
-**Not built yet:** trading (Halden, Bo), Ade healing, the sleeping bay
-re-anchoring respawn, the tower stair, the strongbox. Section 5 items 2, 6, 7.
+**Not built:** trading (Halden, Bo), Ade healing, the sleeping bay re-anchoring
+respawn, the strongbox, Q2. Section 5 items 2, 6, 7.
 
 A cathedral is not the point. **A cathedral that people are living in** is the
-point. Everything below is chosen so that the first ten seconds inside say:
-this place is cold stone that somebody has made warm, and it took work.
-
-The name has to pay off the moment the door shuts. You come out of a grey dead
-street into a room with forty flames in it — braziers in the aisle, candles
-banked on the old votive stands, a stove glowing through its grate, lamps
-strung on wire down the nave. It is the only warm room in the ring.
+point — cold stone somebody has made warm, and it took work. You come out of a
+grey dead street into the only lit room in the ring.
 
 ---
 
-## 1. Shape of it
+## 1. The three rules the first layout broke
 
-Two new areas, because interiors are areas in this engine (`Areas` in
-`js/map.js`), and one door each way.
+The first version was 28 × 40 with nine piers a side, full-height walls all
+round, and a two-tile-square staircase. Every problem it had came from one of
+these, so they are written down first now.
 
-| Area id | Size | What |
-|---|---|---|
-| `candlelight` | 28 × 40 | The church floor: nave, both aisles, crossing, chancel, two tower bases |
-| `crypt` | 18 × 14 | Under the chancel. Water, food, the strongbox |
+**1. The floor is the footprint.** 12 × 16 on the street, 12 × 16 inside. The
+first pass was seven times the area of the building it lives in: you walked in
+and the cathedral became a warehouse, and it was empty because there is nowhere
+near enough camp to fill seven times a church.
 
-The inside is bigger than the 12 × 16 footprint outside. That is normal and
-nobody notices; what they notice is a cathedral that feels like a corridor.
+**2. Only the far walls are walls.** North and west get full height. The two
+sides the camera looks over get a **ten-pixel kerb**. A full wall there has to
+be faded to see past, and a faded wall reads as a sheet of glass lying across
+the floor with the people showing through it — which is exactly what it looked
+like.
 
-**Entry.** The west door at the south end. `exits` on the fringe side sits on
-the parvis tiles in front of the portal; coming back out puts the player at
-(56, 69), facing the road. Same pattern as the junkyard gate.
+**3. One thing per tile, and the room proves it.** The builder's `put()`
+refuses to stack anything and warns if the layout tries. The first pass had a
+bench, a shelf and a pier in the same corner of the screen.
+
+And a fourth, learned from the stair: **anything that has to be big to read is
+the wrong object.** A stair legible at this scale ate a quarter of the room and
+stood taller than the people using it. A hatch in the floor does the same job
+in one tile.
+
+---
+
+## 2. The budget
+
+192 tiles. Everything below is counted, not estimated.
+
+| | tiles |
+|---|---|
+| North and west walls (full height) | 27 |
+| South and east kerb | 26 |
+| Piers | 4 |
+| Furniture and fittings | 29 |
+| **Floor left to walk on** | **107** |
+
+Verified in the build, not by eye: **no overlaps, all 107 walkable tiles reachable
+from the door, every usable fitting reachable, nobody standing in a wall.**
+The crypt is 10 × 8 — it is under the chancel, so it is a fraction of the
+church — with 35 free tiles and 12 props.
+
+---
+
+## 3. The room
 
 ```
-                 N  (chancel end)
-   +----------------------------------+
-   |   [7] MAP TABLE · the old altar  |   chancel, three steps up
-   |   [6] MEDBAY      [8] STAIR DOWN |   lady chapel / crypt stair
-   +---+                          +---+
-   |   |  [5] BENCH · the drone   |   |   transepts
-   +---+                          +---+
-   |  [4]  HEARTH & TRADE             |   north aisle
-   |                                  |
-   |         [1] THE NAVE             |   the common floor
-   |                                  |
-   |  [3]  SLEEPING BAYS              |   south aisle, curtained
-   |                                  |
-   +---+                          +---+
-   |[2]|   WEST DOOR  ↓           |[2]|   tower bases: store · stair up
-   +---+--------------------------+---+
-                 S  (the parvis)
+      x0  1  2  3  4  5  6  7  8  9 10 11
+ y0    ####################################   north wall
+ y1    #  HA .  ca .  MAP TBL .  ca .   |     hatch · candles · map table
+ y2    #  .  .  .  .  IVAR .  .  .  ca  |     medbay candles
+ y3    #  BENCH .  BO .  .  .  .  TB co |     Bo's bench · medbay
+ y4    #  sh .  .  .  .  .  .  .  .  .  |
+ y5    #  .  .  PR .  .  .  .  PR ADE co|     piers
+ y6    #  ch .  .  .  .  .  .  .  .  sa |
+ y7    #  bd cu .  .  BRZ .  .  .  .  . |     sleeping bays begin
+ y8    #  .  .  .  .  .  TAM .  .  HAL he|    hearth
+ y9    #  bd .  .  .  .  .  .  .  tb .  |
+ y10   #  .  .  PR .  .  .  .  PR .  .  |
+ y11   #  bd sa .  .  .  BRZ .  .  .  cr|
+ y12   #  .  .  .  .  .  .  .  .  st .  |
+ y13   #  cr ca .  PEW .  .  PEW .  ch  |
+ y14   #  sa OSK .  VESNA .  .  .  .  . |
+ y15   ==========  DOOR  ====================  kerb, with the west door
 ```
 
-Arcade piers every 3 tiles down both sides — solid, and they are what makes the
-inside read as a cathedral rather than a hall. Between them, the camp.
+North strip is the chancel: the map table on the altar, the crypt hatch in the
+corner, candles. West side is Bo's bench then the sleeping bays on straw, then
+the store by the door. East side is the medbay then the hearth. The middle is
+floor — four piers, two braziers, two pews, and otherwise room to walk.
 
----
-
-## 2. The nine places
-
-**[1] The nave — the common floor.**
-Pews broken up and re-used: some still in rows near the door, most cannibalised
-into partitions, bed frames and firewood. Washing on lines between the piers.
-Two braziers burning. A chalked tally on a pier: days since the gate held.
-This is circulation space — nothing to interact with, everything to look at.
-
-**[2] The two tower bases.** South-west is the **store**: crates, sacks, the
-camp's own supplies, and a survivor sitting on a stool who will politely tell
-you no. South-east is the **stair up**, roped off — the bell chamber and the
-lookout. Locked in this pass, and an obvious door for later (a sniper's nest, a
-vantage over the Fringe, a place to see the Core from).
-
-**[3] Sleeping bays — south aisle.** Between each pair of piers, a bay:
-straw over the flagstones, army blankets, a bedroll, a tarpaulin hung on wire
-for a door, someone's boots. Four bays occupied, personal and specific — a
-child's drawing pinned to the stone, a dead man's coat still folded. **One bay
-is empty**, and once it is yours it is the **respawn re-anchor**: sleeping sets
-`player.respawnX/Y` and the respawn area to `candlelight`. That is the single
-most valuable thing the camp gives you and it should be earned, not handed over.
-
-**[4] The hearth — north aisle, middle.** A stove built from an oil drum with a
-flue punched through a boarded window. A pot on it. Crates as a counter.
-**Halden trades here:** food, water, rounds. This is the first trader and the
-one you will come back to.
-
-**[5] The bench — south transept.** **Bo has a Hunter-Killer drone on the
-bench, half stripped.** Casing off, ribs open, one arm in a vice, its eye still
-glowing amber on a wire because she has not cut the last cell out yet. That
-glow is the game's damage language showing up somewhere safe for the first
-time — the thing you shoot at, sitting on a table with its lid off. Tools, a
-tray of pulled parts, a wall of salvaged plate. Bo trades **parts and gear**
-for tech, and the bench is where weapon upgrades will live when they exist.
-
-**[6] The medbay — north transept / lady chapel.** Curtained off with surgical
-drape. Two cots, one occupied by someone who is not going to get up. A table of
-bottles, a basin, a lamp. **Sister Ade heals you to full** for a price and
-sells bandages. Keep it grim: this is a chapel with a bucket in it, not a
-hospital.
-
-**[7] The map table — the chancel, on the old altar.** The centrepiece. A
-street map of the Fringe pinned out over the altar cloth, marked up in three
-different hands: routes that work, routes that don't, crossings with a cross
-through them, the gas station circled, the junkyard gate marked GATE — HELD.
-**Interacting with it fills in your map of the Fringe.** Mechanically this is
-`exploredByArea['fringe'].fill(1)` plus a flag so it only happens once, a beat
-of animation, and a line: *"Somebody walked all of this so you would not have
-to."* It is the biggest single reward in the building and it costs nothing but
-finding the place.
-
-**[8] The crypt stair — north-east corner.** Down to the cellar.
-
-**[9] The crypt (`crypt` area).** Cold, low, barrel-vaulted, lit by three
-lamps and nothing else.
-- **Water:** the roof drains into a cistern in the old font sump. A tap, a
-  queue of jerricans, a tally chalked on the wall.
-- **Food:** grow beds in the burial niches under scavenged UV strips —
-  mushrooms, potatoes, something leggy and desperate. Racks of preserves.
-- **Valuables:** a strongbox behind a grille, padlocked. Not openable in this
-  pass. It is a promise.
-- The stone coffins are still there and nobody talks about them.
-
----
-
-## 3. The people
-
-Six. Enough to feel like a community, few enough that each can be a person.
-**None of them learn the player's name** — traveller, stranger, or nothing.
-
-| Name | Where | Trades | What they are |
-|---|---|---|---|
-| **Vesna** | at the door | no | Keeps the door. First face you see. Gives you the rules of the house in four lines and does not repeat them. |
-| **Halden** | the hearth | food, water, ammo | Old, unhurried, feeds everyone. Talks about the city before. |
-| **Bo** | the bench | parts, gear | Mechanic. Covered in it. Will not look up from the drone while she talks to you. |
-| **Sister Ade** | the medbay | heals, bandages | Was not a nun. The name stuck because of the building. |
-| **Ivar** | the map table | no | Runs the place, or the nearest thing to it. Gives Q2. |
-| **Tam** | anywhere | no | A kid. Follows you a few paces. Says things the adults will not. Rumour hooks for later quests. |
-
-Two of the six trade goods, one trades gear, one sells healing. That is enough
-economy for the ring without turning the camp into a shop menu.
+**The crypt** (10 × 8): the hatch comes down in the same corner it goes down
+from. Cistern, two grow beds under lamp strips, preserves, the padlocked
+strongbox, one chest.
 
 ---
 
 ## 4. Chests
 
-Four containers, and **the point is which ones you may open.**
+Four, and the point is which ones you may open.
 
 | Where | Contents | Rule |
 |---|---|---|
-| Nave, under a broken pew | scrap, a few rounds | free — junk nobody claimed |
-| Sleeping bay, the dead man's | a keepsake, snack bars | free, and it should feel bad |
-| Store room (tower base) | the camp's supplies | **watched.** Opening it in front of the man on the stool costs you |
+| West aisle, by the bays | scrap and a snack | free — junk nobody claimed |
+| By the door, east side | scrap | free |
+| Crypt | tech and scrap | free, and it should feel like taking |
 | Crypt strongbox | the good stuff | locked. Later. |
-
-A `chest` prop with an open/closed state saved per area, contents rolled once
-and remembered. Opening is `E`, same prompt system as everything else.
 
 ---
 

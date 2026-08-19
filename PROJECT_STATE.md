@@ -66,16 +66,20 @@ The churchyard (railings, graves, trees) is not built.
 Handmade sign trail (planks, bedsheet banners, painted road arrows) leading
 **only** to the shelter. Fog-of-war map on `M`.
 
-### Content — CANDLELIGHT (interior, first pass)
-Two new areas behind the west door. **`candlelight`** (28×40) is the church
-floor: flagstone, an arcade of piers down both sides, walls with blind arches
-and stained lancets, and the camp in it — braziers and votive stands for light,
-curtained sleeping bays on straw, a drum stove, a medbay of two cots behind a
-surgical drape, a bench with a half-stripped Hunter-Killer whose eye is still
-lit, pews part broken up for timber, a store nobody may open. **`crypt`**
-(18×14) is under the chancel: brick vaulting, bricked-up burial niches, a
-cistern fed off the roof, grow beds under salvaged lamp strips, preserves, and
-a padlocked strongbox.
+### Content — CANDLELIGHT (interior, second layout)
+Two areas behind the west door, both built to the footprint of the building
+outside. **`candlelight`** is **12×16 — the same tiles as the volume on the
+street** — with 107 of its 192 tiles left to walk on: flagstone, four piers,
+**full-height walls on the north and west only and a ten-pixel kerb on the two
+sides the camera looks over**, and the camp in it — braziers and votive stands,
+sleeping bays on straw, a drum stove, a medbay of two cots, a bench with a
+half-stripped Hunter-Killer whose eye is still lit, pews part broken up for
+timber, a store nobody may open, and a one-tile hatch down to the crypt.
+**`crypt`** is 10×8 under the chancel: brick vaulting, bricked-up burial
+niches, a cistern fed off the roof, grow beds under salvaged lamp strips,
+preserves, a padlocked strongbox.
+The builder refuses to put two things on one tile, and the layout is checked
+for overlaps, reachability and people standing in walls.
 **Seven survivors** — Vesna, Osk, Bo, Sister Ade, Halden, Ivar, Tam — each with
 their own sprite and three lines, cycled one per talk. They are a `folk` list
 beside Marek rather than a rewrite of him.
