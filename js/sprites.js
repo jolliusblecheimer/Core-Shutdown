@@ -1613,13 +1613,21 @@ function outlined(src) {
     const OAK = '#5b4128', OAK_D = '#3a2a1a', IRON = '#3c3a36';
 
     // ---- the volume, in tiles ----
-    const NF = h - 0.2;                       // the west front: the near wall
+    // THE WALLS ARE SET IN FROM THE FOOTPRINT, and the gap is what the
+    // buttresses live in. A buttress is a pier standing off the wall — if the
+    // wall sits on the edge of the footprint there is nowhere for it to stand,
+    // and clamping it to the edge (which is what stopped it hanging in the
+    // air) squashed it flat into the facade. So the west front comes back a
+    // whole tile, the towers come in, and the piers fill that band.
+    const BM = 0.1;                           // the plinth edge
+    const BX0 = BM, BX1 = w - BM, BY1 = h - BM;
+    const NF = h - 0.8;                       // the west front: the near wall
     const NX0 = 3.0, NX1 = 9.0;               // nave walls
-    const AW0 = 0.6, AE1 = 11.4;              // aisle outer walls
-    const AY0 = 1.6, AY1 = h - 3.4;           // aisles run back from the towers
-    const TL0 = 0.2, TL1 = 3.0;               // left (west) tower
-    const TR0 = 8.8, TR1 = 11.8;              // right (east) tower
-    const TY0 = h - 3.4;                      // both towers start here
+    const AW0 = 1.0, AE1 = 11.0;              // aisle outer walls
+    const AY0 = 1.6, AY1 = NF - 3.0;          // aisles run back from the towers
+    const TL0 = 0.6, TL1 = 3.0;               // left (west) tower
+    const TR0 = 8.9, TR1 = 11.3;              // right (east) tower
+    const TY0 = NF - 3.0;                     // both towers start here
     // ---- and in pixels of height ----
     const PL = 7;                             // the plinth every wall stands on
     const AISLE = 58, AISLE_TOP = 72;         // aisle eaves · where its roof meets the nave
@@ -1825,8 +1833,8 @@ function outlined(src) {
     // the far work and the engaged corners close up properly.
 
     // ---- the plinth the whole church stands on ----
-    vol(0.15, 0.15, w - 0.15, h - 0.15, 0, PL, ST_T, ST_L, ST_S, '#1b1e22');
-    R(SF(h - 0.15, 0.15), 0, 0, (w - 0.3) * 16, 2, 'rgba(0,0,0,0.25)');
+    vol(BX0, BM, BX1, BY1, 0, PL, ST_T, ST_L, ST_S, '#1b1e22');
+    R(SF(BY1, BX0), 0, 0, (BX1 - BX0) * 16, 2, 'rgba(0,0,0,0.25)');
 
     // ---- west aisle (far side): only its roof clears the nave ----
     vol(AW0, AY0, NX0, AY1, PL, AISLE, null, null, ST_S, '#1b1e22');
@@ -1879,15 +1887,6 @@ function outlined(src) {
           clock(E, TD / 2, 106, 11);
         }
       }
-      // Corner buttresses, clasping the tower right up to the belfry. Clamped
-      // to the plinth: a pier that starts outside the base is a pier standing
-      // on air.
-      const bs = 0.55;
-      const cx0 = Math.max(0.15, x0 - 0.15), cx1 = Math.min(w - 0.15, x1 + 0.15);
-      const cy1 = Math.min(h - 0.15, NF + 0.15);
-      buttress(cx0, NF - bs, x0 + bs, cy1, 148, 12);
-      buttress(x1 - bs, NF - bs, cx1, cy1, 148, 12);
-      if (east === 'full') buttress(x1 - bs, TY0 - 0.15, cx1, TY0 + bs, 148, 12);
       // Cornice, then the parapet standing above it. It oversails ONLY on the
       // two sides the camera can see. Oversailing north or west puts a lip out
       // over a face that is never drawn, and you see sky through the gap under
@@ -2031,7 +2030,7 @@ function outlined(src) {
       // the face, which is what a buttress becomes if you draw it flat.
       for (let i = 0; i <= bays; i++) {
         const ty = AY0 + (AY1 - AY0) * (i / bays);
-        buttress(AE1 - 0.05, ty - 0.26, AE1 + 0.4, ty + 0.26, AISLE - 8, 11);
+        buttress(AE1 - 0.05, ty - 0.26, AE1 + 0.45, ty + 0.26, AISLE - 8, 11);
       }
       // the aisle's south end is engaged with the tower and never seen —
       // drawing it here is what put a grey slab across the west front
@@ -2056,8 +2055,25 @@ function outlined(src) {
       px(g, Math.round(ap[0]) - 4, Math.round(ap[1]) - (CROSSTOP - FLECHE) + 3, 9, 2, '#b9b09c');
     }
 
-    // ---- east tower, nearest of all ----
+    // ---- east tower ----
     tower(TR0, TR1, 'full');
+
+    // ---- THE PIERS, last of everything ----
+    // They stand a full tile off the walls, which makes them the nearest thing
+    // on the building, so they are drawn after every wall they clasp. Draw
+    // them inside tower() instead and the nave — drawn later — paints over
+    // the two on the west tower, which is what flattened them into the wall.
+    {
+      // Slim: a pier the width of a doorway hides the doorway. It projects
+      // about two thirds of its own width, which is enough to throw a shadow
+      // and read as stone standing off the wall.
+      const bs = 0.42, PJ = BY1 - 0.1;
+      for (const [x0, x1, east] of [[TL0, TL1, false], [TR0, TR1, true]]) {
+        buttress(Math.max(BX0, x0 - 0.18), NF - bs, x0 + bs, PJ, 140, 12);
+        buttress(x1 - bs, NF - bs, Math.min(BX1, x1 + 0.18), PJ, 140, 12);
+        if (east) buttress(x1 - bs, TY0 - 0.18, BX1 - 0.1, TY0 + bs, 140, 12);
+      }
+    }
 
     const res = { img: c, ax: AX, ay: AYo, h: WALL };
     buildingCache.set(key, res);

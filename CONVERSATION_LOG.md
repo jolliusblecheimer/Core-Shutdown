@@ -494,3 +494,38 @@ spire cone, and should stay.
 
 Verified: magenta render, hole scan clean, then in game from the parvis, the
 south-east corner and the north-west. Pushed to `main`.
+
+### 75. The buttresses were flat against the wall
+**Laurens:** with a photo of the west front on the live site — "Look at those
+pillars at the outside they look like they are glitched into the building make
+it so they stick out and are not forced inside the box"
+**Claude:** My own fault, and the previous fix caused it. When the piers were
+found starting outside the plinth ("standing on air") I clamped them to the
+plinth edge — which left them projecting 0.05 of a tile, about one screen
+pixel. They stopped hanging in space by becoming stripes painted on the facade.
+
+The real problem was upstream: **the west front sat on the edge of the
+footprint, so there was nowhere for a pier to stand.** A buttress needs a band
+of ground in front of the wall it clasps. So the walls come in and the band is
+what the piers live in:
+
+- west front back from `h - 0.2` to `h - 0.8`, towers narrowed to suit
+  (`0.6–3.0` and `8.9–11.3`), aisles to `1.0` and `11.0`
+- plinth out to `0.1` of the footprint edge
+- piers run from the wall to `h - 0.2`: **0.6 of a tile of projection**, and
+  they stand on the plinth the whole way
+
+Two things learned:
+- **Painter order.** The piers stand a tile off the wall, which makes them the
+  nearest thing on the building, so they are drawn LAST, after every wall they
+  clasp. Drawn inside `tower()` as before, the nave — drawn later — painted
+  over the two on the west tower. That is the other half of why they looked
+  flattened into it.
+- **Restraint.** First attempt gave them a full tile of projection and 0.8 of
+  width, and they swallowed the doors and the rose. A pier the width of a
+  doorway hides the doorway. They project about two thirds of their own width,
+  which is enough to throw a shadow and read as stone.
+
+Hole scan run again after moving all that geometry: clean. The two flags left
+are sky between a cross's arm and the roof under it, on the gable and on the
+fleche, which is what should be there.
