@@ -132,6 +132,10 @@ canvas.addEventListener('mousedown', e => {
 // scroll wheel switches the active weapon
 canvas.addEventListener('wheel', e => {
   e.preventDefault();
+  // The pack swallows the wheel. It must not switch weapons behind an open
+  // pack (this listener writes player.active directly, bypassing updatePlayer)
+  // and it must not change page either — pages are chosen by clicking them.
+  if (InvUI.open) return;
   if (player.melee && player.hasGun) {
     player.active = player.active === 'gun' ? 'melee' : 'gun';
     SFX.switchW();
@@ -571,12 +575,13 @@ function update(dt) {
     return;
   }
 
-  if (Input.pressed['KeyI'] || Input.pressed['Tab'] || (InvUI.open && Input.pressed['Escape'])) {
+  if (Input.pressed['KeyI'] || Input.pressed['Tab'] || (InvUI.open && !InvUI.ask && Input.pressed['Escape'])) {
     Input.pressed['KeyI'] = Input.pressed['Tab'] = false;
     InvUI.open = !InvUI.open;
     if (InvUI.open) SFX.uiOpen(); else SFX.uiClose();
     InvUI.tab = InvUI.tab || 0;
     InvUI.cur = 0;
+    InvUI.ask = null;
     // opening the pack IS the action the inventory tutorial teaches —
     // dismiss it here, or it would hang waiting behind the pack screen
     if (Tut.active && (Tut.active.keys === 'any' || Tut.active.keys.includes('KeyI') || Tut.active.keys.includes('Tab'))) {
@@ -585,14 +590,65 @@ function update(dt) {
   }
 
   if (InvUI.open) {
-    // BotW-style: the world is frozen while the pack is open
-    if (Input.pressed['KeyA'] || Input.pressed['ArrowLeft']) { InvUI.tab = (InvUI.tab + 3) % 4; InvUI.cur = 0; }
-    if (Input.pressed['KeyD'] || Input.pressed['ArrowRight']) { InvUI.tab = (InvUI.tab + 1) % 4; InvUI.cur = 0; }
-    const rows = invEntries();
-    if (Input.pressed['KeyW'] || Input.pressed['ArrowUp']) InvUI.cur = Math.max(0, InvUI.cur - 1);
-    if (Input.pressed['KeyS'] || Input.pressed['ArrowDown']) InvUI.cur = Math.min(Math.max(0, rows.length - 1), InvUI.cur + 1);
-    if (Input.pressed['KeyE'] && rows[InvUI.cur]) invAction(rows[InvUI.cur]);
-    for (const k of ['KeyA', 'KeyD', 'KeyW', 'KeyS', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyE'])
+    // The pack is POINTED AT, not driven with keys: you click a page to go to
+    // it and you click a thing to be asked what to do with it. The only key
+    // left is the one that closes it, and that is all the footer has to say.
+    const tabs = visibleTabs();
+    InvUI.tab = Math.max(0, Math.min(InvUI.tab, tabs.length - 1));
+    const items = tabs.length ? itemsOnTab(tabs[InvUI.tab].id) : [];
+
+    // the ask: clicking an item raises it, and nothing else can be touched
+    // until it is answered
+    if (InvUI.ask) {
+      const still = items.find(i => i.id === InvUI.ask.id);
+      if (!still) InvUI.ask = null;        // spent the last one — nothing to ask about
+    }
+    if (InvUI.ask) {
+      const btns = packAskButtons(InvUI.ask);
+      InvUI.askHover = -1;
+      for (const b of btns) {
+        if (packHit(b, Input.mouseX, Input.mouseY)) InvUI.askHover = b.i;
+      }
+      if (Input.pressed['LMB'] && InvUI.askHover === 0) {
+        invAction(items.find(i => i.id === InvUI.ask.id));
+        InvUI.ask = null;
+      } else if (Input.pressed['LMB'] && InvUI.askHover === 1) {
+        InvUI.ask = null; SFX.uiClose();
+      } else if (Input.pressed['Escape']) {
+        InvUI.ask = null; SFX.uiClose();
+      }
+      for (const k of ['LMB', 'Escape', 'KeyE']) Input.pressed[k] = false;
+      updateParticles(dt);
+      Msg.t -= dt;
+      return;
+    }
+
+    InvUI.cur = Math.max(0, Math.min(InvUI.cur, items.length - 1));
+    // hover is what selects — the description panel follows the pointer
+    for (let i = 0; i < items.length; i++) {
+      if (packHit(packCell(i), Input.mouseX, Input.mouseY)) { InvUI.cur = i; break; }
+    }
+    const tabRects = packTabRects(tabs);
+    if (Input.pressed['LMB']) {
+      let onTab = false;
+      for (const r of tabRects) {
+        if (!packHit(r, Input.mouseX, Input.mouseY)) continue;
+        if (r.i !== InvUI.tab) { InvUI.tab = r.i; InvUI.cur = 0; SFX.blip(); }
+        onTab = true; break;
+      }
+      if (!onTab) {
+        for (let i = 0; i < items.length; i++) {
+          if (!packHit(packCell(i), Input.mouseX, Input.mouseY)) continue;
+          InvUI.cur = i;
+          // only things you can DO something with raise the ask. Scrap has no
+          // answer to "equip or cancel"; clicking it just reads it.
+          if (items[i].action) { InvUI.ask = { id: items[i].id }; SFX.uiOpen(); }
+          break;
+        }
+      }
+    }
+    for (const k of ['KeyA', 'KeyD', 'KeyW', 'KeyS', 'KeyQ', 'KeyR', 'LMB',
+                     'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyE'])
       Input.pressed[k] = false;   // consumed — never double-fire on multi-step frames
     updateParticles(dt);
     Msg.t -= dt;
@@ -692,45 +748,96 @@ function update(dt) {
   cineZoom += (zoomTarget - cineZoom) * Math.min(1, 5 * dt);
 }
 
-// ---------- inventory data & actions (BotW-style pack) ----------
-const INV_TABS = ['WEAPONS', 'ARMOUR', 'FOOD', 'ITEMS'];
-function invEntries() {
-  const t = InvUI.tab;
-  if (t === 0) {
-    const rows = [];
-    if (player.owned.pipe) rows.push({ id: 'pipe', icon: Sprites.pipeIcon, label: 'Metal pipe', eq: player.melee === 'pipe' });
-    if (player.owned.knife) rows.push({ id: 'knife', icon: Sprites.knifeIcon, label: 'Piercing knife', eq: player.melee === 'knife' });
-    if (player.owned.pistol) rows.push({ id: 'pistol', icon: Sprites.pistolIcon, label: `Scrap pistol (${player.ammo})`, eq: player.hasGun });
-    return rows;
-  }
-  if (t === 1) return [];
-  if (t === 2) {
-    return player.inv.snack > 0
-      ? [{ id: 'snack', icon: Sprites.snackIcon, label: `Snack bar × ${player.inv.snack}`, use: 'EAT' }]
-      : [];
-  }
-  const rows = [
-    { id: 'scrap', icon: Sprites.scrapBit, label: `Scrap × ${player.inv.scrap}` },
-    { id: 'tech', icon: Sprites.techIcon, label: `Low-q tech comp × ${player.inv.tech}` },
-  ];
-  if (player.inv.gateKey) rows.push({ id: 'key', icon: null, label: 'Yard gate key' });
-  return rows;
+// ---------- THE PACK: a grid of what you carry ----------
+// It was a list of text rows. It is squares now, the way BotW does it: you
+// scan tiles, one description panel explains the tile under the cursor, and
+// a thing you have none of is simply not there. What an item IS lives in
+// js/items.js — this file only lays it out.
+//
+// The screen is 320x180 logical pixels, about the size of one BotW item tile,
+// so this is the grammar of that screen and not a copy of it.
+const PACK = {
+  CELL: 26, GAP: 3, COLS: 5, ROWS: 4,   // 20 slots — far more than we can fill
+  GX0: 12, GY0: 44,                     // grid origin
+  PX0: 162, PW: 146,                    // description panel
+  PY0: 44, PH: 113,
+};
+function packCell(i) {
+  const c = i % PACK.COLS, r = (i / PACK.COLS) | 0;
+  return {
+    x: PACK.GX0 + c * (PACK.CELL + PACK.GAP),
+    y: PACK.GY0 + r * (PACK.CELL + PACK.GAP),
+    w: PACK.CELL, h: PACK.CELL,
+  };
 }
-function invAction(row) {
-  if (row.id === 'pipe' || row.id === 'knife') {
-    player.melee = player.melee === row.id ? null : row.id;
+// tab hit rects — built the same way for input and for drawing, so what you
+// click is always exactly what you see
+function packTabRects(tabs) {
+  const out = [];
+  let tx = PACK.GX0;
+  for (let i = 0; i < tabs.length; i++) {
+    const w = ptWidth(tabs[i].label, 8) + 8;
+    out.push({ x: tx - 3, y: 22, w: w, h: 12, i });
+    tx += w + 8;
+  }
+  return out;
+}
+const packHit = (r, x, y) => x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h;
+
+// The ask: click a thing, be asked what to do with it. Two buttons, and the
+// geometry is shared between the hit test and the drawing so what you click is
+// always what you see.
+const ASK = { W: 104, H: 46, BW: 44, BH: 13 };
+function packAskRect() {
+  return { x: Math.round((VIEW_W - ASK.W) / 2), y: Math.round((VIEW_H - ASK.H) / 2) - 6,
+           w: ASK.W, h: ASK.H };
+}
+function packAskButtons() {
+  const r = packAskRect(), gap = 8;
+  const y = r.y + r.h - ASK.BH - 6;
+  const x0 = r.x + (r.w - (ASK.BW * 2 + gap)) / 2;
+  return [
+    { x: x0, y, w: ASK.BW, h: ASK.BH, i: 0 },
+    { x: x0 + ASK.BW + gap, y, w: ASK.BW, h: ASK.BH, i: 1 },
+  ];
+}
+// what the confirming button says for this item
+function packAskVerb(it) {
+  if (!it) return 'DO IT';
+  if (it.action === 'eat') return 'EAT';
+  return (it.equipped && it.equipped()) ? 'PUT AWAY' : 'EQUIP';
+}
+
+// largest INTEGER scale that still fits the cell — pixel art never blurs
+function packIconScale(img, it) {
+  if (it.scale) return it.scale;
+  const room = PACK.CELL - 2;
+  return Math.max(1, Math.min(3, Math.floor(room / Math.max(img.width, img.height))));
+}
+
+// ptWrap already wraps by character count, and the 5x7 font is fixed-advance,
+// so all a pixel width needs is converting into a character count first.
+function ptFit(str, pxWidth, size) {
+  const adv = ptWidth('MMMMMMMMMM', size) / 10;
+  return ptWrap(str, Math.max(4, Math.floor(pxWidth / adv)));
+}
+
+function invAction(it) {
+  if (!it) return;
+  if (it.id === 'pipe' || it.id === 'knife') {
+    player.melee = player.melee === it.id ? null : it.id;
     SFX.switchW();
-  } else if (row.id === 'pistol') {
+  } else if (it.id === 'pistol') {
     player.hasGun = !player.hasGun;
     SFX.switchW();
-  } else if (row.id === 'snack') {
+  } else if (it.id === 'snack') {
     if (player.hp < player.maxHp) {
       player.inv.snack--;
       player.hp = Math.min(player.maxHp, player.hp + 40);
       showMsg('Ate a snack bar  (+40 HP)');
       SFX.eat();
     } else { showMsg('Already at full health', 1.5); SFX.deny(); return; }
-  }
+  } else return;            // materials and key items are carried, not used
   saveGame();
 }
 
@@ -1921,6 +2028,11 @@ function drawHUD() {
     return;
   }
 
+  // The pack covers the whole screen, so the world HUD would print straight
+  // through it — health bar under the footer hint, minimap over the tiles.
+  // Everything from here to the floating message belongs to the world.
+  if (!InvUI.open) {
+
   // health bar — colour slides green → yellow → orange → red with amount
   const hpFrac = Math.max(0, player.hp / player.maxHp);
   uiRect(6, VIEW_H - 12, 46, 7, 'rgba(0,0,0,0.55)');
@@ -2083,6 +2195,8 @@ function drawHUD() {
     ptext(Msg.text, VIEW_W / 2, 24, 8, '#ffd27a', 'center', Math.min(1, Msg.t));
   }
 
+  }   // ---- end of the world HUD ----
+
   // THE MAP — everywhere you have walked, and nothing you haven't
   if (MapUI.open) {
     uiRect(0, 0, VIEW_W, VIEW_H, 'rgba(6,7,8,0.9)');
@@ -2136,41 +2250,107 @@ function drawHUD() {
     return;
   }
 
-  // BotW-style full-screen pack (world frozen while open)
+  // THE PACK — full screen, world frozen while it is open
   if (InvUI.open) {
-    uiRect(0, 0, VIEW_W, VIEW_H, 'rgba(0,0,0,0.55)');
-    const pw = 250, ph = 130, px0 = (VIEW_W - pw) / 2, py0 = (VIEW_H - ph) / 2;
-    uiFrame(px0, py0, pw, ph);
-    // section tabs
-    let tx = px0 + 10;
-    for (let t = 0; t < 4; t++) {
-      const sel = t === InvUI.tab;
-      const tw = ptWidth(INV_TABS[t], 8);
-      if (sel) uiRect(tx - 3, py0 + 4, tw + 6, 11, 'rgba(255,210,122,0.15)');
-      ptext(INV_TABS[t], tx, py0 + 6, 8, sel ? '#ffd27a' : 'rgba(232,217,192,0.45)');
-      tx += tw + 14;
+    uiRect(0, 0, VIEW_W, VIEW_H, 'rgba(0,0,0,0.72)');
+    ptext('THE PACK', VIEW_W / 2, 7, 8, '#ffd27a', 'center');
+
+    const tabs = visibleTabs();
+    const items = tabs.length ? itemsOnTab(tabs[InvUI.tab].id) : [];
+    const sel = items[InvUI.cur] || null;
+
+    // ---- tabs. A tab with nothing in it is not drawn at all ----
+    const tabRects = packTabRects(tabs);
+    for (let i = 0; i < tabs.length; i++) {
+      const r = tabRects[i], on = i === InvUI.tab;
+      if (on) uiRect(r.x, r.y, r.w, r.h, 'rgba(255,210,122,0.16)');
+      ptext(tabs[i].label, r.x + 4, r.y + 3, 8, on ? '#ffd27a' : 'rgba(232,217,192,0.45)');
     }
-    uiRect(px0 + 6, py0 + 18, pw - 12, 1, '#5a4a38');
-    // rows
-    const rows = invEntries();
-    if (rows.length === 0) {
-      const emptyText = InvUI.tab === 1 ? 'No armour yet — the city will provide.'
-        : InvUI.tab === 2 ? 'No food. The survivor trades snack bars.'
-        : 'Nothing here yet.';
-      ptext(emptyText, px0 + pw / 2, py0 + 52, 8, 'rgba(232,217,192,0.5)', 'center');
+    uiRect(PACK.GX0, 37, VIEW_W - PACK.GX0 * 2, 1, '#5a4a38');
+
+    if (tabs.length === 0) {
+      ptext('You are carrying nothing at all.', VIEW_W / 2, 90, 8, 'rgba(232,217,192,0.5)', 'center');
     }
-    for (let i = 0; i < rows.length; i++) {
-      const r = rows[i], ry = py0 + 26 + i * 16;
-      const sel = i === InvUI.cur;
-      if (sel) uiRect(px0 + 8, ry - 2, pw - 16, 14, 'rgba(255,210,122,0.12)');
-      ptext(sel ? '>' : ' ', px0 + 12, ry, 8, '#ffd27a');
-      if (r.icon) uiIcon(r.icon, px0 + 20, ry - 2);
-      ptext(r.label, px0 + 48, ry, 8, sel ? '#ffd27a' : '#e8d9c0');
-      if (r.eq !== undefined && r.eq) ptext('[EQUIPPED]', px0 + pw - 12, ry, 8, '#7ad27a', 'right');
-      else if (r.eq !== undefined) ptext('[E] equip', px0 + pw - 12, ry, 8, 'rgba(232,217,192,0.4)', 'right');
-      if (r.use) ptext('[E] ' + r.use.toLowerCase(), px0 + pw - 12, ry, 8, sel ? '#7ad27a' : 'rgba(232,217,192,0.4)', 'right');
+
+    // ---- the grid ----
+    for (let i = 0; i < PACK.COLS * PACK.ROWS; i++) {
+      const c = packCell(i), it = items[i];
+      // every slot draws its well, so the grid reads as a grid and not as a
+      // ragged row of whatever you happen to be carrying
+      uiRect(c.x, c.y, c.w, c.h, it ? 'rgba(28,24,20,0.92)' : 'rgba(18,16,14,0.55)');
+      if (!it) continue;
+      const cur = i === InvUI.cur;
+      if (cur) uiRect(c.x, c.y, c.w, c.h, 'rgba(255,210,122,0.18)');
+      const img = it.icon();
+      if (img) {
+        const sc = packIconScale(img, it);
+        uiIcon(img, c.x + (c.w - img.width * sc) / 2, c.y + (c.h - img.height * sc) / 2, sc);
+      }
+      // count badge, and only where a count means anything — never "x1" on
+      // the one pipe you own
+      const n = it.count ? it.count() : null;
+      if (n !== null && n !== undefined) {
+        const label = 'x' + n, lw = ptWidth(label, 7);
+        uiRect(c.x + c.w - lw - 3, c.y + c.h - 9, lw + 3, 9, 'rgba(10,8,6,0.8)');
+        ptext(label, c.x + c.w - 2, c.y + c.h - 8, 7, '#e8d9c0', 'right');
+      }
+      if (it.equipped && it.equipped()) uiRect(c.x, c.y, c.w, 2, '#7ad27a');
+      // the cursor's border goes on last so nothing paints over it
+      if (cur) {
+        uictx.strokeStyle = '#ffd27a';
+        uictx.lineWidth = U;
+        uictx.strokeRect(c.x * U, c.y * U, c.w * U, c.h * U);
+      }
     }
-    ptext('A/D section · W/S select · E use · I close', px0 + pw / 2, py0 + ph - 12, 7, 'rgba(232,217,192,0.5)', 'center');
+
+    // ---- the description panel: what it is, and what it is for ----
+    if (sel) {
+      uiRect(PACK.PX0, PACK.PY0, PACK.PW, PACK.PH, 'rgba(18,16,14,0.72)');
+      let y = PACK.PY0 + 6;
+      for (const line of ptFit(sel.name, PACK.PW - 12, 8)) {
+        ptext(line, PACK.PX0 + 6, y, 8, '#ffd27a');
+        y += 10;
+      }
+      const n = sel.count ? sel.count() : null;
+      if (n !== null && n !== undefined) {
+        ptext('carrying ' + n + (sel.countLabel ? ' ' + sel.countLabel : ''),
+              PACK.PX0 + 6, y, 7, 'rgba(232,217,192,0.6)');
+        y += 9;
+      }
+      y += 3;
+      uiRect(PACK.PX0 + 6, y, PACK.PW - 12, 1, '#5a4a38');
+      y += 6;
+      for (const line of ptFit(sel.desc, PACK.PW - 12, 7)) {
+        ptext(line, PACK.PX0 + 6, y, 7, '#e8d9c0');
+        y += 9;
+      }
+    }
+
+    // the only key worth naming is the one that gets you out
+    ptext('I — close inventory', VIEW_W / 2, VIEW_H - 11, 7,
+          'rgba(232,217,192,0.38)', 'center');
+
+    // ---- the ask, over everything ----
+    if (InvUI.ask) {
+      const it = items.find(i => i.id === InvUI.ask.id);
+      const r = packAskRect();
+      uiRect(0, 0, VIEW_W, VIEW_H, 'rgba(0,0,0,0.45)');
+      uiFrame(r.x, r.y, r.w, r.h);
+      for (const line of ptFit(it ? it.name : '', r.w - 10, 8)) {
+        ptext(line, r.x + r.w / 2, r.y + 7, 8, '#ffd27a', 'center');
+      }
+      const btns = packAskButtons();
+      const labels = [packAskVerb(it), 'CANCEL'];
+      for (let i = 0; i < 2; i++) {
+        const b = btns[i], on = InvUI.askHover === i;
+        uiRect(b.x, b.y, b.w, b.h, on ? 'rgba(255,210,122,0.22)' : 'rgba(255,255,255,0.06)');
+        uictx.strokeStyle = on ? '#ffd27a' : '#5a4a38';
+        uictx.lineWidth = U;
+        uictx.strokeRect(b.x * U, b.y * U, b.w * U, b.h * U);
+        ptext(labels[i], b.x + b.w / 2, b.y + 3, 8,
+              on ? '#ffd27a' : 'rgba(232,217,192,0.7)', 'center');
+      }
+    }
   }
 
   // trade panel + your items alongside it

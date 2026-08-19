@@ -955,3 +955,107 @@ is a progression call, not a side effect of this pass. He drops rounds.
 New docs: `design/city-map.md` (the exact map, with the street table and the
 verification) and `design/bandits.md`. **Not committed** — per the LOCAL FIRST
 rule this is a large visual addition and wants your eyes before it goes live.
+
+### 88. The pack becomes a grid
+**Laurens:** "make a plan. I want to overhaul the inventory, make it like BotW,
+not a list but just squares with items you have and if you hover over them it
+explains what it is and what is used for. IF you have 0 of a item dont show it."
+
+**Claude — the plan first**, per the standing rule, in chat and in
+`design/inventory-botw.md`. The thing worth saying before building: BotW's grid
+reads well because it is *full*, and this game has **seven items in total** —
+two or three squares per tab. The grid would be correct and look bare, which is
+a content problem and not a UI one. Offered three ways round it; Laurens chose
+**build the pack now, fill it later**, pack screen only.
+
+**What was built.** The screen is 320x180 logical pixels — about the size of
+one BotW item tile — so this is the grammar of that screen, not a copy of it:
+tiles you scan, one description panel, counts badged on the tile, nothing you
+do not own. 26px cells in a 5x4 grid on the left, description panel on the
+right. One cursor, moved by the arrows *or* the mouse — the mouse only takes it
+when the mouse has actually moved, or a pointer left lying on a tile would
+fight every arrow press. `Q`/`R`, a click, or the wheel change tab. `E` equips
+or eats, and so does a click.
+
+The real structural change is **`js/items.js`**: an item's name used to be a
+string literal inside `invEntries()`, its icon chosen in the same breath, and
+its **description did not exist anywhere**. Every item now declares itself once
+— name, tab, icon, description, `have()`, `count()`. Laurens' "if you have 0 of
+an item don't show it" is then one filter rather than a rule scattered through
+the drawing code, and the same rule one level up means **a tab with nothing in
+it hides itself** — which is what finally killed the ARMOUR tab that had been
+standing empty saying "the city will provide" since it was written.
+
+**Three things the plan did not foresee.** The world HUD printed straight
+through the pack — fine when the panel was 250x130, not when it is full screen
+— so it is now wrapped in `if (!InvUI.open)`. The scroll wheel silently
+switched weapons behind the open pack, a bug older than this work, because the
+wheel listener mutates `player.active` directly instead of going through
+`updatePlayer`; the pack owns the wheel now. And `ptWrap` already existed — a
+second word-wrapper was written before that was noticed, and deleted.
+
+**One key binding changed for the player:** `A`/`D` and the arrows used to
+change section, and now move the cursor inside the grid, because in a grid that
+is what they have to mean. Sections moved to `Q`/`R`; the footer says so.
+
+Also drew the **yard gate key icon**, which never had one — a missing icon was
+a blank row in a list, but it is an empty square in a grid, which reads as a bug.
+
+Verified on localhost with `window.TEST_MODE = true`: all four tabs; FOOD
+present at 2 snacks and gone at 0; eating from the grid 3 -> 2 and 40 -> 80 HP;
+equip and unequip; the arrows and the mouse driving the *same* cursor and the
+cursor clamping to the last item actually carried; `I` opening and closing; the
+wheel changing tabs without touching the equipped weapon; the world HUD back
+intact on close; a fresh tab reporting no console errors. Screenshots of all
+four tabs taken.
+
+**Not pushed** — big visual change, localhost until Laurens has seen it.
+
+### 89. The ammo is in the other pocket
+**Laurens:** "ok one thing just show the gun, the ammo is in the other poket"
+
+**Claude:** The pistol tile was badged `x14` and its description panel read
+"carrying 14 rounds" — but rounds are their own entry under MATERIALS and
+already carry a count there, so the same fourteen were being counted in two
+places and the weapons tab read like a magazine. Dropped `count` and
+`countLabel` from the pistol entry in `js/items.js`: the tile is the gun, and
+the rounds are where the rest of what you carry is.
+
+Verified: the pistol tile now has no badge and no "carrying" line, and
+`Pistol rounds x14` is untouched under MATERIALS. Still local, still unpushed.
+
+### 90. Pointed at, not driven
+**Laurens:** "instead of the text saying what does what, only have i close
+inventory but smaller. for the rest you just click on all on the items and it
+will give to options almost like a dialogue to equip or cancel, Also the top
+bar you click on what page you want to be no arrows"
+
+**Claude:** The pack is a pointing UI now. Pages are clicked — `Q`/`R` gone,
+and the wheel no longer changes page either, though it is still swallowed while
+the pack is open because that listener writes `player.active` directly and
+would otherwise switch weapons behind it. Items are clicked and they **ask**: a
+small centred dialogue with the item's name and two buttons, EQUIP / PUT AWAY /
+EAT and CANCEL, and nothing else responds until it is answered. Grid arrow keys
+removed; hover selects and the description follows the pointer. The footer is
+one dim line, `I — close inventory`.
+
+Two judgement calls worth recording. **Things with no action do not ask** —
+scrap has no answer to "equip or cancel", so clicking a material just reads it,
+which was always the point of clicking those. And **`Escape` had to be taken
+off the pack's close toggle** when an ask is up: that check runs before the
+pack's own input, so cancelling a dialogue with Escape was slamming the whole
+pack shut behind it.
+
+**"Smaller" was only half possible, and honestly so.** `ptGet` has exactly two
+sizes — scale 1 under 12, scale 2 at 12 and up — so `size: 7` and `size: 8`
+render the identical 5x7 bitmap, and 5x7 at scale 1 is the atom of this UI.
+Genuinely smaller glyphs would mean a second font, which the standing rule
+forbids. So it is smaller the ways available: one short line instead of four
+hints, at 0.38 alpha.
+
+Verified click-by-click: the ask raising, confirming, cancelling, Escape
+leaving the pack open, tab clicks, materials raising nothing, eating 3 -> 2 and
+30 -> 70 HP, PUT AWAY unequipping. Including the nasty one — eating the LAST
+snack, where the item and its whole tab vanish out from under the open
+dialogue: the ask clears itself, the tab index reclamps, and it renders. Fresh
+tab reports no console errors. Still local, still unpushed.

@@ -1236,6 +1236,20 @@ function outlined(src) {
     px(tcg, 6, 6, 1, 1, '#c9a24a');
     px(tcg, 2, 6, 1, 1, '#c9a24a');
     Sprites.techIcon = outlined(tc);
+
+    // yard gate key — a stub of notched steel on a loop of wire. It had no
+    // icon at all before the pack became a grid: a missing icon was a blank
+    // row in a list, but it is an empty SQUARE in a grid, which reads as a
+    // bug rather than as an item.
+    const ky = makeCanvas(11, 7), kyg = ky.getContext('2d');
+    px(kyg, 0, 1, 4, 4, '#8a8a92');       // the bow, a wire loop
+    px(kyg, 1, 2, 2, 2, '#2a2a30');       // punched through
+    px(kyg, 4, 2, 7, 2, '#9a9aa2');       // the shank
+    px(kyg, 4, 2, 7, 1, '#b6b6be');       // top edge catches the light
+    px(kyg, 8, 4, 1, 2, '#9a9aa2');       // the wards, notched down
+    px(kyg, 10, 4, 1, 1, '#9a9aa2');
+    px(kyg, 5, 3, 2, 1, '#6a6a72');       // wear along the shank
+    Sprites.keyIcon = outlined(ky);
   })();
 
   // ---- shack interior furniture ----
