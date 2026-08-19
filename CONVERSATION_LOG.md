@@ -392,3 +392,47 @@ scanline disc helper for the rose window because `ctx.arc` would scuff exactly
 like the walls did in #70. Churchyard held back as a second pass.
 No code written yet — plan first, and this is a big art change, so it gets built
 locally and screenshotted before any push.
+
+### 72. Plan the robot squads for the city
+**Laurens:** Plan the robot squadrons in the city. They should vary in size and
+weaponry, be a bit bigger, travel in packs, patrol so you can hide with SHIFT
+behind an object or fight them, and look **modern** — not like the old
+Scrappers.
+**Claude:** Read the enemy, stealth and patrol code before planning. Two
+findings shaped the whole thing.
+
+**The blocker: the game can only hold one enemy.** `scrapper` is a single global
+object (`entities.js:63`), not a list — ~62 references across four files all
+assume one. `updateBullets` tests one hypot; the draw is one `drawImage`; the
+minimap plots one blip. **Packs are impossible until it becomes an array**, so
+phase 0 is a refactor of the oldest code in the game, verified on its own with
+junkyard behaviour byte-identical, before any HHD exists.
+
+**The second finding: robots currently see through walls.** Detection is
+radius-only (`entities.js:577`) with no line-of-sight test at all. In the yard
+the sparse mounds hid it; in a city of solid buildings it is nonsense, and
+Laurens' actual ask — *hide behind an object* — simply would not work. So the
+plan adds LOS (Bresenham over the `solid` grid), **facing with a ~120° vision
+arc** plus a small peripheral radius, and **squad-shared alert**. Crouch finally
+pays off because breaking sight becomes possible.
+
+**Good news:** the Fringe already has 12 patrol waypoints and 6 hidden
+`moundSpawns` built and unused (`map.js:657-665`) — it only lacks enemies
+because the area is flagged `hasScrapper: false`.
+
+**Roster** (four units, all bigger than the Scrapper): SPOTTER (1.25×, unarmed,
+its weapon is a flare that wakes the squad — kill it first), BAILIFF (1.15×,
+shock baton, flusher), MARSHAL (1.35×, burst rifle, takes cover, **drops the
+rifle** — the ring's weapon upgrade), MAGISTRATE (1.9×, riot shield + cannon,
+rare, zero-damage frontal shield as a "not yet" wall). Packs are 2–4 with a role
+mix, never copies. Armour is a softer version of the boss language — frontal
+0.5×, amber rear sensor spine 2×, so flanking is the skill.
+
+**Modern look:** matte composite panels, one amber sensor *bar* not a bulb,
+seamless joints, a stencilled WARDEN chevron identical on every unit. The
+Scrapper is something the city threw together; an HHD is something it was
+issued — uniformity is the horror.
+
+Written to `design/hhd-squads.md` with four open questions (heavy's name and
+whether it belongs in the Fringe; stealth kills; squad respawn). No code — plan
+first.
