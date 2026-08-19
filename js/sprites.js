@@ -1621,7 +1621,7 @@ function outlined(src) {
     // whole tile, the towers come in, and the piers fill that band.
     const BM = 0.1;                           // the plinth edge
     const BX0 = BM, BX1 = w - BM, BY1 = h - BM;
-    const NF = h - 0.8;                       // the west front: the near wall
+    const NF = h - 0.35;                      // the west front: the near wall
     const NX0 = 3.0, NX1 = 9.0;               // nave walls
     const AW0 = 1.0, AE1 = 11.0;              // aisle outer walls
     const AY0 = 1.6, AY1 = NF - 3.0;          // aisles run back from the towers
@@ -1839,15 +1839,6 @@ function outlined(src) {
       // pixels of white in mid-air, and it reads as a speck of dirt
       if (cap) spike((x0 + x1) / 2, (y0 + y1) / 2, (x1 - x0) / 2 - sx,
                      z, z + cap, P_LIT, P_SHD, null);
-    };
-    // the shadow a pier throws west along the wall it stands on. Light comes
-    // from the +x side in this world, so the dark falls on the -x side.
-    const pierShadow = (ty, tx0, txWest, z1) => {
-      const w2 = Math.max(tx0 - 0.62, txWest);
-      if (w2 >= tx0 - 0.02) return;
-      poly(g, [S(tx0, ty, z1), S(w2, ty, z1), S(w2, ty, PL), S(tx0, ty, PL)], 'rgba(0,0,0,0.34)');
-      const w3 = Math.max(tx0 - 0.9, txWest);
-      poly(g, [S(w2, ty, z1), S(w3, ty, z1), S(w3, ty, PL), S(w2, ty, PL)], 'rgba(0,0,0,0.16)');
     };
 
     // =========================== THE BUILD ===========================
@@ -2081,35 +2072,16 @@ function outlined(src) {
     // ---- east tower ----
     tower(TR0, TR1, 'full');
 
-    // ---- THE PIERS, last of everything ----
-    // They stand a full tile off the walls, which makes them the nearest thing
-    // on the building, so they are drawn after every wall they clasp. Draw
-    // them inside tower() instead and the nave — drawn later — paints over
-    // the two on the west tower, which is what flattened them into the wall.
-    {
-      // Slim: a pier the width of a doorway hides the doorway. It projects
-      // about two thirds of its own width, which is enough to throw a shadow
-      // and read as stone standing off the wall.
-      // WIDE ACROSS THE FRONT, SHALLOW IN PROJECTION. This is the whole
-      // trick, and getting it backwards is what made them read as going INTO
-      // the building. A pier 0.6 wide projecting a full tile shows a narrow
-      // front and a huge side face — and in this projection a side face is a
-      // parallelogram sloping down-left, which is exactly what a wall
-      // receding away from you looks like. So the eye files the pier as part
-      // of the building going back, not standing out of it.
-      // Front 0.8 of a tile, projection 0.5: the face pointing at the player
-      // is nearly twice the size of the return, and it reads as a block
-      // standing proud, which is all the reference drawing is doing.
-      const PJ = NF + 0.5, PB = NF - 0.25;
-      const piers = [];
-      for (const cx of [TL0, TL1, TR0, TR1])
-        piers.push([Math.max(BX0, cx - 0.4), PB, Math.min(BX1, cx + 0.4), PJ]);
-      buttress(TR1 - 0.4, TY0 - 0.15, Math.min(BX1, TR1 + 0.4), TY0 + 0.5, 140, 12);
-      // every shadow first, then every pier — or a pier's own shadow lands on
-      // the face of the pier next door
-      for (const [px0] of piers) pierShadow(NF, px0, TL0 - 0.4, 140);
-      for (const [a, b2, c2, d2] of piers) buttress(a, b2, c2, d2, 140, 12);
-    }
+    // ---- NO PIERS ON THE WEST FRONT ----
+    // Three passes at them — flush with the wall, then too deep, then wide and
+    // shallow — and each time Laurens' read was that they fought the facade
+    // instead of framing it. He is right: the front already carries the
+    // portal, the rose and two towers, and the piers were competing with all
+    // three at 320x180. The flank keeps its buttresses, where there is a long
+    // blank wall for them to break up and nothing to compete with.
+    // If they ever come back, the rule that made them read at all is in
+    // art-style.md: wider across the wall than they project out of it.
+    buttress(AE1 - 0.2, TY0 - 0.42, AE1 + 0.4, TY0 + 0.42, AISLE - 8, 11);
 
     const res = { img: c, ax: AX, ay: AYo, h: WALL };
     buildingCache.set(key, res);

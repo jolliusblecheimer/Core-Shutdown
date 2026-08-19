@@ -624,8 +624,10 @@ function buildFringe() {
     { gx: 89, gy: 71, text: 'LEFT HERE. FOLLOW THE ROAD', kind: 'plank', dir: 'xm' },
     { gx: 76, gy: 71, text: 'ST MARTINS. NOT FAR NOW', kind: 'cloth', dir: 'xm' },
     { gx: 66, gy: 71, text: 'ALMOST THERE. KEEP ON', kind: 'plank', dir: 'xm' },
-    // and off the road to the door
-    { gx: 58, gy: 70, text: 'YOU MADE IT. KNOCK.', kind: 'cloth', dir: 'ym' },
+    // The trail stops at the road. The last board used to stand on the parvis
+    // itself — "YOU MADE IT. KNOCK." — and a plank on poles in front of the
+    // west front just got in the way of the building. The turn-off board below
+    // is the last one you read; the cathedral says the rest by being there.
   ];
   for (const s of SIGNS) {
     const x = s.gx | 0, y = s.gy | 0;

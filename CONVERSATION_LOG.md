@@ -557,3 +557,29 @@ them.
 
 Four piers on the west front, on the tower lines, straddling the tower/nave
 junctions like the reference. Hole scan still clean.
+
+### 77. Piers off the front, and the plank moved out of the way
+**Laurens:** ringed all four buttresses on the west front — "Remove those
+pillars and the plank in front on the floor"
+**Claude:** Done, both.
+
+**The four west-front piers are gone.** Three passes at them — flush with the
+wall, then too deep, then wide and shallow — and each time the read was that
+they fought the facade instead of framing it. That is the right call: the front
+already carries the portal, the rose and two towers, and at 320×180 the piers
+were competing with all three. The west front is now plain coursed stone with
+its openings, which is what the reference actually shows once you look past the
+elevation drawing's flat projection. **The flank keeps its buttresses** — there
+they have a long blank wall to break up and nothing to compete with, and they
+have read correctly since the proportion fix.
+
+With nothing standing in front of it, the facade comes back forward to
+`h - 0.35`, so the plinth is a thin ledge again instead of a wide empty apron.
+
+**The last sign is gone.** "YOU MADE IT. KNOCK." stood on the parvis right in
+front of the west door — a plank on poles across the doorway. The trail now
+stops at the turn-off board on the road; the cathedral says the rest by being
+there. Say the word and it goes back, off to one side.
+
+The rule that made the piers read at all is kept in `art-style.md` in case they
+are ever wanted again: wider across the wall than they project out of it.
