@@ -357,8 +357,8 @@ function enterArea(id, entry) {
   boss.active = false; boss.state = 'hidden'; boss.shots.length = 0;
   bullets.length = 0; Particles.length = 0;
   explosions.length = 0; fuses.length = 0;
-  if (Areas[id].hasScrapper && mission.state !== 'none') spawnScrapper();
-  else scrapper.state = 'off';
+  if (Areas[id].hasScrapper && mission.state !== 'none') spawnScrappers();
+  else scrappersOff();
   if (entry) {
     player.x = entry.x; player.y = entry.y;
     if (!canStand(player.x, player.y, player.r)) {
@@ -598,7 +598,7 @@ function update(dt) {
       (boss.active && (boss.state === 'cine2' || boss.state === 'cine3'));
     if (!bossCine) {
       updatePlayer(dt);
-      updateScrapper(dt);
+      updateScrappers(dt);
       updateItems(dt);
       checkExits(dt);
       markExplored(player.x, player.y, 9);
@@ -758,8 +758,11 @@ function render() {
       : (p.foot ? s.y + (p.foot[2] + p.foot[3]) * 4 : s.y);
     draws.push({ depth, draw: () => drawProp(p, s.x - ox, s.y - oy) });
   }
-  { const s = isoToScreen(scrapper.x, scrapper.y);
-    draws.push({ depth: s.y, draw: () => drawScrapper(s.x - ox, s.y - oy) }); }
+  for (const sc of scrappers) {
+    if (sc.state === 'off') continue;
+    const s = isoToScreen(sc.x, sc.y);
+    draws.push({ depth: s.y, draw: () => drawScrapper(sc, s.x - ox, s.y - oy) });
+  }
   if (boss.active && boss.state !== 'hidden') {
     const s = isoToScreen(boss.x, boss.y);
     draws.push({ depth: s.y + 2, draw: () => drawBoss(s.x - ox, s.y - oy) });
@@ -1168,8 +1171,8 @@ function drawProp(p, x, y) {
   }
   else if (T === 'bus') {
     img = p.dir === 'y' ? Sprites.busIso.y : Sprites.busIso.x;
-    oyOff = -26 - Math.round(Sprites.bus.width * 0.25);
-    drawShadow(x, y + 1, 22);
+    oyOff = img.oy;
+    drawShadow(x, y + 2, p.dir === 'y' ? 13 : 26);
   }
   else if (T === 'pump') {
     img = Sprites.fuelPump; oyOff = -22; drawShadow(x, y, 6);
@@ -1548,8 +1551,7 @@ function drawNpc(x, y) {
   }
 }
 
-function drawScrapper(x, y) {
-  const s = scrapper;
+function drawScrapper(s, x, y) {
   if (s.state === 'off') return;
   if (s.state === 'dead') {
     ctx.globalAlpha = s.looted ? 0.45 : 1;
@@ -1747,9 +1749,11 @@ function drawHUD() {
     if (ex.needsGate && !(gateProp && gateProp.open)) continue;
     blip((ex.x0 + ex.x1) / 2, (ex.y0 + ex.y1) / 2, '#4fc3ff');
   }
-  if (scrapper.state !== 'dead' && scrapper.state !== 'off' &&
-      Math.hypot(scrapper.x - player.x, scrapper.y - player.y) < 8)
-    blip(scrapper.x, scrapper.y, '#ff5a3c');
+  for (const sc of scrappers) {
+    if (sc.state !== 'dead' && sc.state !== 'off' &&
+        Math.hypot(sc.x - player.x, sc.y - player.y) < 8)
+      blip(sc.x, sc.y, '#ff5a3c');
+  }
   blip(player.x, player.y, '#ffffff');
   g.strokeStyle = '#5a4a38';
   g.lineWidth = U;

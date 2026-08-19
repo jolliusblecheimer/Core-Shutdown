@@ -52,42 +52,68 @@ loadAreaItems(currentArea);
 // legacy alias used by the v1→v2 save migration
 const START_ITEMS = START_ITEMS_BY_AREA.junkyard;
 
-// pick an enemy spawn point tucked behind a trash mountain, away from the player
-function pickSpawn() {
-  const far = moundSpawns.filter(p => Math.hypot(p.x - player.x, p.y - player.y) > 9);
+// pick an enemy spawn point tucked behind a trash mountain, away from the
+// player - and, with two of them in the yard, away from each other too, so a
+// pair never walks out from behind the same heap shoulder to shoulder
+function pickSpawn(avoid) {
+  let far = moundSpawns.filter(p => Math.hypot(p.x - player.x, p.y - player.y) > 9);
+  if (avoid && avoid.length) {
+    const clear = far.filter(p => avoid.every(a => Math.hypot(p.x - a.x, p.y - a.y) > 5));
+    if (clear.length) far = clear;
+  }
   const pool = far.length ? far : moundSpawns;
   if (pool.length) return pool[(Math.random() * pool.length) | 0];
   return { x: 24.5, y: 18.5 };
 }
 
-const scrapper = {
-  spawnX: 24.5, spawnY: 18.5,
-  x: 24.5, y: 18.5, r: 0.3,
-  hp: 30, maxHp: 30,
-  state: 'off', t: 0,          // 'off' until the survivor warns you about them
-  tx: 24.5, ty: 18.5,
-  animT: 0, frame: 0,
-  hitFlash: 0, respawn: 0, didHit: false,
-  kbx: 0, kby: 0,
-  kills: 0, looted: false,
-  detour: 0, detourX: 0, detourY: 0,   // makeshift brain: sidestep obstacles
-  alert: 0, idleT: 0,                  // detection meter & patrol idle pause
-  patrolFlip: false,                   // alternates heap ↔ central hub
-  memory: 0, lastPX: 0, lastPY: 0,     // remembers a spotted player for 12s
-};
-
-function spawnScrapper() {
-  const sp = pickSpawn();
-  scrapper.x = sp.x; scrapper.y = sp.y;
-  scrapper.hp = scrapper.maxHp;
-  scrapper.looted = false;
-  scrapper.detour = 0;
-  scrapper.alert = 0;
-  scrapper.idleT = 0;
-  const p = patrolPoints[(Math.random() * patrolPoints.length) | 0] || { x: 16, y: 16 };
-  scrapper.tx = p.x; scrapper.ty = p.y;
-  scrapper.state = 'patrol';
+// The yard runs TWO Scrappers at once - the survivor says "more than one" and
+// now he is telling the truth. Each one lives and respawns on its own timer,
+// so the pair is only ever briefly down to one wreck and one hunter.
+const SCRAPPER_COUNT = 2;
+function makeScrapper() {
+  return {
+    x: 24.5, y: 18.5, r: 0.3,
+    hp: 30, maxHp: 30,
+    state: 'off', t: 0,        // 'off' until the survivor warns you about them
+    tx: 24.5, ty: 18.5,
+    animT: 0, frame: 0,
+    hitFlash: 0, respawn: 0, didHit: false,
+    kbx: 0, kby: 0,
+    looted: false,
+    detour: 0, detourX: 0, detourY: 0, // makeshift brain: sidestep obstacles
+    alert: 0, idleT: 0,                // detection meter & patrol idle pause
+    patrolFlip: false,                 // alternates heap ↔ central hub
+    memory: 0, lastPX: 0, lastPY: 0,   // remembers a spotted player for 12s
+  };
 }
+const scrappers = [];
+for (let i = 0; i < SCRAPPER_COUNT; i++) scrappers.push(makeScrapper());
+
+// Tallies that outlive any individual machine, so they belong to the squad.
+// techPity counts wrecks looted since the last tech component: the drop is a
+// 1-in-5 roll you can lose six times in a row, and a player who does gets one
+// anyway. Only the yard's starter robots are this forgiving.
+const TECH_CHANCE = 0.2;
+const TECH_PITY = 6;
+const ScrapperStats = { kills: 0, techPity: 0 };
+
+function spawnScrapper(s) {
+  const others = scrappers.filter(o => o !== s && o.state !== 'off' && o.state !== 'dead');
+  const sp = pickSpawn(others);
+  s.x = sp.x; s.y = sp.y;
+  s.hp = s.maxHp;
+  s.looted = false;
+  s.detour = 0;
+  s.alert = 0;
+  s.idleT = 0;
+  s.kbx = 0; s.kby = 0;
+  s.hitFlash = 0;
+  const p = patrolPoints[(Math.random() * patrolPoints.length) | 0] || { x: 16, y: 16 };
+  s.tx = p.x; s.ty = p.y;
+  s.state = 'patrol';
+}
+function spawnScrappers() { for (const s of scrappers) spawnScrapper(s); }
+function scrappersOff() { for (const s of scrappers) s.state = 'off'; }
 
 const npc = { x: 21.5, y: 6.5, animT: 0, frame: 0 };
 
@@ -219,25 +245,26 @@ function updatePlayer(dt) {
         }
       }
     }
-    if (scrapper.state !== 'dead') {
-      const dx = scrapper.x - player.x, dy = scrapper.y - player.y;
+    // one swing, every machine standing in the arc - fighting two at once is
+    // the point of the pair, so the pipe has to be able to catch both
+    for (const sc of scrappers) {
+      if (sc.state === 'dead' || sc.state === 'off') continue;
+      const dx = sc.x - player.x, dy = sc.y - player.y;
       const d = Math.hypot(dx, dy);
-      if (d < m.range) {
-        const ss = isoToScreen(scrapper.x, scrapper.y);
-        const a = Math.atan2(ss.y - ps.y, ss.x - ps.x);
-        let diff = Math.abs(a - player.angle);
-        if (diff > Math.PI) diff = Math.PI * 2 - diff;
-        if (diff < 1.3) {
-          scrapper.hp -= m.dmg;
-          scrapper.hitFlash = 0.08;
-          scrapper.kbx += (dx / (d || 1)) * 0.10;
-          scrapper.kby += (dy / (d || 1)) * 0.10;
-          spawnSparks(scrapper.x, scrapper.y, 6, ['#ffd27a', '#c9c9d2']);
-          addShake(2);
-          SFX.clang();
-          if (scrapper.hp <= 0) killScrapper();
-        }
-      }
+      if (d >= m.range) continue;
+      const ss = isoToScreen(sc.x, sc.y);
+      const a = Math.atan2(ss.y - ps.y, ss.x - ps.x);
+      let diff = Math.abs(a - player.angle);
+      if (diff > Math.PI) diff = Math.PI * 2 - diff;
+      if (diff >= 1.3) continue;
+      sc.hp -= m.dmg;
+      sc.hitFlash = 0.08;
+      sc.kbx += (dx / (d || 1)) * 0.10;
+      sc.kby += (dy / (d || 1)) * 0.10;
+      spawnSparks(sc.x, sc.y, 6, ['#ffd27a', '#c9c9d2']);
+      addShake(2);
+      SFX.clang();
+      if (sc.hp <= 0) killScrapper(sc);
     }
   }
 
@@ -275,9 +302,10 @@ function updateItems(dt) {
     const gd = Math.hypot(player.x - 30.3, player.y - 12.5);
     if (gd < 1.7 && gd < bestD) { bestD = gd; best = 'gate'; bestKind = 'gate'; }
   }
-  if (scrapper.state === 'dead' && !scrapper.looted) {
-    const d = Math.hypot(player.x - scrapper.x, player.y - scrapper.y);
-    if (d < 1.1 && d < bestD) { bestD = d; best = scrapper; bestKind = 'wreck'; }
+  for (const sc of scrappers) {
+    if (sc.state !== 'dead' || sc.looted) continue;
+    const d = Math.hypot(player.x - sc.x, player.y - sc.y);
+    if (d < 1.1 && d < bestD) { bestD = d; best = sc; bestKind = 'wreck'; }
   }
 
   if (bestKind === 'gate') {
@@ -306,20 +334,29 @@ function updateItems(dt) {
     Prompt = { sx: s.x, sy: s.y - 30, text: mission.state === 'turned' ? 'E — trade' : 'E — talk' };
     if (Input.pressed['KeyE']) { Input.pressed['KeyE'] = false; talkToNpc(); }
   } else if (bestKind === 'wreck') {
-    const s = isoToScreen(scrapper.x, scrapper.y);
+    const wreck = best;
+    const s = isoToScreen(wreck.x, wreck.y);
     Prompt = { sx: s.x, sy: s.y - 20, text: 'E — loot wreck' };
     if (Input.pressed['KeyE']) {
       Input.pressed['KeyE'] = false;
       const r = Math.random();
       const n = r < 0.5 ? 1 : r < 0.85 ? 2 : 3;   // small chance of a rich wreck
       player.inv.scrap += n;
+      // bad luck has a floor: after five dry wrecks the sixth always pays out
+      const gotTech = Math.random() < TECH_CHANCE || ScrapperStats.techPity >= TECH_PITY - 1;
       let extra = '';
-      if (Math.random() < 0.2) { player.inv.tech++; extra = '  · +1 LOW-QUALITY tech component'; }
+      if (gotTech) {
+        player.inv.tech++;
+        ScrapperStats.techPity = 0;
+        extra = '  · +1 LOW-QUALITY tech component';
+      } else {
+        ScrapperStats.techPity++;
+      }
       showMsg(`Looted ${n} scrap${extra}`);
-      spawnSparks(scrapper.x, scrapper.y, 5, ['#8a8a92', '#ffd27a']);
+      spawnSparks(wreck.x, wreck.y, 5, ['#8a8a92', '#ffd27a']);
       if (extra) SFX.tech(); else SFX.loot();
-      scrapper.looted = true;
-      scrapper.respawn = Math.min(scrapper.respawn, 4);
+      wreck.looted = true;
+      wreck.respawn = Math.min(wreck.respawn, 4);
       saveGame();
       tutShow('loot',
         ['Dead machines can be looted for scrap', 'and rare tech components.', 'Press I to open your pack.'],
@@ -359,7 +396,7 @@ function talkToNpc() {
       "Break the machines. Loot 5 scrap off the wrecks.",
     ]);
     mission.state = 'active';
-    spawnScrapper();             // his warning is what wakes the yard up
+    spawnScrappers();            // his warning is what wakes the yard up
     saveGame();
   } else if (mission.state === 'active') {
     startDialog(["Smash the Scrappers. Bring me 5 scrap."]);
@@ -426,7 +463,7 @@ function tradeBuy(n) {
 }
 
 function updateMission() {
-  if (mission.state === 'active' && scrapper.kills >= 1 && player.inv.scrap >= 5) {
+  if (mission.state === 'active' && ScrapperStats.kills >= 1 && player.inv.scrap >= 5) {
     mission.state = 'complete';
     showMsg('Objective done — return to the survivor', 3);
     SFX.chime();
@@ -468,16 +505,17 @@ function explodeBarrel(b) {
     const bd = Math.hypot(boss.x - cx, boss.y - cy);
     if (bd < R + boss.r) bossHit(boss.x, boss.y, Math.round(30 + 60 * (1 - Math.min(1, bd / R))), 'blast');
   }
-  // shreds machines — a well-placed barrel one-shots a Scrapper
-  if (scrapper.state !== 'off' && scrapper.state !== 'dead') {
-    const sd = Math.hypot(scrapper.x - cx, scrapper.y - cy);
-    if (sd < R) {
-      scrapper.hp -= Math.round(30 + 60 * (1 - sd / R));
-      scrapper.hitFlash = 0.1;
-      scrapper.alert = 1;               // survivors of the blast come for you
-      if (scrapper.hp <= 0) killScrapper();
-      else scrapper.state = 'chase';
-    }
+  // shreds machines — a well-placed barrel one-shots a Scrapper, and with two
+  // of them in the yard one blast can take both
+  for (const sc of scrappers) {
+    if (sc.state === 'off' || sc.state === 'dead') continue;
+    const sd = Math.hypot(sc.x - cx, sc.y - cy);
+    if (sd >= R) continue;
+    sc.hp -= Math.round(30 + 60 * (1 - sd / R));
+    sc.hitFlash = 0.1;
+    sc.alert = 1;                       // survivors of the blast come for you
+    if (sc.hp <= 0) killScrapper(sc);
+    else sc.state = 'chase';
   }
   // chain reaction with nearby barrels
   for (const ob of boomBarrels) {
@@ -522,35 +560,43 @@ function updateBullets(dt) {
       hit = true;
       bossHit(b.x, b.y, 10, 'bullet');
     }
-    if (!hit && scrapper.state !== 'dead' && Math.hypot(b.x - scrapper.x, b.y - scrapper.y) < 0.45) {
-      hit = true;
-      scrapper.hp -= 10;
-      scrapper.hitFlash = 0.08;
-      scrapper.kbx += b.vx * 0.02; scrapper.kby += b.vy * 0.02;
-      spawnSparks(b.x, b.y, 6, ['#ffd27a', '#ffb02e', '#8a8a92']);
-      addShake(0.8);
-      SFX.hitMetal();
-      if (scrapper.hp <= 0) killScrapper();
+    if (!hit) {
+      for (const sc of scrappers) {
+        if (sc.state === 'dead' || sc.state === 'off') continue;
+        if (Math.hypot(b.x - sc.x, b.y - sc.y) >= 0.45) continue;
+        hit = true;
+        sc.hp -= 10;
+        sc.hitFlash = 0.08;
+        sc.kbx += b.vx * 0.02; sc.kby += b.vy * 0.02;
+        spawnSparks(b.x, b.y, 6, ['#ffd27a', '#ffb02e', '#8a8a92']);
+        addShake(0.8);
+        SFX.hitMetal();
+        if (sc.hp <= 0) killScrapper(sc);
+        break;                          // one bullet, one machine
+      }
     }
     if (hit) bullets.splice(i, 1);
   }
 }
 
-function killScrapper() {
-  scrapper.state = 'dead';
-  scrapper.looted = false;
-  scrapper.respawn = 20;        // lingers as a lootable wreck; 4s after looting
-  scrapper.kills++;
+function killScrapper(s) {
+  s.state = 'dead';
+  s.looted = false;
+  s.respawn = 20;               // lingers as a lootable wreck; 4s after looting
+  ScrapperStats.kills++;
   SFX.robotDie();
   addShake(2.5);
-  spawnSparks(scrapper.x, scrapper.y, 12, ['#ffd27a', '#ffb02e', '#8a8a92'], 3);
-  spawnSmoke(scrapper.x, scrapper.y, 5);
+  spawnSparks(s.x, s.y, 12, ['#ffd27a', '#ffb02e', '#8a8a92'], 3);
+  spawnSmoke(s.x, s.y, 5);
 }
 
-function updateScrapper(dt) {
-  const s = scrapper;
-  if (s.state === 'off') return;      // yard is quiet until the NPC's warning
+function updateScrappers(dt) {
   if (!currentAreaDef().hasScrapper) return;
+  for (const s of scrappers) updateScrapper(dt, s);
+}
+
+function updateScrapper(dt, s) {
+  if (s.state === 'off') return;      // yard is quiet until the NPC's warning
   s.hitFlash -= dt;
   if (s.kbx || s.kby) {
     tryMove(s, s.kbx, s.kby);
@@ -560,7 +606,7 @@ function updateScrapper(dt) {
 
   if (s.state === 'dead') {
     s.respawn -= dt;
-    if (s.respawn <= 0) spawnScrapper();
+    if (s.respawn <= 0) spawnScrapper(s);
     return;
   }
 

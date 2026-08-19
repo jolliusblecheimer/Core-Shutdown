@@ -27,6 +27,12 @@ loot wrecks → meet Marek in the shack → mission (5 scrap) → he gives the
 scrap pistol + the gate key → trade (snacks, ammo, piercing knife for 2 tech)
 → unlock the gate → **THE COMPACTOR** ambush → gate opens to the city.
 
+**Two Scrappers patrol the yard at once** (`SCRAPPER_COUNT`), each on its own
+life/respawn timer and spawning at least 5 tiles apart. Wreck loot pays a
+low-quality tech component on a 1-in-5 roll with a **pity floor**: the sixth
+dry wreck in a row always pays, and any drop resets the counter. Both the kill
+tally and the pity counter survive a save.
+
 Systems shown here: stealth with detection meters and crouch (Shift), patrols
 that path heap-to-heap through a hub near the shack, 12s enemy memory,
 explosive barrels, melee/gun with scroll-wheel switching, BotW-style inventory
@@ -60,6 +66,10 @@ Handmade sign trail (planks, bedsheet banners, painted road arrows) leading
 1. **Long props are still flat rectangles** — bus stop, dumpster, awning don't
    lie along the road. Rebuild them in face space like buildings, not by
    shearing. *(Laurens' item 4, partially done: facade/column heights fixed.)*
+   When each one becomes a volume its **hitbox has to move with it** — anchor
+   the sprite on its footprint centre, give the prop a `foot`, and let
+   `clearPropSolid` free it. See the new section in `design/art-style.md`;
+   the cars and the bus have been through this, these have not.
 2. **HHDs — Human-Hunter-Droids.** The streets are beautiful and empty.
    Marshal (rifle, bursts, takes cover), Bailiff (short-range flusher),
    Spotter (calls them in). Scrappers stay in the yard. Design in

@@ -11,6 +11,7 @@
 - **You start with NO weapon.** First weapon is the **METAL PIPE** (melee, weak) found in the world. The **pistol comes from the NPC** as the first mission reward, with one full mag (6 rounds).
 - **Melee is core early-game**: ammo is scarce (packs contain 6 and are rare), so melee must stay viable. Pipe: 7 dmg. Piercing knife (trade, 15 scrap): 14 dmg.
 - **Melee OUTRANGES the Scrapper** (pipe 1.5 vs its 1.15 reach) — spacing is the skill: back off from the wind-up, strike at max range.
+- **A swing is an ARC, not a target.** It damages every machine inside range and within 1.3 rad of the aim — with two Scrappers in the yard, catching both in one swing is the reward for positioning them onto the same side of you.
 - **Weapon animations are distinct**: pipe = wide sweep with arc trail; knife = fast forward STAB with motion streaks. Knife dmg 18 (it pierces metal). Only ONE weapon shows at a time — the gun holsters during a melee swing.
 - **Passive regen**: after 20 seconds with no combat (no attacking, no being hit, not being hunted), health regenerates at 3/s. Being chased counts as combat.
 - **Health bar colour** slides smoothly green → yellow → orange → red with remaining health (hsl hue 112→0).

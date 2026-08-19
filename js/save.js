@@ -27,7 +27,8 @@ function saveGame() {
         scrollHintT: Math.max(0, player.scrollHintT),
       },
       mission: mission.state,
-      kills: scrapper.kills,
+      kills: ScrapperStats.kills,
+      techPity: ScrapperStats.techPity,
       bossDown: typeof bossDefeated !== 'undefined' ? bossDefeated : false,
       area: currentArea,
       // per-area world state, keyed by tile so map edits can't shuffle it
@@ -131,7 +132,9 @@ function applySave(d) {
   player.swing = 0; player.swingCd = 0; player.fireCd = 0; player.combatT = 99;
 
   mission.state = ['none', 'active', 'complete', 'turned'].includes(d.mission) ? d.mission : 'none';
-  scrapper.kills = Math.max(0, num(d.kills, 0));
+  ScrapperStats.kills = Math.max(0, num(d.kills, 0));
+  // saves written before the pity counter existed simply start it at zero
+  ScrapperStats.techPity = Math.max(0, num(d.techPity, 0));
   if (d.bossDown) bossDefeated = true;
 
   // per-area world state: remember every area, then load the one we're in
@@ -168,8 +171,8 @@ function applySave(d) {
 
   Object.assign(Tut.done, d.tut || {});
   // robots re-enter fresh (never saved mid-chase)
-  if (mission.state !== 'none' && currentAreaDef().hasScrapper) spawnScrapper();
-  else scrapper.state = 'off';
+  if (mission.state !== 'none' && currentAreaDef().hasScrapper) spawnScrappers();
+  else scrappersOff();
 }
 
 // nearest open tile, spiralling outward

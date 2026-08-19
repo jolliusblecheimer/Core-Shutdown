@@ -117,3 +117,27 @@ Playtest round 6 (2026-08-16, new references: techwear character + pixel Glock):
 - **Gun pose**: when armed, the character shows a small extended arm (sleeve + glove) holding the pistol, vertically flipped when aiming left so the grip stays down.
 - **Buildings have furnished interiors** — an empty room is unacceptable. The shack: cot, table + stool, supply shelf, crate, fire-barrel stove (flickering warm light source).
 - **Tutorial style**: staged freeze-frames — world pauses, dimmed overlay, one short lesson at the moment it's relevant (move → melee → enemy warning → looting/inventory → gun). Dismissed by performing the taught action.
+
+## A volume's HITBOX must match its footprint (2026-08-19)
+When a prop stopped being a flat card and became a real iso volume, its
+collision did not follow. The car is 2.25 × 1.0 tiles of *ground*, but it was
+still blocking the 2 × 1 tiles of the old cardboard sprite, and — worse — the
+sprite was anchored on `P(0,0)` rather than on the centre of its own footprint,
+so the drawn car sat three quarters of a tile down-screen of the tiles it
+blocked. You bumped into empty road beside it and walked through its nose.
+
+The rule that came out of it:
+
+- An iso volume sprite must be **anchored on the centre of its ground
+  footprint**. For the `carIso`/`busIso` construction that means
+  `oy = -(OY + (L + W) * 4)` — half the footprint diagonal, 8px per tile — not
+  `-(OY + 1)`.
+- The prop's `gx, gy` is the **middle tile** of its footprint (props draw at
+  `gx + 0.5, gy + 0.5`), and it carries a `foot: [x0, y0, w, h]` so it is
+  indexed and depth-sorted across every tile it touches, not just one.
+- A 2.25-tile car therefore claims **three** tiles along its axis and one
+  across. The ~0.375-tile overhang at each end is the bumper, and it is
+  symmetric — verified by measuring the sprite's opaque bounding box against
+  the footprint diamond (4-6px of margin on every side).
+- Anything that destroys a prop must free **every** tile it stood on:
+  `clearPropSolid(p)` in map.js, not a hand-written `tx + 1`.

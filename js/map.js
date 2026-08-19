@@ -300,9 +300,17 @@ function buildJunkyard() {
   // so the sprite stands on exactly the tiles it blocks.
   const carSpots = [[12, 10], [7, 15], [24, 13], [16, 25], [27, 8], [14, 18], [9, 20], [19, 28]];
   let carV = 0;
-  for (const [cx, cy] of carSpots) {
-    if (cx + 2 >= MAP_W - 1) continue;
-    if (reserved(cx, cy) || reserved(cx + 1, cy) || reserved(cx + 2, cy)) continue;
+  for (const [cx0, cy] of carSpots) {
+    // the third tile can land on junk that was scattered first - slide the
+    // wreck along its own axis rather than losing it off the map
+    let cx = -1;
+    for (const off of [0, -1, 1, -2]) {
+      const x = cx0 + off;
+      if (x < 1 || x + 2 >= MAP_W - 1) continue;
+      if (reserved(x, cy) || reserved(x + 1, cy) || reserved(x + 2, cy)) continue;
+      cx = x; break;
+    }
+    if (cx < 0) continue;
     const prop = { gx: cx + 1, gy: cy, type: 'car', v: carV++ % 2, dir: 'x', foot: [cx, cy, 3, 1] };
     props.push(prop);
     for (let i = 0; i < 3; i++) { solid[cy][cx + i] = true; crushProps[(cx + i) + ',' + cy] = prop; }

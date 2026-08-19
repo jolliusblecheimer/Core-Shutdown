@@ -304,7 +304,7 @@ function outlined(src) {
     px(bsg, 6, 21, 6, 4, '#1c1c20');
     px(bsg, 42, 21, 6, 4, '#1c1c20');
     Sprites.bus = outlined(bs);
-    Sprites.busIso = { x: sheared(Sprites.bus, 1), y: sheared(Sprites.bus, -1) };
+    // (the real busIso is built at the iso viewpoint further down)
 
     // fuel pump island
     const fp = makeCanvas(16, 22), fg = fp.getContext('2d');
@@ -681,6 +681,74 @@ function outlined(src) {
     ['#5a5f52', '#40443b', '#727861'],
     ['#7a7468', '#565247', '#948d7e'],
   ];
+  // THE SCHOOL BUS — the same iso construction as the cars, just a much longer
+  // box with a low nose stuck on the front. It was still a sheared side
+  // elevation, which is why it read as cardboard: no roof, so nothing told you
+  // it had a top surface at all.
+  function busIso(along) {
+    const L = 3.3, W = 1.28, SK = 4, BH = 30, HOOD = 17;   // skirt · body · bonnet
+    const lx = along === 'x' ? L : W, ly = along === 'x' ? W : L;
+    const OX = Math.ceil(ly * 16) + 2, OY = BH + 4;
+    const c = makeCanvas(Math.ceil((lx + ly) * 16) + 4,
+                         Math.ceil((lx + ly) * 8) + BH + 8);
+    const g = c.getContext('2d');
+    const P = (t, v, h) => {
+      const a = t * L, b = v * W;
+      const wx = along === 'x' ? a : b, wy = along === 'x' ? b : a;
+      return [(wx - wy) * 16 + OX, (wx + wy) * 8 - h + OY];
+    };
+    const F = (pts, col) => isoFill(g, pts.map(q => P(q[0], q[1], q[2])), col);
+    const box = (t0, t1, v0, v1, h0, h1, top, side, end) => {
+      F([[t0, v0, h1], [t1, v0, h1], [t1, v1, h1], [t0, v1, h1]], top);
+      F([[t0, v1, h1], [t1, v1, h1], [t1, v1, h0], [t0, v1, h0]], side);
+      F([[t1, v0, h1], [t1, v1, h1], [t1, v1, h0], [t1, v0, h0]], end);
+    };
+    const body = '#b08a28', dark = '#7d6118', roof = '#c9a336';
+    const glass = '#1b2029', trim = '#20222a';
+    const NOSE = 0.78;                       // where the passenger box stops
+
+    // the long passenger box
+    box(0, NOSE, 0, 1, SK, BH, roof, body, body);
+    // the bonnet, lower and set in a little from the sides
+    box(NOSE, 1, 0.07, 0.93, SK, HOOD, shadeHex(roof, 1.04), body, dark);
+    // black skirt under the floor line, and the wheels behind it
+    F([[0, 1, SK + 2.5], [1, 1, SK + 2.5], [1, 1, 0], [0, 1, 0]], trim);
+    for (const [t0, t1] of [[0.06, 0.22], [0.62, 0.78]]) {
+      F([[t0, 1.02, 7], [t1, 1.02, 7], [t1, 1.02, 0], [t0, 1.02, 0]], '#15181d');
+      F([[t0 + 0.03, 1.03, 5.2], [t1 - 0.03, 1.03, 5.2],
+         [t1 - 0.03, 1.03, 1.8], [t0 + 0.03, 1.03, 1.8]], '#41464d');
+    }
+    // the window band down the near flank, with a pillar between each pair
+    F([[0.03, 1, BH - 4], [NOSE - 0.02, 1, BH - 4], [NOSE - 0.02, 1, BH - 15], [0.03, 1, BH - 15]], glass);
+    for (let i = 0; i <= 8; i++) {
+      const t = 0.03 + i * ((NOSE - 0.05) / 8);
+      F([[t, 1, BH - 4], [t + 0.016, 1, BH - 4], [t + 0.016, 1, BH - 15], [t, 1, BH - 15]], body);
+    }
+    // roof rail and the black stripe every school bus has
+    F([[0, 1, BH], [NOSE, 1, BH], [NOSE, 1, BH - 2], [0, 1, BH - 2]], shadeHex(body, 1.25));
+    F([[0, 1, BH - 16.5], [NOSE, 1, BH - 16.5], [NOSE, 1, BH - 19], [0, 1, BH - 19]], trim);
+    F([[0, 1, SK + 3.5], [NOSE, 1, SK + 3.5], [NOSE, 1, SK + 2.5], [0, 1, SK + 2.5]], dark);
+    // the windscreen: the front of the box, standing above the bonnet
+    F([[NOSE, 0.08, BH - 3.5], [NOSE, 0.92, BH - 3.5],
+       [NOSE, 0.92, HOOD + 1], [NOSE, 0.08, HOOD + 1]], glass);
+    F([[NOSE, 0.08, BH - 3.5], [NOSE, 0.92, BH - 3.5],
+       [NOSE, 0.92, BH - 5], [NOSE, 0.08, BH - 5]], shadeHex(glass, 2.2));
+    // the face on the bonnet
+    F([[1, 0.2, HOOD - 3], [1, 0.8, HOOD - 3], [1, 0.8, SK + 4], [1, 0.2, SK + 4]], '#15171c');
+    for (const [v0, v1] of [[0.1, 0.26], [0.74, 0.9]])
+      F([[1, v0, HOOD - 2], [1, v1, HOOD - 2], [1, v1, HOOD - 5], [1, v0, HOOD - 5]], '#9aa2aa');
+    F([[1, 0.04, SK + 3], [1, 0.96, SK + 3], [1, 0.96, SK], [1, 0.04, SK]], trim);
+    // rust, so it has clearly been sat here for years
+    F([[0.3, 1, 12], [0.42, 1, 12], [0.42, 1, 7], [0.3, 1, 7]], RUST_D);
+    F([[0.55, 1, BH - 20], [0.64, 1, BH - 20], [0.64, 1, BH - 24], [0.55, 1, BH - 24]], RUST_D);
+    const out = outlined(c);
+    // same rule as the cars: anchor on the centre of the footprint, or the
+    // drawn bus sits most of a tile down-screen of the tiles it blocks
+    out.oy = -(OY + Math.round((L + W) * 4));
+    return out;
+  }
+  Sprites.busIso = { x: busIso('x'), y: busIso('y') };
+
   Sprites.carsIso = {
     x: CAR_COLS.map(p => carIso('x', p[0], p[1], p[2])),
     y: CAR_COLS.map(p => carIso('y', p[0], p[1], p[2])),

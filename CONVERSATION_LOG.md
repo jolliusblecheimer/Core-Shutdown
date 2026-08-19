@@ -369,3 +369,74 @@ scatter can never survive, in mounds or in the small scrap piles.
 Verified by re-running the component count on the built sprites: mound2, mound3
 and all three scrap piles now come back as exactly **1** island each (they were
 not all 1 before). Not screenshotted — the browser pane would not composite.
+
+### 72. The school bus
+**Laurens:** "We made the cars 3d but the schoolbusses still look like cardboard,
+fix"
+**Claude:** The bus had been left on the old path — `sheared(Sprites.bus)`, a
+side elevation with no roof at all, which is exactly why it read as cardboard.
+Rebuilt with the same iso construction the cars use (`isoFill`, integer
+scanlines, flat colours): a long passenger box with a real roof surface, a low
+bonnet set in from the sides at the front, a window band down the near flank
+with a pillar between each pair, the black stripe and skirt every school bus
+has, a windscreen standing above the bonnet, lamps and a bumper on the nose,
+and wheels behind the skirt. Both street directions.
+Verified structurally, not visually — the browser pane would not composite for
+a screenshot, so the sprite was read back as a character map to confirm the
+roof rhombus, flank and bonnet are all present and correctly placed, plus a
+connected-component check (1 island each) and a frame-time check (2.6ms).
+
+### 73. Car hitboxes, a second Scrapper, and a pity floor on tech
+**Laurens:** "small changes: 1. since the cars are now longer cardbord slates
+and acctually 3d their hitbox needs to be ajusted a bit 2. make it so there are
+alwys 2 scrappers at a time 3. make it is f you get unlucky with the chance
+that every 6th scrapper you kill you get a low quality tech piece, this is only
+for these early game robots and not for the later ones. The counter resets to 0
+if the player drops one"
+
+**Claude — 1. the car hitbox.** Two faults, not one. The car is 2.25 × 1.0
+tiles of ground but was still blocking the 2 × 1 tiles of the old flat sprite,
+*and* `carIso` anchored the sprite on `P(0,0)` instead of on the centre of its
+own footprint — `oy = -(OY + 1)`. The drawn car therefore sat three quarters of
+a tile down-screen of the tiles it blocked: you bumped into empty road on one
+side and walked through the nose on the other. Fixed by anchoring on the
+footprint centre (`oy = -(OY + (L + W) * 4)`, half the footprint diagonal at
+8px per tile), giving every car a `foot: [x0, y0, 3, 1]` so it is spatially
+indexed and depth-sorted across all three tiles, and moving `gx, gy` to the
+middle tile. Junkyard spots slide along their own axis (offsets 0, -1, +1, -2)
+when the third tile is already occupied, so no wreck is lost to the longer
+footprint — 6 cars in the yard, 41 in the fringe traffic jam, same as before.
+Crushing now calls the new `clearPropSolid(p)` in map.js instead of the
+hand-written `solid[ty][tx + 1] = false`, which was already wrong for anything
+bigger than two tiles. The school bus rebuilt last session had the identical
+anchor bug (`oy = -(OY + 1)` on a 3.3-tile volume) and got the same one-line
+fix — it was sitting most of a tile off its own three road tiles.
+
+**2. two Scrappers.** `scrapper` was a single object referenced from four
+files; it is now `scrappers[]` (`SCRAPPER_COUNT = 2`) built by `makeScrapper()`,
+with the tallies that outlive any one machine moved to `ScrapperStats`
+(`kills`, `techPity`). Each machine lives, dies and respawns on its own timer,
+so the yard is only briefly down to one wreck + one hunter. `pickSpawn(avoid)`
+keeps them at least 5 tiles apart so a pair never emerges from behind the same
+heap. A melee swing now damages **every** machine in its arc, a barrel blast
+can take both, and a bullet still only ever hits one.
+
+**3. the pity floor.** A wreck pays a low-quality tech component on a 1-in-5
+roll, but that roll can be lost six times running. `ScrapperStats.techPity`
+counts wrecks looted since the last component: the sixth dry wreck always pays
+out, and any drop — lucky or owed — resets it to 0. Deliberately only on the
+yard's starter robots; deeper-city drops stay pure chance. Both counters are in
+the save and default to 0 for saves written before they existed.
+
+**Verified in the browser** (`window.TEST_MODE = true` throughout; the real
+save was confirmed untouched afterwards). The preview pane would not composite,
+so frames were driven by hand and the canvas was posted to a throwaway capture
+server to get real screenshots — see below. Checked: no console errors; the
+car sprite's opaque bounding box sits symmetrically inside its footprint
+diamond with 4-6px of margin on every side (before the fix it overhung the
+south vertex by 8px); a collision probe along the car blocks exactly tiles
+16-18 of row 25 and nothing else; both Scrappers spawn, chase, die
+independently and respawn ~20s later 10 tiles apart; the loot roll forced to
+its unlucky value six times gives `1 2 3 4 5 → tech, counter 0`; a
+save/load round-trip returns `kills 2, pity 4`; crushing a fringe car frees all
+three of its tiles; the fringe still builds and renders with 41 cars.
