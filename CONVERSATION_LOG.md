@@ -529,3 +529,31 @@ Two things learned:
 Hole scan run again after moving all that geometry: clean. The two flags left
 are sky between a cross's arm and the roof under it, on the gable and on the
 fleche, which is what should be there.
+
+### 76. The piers read as going INTO the building
+**Laurens:** "the pillars go into the cathedral not protruding out ... the
+shadow isnt the problem"
+**Claude:** He was right and I was fixing the wrong thing. The proportions were
+backwards.
+
+Each pier was **0.6 of a tile wide and projected a full tile.** So the biggest
+thing you saw of it was not its front but its side — and in this projection a
+side face is a parallelogram sloping down-LEFT, which is exactly what a wall
+receding away from the camera looks like. The eye filed the whole pier as part
+of the building going back. No amount of shading fixes that; the silhouette is
+saying "recede".
+
+**The rule: a pier must be wider across the wall than it projects out of it.**
+Now 0.8 of a tile across the front, 0.5 of projection — the face pointing at
+the player is nearly twice the size of the return, and the silhouette says
+"standing out" before any shading is involved. Same correction applied to the
+aisle piers on the flank.
+
+Two supporting changes, which help but were never the fix on their own: the
+pier stone is a step lighter than the wall it stands on, and each pier throws a
+hard shadow west across that wall (light comes from +x in this world). The
+flanking doors moved in from u=14 to u=16 so the corner piers stop clipping
+them.
+
+Four piers on the west front, on the tower lines, straddling the tower/nave
+junctions like the reference. Hole scan still clean.

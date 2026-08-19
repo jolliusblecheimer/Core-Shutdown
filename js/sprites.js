@@ -1815,16 +1815,39 @@ function outlined(src) {
         g.beginPath(); g.moveTo(b[0], b[1]); g.lineTo(ap[0], ap[1]); g.stroke();
       }
     };
-    // a buttress: a pier standing off the wall, stepped back once at a
-    // weathered set-off, so rain runs off it instead of down the wall
+    // A BUTTRESS: a pier standing off the wall, stepped back once at a
+    // weathered set-off so rain runs off it instead of down the wall.
+    //
+    // Geometry alone will not make it read as standing OUT. Its front face
+    // points the same way as the wall behind it, so with the same stone
+    // colour it is the same colour, and the eye takes the whole thing for
+    // flutes cut INTO the facade. What sells it is what sells it in the
+    // reference drawing: the pier is LIGHTER than the wall it stands on, and
+    // it throws a hard shadow across that wall. Both, or neither works.
+    const P_LIT = shadeHex(ST_L, 1.12), P_SHD = shadeHex(ST_S, 1.26);
+    const P_TOP = shadeHex(ST_T, 1.06);
     const buttress = (x0, y0, x1, y1, z, cap) => {
       const sx = (x1 - x0) * 0.16, sy = (y1 - y0) * 0.16;
-      vol(x0, y0, x1, y1, PL, z * 0.55, ST_T, ST_L, ST_S, '#1b1e22');
-      vol(x0 + sx, y0 + sy, x1 - sx, y1 - sy, z * 0.55, z, ST_T, shadeHex(ST_L, 1.04), ST_S, '#1b1e22');
+      vol(x0, y0, x1, y1, PL, z * 0.55, P_TOP, P_LIT, P_SHD, '#1b1e22');
+      vol(x0 + sx, y0 + sy, x1 - sx, y1 - sy, z * 0.55, z, P_TOP, shadeHex(P_LIT, 1.05), P_SHD, '#1b1e22');
+      // a lit arris down the corner nearest the light, which is the one edge
+      // that tells you the two faces meet at a right angle coming towards you
+      const a = S(x1, y1, PL), b = S(x1, y1, z);
+      g.strokeStyle = 'rgba(255,246,224,0.30)'; g.lineWidth = 1;
+      g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke();
       // no lit arris on the cap: on a pier this thin the highlight is three
       // pixels of white in mid-air, and it reads as a speck of dirt
       if (cap) spike((x0 + x1) / 2, (y0 + y1) / 2, (x1 - x0) / 2 - sx,
-                     z, z + cap, ST_L, ST_S, null);
+                     z, z + cap, P_LIT, P_SHD, null);
+    };
+    // the shadow a pier throws west along the wall it stands on. Light comes
+    // from the +x side in this world, so the dark falls on the -x side.
+    const pierShadow = (ty, tx0, txWest, z1) => {
+      const w2 = Math.max(tx0 - 0.62, txWest);
+      if (w2 >= tx0 - 0.02) return;
+      poly(g, [S(tx0, ty, z1), S(w2, ty, z1), S(w2, ty, PL), S(tx0, ty, PL)], 'rgba(0,0,0,0.34)');
+      const w3 = Math.max(tx0 - 0.9, txWest);
+      poly(g, [S(w2, ty, z1), S(w3, ty, z1), S(w3, ty, PL), S(w2, ty, PL)], 'rgba(0,0,0,0.16)');
     };
 
     // =========================== THE BUILD ===========================
@@ -1966,7 +1989,7 @@ function outlined(src) {
       band(M, 26, 70, 60, 2.2);
 
       // the flanking doors, and the tall windows over them
-      for (const cu of [14, 82]) {
+      for (const cu of [16, 80]) {
         F(M, archPts(cu - 9, cu + 9, PL, 26, 36), ST_D);
         F(M, archPts(cu - 7, cu + 7, PL, 26, 34), ST_DD);
         R(M, cu - 6, PL, cu - 0.6, 27, OAK); R(M, cu + 0.6, PL, cu + 6, 27, OAK);
@@ -2030,7 +2053,7 @@ function outlined(src) {
       // the face, which is what a buttress becomes if you draw it flat.
       for (let i = 0; i <= bays; i++) {
         const ty = AY0 + (AY1 - AY0) * (i / bays);
-        buttress(AE1 - 0.05, ty - 0.26, AE1 + 0.45, ty + 0.26, AISLE - 8, 11);
+        buttress(AE1 - 0.2, ty - 0.42, AE1 + 0.4, ty + 0.42, AISLE - 8, 11);
       }
       // the aisle's south end is engaged with the tower and never seen —
       // drawing it here is what put a grey slab across the west front
@@ -2067,12 +2090,25 @@ function outlined(src) {
       // Slim: a pier the width of a doorway hides the doorway. It projects
       // about two thirds of its own width, which is enough to throw a shadow
       // and read as stone standing off the wall.
-      const bs = 0.42, PJ = BY1 - 0.1;
-      for (const [x0, x1, east] of [[TL0, TL1, false], [TR0, TR1, true]]) {
-        buttress(Math.max(BX0, x0 - 0.18), NF - bs, x0 + bs, PJ, 140, 12);
-        buttress(x1 - bs, NF - bs, Math.min(BX1, x1 + 0.18), PJ, 140, 12);
-        if (east) buttress(x1 - bs, TY0 - 0.18, BX1 - 0.1, TY0 + bs, 140, 12);
-      }
+      // WIDE ACROSS THE FRONT, SHALLOW IN PROJECTION. This is the whole
+      // trick, and getting it backwards is what made them read as going INTO
+      // the building. A pier 0.6 wide projecting a full tile shows a narrow
+      // front and a huge side face — and in this projection a side face is a
+      // parallelogram sloping down-left, which is exactly what a wall
+      // receding away from you looks like. So the eye files the pier as part
+      // of the building going back, not standing out of it.
+      // Front 0.8 of a tile, projection 0.5: the face pointing at the player
+      // is nearly twice the size of the return, and it reads as a block
+      // standing proud, which is all the reference drawing is doing.
+      const PJ = NF + 0.5, PB = NF - 0.25;
+      const piers = [];
+      for (const cx of [TL0, TL1, TR0, TR1])
+        piers.push([Math.max(BX0, cx - 0.4), PB, Math.min(BX1, cx + 0.4), PJ]);
+      buttress(TR1 - 0.4, TY0 - 0.15, Math.min(BX1, TR1 + 0.4), TY0 + 0.5, 140, 12);
+      // every shadow first, then every pier — or a pier's own shadow lands on
+      // the face of the pier next door
+      for (const [px0] of piers) pierShadow(NF, px0, TL0 - 0.4, 140);
+      for (const [a, b2, c2, d2] of piers) buttress(a, b2, c2, d2, 140, 12);
     }
 
     const res = { img: c, ax: AX, ay: AYo, h: WALL };
