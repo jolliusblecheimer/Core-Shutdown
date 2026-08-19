@@ -417,3 +417,42 @@ read whole from the parvis.
 Pushed rather than held back for approval, against the local-first rule, on
 Laurens' explicit instruction ("code on github instantly"). Interior,
 Candlelight, and the churchyard (railings, graves, trees) are not built.
+
+### 73. Rendering faults on the cathedral
+**Laurens:** "It looks great, but there are some rendering issues, A part of the
+left cathedral tower is missing and there are some outer decos that dont quite
+fit"
+**Claude:** Both real, both found by cropping the sprite at 4× and looking.
+
+**The missing tower.** The west tower was drawn with no east face, on the
+reasoning that it is engaged with the nave. It is — but only up to the nave
+head at z=104 and the gable behind it. Above that the face stands against open
+sky, and there was nothing there: a hole between the gable and the belfry, with
+the tower's cornice hanging over it. It now gets the face, drawn before the
+nave so the nave and its gable swallow the two thirds that should be hidden. It
+does NOT get the ornament — a clock cut in half by a roof is worse than no
+clock — only ashlar, the top string course and the belfry louvres.
+
+**The decorations that did not fit.** The saints. Each was a pale capsule with
+a hairline of niche around it, which at this size reads as a lozenge stuck on
+the wall. Three things were wrong and all three are fixed: the niche is now
+properly dark and wider than the figure, so there is a surround; the figure is
+stone in shadow — *darker* than the sunlit wall, where before it was brighter
+than anything else on the building; and it stands on a corbel, because anything
+with nothing under it floats. Shoulders are wider than the head and the lit
+side is one pixel, which is enough to read as a person.
+
+Four more found while in there:
+- Tower corner buttresses started 0.1 tile outside the plinth — a pier standing
+  on air. Clamped to the base.
+- The buttress caps carried a lit arris. On a pier that thin it is three pixels
+  of white in mid-air and reads as a speck of dirt. Removed.
+- The clerestory windows sat on the aisle roof with 4 px of wall under them.
+  The aisle roof drops to 72 and the sills go up, so there is a sill course and
+  daylight between the two.
+- Roof wear patches were up to a tenth of the slope across — that is a smudge,
+  not a batch of relaid slates. Halved.
+
+Verified the same way: 4× crops of the tower, the front, the flank and the base,
+then in-game at the parvis and the doors. Pushed to `main` on standing
+instruction. The viewer artifact was rebuilt on the fixed sprite.

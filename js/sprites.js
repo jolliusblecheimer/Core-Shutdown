@@ -1622,7 +1622,7 @@ function outlined(src) {
     const TY0 = h - 3.4;                      // both towers start here
     // ---- and in pixels of height ----
     const PL = 7;                             // the plinth every wall stands on
-    const AISLE = 58, AISLE_TOP = 78;         // aisle eaves · where its roof meets the nave
+    const AISLE = 58, AISLE_TOP = 72;         // aisle eaves · where its roof meets the nave
     const WALL = 104, RIDGE = 166;            // nave head · ridge. The pitch is
     // deliberately steeper than 1:2: at anything shallower the FAR slope turns
     // back towards the camera and shows as a grey sliver above the ridge.
@@ -1702,15 +1702,30 @@ function outlined(src) {
       }
       R(M, (u0 + u1) / 2 - 0.7, vb, (u0 + u1) / 2 + 0.7, va - 2, ST_S);
     };
-    // a saint in a canopied niche. Three pixels of shoulder and a head —
-    // at this size that is a person, and a dozen of them is a west front.
+    // A SAINT. The first version was a pale capsule with a hairline of niche
+    // round it, and at this size that reads as a lozenge stuck on the wall,
+    // not a figure standing in it. Three things fix it: the niche has to be
+    // properly dark and wider than the figure, the figure has to be stone in
+    // shadow (DARKER than the sunlit wall, never brighter), and it has to
+    // stand on a corbel — anything with nothing under it floats.
+    const figure = (M, cu, vb, hgt) => {
+      const bh = hgt * 0.64, hd = Math.max(1.6, hgt * 0.17);
+      R(M, cu - 1.5, vb, cu + 1.5, vb + bh, '#7a7365');                 // robe
+      R(M, cu - 1.5, vb, cu - 0.5, vb + bh, '#8f8878');                 // lit down one side
+      R(M, cu + 0.85, vb, cu + 1.5, vb + bh, '#4e4941');                // shadow down the other
+      R(M, cu - 1.5, vb + bh - 1.1, cu + 1.5, vb + bh, '#413d36');      // shoulder line
+      R(M, cu - 0.85, vb + bh, cu + 0.85, vb + bh + hd, '#867f70');     // head
+      R(M, cu - 0.85, vb + bh, cu - 0.2, vb + bh + hd, '#9a9282');
+    };
     const statue = (M, cu, vb, hgt) => {
-      F(M, archPts(cu - 3.4, cu + 3.4, vb - 1, vb + hgt * 0.62, vb + hgt + 4), ST_D);
-      F(M, archPts(cu - 2.6, cu + 2.6, vb, vb + hgt * 0.6, vb + hgt + 2.5), ST_DD);
-      R(M, cu - 1.6, vb + 1, cu + 1.6, vb + hgt * 0.74, '#9a9385');       // robe
-      R(M, cu - 0.9, vb + hgt * 0.74, cu + 0.9, vb + hgt * 0.9, '#a9a294'); // head
-      R(M, cu - 1.6, vb + 1, cu - 0.6, vb + hgt * 0.74, '#b0a996');        // lit side
-      R(M, cu + 0.8, vb + 1, cu + 1.6, vb + hgt * 0.74, '#6f6a5c');        // and its shadow
+      const w2 = Math.max(2.8, hgt * 0.22);
+      F(M, archPts(cu - w2 - 1.7, cu + w2 + 1.7, vb - 3.6, vb + hgt * 0.6, vb + hgt + 6), ST_T);
+      F(M, archPts(cu - w2 - 0.7, cu + w2 + 0.7, vb - 2.6, vb + hgt * 0.6, vb + hgt + 4.5), ST_S);
+      F(M, archPts(cu - w2, cu + w2, vb - 2, vb + hgt * 0.58, vb + hgt + 3), ST_D);
+      F(M, archPts(cu - w2 + 0.9, cu + w2 - 0.9, vb - 2, vb + hgt * 0.58, vb + hgt + 2), '#26241f');
+      R(M, cu - w2 + 0.3, vb - 2, cu + w2 - 0.3, vb - 0.4, ST_T);       // the corbel it stands on
+      R(M, cu - w2 + 1.2, vb - 3.4, cu + w2 - 1.2, vb - 2, ST_S);
+      figure(M, cu, vb, hgt);
     };
     const rose = (M, cu, cv, r) => {
       const ring = (rr, n) => {
@@ -1773,10 +1788,12 @@ function outlined(src) {
       // has come off. A roof this old is never one flat colour.
       const at = (uu, vv) => L(L(rFar, eFar, vv), L(rNear, eNear, vv), uu);
       for (let i = 0; i < (wear || 0); i++) {
-        const u = rng() * 0.86, v = rng() * 0.82;
-        const uw = 0.04 + rng() * 0.1, vh = 0.05 + rng() * 0.11;
+        const u = rng() * 0.9, v = rng() * 0.88;
+        // small patches only: a tenth of a roof this size is not a relaid
+        // batch of slates, it is a smudge
+        const uw = 0.025 + rng() * 0.055, vh = 0.03 + rng() * 0.06;
         poly(g, [at(u, v), at(u + uw, v), at(u + uw, v + vh), at(u, v + vh)],
-          rng() < 0.42 ? 'rgba(0,0,0,0.17)' : 'rgba(196,216,246,0.06)');
+          rng() < 0.42 ? 'rgba(0,0,0,0.13)' : 'rgba(196,216,246,0.055)');
       }
     };
     // a tapered spike — pinnacle, spirelet, fleche. Two faces and a lit arris.
@@ -1796,8 +1813,10 @@ function outlined(src) {
       const sx = (x1 - x0) * 0.16, sy = (y1 - y0) * 0.16;
       vol(x0, y0, x1, y1, PL, z * 0.55, ST_T, ST_L, ST_S, '#1b1e22');
       vol(x0 + sx, y0 + sy, x1 - sx, y1 - sy, z * 0.55, z, ST_T, shadeHex(ST_L, 1.04), ST_S, '#1b1e22');
+      // no lit arris on the cap: on a pier this thin the highlight is three
+      // pixels of white in mid-air, and it reads as a speck of dirt
       if (cap) spike((x0 + x1) / 2, (y0 + y1) / 2, (x1 - x0) / 2 - sx,
-                     z, z + cap, ST_L, ST_S, 'rgba(255,246,224,0.35)');
+                     z, z + cap, ST_L, ST_S, null);
     };
 
     // =========================== THE BUILD ===========================
@@ -1812,8 +1831,14 @@ function outlined(src) {
     // ---- west aisle (far side): only its roof clears the nave ----
     vol(AW0, AY0, NX0, AY1, PL, AISLE, null, null, ST_S, '#1b1e22');
 
-    // tower body, shared by both. `east` draws the +x face — the west tower
-    // is engaged with the nave on that side, so it has none to show.
+    // Tower body, shared by both. `east` draws the +x face: 'full' for the east
+    // tower, which stands clear, and 'plain' for the west one.
+    // The west tower needs that face too. Skipping it left a hole in the sky
+    // between the nave head and the belfry — its cornice hung there over
+    // nothing, which is the missing corner of the tower. It gets the face but
+    // not the ornament, because the nave and its gable are drawn after this
+    // and swallow the bottom two thirds of it; a clock cut in half by a roof
+    // is worse than no clock.
     const tower = (x0, x1, east) => {
       const TW = (x1 - x0) * 16, TD = (NF - TY0) * 16;
       vol(x0, TY0, x1, NF, PL, TOW, null, east ? ST_L : null, ST_S, '#1b1e22');
@@ -1841,21 +1866,28 @@ function outlined(src) {
         const E = EF(x1, TY0);
         ashlar(E, 0, TD, PL, TOW, 7);
         grime(E, 2, TD - 2, PL, TOW, 7);
-        band(E, 0, TD, 46, 2.4); band(E, 0, TD, 88, 2.4); band(E, 0, TD, 128, 2.4);
-        for (let i = 0; i < 2; i++) {
-          const cu = TD * (i + 0.5) / 2;
-          F(E, archPts(cu - 5, cu + 5, PL + 4, 24, 38), ST_D);
-        }
-        statue(E, TD * 0.3, 54, 22); statue(E, TD * 0.7, 54, 22);
-        clock(E, TD / 2, 106, 11);
+        band(E, 0, TD, 128, 2.4);
         louvre(E, TD * 0.2, TD * 0.4, 134, 158, 170);
         louvre(E, TD * 0.6, TD * 0.8, 134, 158, 170);
+        if (east === 'full') {
+          band(E, 0, TD, 46, 2.4); band(E, 0, TD, 88, 2.4);
+          for (let i = 0; i < 2; i++) {
+            const cu = TD * (i + 0.5) / 2;
+            F(E, archPts(cu - 5, cu + 5, PL + 4, 24, 38), ST_D);
+          }
+          statue(E, TD * 0.3, 54, 22); statue(E, TD * 0.7, 54, 22);
+          clock(E, TD / 2, 106, 11);
+        }
       }
-      // corner buttresses, clasping the tower right up to the belfry
+      // Corner buttresses, clasping the tower right up to the belfry. Clamped
+      // to the plinth: a pier that starts outside the base is a pier standing
+      // on air.
       const bs = 0.55;
-      buttress(x0 - 0.15, NF - bs, x0 + bs, NF + 0.15, 148, 12);
-      buttress(x1 - bs, NF - bs, x1 + 0.15, NF + 0.15, 148, 12);
-      if (east) buttress(x1 - bs, TY0 - 0.15, x1 + 0.15, TY0 + bs, 148, 12);
+      const cx0 = Math.max(0.15, x0 - 0.15), cx1 = Math.min(w - 0.15, x1 + 0.15);
+      const cy1 = Math.min(h - 0.15, NF + 0.15);
+      buttress(cx0, NF - bs, x0 + bs, cy1, 148, 12);
+      buttress(x1 - bs, NF - bs, cx1, cy1, 148, 12);
+      if (east === 'full') buttress(x1 - bs, TY0 - 0.15, cx1, TY0 + bs, 148, 12);
       // cornice, then the parapet standing above it
       vol(x0 - 0.2, TY0 - 0.2, x1 + 0.2, NF + 0.2, TOW, TOWCAP, ST_T, ST_L, ST_S, '#1b1e22');
       const PM = SF(NF + 0.2, x0 - 0.2), PW = (x1 - x0 + 0.4) * 16;
@@ -1871,7 +1903,7 @@ function outlined(src) {
             SLATE_L, SLATE_S, 'rgba(200,220,248,0.35)');
     };
 
-    tower(TL0, TL1, false);
+    tower(TL0, TL1, 'plain');
 
     // ---- the nave: walls, then the steep slate roof ----
     vol(NX0, AY0, NX1, NF, PL, WALL, null, ST_L, ST_S, '#1b1e22');
@@ -1879,14 +1911,14 @@ function outlined(src) {
       const E = EF(NX1, AY0), EL = (NF - AY0) * 16;
       ashlar(E, 0, EL, PL, WALL, 7);
       grime(E, 2, EL - 2, AISLE_TOP, WALL, 12);
-      band(E, 0, EL, 79, 2.2);
+      band(E, 0, EL, 75, 2.2);
       band(E, 0, EL, WALL - 4, 2.6);
       // clerestory: the row of windows above the aisle roof, which is the
       // whole point of a nave — light in over the top of the aisle
       const bays = 5;
       for (let i = 0; i < bays; i++) {
         const cu = EL * (i + 0.5) / bays;
-        lancet(E, cu - 7, cu + 7, AISLE_TOP + 4, 92, 100, GLASS[i % GLASS.length]);
+        lancet(E, cu - 7, cu + 7, AISLE_TOP + 8, 92, 99, GLASS[i % GLASS.length]);
       }
     }
     // the roof. Ridge runs north–south along the nave, so the west front
@@ -1927,7 +1959,7 @@ function outlined(src) {
       R(M, 47.4, PL, 48.6, 46, IRON);                    // the meeting stile
       R(M, 40, 20, 45, 21.6, IRON); R(M, 51, 20, 56, 21.6, IRON);  // strap hinges
       F(M, archPts(38, 58, 43, 47, 56), ST_DD);          // tympanum over the doors
-      statue(M, 48, 45, 9);                              // the figure in it
+      figure(M, 48, 45, 11);                             // the figure in it
       band(M, 26, 70, 60, 2.2);
 
       // the flanking doors, and the tall windows over them
@@ -2015,7 +2047,7 @@ function outlined(src) {
     }
 
     // ---- east tower, nearest of all ----
-    tower(TR0, TR1, true);
+    tower(TR0, TR1, 'full');
 
     const res = { img: c, ax: AX, ay: AYo, h: WALL };
     buildingCache.set(key, res);

@@ -1,0 +1,20 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+body{margin:0;background:#101317}canvas{image-rendering:pixelated;display:block}
+</style></head><body>
+<canvas id="c"></canvas>
+<script src="js/iso.js"></script><script src="js/sprites.js"></script>
+<script>
+const Z = 4;
+const b = Sprites.makeCathedral(12, 16, 7);
+const c = document.getElementById('c');
+c.width = b.img.width * Z; c.height = b.img.height * Z;
+const g = c.getContext('2d'); g.imageSmoothingEnabled = false;
+g.fillStyle = '#101317'; g.fillRect(0,0,c.width,c.height);
+// footprint outline, so anything hanging off the base is obvious
+const S=(tx,ty,z)=>[(b.ax+(tx-ty)*16)*Z,(b.ay+(tx+ty)*8-z)*Z];
+g.strokeStyle='#e9a83f'; g.lineWidth=2; g.beginPath();
+for(const [i,p] of [S(0,0,0),S(12,0,0),S(12,16,0),S(0,16,0)].entries()) i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]);
+g.closePath(); g.stroke();
+g.drawImage(b.img,0,0,b.img.width*Z,b.img.height*Z);
+window.__w = b.img.width*Z; window.__h = b.img.height*Z;
+</script></body></html>
