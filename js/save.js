@@ -185,6 +185,12 @@ function applySave(d) {
   spawnBandits();
   restoreBandits(currentArea);
   foeBullets.length = 0;
+  // And the camp. THIS WAS THE "sometimes the NPCs don't spawn" BUG: `folk` was
+  // only ever built inside enterArea(), and loading a save does not go through
+  // enterArea — it builds the area here. So quitting inside the church and
+  // coming back gave you the room, the fires and the chests, and nobody in it.
+  // Everyone who stands in an area is decided in this one place now.
+  buildFolk(currentAreaDef().folk);
 }
 
 // nearest open tile, spiralling outward

@@ -1137,3 +1137,39 @@ ration is still in the pack when it matters. Old saves merge them in at zero.
 Verified in the browser under `TEST_MODE`: both audits clean, save migration
 from a pre-update save, round-trip of the new fields, and the real save slot
 never touched.
+
+### 92. The empty camp, and a trapdoor seen from the wrong side
+**Laurens:** "Some slight problems — sometimes NPCs don't spawn. And the
+trapdoor down is good, but in the crypt it needs to be a ladder up, not a
+trapdoor down either."
+
+**Claude:**
+
+**"Sometimes" was exactly reproducible once I looked for the pattern: it is
+every time you quit inside the church and come back.** `folk` was only ever
+built inside `enterArea()`, and loading a save does not go through
+`enterArea` — `applySave` builds the area itself. So you got the room, the
+fires, the chests and the map table, and nobody standing in any of it.
+Reproduced first (walk in → 7 people; reload → 0), then fixed by building the
+camp where every other "who is standing in this area" decision is already
+made, next to the Scrappers and the raiders at the bottom of `applySave`.
+That is the actual lesson: there were two places that populate an area and
+only one of them knew about people.
+
+**And the ladder.** The crypt was drawing `Sprites.stairUp`, which was the
+trapdoor sprite again with one tread lit — the one thing it cannot be. From
+underneath a floor there is no hatch lying in the ground; there is an opening
+over your head and a way up to it. So it is built the other way round now: a
+lit rectangle at ceiling height with the room above spilling through it, the
+cut floor joists round the lip, and a ladder leaning **north** to reach it —
+which in this projection means leaning to the *right* as it rises. Drawn
+straight up it would read as two posts.
+
+First version was 70px tall and climbed out through the top of the wall, so
+the lit hole floated in the black above the building. It is short now, which
+is also more honest: a crypt is a duck-your-head room and its ceiling is the
+church floor. The light hangs at the opening, not on the floor, with a
+weaker pool below it.
+
+Verified: down the hatch, up the ladder, save in the crypt, reload, climb out
+again — seven people every time, both audits still clean.

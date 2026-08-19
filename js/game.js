@@ -1443,10 +1443,16 @@ function drawProp(p, x, y) {
     addLight(x + 10, y - 16, 0, 16, '255,210,140', 0.30);
   }
   else if (T === 'chest') { img = Sprites.chest[p.open ? 1 : 0]; oyOff = -13; drawShadow(x, y, 8); }
-  else if (T === 'stairDown' || T === 'stairUp') {
-    img = T === 'stairUp' ? Sprites.stairUp : Sprites.stairDown;
-    oyOff = -11;
-    addLight(x, y - 4, 0, 13, T === 'stairUp' ? '255,210,140' : '120,140,170', 0.22);
+  else if (T === 'stairDown') {
+    img = Sprites.stairDown; oyOff = -11;
+    addLight(x, y - 4, 0, 13, '120,140,170', 0.22);      // cold air off the crypt
+  }
+  else if (T === 'stairUp') {
+    // the same hole seen from under it: a ladder, and the room above spilling
+    // down the shaft. The light hangs at the OPENING, not on the floor.
+    img = Sprites.ladderUp; oyOff = -45;
+    addLight(x, y - 31, 0, 24, '255,206,138', 0.34);
+    addLight(x, y - 2, 0, 16, '255,206,138', 0.20);
   }
   else if (T === 'rope') { img = Sprites.rope; oyOff = -7; }
   else if (T === 'cistern') { img = Sprites.cistern; oyOff = -22; drawShadow(x, y, 9); }

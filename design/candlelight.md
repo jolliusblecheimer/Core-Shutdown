@@ -119,9 +119,17 @@ side is the medbay then the hearth. The middle is floor — four piers, two
 braziers, two pews, and otherwise room to walk.
 
 **The crypt** (10 × 8): the hatch comes down in the same corner it goes down
-from. Nothing grows under a church, so it is a store, not a farm — the cistern,
-**two vats of roof-water and two stacks of hay**, preserve racks, the padlocked
-strongbox, and two chests: one of tech and scrap, one of beef MREs.
+from — but from *underneath* it is not a hatch at all. Standing below a floor
+you do not see a trapdoor lying in the ground, you see **the opening above you
+and a ladder up to it**, so that is what is drawn: a lit rectangle at ceiling
+height with the church's firelight coming through, and a short ladder leaning
+north to reach it. Short on purpose — a crypt is a duck-your-head room, and at
+full height the ladder climbed out through the wall and the lit hole floated in
+the black above the building.
+
+Nothing grows under a church, so what is down there is a store, not a farm: the
+cistern, **two vats of roof-water and two stacks of hay**, preserve racks, the
+padlocked strongbox, and two chests — one of tech and scrap, one of beef MREs.
 
 ---
 

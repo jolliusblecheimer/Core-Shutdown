@@ -1666,7 +1666,46 @@ function outlined(src) {
       return outlined(c);
     };
     Sprites.stairDown = hatch(false);
-    Sprites.stairUp = hatch(true);
+
+    // ---- AND THE SAME HOLE FROM UNDERNEATH.
+    // The crypt was drawing the trapdoor sprite again, which is the one thing
+    // it cannot be: standing under a floor you do not see a hatch lying in the
+    // ground, you see the OPENING ABOVE YOU and the ladder going up to it. So
+    // this is built the other way round — a lit rectangle up at ceiling height
+    // with the church's firelight coming through it, and a ladder leaning back
+    // into the screen to reach it. It leans north, which in this projection
+    // means it leans to the RIGHT as it rises; drawn straight up it would read
+    // as a pair of posts.
+    // Kept SHORT on purpose: the crypt ceiling is the church floor and a crypt
+    // is a duck-your-head room, so the opening sits just under the top of the
+    // wall. At full height the ladder climbed out through the wall and the lit
+    // hole floated in the black above the building.
+    Sprites.ladderUp = volSprite(36, 52, 18, 36, (g, P, quad) => {
+      const CEIL = 36;
+      // the opening: warm light, with the cut ends of the floor timbers round it
+      quad([0.06, 0.02, CEIL], [0.94, 0.02, CEIL], [0.94, 0.88, CEIL], [0.06, 0.88, CEIL], '#c99a4e');
+      quad([0.14, 0.10, CEIL], [0.86, 0.10, CEIL], [0.86, 0.78, CEIL], [0.14, 0.78, CEIL], '#f0c274');
+      quad([0.24, 0.20, CEIL], [0.76, 0.20, CEIL], [0.76, 0.66, CEIL], [0.24, 0.66, CEIL], '#ffe2a6');
+      // the joists it is cut through, on the two sides you can see
+      quad([0.94, 0.02, CEIL], [0.94, 0.88, CEIL], [0.94, 0.88, CEIL - 4], [0.94, 0.02, CEIL - 4], '#4a3a26');
+      quad([0.06, 0.88, CEIL], [0.94, 0.88, CEIL], [0.94, 0.88, CEIL - 4], [0.06, 0.88, CEIL - 4], '#33260f');
+      // the ladder: base towards you at ty 0.86, top at the lip
+      const Y0 = 0.86, Y1 = 0.22, TOP = CEIL - 2;
+      const at = (t) => [Y0 + (Y1 - Y0) * t, TOP * t];
+      for (const tx of [0.30, 0.68]) {                                    // the two stiles
+        quad([tx, Y0, 0], [tx + 0.07, Y0, 0], [tx + 0.07, Y1, TOP], [tx, Y1, TOP], '#6b5334');
+        quad([tx, Y0, 0], [tx + 0.02, Y0, 0], [tx + 0.02, Y1, TOP], [tx, Y1, TOP], '#7d6340');
+      }
+      for (let i = 1; i <= 5; i++) {                                      // rungs
+        const [ty, z] = at(i / 5.5);
+        quad([0.30, ty, z], [0.75, ty, z], [0.75, ty, z + 2.4], [0.30, ty, z + 2.4], '#5b452b');
+        quad([0.30, ty, z + 2.4], [0.75, ty, z + 2.4], [0.75, ty, z + 3], [0.30, ty, z + 3], '#8a6f45');
+      }
+      // and the light it lets down onto the crypt floor, on the iso grid
+      quad([0.1, 0.14, 0], [0.9, 0.14, 0], [0.9, 0.92, 0], [0.1, 0.92, 0], 'rgba(255,206,138,0.16)');
+      quad([0.26, 0.3, 0], [0.74, 0.3, 0], [0.74, 0.76, 0], [0.26, 0.76, 0], 'rgba(255,214,150,0.14)');
+    });
+    Sprites.stairUp = Sprites.ladderUp;
 
     { const c = makeCanvas(16, 8), g = c.getContext('2d');               // rope barrier
       px(g, 1, 2, 2, 6, '#4a423a'); px(g, 13, 2, 2, 6, '#4a423a');

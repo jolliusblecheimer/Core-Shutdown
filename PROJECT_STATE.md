@@ -120,7 +120,9 @@ half-stripped Hunter-Killer whose eye is still lit, pews part broken up for
 timber, a store nobody may open, and a one-tile hatch down to the crypt.
 **`crypt`** is 10×8 under the chancel: brick vaulting, bricked-up burial
 niches, a cistern fed off the roof, two vats of roof-water you can drink from,
-two stacks of hay, preserves, a padlocked strongbox, and two chests — one of
+two stacks of hay, a ladder up to the lit opening in its ceiling (the same
+hole as the hatch above, drawn the way it looks from below), preserves, a
+padlocked strongbox, and two chests — one of
 tech and scrap, one of beef MREs. Nothing grows under a church: it is the
 store, not a farm.
 The builder refuses to put two things on one tile, and the layout is checked
