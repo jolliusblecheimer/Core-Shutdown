@@ -1173,3 +1173,59 @@ weaker pool below it.
 
 Verified: down the hatch, up the ladder, save in the crypt, reload, climb out
 again — seven people every time, both audits still clean.
+
+### 93. Building a plan that never got pushed
+**Laurens:** "Search for any plan that was made yesterday and not yet built or
+pushed." — then: "Pick the first plan and start building."
+
+**Claude:** Three plans written yesterday never reached `main`; all three were
+stranded on two draft PRs whose branches carry docs and nothing else.
+`design/cathedral.md` was built anyway (only its phase-2 churchyard is
+outstanding). `design/hhd-squads.md` is unbuilt apart from the singleton→array
+refactor it called its blocker, which the two-Scrapper and cordon work cleared
+by accident — the robots still see through walls, so "hide behind an object"
+does not work yet. **`design/map-ui.md` had not been touched at all**, and it
+was the one to build: fully specified, with three decisions already recorded
+from Laurens.
+
+Built all six steps.
+
+**One source for the objective.** `currentObjective()` reads live state and
+answers what and where. The HUD line used to carry its own hard-coded string
+and the "quest marker" was the NPC blip on the minimap — which meant *the quest
+is there* only by accident, and had already stopped meaning it: the camp put
+**seven green dots** on the minimap. Green is the objective and nothing else
+now. Signs are not green either.
+
+**Reach was a real bug hiding behind a UI plan.** Nothing to do with the map:
+the interaction picker seeded one shared `bestD` at 1.1 and every larger reach
+written after it was dead code. Fixed in the same pass as the camp work.
+
+**One coordinate space, and it is what made this cheap.** Every area carries a
+`world` offset, everything draws at `zoom` pixels per tile, and there is no
+separate world view to keep in sync — zooming out is the same draw call with a
+smaller number. Areas sit at TRUE RELATIVE SIZE, so the yard is a small square
+off the city's eastern edge and it is honest about how far you have walked.
+
+**Where the plan met the numbers and lost.** Its declutter thresholds (2 / 1–2 /
+under 1 px per tile) were written before anybody measured: the Fringe is 200×150
+on a 320-wide screen, so *framed on the Fringe* is **0.91** px/tile and the
+whole ring is 0.81. Every threshold sat above every zoom you would ever look at
+the city from — opening `M` in the street showed two icons on an empty map.
+Recalibrated to 1.8 / 0.85 / below.
+
+Three things the plan did not see coming: areas OVERLAP on screen, so ground
+and names need separate passes (the city was painting over the yard's name);
+interiors did not exist when it was written, so Candlelight and the crypt now
+sit on the church's own footprint and are drawn only while you are in one; and
+a thumbnail can only be built from live tile arrays, so it is taken in
+`stashArea()` — the one moment an area is still loaded and you are leaving it.
+
+Fast travel is free, from anywhere, camps only, discovered only, and refused
+while anything has you in its memory. The minimap dims unexplored ground rather
+than blacking it out, so a street you have not walked reads as *unlit* instead
+of *missing*, and the two maps finally agree about what you know.
+
+Verified in the browser under `TEST_MODE`: opening with no fog at all, the
+hunted refusal, travel within an area and across one, the map from inside the
+church, and the whole camp/save/audit suite re-run with no regressions.

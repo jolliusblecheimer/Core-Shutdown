@@ -1119,6 +1119,62 @@ function outlined(src) {
     px(ag, 7, 0, 1, 3, '#c9a24a');
     Sprites.ammo = outlined(a);
 
+    // ---- MAP ICONS.
+    // Seven pixels across, so every one of them is drawn with px() and nothing
+    // else — a path at this size would antialias into mush, and these have to
+    // stay legible when an area is a thumb-sized patch. They NEVER scale with
+    // the map zoom; what changes with zoom is how many of them get drawn.
+    const icon7 = (draw) => {
+      const c = makeCanvas(7, 7), g = c.getContext('2d');
+      draw(g);
+      return outlined(c);
+    };
+    // a camp: a tent, with a fire beside it. The only warm icon on the map.
+    const tent = (g, col, lit) => {
+      px(g, 3, 1, 1, 1, col);
+      px(g, 2, 2, 3, 1, col); px(g, 2, 3, 3, 1, col);
+      px(g, 1, 4, 5, 1, col); px(g, 0, 5, 7, 1, col);
+      if (lit) { px(g, 3, 3, 1, 2, '#2a2018'); }           // the doorway, cut out
+    };
+    Sprites.icoCamp = icon7(g => { tent(g, '#ffb02e', true); px(g, 6, 2, 1, 2, '#ffd27a'); });
+    // a camp that is not a camp yet — same tent, cold, and broken up so it
+    // reads as "somewhere to go" rather than "somewhere to come back to"
+    Sprites.icoSite = icon7(g => {
+      px(g, 3, 1, 1, 1, '#8d959b');
+      px(g, 2, 2, 1, 1, '#8d959b'); px(g, 4, 2, 1, 1, '#8d959b');
+      px(g, 2, 3, 1, 1, '#8d959b'); px(g, 4, 3, 1, 1, '#8d959b');
+      px(g, 1, 4, 1, 1, '#8d959b'); px(g, 5, 4, 1, 1, '#8d959b');
+      px(g, 0, 5, 2, 1, '#8d959b'); px(g, 3, 5, 1, 1, '#8d959b'); px(g, 5, 5, 2, 1, '#8d959b');
+    });
+    // a way out: an arch with a gap under it
+    Sprites.icoGate = icon7(g => {
+      px(g, 1, 1, 5, 1, '#4fc3ff');
+      px(g, 0, 2, 1, 4, '#4fc3ff'); px(g, 6, 2, 1, 4, '#4fc3ff');
+      px(g, 1, 2, 1, 1, '#4fc3ff'); px(g, 5, 2, 1, 1, '#4fc3ff');
+    });
+    // something you can see from a long way off
+    Sprites.icoLandmark = icon7(g => {
+      px(g, 3, 0, 1, 3, '#8d959b');
+      px(g, 2, 3, 3, 1, '#8d959b');
+      px(g, 1, 4, 5, 1, '#8d959b');
+      px(g, 1, 5, 1, 1, '#8d959b'); px(g, 5, 5, 1, 1, '#8d959b');
+    });
+    // a painted board on a post — the trail somebody left for whoever came next
+    Sprites.icoSign = icon7(g => {
+      px(g, 1, 1, 5, 3, '#7a6248');
+      px(g, 2, 2, 3, 1, '#a08862');
+      px(g, 3, 4, 1, 3, '#5c4a36');
+    });
+    // THE OBJECTIVE. The only green thing on either map, which is the whole
+    // point — green used to mean "a person is here" AND "a sign is here" AND,
+    // by accident, "go this way".
+    { const c = makeCanvas(5, 5), g = c.getContext('2d');
+      px(g, 1, 0, 3, 1, '#7ad27a');
+      px(g, 0, 1, 5, 3, '#7ad27a');
+      px(g, 1, 4, 3, 1, '#7ad27a');
+      px(g, 1, 1, 2, 1, '#b6ecb6');
+      Sprites.icoQuest = outlined(c); }
+
     // scrap bit
     const s = makeCanvas(5, 5), sg = s.getContext('2d');
     px(sg, 1, 1, 3, 3, '#8a8a92');

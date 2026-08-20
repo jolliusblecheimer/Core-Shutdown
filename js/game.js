@@ -136,6 +136,8 @@ canvas.addEventListener('wheel', e => {
   // pack (this listener writes player.active directly, bypassing updatePlayer)
   // and it must not change page either — pages are chosen by clicking them.
   if (InvUI.open) return;
+  // The map swallows it too, and spends it as zoom on the next frame.
+  if (MapUI.open) { MapUI.wheel += e.deltaY; return; }
   if (player.melee && player.hasGun) {
     player.active = player.active === 'gun' ? 'melee' : 'gun';
     SFX.switchW();
@@ -318,7 +320,224 @@ function fogFromString(s, len) {
   return a;
 }
 
-const MapUI = { open: false };
+// ---------- THE MAP ----------
+// One continuous view. `zoom` is pixels per tile and `cx,cy` is the centre in
+// WORLD tile coordinates, so framing one area and framing the whole city are
+// the same draw call with a different number — there is no second "world view"
+// to keep in sync with the area view.
+const MapUI = {
+  open: false,
+  zoom: 1, cx: 0, cy: 0,
+  sel: null, hits: [], questHit: null,
+  wheel: 0,                 // accumulated by the wheel listener, spent per frame
+  drag: null,               // {x, y, cx, cy, moved} while the button is down
+};
+const MAP_TOP = 18, MAP_VIEW_H = VIEW_H - 18 - 16;
+const ZOOM_MAX = 4;
+
+// Each area you have walked keeps a thumbnail of what you know of it: one
+// pixel per fog cell, the same building/road/ground colours the map has always
+// used. Rebuilt when the map opens — the world is frozen while it is up, so
+// fog cannot change underneath it — and only for the area you are standing in,
+// because that is the only one whose tile arrays are live.
+const mapThumbs = {};
+function buildMapThumb(areaId) {
+  const c = makeCanvas(fogW, fogH), g2 = c.getContext('2d');
+  for (let j = 0; j < fogH; j++) {
+    for (let i = 0; i < fogW; i++) {
+      if (!explored[j * fogW + i]) continue;
+      const tx = i * FOG, ty = j * FOG;
+      let road = 0, build = 0, n = 0;
+      for (let y = ty; y < Math.min(MAP_H, ty + FOG); y++)
+        for (let x = tx; x < Math.min(MAP_W, tx + FOG); x++) {
+          n++;
+          if (solid[y][x]) build++;
+          else if (ground[y][x] === 4 || ground[y][x] === 5 || ground[y][x] === 7) road++;
+        }
+      if (!n) continue;
+      g2.fillStyle = build > n * 0.5 ? '#4c5054' : road > n * 0.3 ? '#8d959b' : '#3a4238';
+      g2.fillRect(i, j, 1, 1);
+    }
+  }
+  mapThumbs[areaId] = c;
+}
+
+const POI_ICON = {};   // filled once Sprites exists (sprites.js loads first)
+function initPoiIcons() {
+  POI_ICON.camp = Sprites.icoCamp;
+  POI_ICON.site = Sprites.icoSite;
+  POI_ICON.gate = Sprites.icoGate;
+  POI_ICON.landmark = Sprites.icoLandmark;
+  POI_ICON.sign = Sprites.icoSign;
+}
+initPoiIcons();
+
+const poiWorldX = (p) => Areas[p.area].world.x + p.x;
+const poiWorldY = (p) => Areas[p.area].world.y + p.y;
+
+// A place is KNOWN when its tile is explored — nothing else is stored, and
+// nothing new is saved. Its own area's fog answers it; for areas you are not
+// standing in, that fog is still in exploredByArea.
+function poiKnown(p) {
+  const fog = exploredByArea[p.area];
+  if (!fog) return false;
+  // an area's thumbnail is exactly fogW x fogH for that area, so it carries the
+  // row stride for areas whose tile arrays are not the live ones
+  const fw = p.area === currentArea ? fogW : (mapThumbs[p.area] || {}).width;
+  if (!fw) return false;
+  const i = Math.floor(p.x / FOG), j = Math.floor(p.y / FOG);
+  const k = j * fw + i;
+  return i >= 0 && j >= 0 && i < fw && k < fog.length && fog[k] === 1;
+}
+
+// DECLUTTER BY ZOOM. Pull back far enough and only the things you would
+// actually navigate by survive — otherwise the city becomes a pile of icons.
+function visiblePois() {
+  const z = MapUI.zoom;
+  // Calibrated to what the areas actually FIT at, not to round numbers: the
+  // city is 200x150 on a 320x180 screen, so "framed on the Fringe" is about
+  // 0.9 px/tile and "the whole ring" is 0.81. A threshold at 1 would have hidden
+  // the landmarks at every zoom you ever actually look at the city from.
+  const keep = z >= 1.8 ? ['camp', 'site', 'gate', 'landmark', 'sign']
+             : z >= 0.85 ? ['camp', 'site', 'gate', 'landmark']
+             : ['camp', 'site', 'gate'];
+  const out = [];
+  for (const id of Object.keys(Areas)) {
+    if (Areas[id].indoors) continue;              // rooms are not places on the map
+    for (const p of poisFor(id)) {
+      if (!keep.includes(p.kind)) continue;
+      if (!poiKnown(p)) continue;
+      out.push(p);
+    }
+  }
+  return out;
+}
+
+// Somewhere you can go, and whether you may go there right now.
+// Camps only, discovered only, and never with something on your heels.
+function travelState(p) {
+  if (!p.travel) return null;
+  if (p.area === currentArea && Math.hypot(player.x - p.travel.x, player.y - p.travel.y) < 6)
+    return { ok: false, text: "YOU'RE HERE" };
+  if (beingHunted()) return { ok: false, text: 'NOT WHILE HUNTED' };
+  return { ok: true, text: '[E] TRAVEL' };
+}
+// Opening the map frames the area you are standing in, centred on you — so
+// until you touch the wheel it behaves exactly as it always did.
+function openMap() {
+  buildMapThumb(currentArea);
+  const def = currentAreaDef();
+  MapUI.zoom = Math.min(ZOOM_MAX, Math.min((VIEW_W - 24) / MAP_W, (MAP_VIEW_H - 10) / MAP_H));
+  // framed on the AREA, not on you — otherwise a small area opens cropped and
+  // the map stops behaving the way it always has until you touch the wheel
+  MapUI.cx = def.world.x + MAP_W / 2;
+  MapUI.cy = def.world.y + MAP_H / 2;
+  MapUI.sel = null;
+  MapUI.drag = null;
+  MapUI.wheel = 0;
+}
+
+// The floor of the zoom is whatever frames every area you know at once, so you
+// can never pull back into empty black. Recomputed as the world grows.
+function mapZoomMin() {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const id of Object.keys(Areas)) {
+    const th = mapThumbs[id];
+    if (!th || (Areas[id].indoors && id !== currentArea)) continue;
+    const w = Areas[id].world;
+    x0 = Math.min(x0, w.x); y0 = Math.min(y0, w.y);
+    x1 = Math.max(x1, w.x + th.width * FOG); y1 = Math.max(y1, w.y + th.height * FOG);
+  }
+  if (!isFinite(x0)) return 1;
+  return Math.max(0.05, Math.min((VIEW_W - 24) / (x1 - x0), (MAP_VIEW_H - 24) / (y1 - y0)));
+}
+
+function updateMap(dt) {
+  const zMin = Math.min(mapZoomMin(), ZOOM_MAX);
+  // ---- wheel zooms ABOUT THE CURSOR, so you push toward what you are looking at
+  if (MapUI.wheel) {
+    const before = MapUI.wheel;
+    MapUI.wheel = 0;
+    const mxw = MapUI.cx + (Input.mouseX - VIEW_W / 2) / MapUI.zoom;
+    const myw = MapUI.cy + (Input.mouseY - (MAP_TOP + MAP_VIEW_H / 2)) / MapUI.zoom;
+    const next = Math.max(zMin, Math.min(ZOOM_MAX, MapUI.zoom * Math.pow(0.9, before / 100)));
+    if (next !== MapUI.zoom) {
+      MapUI.zoom = next;
+      MapUI.cx = mxw - (Input.mouseX - VIEW_W / 2) / next;
+      MapUI.cy = myw - (Input.mouseY - (MAP_TOP + MAP_VIEW_H / 2)) / next;
+    }
+  }
+  if (MapUI.zoom < zMin) MapUI.zoom = zMin;
+
+  // ---- drag to pan. A press that travels less than three pixels is a click.
+  if (Input.mouseDown) {
+    if (!MapUI.drag) MapUI.drag = { x: Input.mouseX, y: Input.mouseY, cx: MapUI.cx, cy: MapUI.cy, moved: 0 };
+    const d = MapUI.drag;
+    d.moved = Math.max(d.moved, Math.hypot(Input.mouseX - d.x, Input.mouseY - d.y));
+    if (d.moved >= 3) {
+      MapUI.cx = d.cx - (Input.mouseX - d.x) / MapUI.zoom;
+      MapUI.cy = d.cy - (Input.mouseY - d.y) / MapUI.zoom;
+    }
+  } else if (MapUI.drag) {
+    const wasClick = MapUI.drag.moved < 3;
+    MapUI.drag = null;
+    if (wasClick) mapClick(Input.mouseX, Input.mouseY);
+  }
+  // arrow keys pan too, for anyone not using a mouse
+  const pan = 90 * dt / MapUI.zoom;
+  if (Input.keys['ArrowLeft']) MapUI.cx -= pan;
+  if (Input.keys['ArrowRight']) MapUI.cx += pan;
+  if (Input.keys['ArrowUp']) MapUI.cy -= pan;
+  if (Input.keys['ArrowDown']) MapUI.cy += pan;
+
+  // ---- E travels, when the selected place will have you
+  if (Input.pressed['KeyE']) {
+    Input.pressed['KeyE'] = false;
+    if (MapUI.sel) {
+      const t = travelState(MapUI.sel);
+      if (t && t.ok) fastTravel(MapUI.sel);
+      else if (t) { SFX.deny(); showMsg(t.text === 'NOT WHILE HUNTED'
+        ? "Not with something on your heels." : 'You are already there.', 2); }
+    }
+  }
+  Input.pressed['LMB'] = false;
+}
+
+// Click a place to select it; click empty ground to let it go.
+function mapClick(mx, my) {
+  let best = null, bd = 7;
+  for (const h of (MapUI.hits || [])) {
+    const d = Math.hypot(mx - h.x, my - h.y);
+    if (d < bd) { bd = d; best = h.poi; }
+  }
+  // the objective answers too — clicking it says what you are meant to be doing
+  const obj = currentObjective();
+  if (obj && MapUI.questHit && Math.hypot(mx - MapUI.questHit.x, my - MapUI.questHit.y) < 7) {
+    best = { id: '__obj', name: obj.title.toUpperCase(), blurb: obj.detail, kind: 'quest' };
+  }
+  if (best !== MapUI.sel) SFX.blip();
+  MapUI.sel = best;
+}
+
+function fastTravel(p) {
+  MapUI.open = false;
+  MapUI.sel = null;
+  SFX.uiClose();
+  // The same fade either way — a hop inside the area you are already in just
+  // has nothing to rebuild on the far side of it.
+  startTransition(p.area, { x: p.travel.x, y: p.travel.y });
+  showMsg(p.name, 2.2);
+}
+
+// Anything that has seen you, plus the fight you cannot walk out of.
+function beingHunted() {
+  if (boss.active && boss.state !== 'hidden' && boss.state !== 'dead') return true;
+  for (const sc of scrappers)
+    if (sc.state !== 'off' && sc.state !== 'dead' && (sc.alert > 0.6 || sc.memory > 0)) return true;
+  for (const bd of bandits)
+    if (!bd.dead && (bd.alert > 0.6 || bd.memory > 0)) return true;
+  return false;
+}
 
 // ---------- area transitions ----------
 // Fade out, swap the world, fade in. Per-area state (what you took, what you
@@ -327,6 +546,11 @@ const areaState = {};
 const Trans = { active: false, t: 0, to: null, entry: null, swapped: false };
 
 function stashArea() {
+  // What you know of this area, kept as a picture before its tile arrays are
+  // thrown away — it is the only moment they are still live, and without it an
+  // area you have walked would be missing from the world map until you went
+  // back and opened M inside it.
+  if (explored) buildMapThumb(currentArea);
   areaState[currentArea] = {
     deadBarrels: boomBarrels.filter(b => !b.alive).map(b => b.gx + ',' + b.gy),
     takenItems: (START_ITEMS_BY_AREA[currentArea] || []).filter(
@@ -423,7 +647,17 @@ function updateTransition(dt) {
   Trans.t += dt;
   if (!Trans.swapped && Trans.t >= 0.45) {
     Trans.swapped = true;
-    enterArea(Trans.to, Trans.entry);
+    if (Trans.to === currentArea) {
+      // fast travel across an area you are already standing in: the same fade,
+      // but there is nothing to rebuild — only you move
+      player.x = Trans.entry.x; player.y = Trans.entry.y;
+      player.iframes = 0.8;
+      camInit = false;
+      exitArmed = false;
+      saveGame();
+    } else {
+      enterArea(Trans.to, Trans.entry);
+    }
   }
   if (Trans.t >= 1.0) Trans.active = false;
 }
@@ -566,10 +800,11 @@ function update(dt) {
   if (GameState === 'playing' && (Input.pressed['KeyM'] || (MapUI.open && Input.pressed['Escape']))) {
     Input.pressed['KeyM'] = false;
     MapUI.open = !MapUI.open;
-    if (MapUI.open) { InvUI.open = false; SFX.uiOpen(); } else SFX.uiClose();
+    if (MapUI.open) { InvUI.open = false; SFX.uiOpen(); openMap(); } else SFX.uiClose();
   }
   if (MapUI.open) {
     Input.pressed['Escape'] = false;
+    updateMap(dt);
     updateParticles(dt);
     Msg.t -= dt;
     return;
@@ -2083,6 +2318,10 @@ function drawHUD() {
     ptext('scroll', VIEW_W - 33, VIEW_H - 27, 7, 'rgba(232,217,192,0.35)', 'center');
   }
 
+  // What now, and where. Read ONCE per frame and shared by the HUD line below
+  // and the dot on the minimap, so the two can never disagree.
+  const obj = currentObjective();
+
   // minimap — whole map when small, a scrolling window when the area is big
   const mw = mmWindowed ? MM_VIEW * MMS : minimap.width;
   const mh = mmWindowed ? MM_VIEW * MMS : minimap.height;
@@ -2097,14 +2336,30 @@ function drawHUD() {
   g.imageSmoothingEnabled = false;
   g.drawImage(minimap, srcX, srcY, mw, mh, mx * U, my * U, mw * U, mh * U);
   g.globalAlpha = 1;
+  // FOG, SOFTLY. The two maps used to disagree about what the traveller knows:
+  // M showed walked ground only, the minimap showed the whole area including
+  // streets you have never seen. Unexplored ground is dimmed rather than
+  // blacked out, so a new area reads as UNLIT instead of MISSING — you can
+  // still make out the shape of the street you are about to walk down.
+  for (let j = 0; j < fogH; j++) {
+    for (let i = 0; i < fogW; i++) {
+      if (explored[j * fogW + i]) continue;
+      const fx = mx + i * FOG * MMS - srcX, fy = my + j * FOG * MMS - srcY;
+      const x0 = Math.max(mx, fx), y0 = Math.max(my, fy);
+      const x1 = Math.min(mx + mw, fx + FOG * MMS), y1 = Math.min(my + mh, fy + FOG * MMS);
+      if (x1 <= x0 || y1 <= y0) continue;
+      uiRect(x0, y0, x1 - x0, y1 - y0, 'rgba(10,12,14,0.65)');
+    }
+  }
   function blip(wx, wy, col) {
     const px2 = mx + wx * MMS - srcX - 1, py2 = my + wy * MMS - srcY - 1;
     if (px2 < mx - 1 || py2 < my - 1 || px2 > mx + mw || py2 > my + mh) return;
     uiRect(px2, py2, 2, 2, col);
   }
   for (const it of items) blip(it.x, it.y, '#ffd27a');
-  if (currentAreaDef().hasNpc) blip(npc.x, npc.y, '#7ad27a');
-  for (const f of folk) blip(f.x, f.y, '#7ad27a');
+  // NO NPC BLIPS. Green is the objective and nothing else now — a green dot on
+  // every person made the yard's marker work by accident, and the camp turned
+  // it into seven dots that mean nothing.
   for (const ex of (currentAreaDef().exits || [])) {
     if (ex.needsGate && !(gateProp && gateProp.open)) continue;
     blip((ex.x0 + ex.x1) / 2, (ex.y0 + ex.y1) / 2, '#4fc3ff');
@@ -2113,6 +2368,19 @@ function drawHUD() {
     if (sc.state !== 'dead' && sc.state !== 'off' &&
         Math.hypot(sc.x - player.x, sc.y - player.y) < 8)
       blip(sc.x, sc.y, '#ff5a3c');
+  }
+  // the objective, if it is in the area you are standing in. Same source as
+  // the HUD line and the map — it pulses so it reads as a marker, not a prop.
+  if (obj && obj.area === currentArea) {
+    const qx = mx + obj.x * MMS - srcX, qy = my + obj.y * MMS - srcY;
+    if (qx > mx - 2 && qy > my - 2 && qx < mx + mw + 2 && qy < my + mh + 2) {
+      const qi = Sprites.icoQuest;
+      g.globalAlpha = 0.72 + 0.28 * Math.sin(gameTime * 3);
+      g.imageSmoothingEnabled = false;
+      g.drawImage(qi, Math.round(qx - qi.width / 2) * U, Math.round(qy - qi.height / 2) * U,
+                  qi.width * U, qi.height * U);
+      g.globalAlpha = 1;
+    }
   }
   blip(player.x, player.y, '#ffffff');
   g.strokeStyle = '#5a4a38';
@@ -2164,12 +2432,10 @@ function drawHUD() {
     uiRect(mx2, my2 + gap + 1, 1, len, rc);
   }
 
-  // mission objective (top-left)
-  if (mission.state === 'active' || mission.state === 'complete') {
+  // mission objective (top-left) — from the same `obj` the minimap dot uses
+  if (obj) {
     ptext('*', 8, 8, 8, '#ffd27a');
-    ptext(mission.state === 'active'
-      ? `Destroy Scrappers - loot scrap ${Math.min(player.inv.scrap, 5)}/5`
-      : 'Return to the survivor', 16, 8, 8);
+    ptext(obj.title, 16, 8, 8);
   }
 
   // street signs read themselves when you get close
@@ -2225,56 +2491,118 @@ function drawHUD() {
 
   }   // ---- end of the world HUD ----
 
-  // THE MAP — everywhere you have walked, and nothing you haven't
+  // THE MAP — everywhere you have walked, and nothing you haven't.
+  // One world space at MapUI.zoom pixels per tile: framing an area and framing
+  // the whole city are the same draw call with a different number in it.
   if (MapUI.open) {
     uiRect(0, 0, VIEW_W, VIEW_H, 'rgba(6,7,8,0.9)');
-    const pad = 16, top = 22;
-    const availW = VIEW_W - pad * 2, availH = VIEW_H - top - 20;
-    const sc = Math.min(availW / MAP_W, availH / MAP_H);
-    const mw2 = MAP_W * sc, mh2 = MAP_H * sc;
-    const mx2 = (VIEW_W - mw2) / 2, my2 = top + (availH - mh2) / 2;
-    ptext(currentAreaDef().name, VIEW_W / 2, 8, 8, '#ffd27a', 'center');
-    uictx.strokeStyle = '#3a4a52';
-    uictx.lineWidth = U;
-    uictx.strokeRect((mx2 - 2) * U, (my2 - 2) * U, (mw2 + 4) * U, (mh2 + 4) * U);
-    // explored cells only
-    for (let j = 0; j < fogH; j++) {
-      for (let i = 0; i < fogW; i++) {
-        if (!explored[j * fogW + i]) continue;
-        const tx = i * FOG, ty = j * FOG;
-        let road = 0, build = 0, n = 0;
-        for (let y = ty; y < Math.min(MAP_H, ty + FOG); y++)
-          for (let x = tx; x < Math.min(MAP_W, tx + FOG); x++) {
-            n++;
-            if (solid[y][x]) build++;
-            else if (ground[y][x] === 4 || ground[y][x] === 5 || ground[y][x] === 7) road++;
-          }
-        if (!n) continue;
-        const col = build > n * 0.5 ? '#4c5054' : road > n * 0.3 ? '#8d959b' : '#3a4238';
-        uiRect(mx2 + i * FOG * sc, my2 + j * FOG * sc, FOG * sc + 0.6, FOG * sc + 0.6, col);
+    const z = MapUI.zoom;
+    // the HUD's `obj` lives inside the world-HUD block, which is skipped while
+    // the map is up — same function, same answer, read again here
+    const mobj = currentObjective();
+    // world tile -> screen pixel
+    const sx2 = (wx) => VIEW_W / 2 + (wx - MapUI.cx) * z;
+    const sy2 = (wy) => MAP_TOP + MAP_VIEW_H / 2 + (wy - MapUI.cy) * z;
+
+    // ---- the ground: one cached thumbnail per area you have been in.
+    // Two passes, because the areas overlap on screen and the second area's
+    // ground would otherwise paint over the first area's name.
+    const drawn = [];
+    for (const id of Object.keys(Areas)) {
+      const th = mapThumbs[id];
+      if (!th) continue;
+      const def = Areas[id];
+      if (def.indoors && id !== currentArea) continue;         // rooms, not places
+      const ox2 = sx2(def.world.x), oy2 = sy2(def.world.y);
+      const w2 = th.width * FOG * z, h2 = th.height * FOG * z;
+      if (ox2 > VIEW_W || oy2 > VIEW_H || ox2 + w2 < 0 || oy2 + h2 < 0) continue;
+      uictx.imageSmoothingEnabled = false;
+      uictx.globalAlpha = id === currentArea ? 1 : 0.82;
+      uictx.drawImage(th, Math.round(ox2 * U), Math.round(oy2 * U),
+                      Math.round(w2 * U), Math.round(h2 * U));
+      uictx.globalAlpha = 1;
+      drawn.push({ id, def, ox2, oy2, w2, h2 });
+    }
+    // names, once an area is small enough to need telling apart. Never the one
+    // you are standing in — the title bar and YOU ARE HERE both say that
+    // already, and printing it a third time stacked it under its own title.
+    if (z < 1) for (const d of drawn) {
+      if (d.id === currentArea) continue;
+      const lw = ptWidth(d.def.name, 7);
+      const lx = Math.max(lw / 2 + 4, Math.min(VIEW_W - lw / 2 - 4, d.ox2 + d.w2 / 2));
+      ptext(d.def.name, lx, Math.max(MAP_TOP, d.oy2 - 9), 7, 'rgba(232,217,192,0.55)', 'center');
+    }
+
+    // ---- the places, at a FIXED pixel size whatever the zoom. What changes
+    // with zoom is how many are drawn, not how big they are.
+    const hits = [];
+    for (const p of visiblePois()) {
+      const px3 = sx2(poiWorldX(p)), py3 = sy2(poiWorldY(p));
+      if (px3 < -8 || py3 < -8 || px3 > VIEW_W + 8 || py3 > VIEW_H + 8) continue;
+      const img = POI_ICON[p.kind];
+      if (!img) continue;
+      uictx.imageSmoothingEnabled = false;
+      const sel = MapUI.sel && MapUI.sel.id === p.id;
+      if (sel) uiRect(px3 - img.width / 2 - 1, py3 - img.height / 2 - 1,
+                      img.width + 2, img.height + 2, 'rgba(255,210,122,0.30)');
+      uictx.drawImage(img, Math.round(px3 - img.width / 2) * U,
+                      Math.round(py3 - img.height / 2) * U, img.width * U, img.height * U);
+      hits.push({ poi: p, x: px3, y: py3 });
+    }
+    MapUI.hits = hits;
+
+    // ---- the objective, over everything, and the only green on the map
+    if (mobj && Areas[mobj.area] && mapThumbs[mobj.area]) {
+      const qw = Areas[mobj.area].world;
+      const qx2 = sx2(qw.x + mobj.x), qy2 = sy2(qw.y + mobj.y);
+      const qi = Sprites.icoQuest;
+      uictx.globalAlpha = 0.7 + 0.3 * Math.sin(gameTime * 3);
+      uictx.imageSmoothingEnabled = false;
+      uictx.drawImage(qi, Math.round(qx2 - qi.width / 2) * U, Math.round(qy2 - qi.height / 2) * U,
+                      qi.width * U, qi.height * U);
+      uictx.globalAlpha = 1;
+      MapUI.questHit = { x: qx2, y: qy2 };
+    } else MapUI.questHit = null;
+
+    // ---- you. The full traveller while the map is close, a dot once it isn't
+    const cw = currentAreaDef().world;
+    const pxm = sx2(cw.x + player.x), pym = sy2(cw.y + player.y);
+    if (z >= 1) {
+      const pim = Sprites.player[0];
+      uictx.imageSmoothingEnabled = false;
+      uictx.drawImage(pim, Math.round(pxm - pim.width / 2) * U, Math.round(pym - pim.height + 3) * U,
+                      pim.width * U, pim.height * U);
+    } else {
+      uiRect(pxm - 1.5, pym - 1.5, 3, 3, '#ffffff');
+      const yw = ptWidth('YOU ARE HERE', 7);
+      ptext('YOU ARE HERE', Math.max(yw / 2 + 4, Math.min(VIEW_W - yw / 2 - 4, pxm)),
+            pym + 5, 7, 'rgba(255,255,255,0.75)', 'center');
+    }
+
+    // What you are looking at: a place if you picked one, the area while you are
+    // framed on it, and the whole ring once you have pulled back past it — the
+    // areas label themselves down on the map, so this must not repeat one.
+    ptext(MapUI.sel ? MapUI.sel.name : (z < 1 ? 'THE RING' : currentAreaDef().name),
+          VIEW_W / 2, 8, 8, '#ffd27a', 'center');
+
+    // ---- the panel: what this place is, and whether you can go there
+    if (MapUI.sel) {
+      const p = MapUI.sel, ph2 = 42, py4 = VIEW_H - ph2 - 10;
+      uiRect(10, py4, VIEW_W - 20, ph2, 'rgba(10,12,14,0.92)');
+      uictx.strokeStyle = '#3a4a52'; uictx.lineWidth = U;
+      uictx.strokeRect(10 * U, py4 * U, (VIEW_W - 20) * U, ph2 * U);
+      ptext(p.name, 16, py4 + 4, 8, '#ffd27a');
+      let ly = py4 + 15;
+      for (const line of ptFit(p.blurb, VIEW_W - 32, 7).slice(0, 2)) {
+        ptext(line, 16, ly, 7, '#e8d9c0'); ly += 9;
       }
+      const t = travelState(p);
+      if (t) ptext(t.text, VIEW_W - 16, py4 + 4, 8, t.ok ? '#7ad27a' : 'rgba(232,217,192,0.4)', 'right');
     }
-    // landmarks you have actually seen
-    if (typeof signs !== 'undefined') {
-      for (const s of signs) {
-        if (!isExplored(s.gx, s.gy)) continue;
-        uiRect(mx2 + s.gx * sc - 1, my2 + s.gy * sc - 1, 2, 2, '#7ad27a');
-      }
-    }
-    for (const ex of (currentAreaDef().exits || [])) {
-      if (ex.needsGate && !(gateProp && gateProp.open)) continue;
-      const ex2 = (ex.x0 + ex.x1) / 2, ey2 = (ex.y0 + ex.y1) / 2;
-      if (isExplored(ex2, ey2)) uiRect(mx2 + ex2 * sc - 1.5, my2 + ey2 * sc - 1.5, 3, 3, '#4fc3ff');
-    }
-    // you — a tiny version of the traveller, with a ring so you can find him
-    const pxm = mx2 + player.x * sc, pym = my2 + player.y * sc;
-    // No ring — the marker IS the traveller. Drawn full size and pixel-snapped
-    // so it is the same character you are looking at down in the street.
-    const pim = Sprites.player[0];
-    uictx.imageSmoothingEnabled = false;
-    uictx.drawImage(pim, Math.round(pxm - pim.width / 2) * U, Math.round(pym - pim.height + 3) * U,
-                    pim.width * U, pim.height * U);
-    ptext('walked ground only  ·  M or ESC to close', VIEW_W / 2, VIEW_H - 12, 7, 'rgba(232,217,192,0.5)', 'center');
+
+    ptext(z < 1 ? 'scroll to zoom  ·  drag to pan  ·  M or ESC to close'
+                : 'scroll to zoom out  ·  drag to pan  ·  click a place',
+          VIEW_W / 2, VIEW_H - 8, 7, 'rgba(232,217,192,0.5)', 'center');
     return;
   }
 

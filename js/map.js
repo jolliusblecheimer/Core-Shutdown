@@ -1081,9 +1081,21 @@ function buildCrypt() {
 // =====================================================================
 // AREA REGISTRY
 // =====================================================================
+// ONE COORDINATE SPACE. `world` is an area's offset in city tiles, so a tile
+// at (tx, ty) in area A lives at (A.world.x + tx, A.world.y + ty) and there is
+// no separate "world view" to keep in sync with the area view — zooming out is
+// the same draw call with a smaller number. Areas are laid out at TRUE
+// RELATIVE SIZE: the yard is 32x32 against the city's 200x150 and it looks it,
+// which is honest about how far you have walked.
+//
+// The yard sits off the city's eastern edge, level with the gate road it
+// arrives on. Interiors sit exactly on the footprint of the building they are
+// inside — the inside of the church IS at the church — but they are only drawn
+// while you are in them, or the city would have lit rooms floating on it.
 const Areas = {
   junkyard: {
     id: 'junkyard', name: 'THE JUNKYARD', build: buildJunkyard,
+    world: { x: 206, y: 106 },
     hasScrapper: true, hasBoss: true, hasNpc: true,
     tint: '#e6c092',
     makeItems: () => ([
@@ -1097,6 +1109,7 @@ const Areas = {
   },
   fringe: {
     id: 'fringe', name: 'THE FRINGE', build: buildFringe,
+    world: { x: 0, y: 0 },
     hasScrapper: false, hasBoss: false, hasNpc: false, hasBandits: true,
     tint: '#efe0cc',      // thinner, cooler, brighter than the yard's dusk
     makeItems: () => ([
@@ -1112,6 +1125,7 @@ const Areas = {
   },
   candlelight: {
     id: 'candlelight', name: 'CANDLELIGHT', build: buildCandlelight,
+    world: { x: 50, y: 52 },        // the church's own footprint, exactly
     hasScrapper: false, hasBoss: false, hasNpc: false, folk: 'camp',
     indoors: true,
     tint: '#f0d4b0',        // firelight, but the stone still has to read as stone
@@ -1126,6 +1140,7 @@ const Areas = {
   },
   crypt: {
     id: 'crypt', name: 'THE CRYPT', build: buildCrypt,
+    world: { x: 51, y: 53 },        // under the chancel
     hasScrapper: false, hasBoss: false, hasNpc: false, folk: 'crypt',
     indoors: true,
     tint: '#a9bccc',        // cold, and three lamps against it
@@ -1137,6 +1152,50 @@ const Areas = {
     ],
   },
 };
+
+// =====================================================================
+// PLACES — what is where, for the map
+// =====================================================================
+// One table. `kind` picks the icon; `travel` is where fast travel puts you
+// down, and its presence is what makes a place a destination at all.
+//
+// A PLACE IS KNOWN WHEN ITS TILE IS EXPLORED. There is nothing else to store
+// and nothing to save: fog is already per-area, already persisted and already
+// migrated, so discovery, the map and the fast-travel list all fall out of
+// data the game has kept since v3. An unknown place is drawn nowhere.
+const POIS = [
+  { id: 'shack', area: 'junkyard', x: 21.5, y: 6.5, kind: 'camp',
+    name: "MAREK'S SHACK", travel: { x: 21.5, y: 10.5 },
+    blurb: 'One lit window in a yard of dead machines. The old man trades, and he does not ask questions he would not want asked back.' },
+  { id: 'yardgate', area: 'junkyard', x: 30.5, y: 12.5, kind: 'gate',
+    name: 'THE YARD GATE', blurb: 'East, out of the yard, onto the old ring road. It was chained shut for a reason.' },
+  { id: 'yardgate-f', area: 'fringe', x: 197, y: 120, kind: 'gate',
+    name: 'THE YARD GATE', blurb: 'Back into the junkyard. Marek is still in there, and he still has the only counter in the ring worth the walk.' },
+  { id: 'stmartins', area: 'fringe', x: 56, y: 60, kind: 'camp',
+    name: 'CANDLELIGHT', travel: { x: 56.5, y: 69.5 },
+    blurb: "St Martin's, and people living in it. Fires, a medbay, a map of the ring drawn by the people who walked it." },
+  { id: 'gas', area: 'fringe', x: 143, y: 131, kind: 'landmark',
+    name: 'THE FORECOURT', blurb: 'Six pillars, a canopy and four pumps still holding whatever was in them. Nothing here is safe to shoot.' },
+  { id: 'school', area: 'fringe', x: 119, y: 61, kind: 'landmark',
+    name: 'ALDERGROVE PRIMARY', blurb: 'A long pale block with a playground behind it. Somebody painted over the name and then gave up.' },
+  { id: 'hotel', area: 'fringe', x: 121, y: 102, kind: 'landmark',
+    name: 'THE REGENT HOTEL', blurb: 'Nine floors of grey. The lobby doors are still revolving in the wind if you stand close enough to hear it.' },
+  { id: 'bank', area: 'fringe', x: 68, y: 102, kind: 'landmark',
+    name: 'CITY & COUNTY BANK', blurb: 'Stone, columns, and a vault nobody has got into. The Correction did not care about money and neither does anyone left.' },
+];
+
+// The sign trail is not written into the table — it is generated off the signs
+// the area already placed, so the two can never drift apart.
+function poisFor(areaId) {
+  const out = POIS.filter(p => p.area === areaId);
+  if (areaId === currentArea && typeof signs !== 'undefined') {
+    for (const s of signs) {
+      out.push({ id: 'sign@' + s.gx + ',' + s.gy, area: areaId, x: s.gx, y: s.gy,
+                 kind: 'sign', name: s.text, blurb: 'Hand-painted, and still standing. Somebody wanted whoever came next to find the way.' });
+    }
+  }
+  return out;
+}
 
 // build the starting area immediately so everything downstream has a map
 buildJunkyard();

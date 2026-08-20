@@ -258,6 +258,48 @@ const InvUI = { open: false };
 
 const mission = { state: 'none' };   // none -> active -> complete -> turned
 
+// ---------- WHAT NOW, AND WHERE ----------
+// There is no quest system to hang a marker on, and building one to draw a dot
+// would be the tail wagging the dog. So this is the smallest honest thing: one
+// function that reads live state and answers both halves of the question.
+//
+// It matters that it is ONE function. Before this, the HUD carried its own
+// hard-coded objective string, and the "quest marker" was the NPC blip on the
+// minimap — which meant "the quest is there" only by accident, and stopped
+// meaning it the moment a second NPC existed. (It does now: seven of them, in
+// the church.) The HUD line, the minimap dot and the map dot all read this.
+//
+// Coordinates are given in their OWN area and are hard-coded rather than read
+// off live globals like patrolCenter, because the question has to be
+// answerable from anywhere — you should be able to open the map in the church
+// and see where the yard wants you.
+function currentObjective() {
+  // ---- Q1: the yard
+  if (!bossDefeated) {
+    if (mission.state === 'none') return {
+      title: 'Talk to the survivor', area: 'junkyard', x: 21.5, y: 7.5,
+      detail: 'There is a light on in the shack, and a man in it who has not shot at me yet.' };
+    if (mission.state === 'active') return {
+      title: `Destroy Scrappers — loot scrap ${Math.min(player.inv.scrap, 5)}/5`,
+      area: 'junkyard', x: 21.5, y: 12.5,
+      detail: 'The old man fed me. He will want something for the pipe. They patrol the middle of the yard.' };
+    if (mission.state === 'complete') return {
+      title: 'Return to the survivor', area: 'junkyard', x: 21.5, y: 7.5,
+      detail: 'Five scrap, and the machines that were carrying it are not any more.' };
+    if (!(gateProp && gateProp.open)) return {
+      title: 'Unlock the yard gate', area: 'junkyard', x: 30.5, y: 12.5,
+      detail: 'He gave me the key with the look of a man who does not expect it back.' };
+    // The gate is open and the Compactor is still in the junk. THE AMBUSH IS
+    // NEVER MARKED — a dot pointing at it gives the whole thing away.
+    return null;
+  }
+  // ---- Q2: the road out, and the shelter at the end of it
+  if (!campMapRead) return {
+    title: 'Reach the shelter', area: 'fringe', x: 56, y: 68,
+    detail: 'Somebody painted the signs after. Follow them west and there is a church people live in.' };
+  return null;
+}
+
 const Msg = { text: '', t: 0 };
 function showMsg(text, dur = 2.5) { Msg.text = text; Msg.t = dur; }
 

@@ -1,6 +1,6 @@
 # CORE SHUTDOWN — project state
 
-**Updated:** 2026-08-19 · **Live:** https://jolliusblecheimer.github.io/Core-Shutdown/
+**Updated:** 2026-08-20 · **Live:** https://jolliusblecheimer.github.io/Core-Shutdown/
 **Repo:** https://github.com/jolliusblecheimer/Core-Shutdown (public)
 **Boss arena:** https://jolliusblecheimer.github.io/Core-Shutdown/arena.html
 
@@ -78,7 +78,23 @@ clock on each face, louvred belfries, an openwork parapet and pinnacles.
 Paved parvis across the front and a strip down each flank.
 The churchyard (railings, graves, trees) is not built.
 Handmade sign trail (planks, bedsheet banners, painted road arrows) leading
-**only** to the shelter. Fog-of-war map on `M`.
+**only** to the shelter.
+
+### THE MAP (`M`) — one world space, zoom and fast travel
+`M` opens framed on the area you are in and **scrolls out continuously to the
+whole ring** — every area is placed at a `world` offset in one tile coordinate
+space and drawn at true relative size, so the yard is 32×32 against the city's
+200×150 and looks it. No view modes: framing an area and framing the world is
+the same draw call with a smaller number. Areas render from cached fog
+thumbnails taken as you leave them. **Places** come off one `POIS` table —
+camps, gates, landmarks and the sign trail, each a fixed-size 7px icon that
+never scales, with what is drawn thinning out as you pull back. Click one for a
+panel; on a camp you have found, `E` **fast travels** there from anywhere,
+free, blocked only while something is hunting you. **One objective source**
+(`currentObjective()`) feeds the HUD line, the minimap dot and the map dot, and
+green now means exactly one thing — signs and people are not green any more.
+The minimap **dims unexplored ground** instead of showing it, so both maps
+finally agree about what the traveller knows.
 
 ### Content — THE ROADBLOCKS + THE BANDITS (first pass)
 The first **people** you fight, and the first gate on a destination.
@@ -170,6 +186,13 @@ clamped to 1.1 tiles and measured to a prop's anchor corner. Fixed.
 6. Open questions never answered: HHDs dropping their rifles as the ring's
    weapon upgrade; day/night; the Compactor's loot drop (armour plate vs
    piston maul vs grabber claw vs eye lens).
+7. **Two plans written 2026-08-19 are still only plans.** `design/hhd-squads.md`
+   — the singleton→array blocker it names is now cleared, but there is still no
+   line of sight (robots see through walls, so hiding behind cover does not
+   work), no facing arcs, no squads and none of the four units. Four open
+   questions in it need answering. `design/cathedral.md` is built except its
+   phase-2 churchyard. Both were stranded on draft PRs #1/#2 whose log entries
+   collide with main's numbering at 71–72.
 
 ## Known risks
 - The cathedral is ~250 px tall and the viewport is 180. From the parvis you
