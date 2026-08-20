@@ -1229,3 +1229,48 @@ of *missing*, and the two maps finally agree about what you know.
 Verified in the browser under `TEST_MODE`: opening with no fog at all, the
 hunted refusal, travel within an area and across one, the map from inside the
 church, and the whole camp/save/audit suite re-run with no regressions.
+
+### 94. The next plan: cover you can actually hide behind
+**Laurens:** "Push this one and start the next on the list."
+
+**Claude:** Map UI was already pushed. Next was `design/hhd-squads.md`.
+
+**First, a correction to what I told you yesterday about it.** I said there was
+no line of sight anywhere and robots see through walls. Half wrong: the cordon
+work shipped `losClear()` and the **bandits have had cover since**. My grep used
+`\|` under `grep -E`, where that is a literal pipe, so it matched nothing and I
+reported nothing. What was actually true is narrower and more interesting — the
+**Scrappers** had been left behind on the old radius-only code, in the yard the
+plan itself describes as the one place it never showed.
+
+**So step 2 was two things.**
+
+*The Scrappers joined the cover rule* — and the one that changes how the game
+plays is the CHASE, not the patrol. `seesYou` was `distP < 7.5` with no cover
+test at all, so a chase could not be broken by hiding; it ended only by
+outrunning a radius. Now breaking line of sight starts the memory clock, the
+machine pushes to where it last saw you, and gives up. That is the crouch key
+finally paying for itself.
+
+*Facing arcs, for everything.* 120° forward, with a 1.5-tile all-round bubble so
+you cannot stand on a heel, widening to 280° once something is already hunting
+you — a machine looking for you is not walking a route. Everything that walks
+goes through `aiMove`, so that is the one place a facing is kept. A stopped
+Scrapper sweeps its sensor instead of staring down one line forever, and a
+guard sweeps either side of the road he was posted to watch.
+
+One thing the plan did not ask for and the game needed: **a cone the player
+cannot read is not a stealth mechanic, it is bad luck.** Each machine throws a
+patch of cold blue-white light on the ground where it is looking. Cold on
+purpose — amber in this game means *this can be hurt*, and a sensor beam is not
+a target.
+
+Three cases measured rather than eyeballed: behind cover with the machine
+staring straight at you, alert stays at 0; in the open it climbs to 0.79 in a
+second; in the open with the machine turned away it decays. And the game still
+plays — Scrappers engage about a second after you stand next to them in the
+open, and walking up to a roadblock still turns exactly that block's four in
+about two seconds.
+
+Steps 3–9 are the squads and the four units themselves, and four open questions
+in that doc genuinely gate them.

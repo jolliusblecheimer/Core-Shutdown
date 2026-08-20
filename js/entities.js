@@ -84,6 +84,7 @@ function makeScrapper() {
     alert: 0, idleT: 0,                // detection meter & patrol idle pause
     patrolFlip: false,                 // alternates heap ↔ central hub
     memory: 0, lastPX: 0, lastPY: 0,   // remembers a spotted player for 12s
+    fx: 0, fy: 1, scan: 0,             // which way it is looking, and its sweep
   };
 }
 const scrappers = [];
@@ -925,13 +926,14 @@ function updateScrapper(dt, s) {
   switch (s.state) {
     case 'patrol': {
       // gradual detection: machines don't magically know where you are.
-      // Their sight (4.5) is shorter than yours; crouching shrinks it to 2.2
-      // — but up close (<1.6) they see you no matter what.
+      // Their sight (4.5) is shorter than yours; crouching shrinks it to 2.2.
+      // It now goes through canSpot, so it has to be LOOKING at you and there
+      // has to be nothing between — a heap you stand behind is real cover, and
+      // that is the whole point of the crouch key.
       const sightR = player.crouch ? 2.2 : 4.5;
-      if (player.dead <= 0 && !playerSafe) {
-        if (distP < 1.6) s.alert = 1;
-        else if (distP < sightR) s.alert += dt * (0.5 + 1.6 * (1 - distP / sightR));
-        else s.alert = Math.max(0, s.alert - dt * 0.5);
+      if (!playerSafe && canSpot(s, sightR)) {
+        if (canSpot(s, PERIPHERAL + 0.1)) s.alert = 1;   // right on top of it
+        else s.alert += dt * (0.5 + 1.6 * (1 - distP / sightR));
       } else {
         s.alert = Math.max(0, s.alert - dt * 0.5);
       }
@@ -944,8 +946,16 @@ function updateScrapper(dt, s) {
         tutEnemy();
         break;
       }
-      // walk heap to heap, pausing to "scan"
-      if (s.idleT > 0) { s.idleT -= dt; break; }
+      // walk heap to heap, pausing to "scan" — and the scan is real now: it
+      // sweeps its sensor either side of the way it was walking, so a stopped
+      // machine is not permanently blind down one side of itself.
+      if (s.idleT > 0) {
+        s.idleT -= dt;
+        s.scan += dt * 1.1;
+        const a = Math.atan2(s.fy, s.fx) + Math.sin(s.scan) * 0.5 * dt * 4;
+        faceToward(s, Math.cos(a), Math.sin(a), dt);
+        break;
+      }
       aiMove(s, s.tx, s.ty, 1.4 * dt, dt);
       if (Math.hypot(s.tx - s.x, s.ty - s.y) < 0.8) {
         s.idleT = 0.8 + Math.random() * 1.6;
@@ -960,7 +970,11 @@ function updateScrapper(dt, s) {
       player.combatT = 0;      // being hunted counts as combat — no regen
       // 12-second memory: losing sight doesn't shake them immediately —
       // they push toward where they last saw you until the memory fades
-      const seesYou = !playerSafe && player.dead <= 0 && distP < 7.5;
+      // A chase you cannot break is not a chase. Losing sight now means losing
+      // sight: put something solid between you and it pushes to where you were
+      // last, then gives up when the memory runs out. Its cone is wider once it
+      // is hunting — it is actively looking for you, not walking a route.
+      const seesYou = !playerSafe && canSpotWide(s, 7.5);
       if (seesYou) {
         s.memory = 12;
         s.lastPX = player.x; s.lastPY = player.y;
@@ -1035,6 +1049,9 @@ function aiMove(s, tx, ty, step, dt) {
   const d = Math.hypot(dx, dy);
   if (d < 0.05) return;
   const bx = dx / d, by = dy / d;
+  // it looks where it is going. Every walker goes through here, so this is the
+  // one place a facing has to be kept up to date.
+  faceToward(s, bx, by, dt);
   const ox = s.x, oy = s.y;
   tryMove(s, bx * step, by * step);
   if (Math.hypot(s.x - ox, s.y - oy) < step * 0.3) {
@@ -1109,6 +1126,10 @@ function makeBandit(block, post, idx) {
     kbx: 0, kby: 0, detour: 0, detourX: 0, detourY: 0,
     idleT: Math.random() * 2, sway: Math.random() * 6.28,
     dead: false, looted: false, fell: 0,
+    // A guard watches the road he was put on: `facing` is the side you arrive
+    // from, so that is the way he looks, and his sweep swings either side of it.
+    faceX: block.facing, faceY: 0,
+    fx: block.facing, fy: 0, scan: Math.random() * 6.28,
   };
 }
 
@@ -1125,6 +1146,57 @@ function spawnBandits() {
 function banditKey(b) { return b.block.id + ':' + b.idx; }
 
 // ---- can this one actually see that spot, or is its own barricade in the way?
+// ---------- CAN IT SEE YOU ----------
+// One answer, for every machine and every raider in the game. It has to be one
+// function: "can it see me" is the whole of stealth, and if a Scrapper and a
+// bandit answer it differently then hiding is guesswork rather than a skill.
+//
+// Three tests, in the order that costs least:
+//   RANGE      — how far this thing can see at all, halved when you crouch
+//   ARC        — it has to be LOOKING at you. A 120 degree forward cone, with a
+//                small all-round bubble so you cannot stand on its heel.
+//   COVER      — and nothing solid in between.
+//
+// The cover test is what makes buildings, dumpsters, cars, walls and the
+// junkyard's trash mountains into real cover. Before it, detection was radius
+// only: a Scrapper "saw" you through a shack, and in a city of solid buildings
+// that would have been nonsense.
+const VISION_ARC = Math.cos(60 * Math.PI / 180);   // 120 degrees, total
+const PERIPHERAL = 1.5;                            // inside this, facing stops mattering
+function canSpot(e, range) {
+  if (player.dead > 0) return false;
+  const dx = player.x - e.x, dy = player.y - e.y;
+  const d = Math.hypot(dx, dy);
+  if (d > range) return false;
+  if (d > PERIPHERAL) {
+    const f = Math.hypot(e.fx, e.fy);
+    if (f > 0.001 && (dx * e.fx + dy * e.fy) / (d * f) < VISION_ARC) return false;
+  }
+  return losClear(e.x, e.y, player.x, player.y);
+}
+// Something already hunting you sweeps a much wider arc — near enough all
+// round, minus what is directly behind it. Cover still breaks it.
+const WIDE_ARC = Math.cos(140 * Math.PI / 180);
+function canSpotWide(e, range) {
+  if (player.dead > 0) return false;
+  const dx = player.x - e.x, dy = player.y - e.y;
+  const d = Math.hypot(dx, dy);
+  if (d > range) return false;
+  if (d > PERIPHERAL) {
+    const f = Math.hypot(e.fx, e.fy);
+    if (f > 0.001 && (dx * e.fx + dy * e.fy) / (d * f) < WIDE_ARC) return false;
+  }
+  return losClear(e.x, e.y, player.x, player.y);
+}
+// where a unit is looking, as a unit vector, turned smoothly rather than snapped
+function faceToward(e, dx, dy, dt) {
+  const d = Math.hypot(dx, dy);
+  if (d < 0.001) return;
+  const k = Math.min(1, 9 * (dt || 1));
+  e.fx += (dx / d - e.fx) * k;
+  e.fy += (dy / d - e.fy) * k;
+}
+
 function losClear(x0, y0, x1, y1) {
   const dx = x1 - x0, dy = y1 - y0;
   const n = Math.ceil(Math.hypot(dx, dy) * 3);
@@ -1233,9 +1305,10 @@ function updateBandit(dt, b) {
   // ---- noticing you ----
   if (b.state === 'guard') {
     const sight = player.crouch ? cfg.sight * 0.45 : cfg.sight;
-    const sees = alive && dist < sight && losClear(b.x, b.y, player.x, player.y);
-    if (alive && dist < 1.8) b.alert = 1;
-    else if (sees) b.alert += dt * (0.55 + 1.5 * (1 - dist / sight));
+    // They already had cover; now they have a FACING too, and the sweep below
+    // turns it. A man watching the road is not watching the whole world.
+    if (canSpot(b, 1.8)) b.alert = 1;
+    else if (canSpot(b, sight)) b.alert += dt * (0.55 + 1.5 * (1 - dist / sight));
     else b.alert = Math.max(0, b.alert - dt * 0.7);
     // NOT tutStealth() — that one says "a machine noticed movement", and
     // these are not machines. It also freezes the world the moment the bar
@@ -1246,8 +1319,14 @@ function updateBandit(dt, b) {
       tutBandit();
       return;
     }
-    // idling at the post: they shift their weight and look up and down the road
+    // idling at the post: they shift their weight and look up and down the
+    // road. That sweep is real now — the arc it turns is the arc it sees in,
+    // so a guard genuinely has a moment when he is looking the other way.
     b.sway += dt;
+    b.scan += dt * 0.7;
+    const base = Math.atan2(b.faceY || 1, b.faceX || 0);
+    const a = base + Math.sin(b.scan) * 0.8;
+    faceToward(b, Math.cos(a), Math.sin(a), dt * 0.6);
     if (b.idleT > 0) { b.idleT -= dt; return; }
     const dh = Math.hypot(b.homeX - b.x, b.homeY - b.y);
     if (dh > 0.6) aiMove(b, b.homeX, b.homeY, cfg.speed * 0.5 * dt, dt);

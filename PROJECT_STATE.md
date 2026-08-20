@@ -33,8 +33,11 @@ low-quality tech component on a 1-in-5 roll with a **pity floor**: the sixth
 dry wreck in a row always pays, and any drop resets the counter. Both the kill
 tally and the pity counter survive a save.
 
-Systems shown here: stealth with detection meters and crouch (Shift), patrols
-that path heap-to-heap through a hub near the shack, 12s enemy memory,
+Systems shown here: **stealth that actually works** — detection meters, crouch
+(Shift), a 120° vision cone with a small all-round bubble, and a line-of-sight
+test, so a trash mountain is real cover and breaking sight breaks a chase.
+Each machine throws a cold patch of light where it is looking, so the cone can
+be read. Patrols path heap-to-heap through a hub near the shack, 12s memory,
 explosive barrels, melee/gun with scroll-wheel switching, **the pack** (I),
 thought bubbles, staged freeze-frame tutorials, passive regen.
 
@@ -186,13 +189,17 @@ clamped to 1.1 tiles and measured to a prop's anchor corner. Fixed.
 6. Open questions never answered: HHDs dropping their rifles as the ring's
    weapon upgrade; day/night; the Compactor's loot drop (armour plate vs
    piston maul vs grabber claw vs eye lens).
-7. **Two plans written 2026-08-19 are still only plans.** `design/hhd-squads.md`
-   — the singleton→array blocker it names is now cleared, but there is still no
-   line of sight (robots see through walls, so hiding behind cover does not
-   work), no facing arcs, no squads and none of the four units. Four open
-   questions in it need answering. `design/cathedral.md` is built except its
-   phase-2 churchyard. Both were stranded on draft PRs #1/#2 whose log entries
-   collide with main's numbering at 71–72.
+7. **`design/hhd-squads.md` — steps 1–2 built, 3–9 not.** The array refactor and
+   now line of sight + facing arcs are in (see below). Still to build: the squad
+   object with shared alert and formation, the four units (Spotter, Bailiff,
+   Marshal, Magistrate), their sprites in the modern language, Fringe placement
+   with a density gradient and a safe radius round Candlelight, the Marshal's
+   rifle as loot, save v4, and a balance pass. **Four open questions in that doc
+   gate most of it** and need Laurens: the Spotter's name, whether the
+   Magistrate belongs in the Fringe at all, whether a stealth kill on a Spotter
+   is a thing, and whether cleared squads respawn.
+8. `design/cathedral.md` is built except its phase-2 churchyard (headstones, a
+   low wall with railings, trees, a lych gate).
 
 ## Known risks
 - The cathedral is ~250 px tall and the viewport is 180. From the parvis you

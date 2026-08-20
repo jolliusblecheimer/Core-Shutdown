@@ -2164,6 +2164,15 @@ function drawScrapper(s, x, y) {
   }
   const hunting = s.state === 'chase' || s.state === 'windup' || s.state === 'swing';
   addLight(x + 0.5, y - 11, 0, hunting ? 14 : 9, '255,176,46', hunting ? 0.5 : 0.3);
+  // WHICH WAY IT IS LOOKING. It has a vision cone now, and a cone the player
+  // cannot read is not a stealth mechanic, it is bad luck — so its sensor
+  // throws a patch of light on the ground in front of it. Amber is the "this
+  // can be hurt" colour, so the beam is a cold white-blue instead.
+  if (!hunting && s.state !== 'dead') {
+    const gaze = isoToScreen(s.x + s.fx * 1.6, s.y + s.fy * 1.6);
+    const here = isoToScreen(s.x, s.y);
+    addLight(x + (gaze.x - here.x), y + (gaze.y - here.y), 0, 13, '150,190,220', 0.16);
+  }
   if (s.state === 'windup') {
     ctx.fillStyle = ((performance.now() / 80) | 0) % 2 ? '#ff5a3c' : '#ffb02e';
     ctx.fillRect(Math.round(x - 1), Math.round(y - 23), 2, 2);
