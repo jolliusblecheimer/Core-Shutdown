@@ -19,7 +19,15 @@ Read this first every session. It is the contract for how this project runs.
 6. **Saves must survive updates.** Migrate old versions, never discard. See
    `js/save.js` — fields merge onto live defaults, world objects are keyed by
    position, and out-of-bounds players are rescued.
-7. **Commit and push after each meaningful change**, with a message that
+7. **A live run is never punished for having played early.** If we add an item
+   and the player has already passed the stage that gives it — killed the boss,
+   turned the mission in — **they get it on load.** Declare it in
+   `MILESTONE_GRANTS` (`js/items.js`) with the milestone that earns it;
+   `grantMilestoneItems()` settles the account and writes it to a ledger so it
+   happens exactly once. **Unique keepable things only** — weapons, keys, quest
+   items. Never consumables: you cannot tell "spent it" from "never got it" for
+   scrap or rounds, so backfilling those would hand out free ammo every update.
+8. **Commit and push after each meaningful change**, with a message that
    explains the *why*.
 
 ## Where things live

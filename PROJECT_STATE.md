@@ -17,6 +17,11 @@
   and decals in 8-tile spatial buckets. The 200×150 Fringe runs at ~0.7ms/frame.
 - **Save v3** with migration from v1/v2, per-area world state, fog of war,
   and a separate scratch key under `window.TEST_MODE`.
+- **Milestone back-payments.** A run that passed a stage before we wrote the
+  item it gives is handed it on load — declared in `MILESTONE_GRANTS`
+  (`js/items.js`), settled by `grantMilestoneItems()`, and written to a ledger
+  in the save so each one happens exactly once. Unique keepables only; never
+  consumables, or every update would refund ammo.
 - Sound: fully synthesized SFX (`js/audio.js`) + procedural ambient drone,
   wind and machine accents. `O` toggles ambience.
 - HD-2D post pass: colour grade + tilt-shift bands, god rays, dust, AO.

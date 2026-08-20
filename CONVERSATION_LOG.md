@@ -1468,3 +1468,40 @@ item 6s, an item 2 that still called the HHDs outstanding, and an item 7 from
 this session claiming steps 3–9 were unbuilt — all true when written, all false
 by the time they merged. Reconciled. That is the real tax of parallel sessions:
 not the code, which merged clean, but the prose about the code.
+
+### 96. What a milestone owes you
+**Laurens:** "Anytime we add items and the player has passed the stage or killed
+the boss, they get it in the inventory."
+
+**Claude:** Made it a standing rule (CLAUDE.md #7) and built the mechanism, so
+it is not something a future session has to remember by hand.
+
+Every item a milestone hands over is declared in `MILESTONE_GRANTS`
+(`js/items.js`) with the milestone that earns it. `grantMilestoneItems()` runs
+on load and settles the account: past the gate, not holding it, here it is.
+
+Two things make that safe to run on every single load:
+
+- **A ledger, not a check.** Each entry is granted at most once ever, and the
+  fact is written into the save. Something you were given and then sold or
+  spent is never handed back. Proved it: grant, drop the pistol, reload — it
+  stays gone.
+- **`has` covers the ordinary case.** A player who earned it the normal way is
+  marked settled without being handed a second one.
+
+**And the line it does not cross: unique keepables only, never consumables.**
+For scrap or rounds there is no way to tell "spent it" from "never got it", so
+backfilling those would refund ammo on every update. The Compactor's 2 tech and
+8 scrap stay a one-time reward paid at the kill.
+
+Seeded with the two that are true today — Marek's pistol and the gate key at
+`mission.state === 'turned'`. Nothing else in the game is currently owed:
+the MREs come from a counter and a chest, not a stage.
+
+One real bug found while testing the actual path rather than the function:
+`applySave` runs from the TITLE screen, before `GameState` becomes `'playing'`,
+and `saveGame()` refuses to write unless it is playing. So the ledger was being
+computed and then not reaching disk until some later save. Committed at once
+now. Verified by loading a genuine pre-system save through the splash and the
+title the way a player does: both items handed over, announced on screen, and
+the ledger on disk immediately.

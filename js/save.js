@@ -11,6 +11,11 @@ const SAVE_VERSION = 3;
 
 let playerName = '';
 
+// The ledger for MILESTONE_GRANTS (js/items.js): which back-payments this run
+// has already been settled for. Written into the save, so each one happens at
+// most once ever, and a thing you were given and then spent is never re-handed.
+let granted = {};
+
 function saveGame() {
   // only ever persist real gameplay - never menu/test/title/arena states
   if (window.ARENA_MODE) return;
@@ -37,6 +42,8 @@ function saveGame() {
       tut: { ...Tut.done },
       // the camp's map table only pays out once
       campMap: typeof campMapRead !== 'undefined' ? campMapRead : false,
+      // and so does every milestone back-payment
+      granted: { ...granted },
     };
     localStorage.setItem(saveKey(), JSON.stringify(d));
   } catch (e) { /* storage full or blocked - play on without saving */ }
@@ -105,6 +112,9 @@ function migrate(d) {
 
 function wipeSave() {
   try { localStorage.removeItem(saveKey()); } catch (e) {}
+  // a new run owes nothing — otherwise starting over in the same page session
+  // would carry the last run's ledger and quietly skip its back-payments
+  granted = {};
 }
 
 const num = (v, fallback) => (typeof v === 'number' && isFinite(v)) ? v : fallback;
@@ -194,6 +204,34 @@ function applySave(d) {
   // coming back gave you the room, the fires and the chests, and nobody in it.
   // Everyone who stands in an area is decided in this one place now.
   buildFolk(currentAreaDef().folk);
+
+  // And last, because it has to read the finished state: settle anything a
+  // milestone owes this run. See MILESTONE_GRANTS in js/items.js.
+  granted = Object.assign({}, d.granted || {});
+  grantMilestoneItems();
+}
+
+// Hand over everything this run is past the gate for and does not hold.
+// Runs on every load. It is safe to do that because the ledger makes each
+// entry a one-shot: a save written before an item existed has no ledger entry
+// for it, gets it once, and is settled from then on.
+function grantMilestoneItems() {
+  if (typeof MILESTONE_GRANTS === 'undefined') return;
+  const handed = [];
+  for (const g of MILESTONE_GRANTS) {
+    if (granted[g.id]) continue;         // already settled, whatever happened since
+    if (!g.when()) continue;             // not past that stage yet
+    granted[g.id] = 1;                   // settled either way, so this never repeats
+    if (g.has && g.has()) continue;      // earned it the ordinary way; nothing owed
+    g.give();
+    handed.push(g.name);
+  }
+  if (handed.length) {
+    // Say so. Something appearing in the pack unannounced reads as a bug.
+    showMsg(handed.join('  ·  ') + '  — owed from earlier', 4);
+    saveGame();
+  }
+  return handed;
 }
 
 // nearest open tile, spiralling outward

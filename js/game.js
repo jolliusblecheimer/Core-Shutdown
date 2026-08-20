@@ -708,6 +708,10 @@ function updateMeta(dt) {
         applySave(pendingSave);
         camInit = false;
         GameState = 'playing';
+        // commit at once: applySave may have settled milestone back-payments,
+        // and saveGame() refuses to write while the state is still 'title', so
+        // without this the ledger would not reach disk until the next save
+        saveGame();
       } else if (Input.pressed['KeyN']) {
         GameState = 'confirmwipe';
       }

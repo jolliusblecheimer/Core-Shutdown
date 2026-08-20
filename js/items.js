@@ -143,6 +143,51 @@ const ITEMS = {
   },
 };
 
+// =====================================================================
+// WHAT A MILESTONE OWES YOU
+// =====================================================================
+// THE RULE (Laurens, 2026-08-20): when we add an item, a player who has
+// already passed the stage that gives it must still get it. A live run must
+// never be punished for having played the game before we finished writing it.
+//
+// So every item a MILESTONE hands over is declared here with the milestone
+// that earns it, and `grantMilestoneItems()` in save.js settles the account on
+// load: anything you are past the gate for but do not hold gets handed to you.
+//
+// Two things make it safe to run on every single load:
+//
+//   1. A LEDGER, not a check. Each entry is granted at most once ever, and the
+//      fact that it was granted is written into the save. Something you were
+//      given and then sold, dropped or used is never handed back.
+//   2. `has` covers the ordinary case. A player who earned it the normal way
+//      is marked as settled without being given a second one.
+//
+// AND THE LINE THIS DOES NOT CROSS: **unique keepable things only** — weapons,
+// keys, quest items. Never consumables. For a stack of scrap or a magazine of
+// rounds there is no way to tell "spent it" from "never got it", so backfilling
+// those would hand out free ammo on every update. The Compactor's 2 tech and
+// 8 scrap stay a one-time reward paid at the kill.
+//
+// TO ADD ONE: give it an `id` that never changes (it is the ledger key), the
+// `when` that earns it, a `has` if the player could already own it, and a
+// `give`. That is all — the load path picks it up.
+const MILESTONE_GRANTS = [
+  {
+    id: 'marek-pistol',
+    name: 'SCRAP PISTOL',
+    when: () => mission.state === 'turned',
+    has: () => player.owned.pistol,
+    give: () => { player.owned.pistol = true; },
+  },
+  {
+    id: 'marek-gatekey',
+    name: 'YARD GATE KEY',
+    when: () => mission.state === 'turned',
+    has: () => !!player.inv.gateKey,
+    give: () => { player.inv.gateKey = true; },
+  },
+];
+
 // Everything on a tab that the player actually has. This one filter IS the
 // "if you have 0 of an item, do not show it" rule — it is not repeated
 // anywhere in the drawing code.
