@@ -1067,6 +1067,15 @@ function ptFit(str, pxWidth, size) {
   const adv = ptWidth('MMMMMMMMMM', size) / 10;
   return ptWrap(str, Math.max(4, Math.floor(pxWidth / adv)));
 }
+// Hard-trim one line to a pixel width — same fixed advance, so it is arithmetic.
+// Used where there is no second line to wrap onto and something else is already
+// occupying the space to the right.
+function ptClip(str, pxWidth, size) {
+  if (ptWidth(str, size) <= pxWidth) return str;
+  const adv = ptWidth('MMMMMMMMMM', size) / 10;
+  const n = Math.max(1, Math.floor(pxWidth / adv) - 2);
+  return str.slice(0, n) + '..';
+}
 
 function invAction(it) {
   if (!it) return;
@@ -2749,7 +2758,22 @@ function drawHUD() {
   // the prices and the sold-out state all come off Trade.stock.
   if (Trade.open) {
     const rows = Trade.stock;
-    const pw = 168, sw = 78, gap = 6, ph = 18 + rows.length * 12 + 20;
+    const sw = 78, gap = 6;
+    // THE PANEL FITS WHAT IS IN IT. It was 168px wide whatever the rows said,
+    // which held up exactly as long as every row was one of Marek's three
+    // short ones — Bo's "straighten it" printed straight through its own
+    // "3 tech + 10 scrap" and both became mush. Measure first, then size.
+    const LAB_X = 26, PAD_R = 8, MID = 10;
+    const rowLabel = (r, i) => '[' + (i + 1) + '] ' + r.label;
+    const rowCost = (r) => ((r.sold && r.sold()) ? 'SOLD' : costText(r));
+    let need = 150;
+    rows.forEach((r, i) => {
+      need = Math.max(need,
+        LAB_X + ptWidth(rowLabel(r, i), 8) + MID + ptWidth(rowCost(r), 8) + PAD_R);
+    });
+    // ...clamped to what is actually left beside the YOURS column
+    const pw = Math.min(VIEW_W - sw - gap - 8, Math.ceil(need));
+    const ph = 18 + rows.length * 12 + 20;
     const total = pw + gap + sw;
     const px0 = (VIEW_W - total) / 2, py0 = (VIEW_H - ph) / 2 - 8;
     const DIM = 'rgba(232,217,192,0.4)';
@@ -2759,9 +2783,13 @@ function drawHUD() {
       const ry = py0 + 18 + i * 12;
       const gone = r.sold && r.sold();
       const col = (gone || !canAfford(r)) ? DIM : '#e8d9c0';
+      const cost = rowCost(r);
       uiIcon(r.icon(), px0 + 7, ry + 1);
-      ptext('[' + (i + 1) + '] ' + r.label, px0 + 26, ry, 8, col);
-      ptext(gone ? 'SOLD' : costText(r), px0 + pw - 8, ry, 8, col, 'right');
+      // and the backstop: a row too long even for the widest panel is cut,
+      // never overprinted. A price you cannot read is worse than a short name.
+      const room = pw - PAD_R - MID - ptWidth(cost, 8) - LAB_X;
+      ptext(ptClip(rowLabel(r, i), room, 8), px0 + LAB_X, ry, 8, col);
+      ptext(cost, px0 + pw - PAD_R, ry, 8, col, 'right');
     });
     ptext('E close', px0 + pw / 2, py0 + ph - 13, 7, 'rgba(232,217,192,0.6)', 'center');
 

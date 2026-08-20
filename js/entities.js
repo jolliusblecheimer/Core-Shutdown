@@ -771,7 +771,7 @@ const STOCK = {
   // only person in the ring who could straighten a service rifle, and the
   // price is in the parts it takes rather than in what it is worth.
   bo: () => (((player.inv.rifleBroken || 0) > 0 && !player.owned.rifle) ? [
-    { label: 'straighten the rifle', icon: () => Sprites.rifleIcon,
+    { label: 'straighten it', icon: () => Sprites.rifleIcon,
       cost: { tech: 3, scrap: 10 },
       buy: () => {
         player.inv.rifleBroken--;
@@ -795,7 +795,9 @@ const STOCK = {
       buy: () => { player.inv.tech++; showMsg('Bought a low-quality tech component'); } },
   ],
 };
-const COST_NAME = { scrap: 'scrap', tech: 'low-q tech' };
+// short, because these sit in a price at the right-hand edge of a panel —
+// the pack is where an item gets its full name
+const COST_NAME = { scrap: 'scrap', tech: 'tech' };
 const canAfford = (row) => Object.keys(row.cost).every(k => player.inv[k] >= row.cost[k]);
 const costText = (row) => Object.keys(row.cost)
   .map(k => row.cost[k] + ' ' + COST_NAME[k]).join(' + ');

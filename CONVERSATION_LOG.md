@@ -1546,3 +1546,29 @@ counting the REPAIRED one too, so somebody who already fixed theirs is not
 handed a second broken one. Verified all four ways: killed early gets it,
 reloading does not duplicate it, an already-repaired run is owed nothing, and a
 run that never beat the boss gets nothing.
+
+### 98. The price printed through the name
+**Laurens:** "So the text doesn't fit the trade UI when trying to fix the rifle."
+
+**Claude:** It did not, and the numbers say why: the row wanted
+26 + 108 + 8 + 103.5 + 8 = **253 pixels of a 168-pixel panel**, so
+"STRAIGHTEN THE RIFLE" and "3 LOW-Q TECH + 10 SCRAP" were drawn straight
+through each other into mush.
+
+**The panel was 168px wide whatever was in it.** That held up for exactly as
+long as every row was one of Marek's three short ones, and Bo's was the first
+row that was not. So it measures now: widest label + gap + widest price, then
+clamps to what is actually left beside the YOURS column. Marek's comes out at
+152, Tam's at 161, Bo's at 197 — each panel is the size of its own contents.
+
+Two smaller things went with it. Prices say **`tech`** rather than `low-q tech`
+— a price sits at the right-hand edge of a panel and the pack is where an item
+gets its full name — and Bo's row is **`straighten it`**, which is what he
+would say anyway.
+
+And a backstop, because a fix that only fixes today's string is not a fix:
+`ptClip` cuts a label that still will not fit rather than letting it overprint.
+A price you cannot read is worse than a name you cannot finish.
+
+Checked by measuring all three counters for collision rather than by looking at
+one: zero overlap on every row, every panel still fits the 320px screen.
