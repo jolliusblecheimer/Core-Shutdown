@@ -1735,3 +1735,21 @@ frame. One script tag, verified clean.
 Docs: `design/magazines.md` is now `design/reloading.md`, rewritten, with a
 section on why the magazine version was cut and where to find it if it is ever
 wanted back. `PROJECT_STATE.md` updated to match.
+
+---
+
+## Handoff for tomorrow (2026-08-20, end of day)
+
+**Laurens:** *"ok save all stuff so tomorrow i can keep going on ipad"*
+
+Everything was already committed and pushed — `main` and the working branch
+both on `edcdeda`, tree clean — so this was about making the repo readable cold
+rather than about saving anything. Added a **"Where we left off"** block at the
+top of `PROJECT_STATE.md`: what shipped today newest-first with the commits,
+the explicit warning that `e49e386` (magazines) is superseded by `edcdeda` and
+must not be rebuilt from, the three things waiting on Laurens' call (the
+Scout's flare, stealth kills / squad respawn, ammunition balance against the
+Compactor at ~18 rounds), and the two jobs that need no decision at all — long
+props as volumes, and the rest of Candlelight.
+
+Nothing is half-built and nothing lives only on this machine.

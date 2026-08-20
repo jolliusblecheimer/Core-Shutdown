@@ -206,6 +206,39 @@ clamped to 1.1 tiles and measured to a prop's anchor corner. Fixed.
 
 ---
 
+## Where we left off — 2026-08-20, end of day
+
+Everything is committed and pushed; `main` and
+`claude/cathedral-build-status-b63rhb` both sit on **`edcdeda`**, working tree
+clean. Nothing is half-built and nothing is waiting on a local file — pick this
+up anywhere, including from an iPad.
+
+**Shipped today**, newest first (full detail in `CONVERSATION_LOG.md`):
+- `edcdeda` **Reloading** — 6 / 12 rounds a gun, `R` to fill, one pip per round
+  in the slot. This *replaced* the magazine system of one commit earlier, at
+  Laurens' call; `design/reloading.md` says why and where to find the old one.
+  Also: the freeze-frame lesson's key now performs the action it teaches, and
+  `arena.html` loads `js/droids.js` again.
+- `e49e386` the magazine version (superseded — do not rebuild from it).
+- `ca52552` seven fixes: rifle art off the M4 reference, rifle ammunition split
+  from pistol, two pews and two braziers out of the church, the boxed-in crypt
+  chest reached, droid sight raised, corpses gone at 45s.
+- Before that: the damaged rifle + Bo's repair bench, milestone grants, the map
+  UI, droid line of sight and facing arcs.
+
+**Three things want your call before they can be built** — none of them blocks
+anything else:
+1. The Scout HHD's **flare** — built, deliberately not deployed. Does the alarm
+   belong in this phase? (`design/hhd-squads.md`)
+2. Whether a **stealth kill** on a droid before it flares is a thing, and
+   whether cleared squads respawn.
+3. **Ammunition balance** now that reloading exists and rifle rounds are
+   scarce — the Compactor at the gate with ~18 rounds has never been playtested
+   by a person.
+
+**The obvious next build** with no questions attached is item 1 below (long
+props as volumes) or item 3 (the rest of Candlelight).
+
 ## Outstanding — next session starts here
 
 1. **Long props are still flat rectangles** — bus stop, dumpster, awning don't
