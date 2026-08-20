@@ -1572,3 +1572,57 @@ A price you cannot read is worse than a name you cannot finish.
 
 Checked by measuring all three counters for collision rather than by looking at
 one: zero overlap on every row, every panel still fits the 320px screen.
+
+### 99. Seven things
+**Laurens:** the rifle texture (with a reference image), droids with rifles
+should drop rifle ammo, the rifle was shooting pistol ammo, the church is too
+full, a crypt chest is walled off, the killer bots can be walked straight past,
+and dead opponents should disappear after 45 seconds.
+
+**Claude:**
+
+**1 · The rifle.** Redrawn against the reference. The old one was a grey bar
+with a box on it; a carbine only reads if each part is its own mass, so it has
+a front sight post, a ribbed handguard, a receiver with a **carry handle
+stepping the top line up**, a magazine hanging clear of the grip, and a notched
+stock. The tan is the reference's and it suits the fiction — issued kit is not
+painted the colour of junk. The broken one now reads broken rather than merely
+dark: the barrel kinks **two** pixels (one is a rendering artefact), the carry
+handle is torn to stubs, and the magazine is simply gone — a hole in the
+silhouette says wrecked faster than shading does.
+
+**3 · Two magazines.** They were one pool on the theory that the ring only ever
+had one kind of round in it. That was a bad theory: it reads as a bug however
+it is justified, and it gave the best gun in the game the most plentiful
+ammunition. Each gun names the pocket it feeds from now.
+
+**2 · So the machines carry them.** A dead droid is strippable — *E, strip the
+hull* — for factory plate, sometimes a tech component, and, from the ones built
+around a rifle, **the only rounds in the ring that fit one**.
+
+**6 · And they can see.** Two things were wrong. Sight ranges were shorter than
+a Scrapper's in places, so they are up across the board (the Marshal 6.0 → 8.5).
+And the roster has always carried a per-unit `arc` that **nothing ever read** —
+every machine in the city was squinting down the same 120 degrees as a yard
+Scrapper. `canSpot` takes an arc now, so a hunter built for it sweeps up to 154.
+
+**7 · One clock for the dead.** `CORPSE_LINGER` 45s, then five seconds fading,
+for bandits and droids alike. A body that has gone is also no longer something
+the game offers to search. Scrapper wrecks keep their own 20-second respawn:
+that is a tutorial loop, not litter, and slowing it would slow the mission.
+
+**4 · The nave.** Both pews and both fire barrels out. It read as cluttered
+rather than lived-in, and a camp needs somewhere to walk — the hearth, the
+votive stands and the drone bench still light it. 110 walkable tiles to 114.
+
+**5 · The chest that could not be opened, and the audit that said it could.**
+It sat in a corner with hay, preserves and two walls round it, reachable only
+on the diagonal — and **a diagonal is 1.414 tiles against a 1.4 reach**. The
+layout audit had passed it because it checked a 3×3 box, diagonals included,
+instead of the rule the game actually uses. The audit measures what
+`updateItems` measures now, which is the part worth keeping: the chest was one
+bug, the blind spot would have produced more. Moving it took three attempts —
+the east column is cistern, preserves, preserves, leaving one-tile gaps that
+only x=7 serves, so two of my fixes just moved the pocket. In the end I stopped
+guessing and searched every free tile for one that seals nothing and can be
+reached.

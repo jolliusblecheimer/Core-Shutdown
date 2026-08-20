@@ -63,9 +63,12 @@ takes a Hunter-Killer apart for a living, straightens it for **3 tech + 10
 scrap**. His counter is the trade panel with a different verb on it (`REPAIRS`)
 and a stock that only has a row while you are carrying something bent.
 Repaired it does **18 damage against the pistol's 10**, flies further and
-flatter, and pays for it at 0.78s between shots against 0.5s. One ammo pool —
-the ring only ever had one kind of round in it. `player.gun` picks which gun is
-in the slot, exactly the way `player.melee` picks the melee.
+flatter, and pays for it at 0.78s between shots against 0.5s. `player.gun`
+picks which gun is in the slot, exactly the way `player.melee` picks the melee.
+**Two magazines, not one:** each gun names the pocket it feeds from, and rifle
+rounds are the scarce ones — off the machines still carrying them, or Tam's
+counter. A service rifle firing hand-packed pistol rounds read as a bug however
+it was justified, and it handed the best gun the most plentiful ammunition.
 A run that killed the Compactor before any of this existed is handed the
 damaged rifle on load.
 

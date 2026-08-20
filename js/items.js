@@ -141,6 +141,16 @@ const ITEMS = {
     have: () => player.ammo > 0,
     count: () => player.ammo,
   },
+  ammoRifle: {
+    name: 'Rifle rounds',
+    tab: 'materials',
+    icon: () => Sprites.ammoRifle,
+    desc: 'Factory rounds, all identical, headstamped by whoever ran the ' +
+          'Correction. Nobody makes these any more — you take them off the ' +
+          'machines still carrying them, or you buy them at Candlelight.',
+    have: () => player.ammoRifle > 0,
+    count: () => player.ammoRifle,
+  },
 
   // ---- key items ----
   rifleBroken: {

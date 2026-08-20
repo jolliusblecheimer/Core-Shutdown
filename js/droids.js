@@ -38,20 +38,20 @@ const DROID_TYPES = {
   // decides whether the alarm belongs in this phase at all.
   scout: {
     key: 'scout', hp: 35, r: 0.28, speed: 1.7, chaseSpeed: 2.9,
-    sight: 6.5, sightCrouch: 3.0, arc: 1.15, weapon: 'flare',
+    sight: 9.0, sightCrouch: 4.5, arc: 1.35, weapon: 'flare',
   },
   // BAILIFF — the flusher. Fastest thing in the squad, will not stand and
   // trade at range. This is what punishes hiding in one spot forever.
   bailiff: {
     key: 'bailiff', hp: 45, r: 0.32, speed: 1.5, chaseSpeed: 2.9,
-    sight: 4.8, sightCrouch: 2.4, arc: 1.05, weapon: 'baton',
+    sight: 7.0, sightCrouch: 3.6, arc: 1.25, weapon: 'baton',
     dmg: 12, reach: 1.25, windup: 0.40, recover: 0.40,
   },
   // MARSHAL — the core threat. Holds its distance, takes its time, and
   // telegraphs every burst with a laser sight (the fair-telegraph rule).
   marshal: {
     key: 'marshal', hp: 55, r: 0.34, speed: 1.3, chaseSpeed: 2.2,
-    sight: 6.0, sightCrouch: 2.8, arc: 1.0, weapon: 'rifle',
+    sight: 8.5, sightCrouch: 4.2, arc: 1.2, weapon: 'rifle',
     dmg: 8, hold: 5.0, aim: 0.70, burst: 3, burstGap: 0.11, recover: 1.1,
   },
   // MAGISTRATE — the size variety, and a wall. Its frontal shield takes
@@ -60,7 +60,7 @@ const DROID_TYPES = {
   // without putting up walls.
   magistrate: {
     key: 'magistrate', hp: 140, r: 0.55, speed: 0.9, chaseSpeed: 1.5,
-    sight: 5.2, sightCrouch: 2.6, arc: 0.9, weapon: 'cannon',
+    sight: 7.5, sightCrouch: 3.8, arc: 1.1, weapon: 'cannon',
     dmg: 16, hold: 4.0, aim: 1.10, burst: 1, burstGap: 0, recover: 1.4,
     shield: true,
   },
@@ -120,7 +120,10 @@ function droidRange(d) {
 // A droid already hunting sweeps the wider arc, same as a raider does.
 function droidSees(d) {
   const r = droidRange(d);
-  return (d.squad && d.squad.alert >= 1) ? canSpotWide(d, r) : canSpot(d, r);
+  if (d.squad && d.squad.alert >= 1) return canSpotWide(d, r);
+  // `arc` is the HALF-angle in radians, so 1.25 is a 143 degree cone. These
+  // are purpose-built hunters and they were seeing no wider than a Scrapper.
+  return canSpot(d, r, Math.cos(DROID_TYPES[d.type].arc));
 }
 
 // ---------------------------------------------------------------------
@@ -731,7 +734,7 @@ function drawDroid(d, x, y) {
   const t = DROID_TYPES[d.type];
 
   if (d.state === 'dead') {
-    const fade = Math.max(0, 1 - Math.max(0, d.deadT - 24) / 6);
+    const fade = Math.max(0, 1 - Math.max(0, d.deadT - CORPSE_LINGER) / CORPSE_FADE);
     ctx.globalAlpha = (d.looted ? 0.45 : 1) * fade;
     ctx.drawImage(set.dead.img, Math.round(x - set.dead.ox), Math.round(y - set.dead.oy));
     ctx.globalAlpha = 1;

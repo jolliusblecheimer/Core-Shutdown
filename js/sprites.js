@@ -1119,6 +1119,18 @@ function outlined(src) {
     px(ag, 7, 0, 1, 3, '#c9a24a');
     Sprites.ammo = outlined(a);
 
+    // rifle rounds — the same box, but issued: uniform, boxed tight, and
+    // stencilled. The pistol's are hand-packed and mismatched; these are not.
+    const ar = makeCanvas(10, 8), arg = ar.getContext('2d');
+    px(arg, 1, 2, 8, 5, '#4a4f3c');
+    px(arg, 1, 2, 8, 1, '#5e6450');
+    px(arg, 2, 0, 1, 3, '#b8bcc8');
+    px(arg, 4, 0, 1, 3, '#b8bcc8');
+    px(arg, 6, 0, 1, 3, '#b8bcc8');
+    px(arg, 8, 0, 1, 3, '#b8bcc8');
+    px(arg, 2, 5, 6, 1, '#333a2a');
+    Sprites.ammoRifle = outlined(ar);
+
     // ---- MAP ICONS.
     // Seven pixels across, so every one of them is drawn with px() and nothing
     // else — a path at this size would antialias into mush, and these have to
@@ -1253,33 +1265,77 @@ function outlined(src) {
     // Two versions of it, and the difference has to read at a glance in the
     // pack: BROKEN is bent, dark, and missing its optic; WORKING is straight,
     // pale, and the sight is back on.
+    // Redrawn against Laurens' reference (2026-08-20). The old one was a grey
+    // bar with a box on it; a carbine only reads if each part is its own mass —
+    // front sight post, RIBBED handguard, receiver under a raised carry handle,
+    // magazine hanging and curved, grip raked back, notched stock. The tan is
+    // the reference's, and it is right for the fiction too: issued kit is not
+    // painted the colour of junk.
+    // Drawn muzzle-LEFT, the way a gun is drawn on a page. The held version is
+    // mirrored, because the traveller aims to the right.
     const rifle = (broken) => {
-      const c = makeCanvas(26, 11), g = c.getContext('2d');
-      const BODY = broken ? '#5e5f5a' : '#9aa0a4';
-      const HI   = broken ? '#6e6f68' : '#c3c9cd';
-      const DARK = broken ? '#3b3c38' : '#54585c';
-      const FURN = broken ? '#37312a' : '#4a4f54';
+      const c = makeCanvas(30, 12), g = c.getContext('2d');
+      const HI    = broken ? '#6d6656' : '#c6b291';   // top highlight
+      const BODY  = broken ? '#585245' : '#a8977b';   // main body
+      const MID   = broken ? '#474236' : '#8a7a61';   // shaded body
+      const FURN  = broken ? '#37322a' : '#5f5343';   // grip, stock, magazine
+      const DEEP  = broken ? '#272319' : '#443a2d';   // shadow, port, ribs
+      // ---- barrel. Straight, or kinked two clear pixels down past the crush:
+      // one pixel of droop is a rendering artefact, two is a bent gun.
+      px(g, 0, 3, 2, 3, FURN);                        // flash hider
       if (broken) {
-        // the barrel is bent: it drops a pixel past the crush point, and the
-        // receiver behind it is dented in. That kink is the whole silhouette.
-        px(g, 3, 4, 11, 3, BODY); px(g, 3, 4, 11, 1, HI);
-        px(g, 14, 5, 6, 3, BODY); px(g, 14, 5, 6, 1, HI);
-        px(g, 20, 6, 4, 2, DARK);                       // muzzle, drooping
-        px(g, 9, 3, 3, 1, '#2b2723');                   // dent in the top rail
-        px(g, 16, 7, 2, 1, '#2b2723');
-        px(g, 6, 2, 1, 2, '#43443f');                   // optic mount, empty
+        px(g, 2, 4, 3, 2, MID); px(g, 2, 4, 3, 1, BODY);
+        px(g, 5, 6, 4, 2, MID); px(g, 5, 6, 4, 1, BODY);
+        px(g, 4, 5, 2, 1, DEEP);                      // the crush itself
       } else {
-        px(g, 3, 4, 17, 3, BODY); px(g, 3, 4, 17, 1, HI);
-        px(g, 20, 4, 4, 2, DARK);                       // muzzle, straight
-        px(g, 6, 2, 5, 2, DARK); px(g, 6, 2, 5, 1, '#7f858a');   // optic back on
-        px(g, 18, 3, 1, 1, DARK);                       // front sight
+        px(g, 2, 4, 7, 2, MID); px(g, 2, 4, 7, 1, BODY);
+        px(g, 8, 2, 1, 2, FURN);                      // front sight post
       }
-      px(g, 0, 4, 4, 4, FURN);                          // stock
-      px(g, 0, 4, 4, 1, broken ? '#484239' : '#5c6167');
-      px(g, 4, 7, 3, 3, FURN);                          // grip
-      px(g, 8, 7, 4, 3, DARK);                          // magazine
-      px(g, 8, 7, 4, 1, broken ? '#4a4b46' : '#63686d');
-      if (!broken) px(g, 13, 5, 1, 1, '#ffb02e');       // the charge light, live
+
+      // ---- ribbed handguard
+      px(g, 9, 3, 7, 4, BODY);
+      px(g, 9, 3, 7, 1, HI);
+      for (const rx of [10, 12, 14]) px(g, rx, 4, 1, 2, DEEP);
+      px(g, 9, 6, 7, 1, MID);
+
+      // ---- receiver
+      px(g, 16, 3, 8, 4, BODY);
+      px(g, 16, 3, 8, 1, HI);
+      px(g, 20, 4, 3, 1, DEEP);                       // ejection port
+
+      // ---- carry handle: a full-width block sitting ON the receiver, which is
+      // what makes the top line step and the whole thing read as a carbine
+      if (broken) {
+        px(g, 16, 2, 2, 1, DEEP);                     // torn-off stubs
+        px(g, 22, 2, 2, 1, DEEP);
+        px(g, 18, 5, 4, 1, DEEP);                     // and the receiver stoved in
+      } else {
+        px(g, 16, 1, 8, 2, FURN);
+        px(g, 16, 1, 8, 1, '#6f6250');
+        px(g, 19, 2, 2, 1, DEEP);                     // the sighting notch
+      }
+
+      // ---- magazine, hanging clear of the grip with a gap between them.
+      // On the broken one it is simply gone, and that hole in the silhouette
+      // says "wrecked" faster than any amount of shading.
+      if (!broken) {
+        px(g, 14, 7, 4, 2, FURN); px(g, 14, 7, 4, 1, MID);
+        px(g, 13, 9, 4, 2, FURN);
+        px(g, 13, 10, 4, 1, DEEP);
+      }
+
+      // ---- trigger guard and grip, raked back
+      px(g, 19, 7, 2, 1, DEEP);
+      px(g, 20, 7, 3, 2, FURN);
+      px(g, 21, 9, 3, 2, FURN);
+      px(g, 21, 10, 3, 1, DEEP);
+
+      // ---- buffer tube into a notched stock
+      px(g, 24, 4, 2, 2, MID);
+      px(g, 26, 3, 4, 4, FURN);
+      px(g, 26, 3, 4, 1, broken ? '#4a4438' : '#6f6250');
+      px(g, 26, 7, 3, 1, FURN);                       // the toe, under the notch
+      if (!broken) px(g, 23, 5, 1, 1, '#ffb02e');     // charge light, live
       return outlined(c);
     };
     Sprites.rifleBrokenIcon = rifle(true);
@@ -1290,21 +1346,22 @@ function outlined(src) {
     // full width and everything else is kept low and back — centring the optic
     // and the grip made a plus sign instead of a rifle.
     const rs = makeCanvas(18, 8), rsg = rs.getContext('2d');
-    px(rsg, 3, 2, 15, 2, '#9aa0a4'); px(rsg, 3, 2, 15, 1, '#c3c9cd');   // barrel, full width
-    px(rsg, 16, 2, 2, 2, '#54585c');                                     // muzzle
-    px(rsg, 5, 1, 3, 1, '#54585c');                                      // optic, low and back
-    px(rsg, 0, 2, 3, 3, '#4a4f54');                                      // stock
-    px(rsg, 4, 4, 2, 3, '#54585c');                                      // grip, behind the mag
-    px(rsg, 7, 4, 3, 2, '#63686d');                                      // magazine
+    px(rsg, 3, 2, 13, 2, '#8a7a61'); px(rsg, 3, 2, 13, 1, '#a8977b');    // barrel, full width
+    px(rsg, 16, 2, 2, 2, '#5f5343');                                     // muzzle
+    px(rsg, 6, 1, 5, 1, '#5f5343');                                      // carry handle
+    px(rsg, 0, 2, 3, 3, '#5f5343');                                      // stock
+    px(rsg, 4, 4, 2, 3, '#5f5343');                                      // grip
+    px(rsg, 7, 4, 3, 2, '#6f6250');                                      // magazine
     Sprites.rifleIconS = outlined(rs);
 
     // held, for the aiming pose — longer than the pistol, which is the point
     const rh = makeCanvas(16, 7), rhg = rh.getContext('2d');
-    px(rhg, 3, 2, 11, 2, '#9aa0a4'); px(rhg, 3, 2, 11, 1, '#c3c9cd');
-    px(rhg, 14, 2, 2, 1, '#54585c');
-    px(rhg, 5, 1, 3, 1, '#54585c');                     // optic
-    px(rhg, 0, 2, 3, 3, '#4a4f54');                     // stock into the shoulder
-    px(rhg, 5, 4, 2, 2, '#54585c');
+    px(rhg, 3, 2, 11, 2, '#8a7a61'); px(rhg, 3, 2, 11, 1, '#a8977b');
+    px(rhg, 14, 2, 2, 1, '#5f5343');                   // muzzle, forward
+    px(rhg, 5, 1, 4, 1, '#5f5343');                    // carry handle
+    px(rhg, 0, 2, 3, 3, '#5f5343');                    // stock into the shoulder
+    px(rhg, 5, 4, 2, 2, '#5f5343');                    // grip
+    px(rhg, 7, 4, 2, 2, '#6f6250');                    // magazine
     Sprites.rifleHeld = outlined(rh);
 
     // metal pipe (ground item + icon)

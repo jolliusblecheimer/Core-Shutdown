@@ -81,7 +81,7 @@ if (window.ARENA_MODE) {
   player.melee = 'knife';
   player.hasGun = true;
   player.active = 'gun';
-  player.ammo = 60;
+  player.ammo = 60; player.ammoRifle = 40;
   player.inv.snack = 5;
   player.scrollHintT = 0;
   Tut.done = { move: 1, melee: 1, enemy: 1, loot: 1, gun: 1, stealth: 1 };
@@ -2087,8 +2087,11 @@ function drawNpc(x, y) {
 // The only thing that lights up on this street is the rifle's aim line.
 function drawBandit(b, x, y) {
   if (b.dead) {
+    // they lie there the same forty-five seconds a machine does, then go
+    const fade = Math.max(0, 1 - Math.max(0, b.deadT - CORPSE_LINGER) / CORPSE_FADE);
+    if (fade <= 0) return;
     const im = Sprites.banditDead;
-    ctx.globalAlpha = b.looted ? 0.5 : 1;
+    ctx.globalAlpha = (b.looted ? 0.5 : 1) * fade;
     ctx.drawImage(im, Math.round(x - im.width / 2), Math.round(y - im.height + 4));
     ctx.globalAlpha = 1;
     return;
@@ -2345,7 +2348,8 @@ function drawHUD() {
   const showGun = player.active === 'gun' && player.hasGun;
   if (showGun) {
     uiIcon(player.gun === 'rifle' ? Sprites.rifleIconS : Sprites.pistolIconS, VIEW_W - 56, VIEW_H - 17);
-    ptext('' + player.ammo, VIEW_W - 12, VIEW_H - 15, 8, player.ammo > 0 ? '#e8d9c0' : '#ff5a3c', 'right');
+    const mag = (GUNS[player.gun] || GUNS.pistol).mag, rnds = player[mag] || 0;
+    ptext('' + rnds, VIEW_W - 12, VIEW_H - 15, 8, rnds > 0 ? '#e8d9c0' : '#ff5a3c', 'right');
   } else if (player.melee) {
     const mi = player.melee === 'pipe' ? Sprites.pipeIcon : Sprites.knifeIcon;
     uiIcon(mi, VIEW_W - 52, VIEW_H - 16);
@@ -2801,6 +2805,7 @@ function drawHUD() {
       [Sprites.scrapBit, player.inv.scrap],
       [Sprites.techIcon, player.inv.tech],
       [Sprites.ammo, player.ammo],
+      [Sprites.ammoRifle, player.ammoRifle],
       [Sprites.snackIcon, player.inv.snack],
       [Sprites.mreBeef, player.inv.mreBeef],
       [Sprites.mreChicken, player.inv.mreChicken],

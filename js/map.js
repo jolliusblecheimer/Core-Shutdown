@@ -1031,9 +1031,11 @@ function buildCandlelight() {
   put(10, 11, 'crate');
   put(9, 13, 'chest', { open: false, loot: 'scrap' });
 
-  // ---- THE NAVE: fire, two pews, and otherwise floor
-  put(5, 8, 'brazier'); put(6, 11, 'brazier');
-  put(4, 11, 'pew', { dir: 'x' }); put(7, 11, 'pew', { dir: 'y' });
+  // ---- THE NAVE: floor, and that is the point.
+  // It had two pews and two fire barrels in it and read as cluttered rather
+  // than lived-in — a camp needs somewhere to WALK. The hearth, the votive
+  // stands and the drone bench still light it; nothing here needed a brazier
+  // to be seen by.
 
   buildAO();
   buildSpatialIndex();
@@ -1066,11 +1068,16 @@ function buildCrypt() {
   put(8, 1, 'cistern');
   put(4, 2, 'waterVat'); put(6, 2, 'waterVat');
   // the bales are the tallest thing down here, so they take their own columns
-  put(4, 6, 'hayStack'); put(7, 6, 'hayStack');
+  put(4, 6, 'hayStack'); put(6, 6, 'hayStack');   // not (7,6): it sealed the east corner
   put(8, 3, 'preserves'); put(8, 5, 'preserves');
   put(1, 5, 'strongbox');
   put(1, 6, 'chest', { open: false, loot: 'crypt' });
-  put(8, 6, 'chest', { open: false, loot: 'mre' });
+  // The rations sit with the rest of the food, by the cistern and the preserve
+  // racks. NOT the east corner it was in: hay, preserves and two walls boxed
+  // it so it could only be approached diagonally — and a diagonal is 1.41
+  // tiles against a 1.4 reach, so it simply could not be opened. Not (7,4)
+  // either: that sealed (8,4) between the two preserve racks instead.
+  put(7, 3, 'chest', { open: false, loot: 'mre' });
   put(3, 3, 'candles'); put(6, 3, 'candles');
   put(1, 3, 'barrel');
 

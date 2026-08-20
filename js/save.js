@@ -25,7 +25,7 @@ function saveGame() {
       v: SAVE_VERSION,
       name: playerName,
       player: {
-        x: player.x, y: player.y, hp: player.hp, ammo: player.ammo,
+        x: player.x, y: player.y, hp: player.hp, ammo: player.ammo, ammoRifle: player.ammoRifle,
         melee: player.melee, hasGun: player.hasGun, active: player.active, gun: player.gun,
         owned: { ...player.owned }, inv: { ...player.inv },
         respawnX: player.respawnX, respawnY: player.respawnY, homeSet: player.homeSet,
@@ -129,6 +129,7 @@ function applySave(d) {
   player.y = num(p.y, player.y);
   player.hp = Math.min(player.maxHp, Math.max(1, num(p.hp, player.maxHp)));
   player.ammo = Math.max(0, num(p.ammo, 0));
+  player.ammoRifle = Math.max(0, num(p.ammoRifle, 0));
   player.respawnX = num(p.respawnX, player.respawnX);
   player.respawnY = num(p.respawnY, player.respawnY);
   player.scrollHintT = num(p.scrollHintT, 0);

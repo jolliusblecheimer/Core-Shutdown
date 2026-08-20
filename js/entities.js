@@ -9,7 +9,7 @@ const player = {
   iframes: 0, flash: 0, dead: 0,
   combatT: 99,                 // seconds since last combat — passive regen after 20
   melee: null,                 // EQUIPPED melee: null | 'pipe' | 'knife'
-  hasGun: false, ammo: 0,      // hasGun = a gun is EQUIPPED
+  hasGun: false, ammo: 0, ammoRifle: 0,   // hasGun = a gun is EQUIPPED
   gun: 'pistol',               // WHICH gun, the same way `melee` picks the melee
   active: 'melee',             // which equipped weapon LMB uses (scroll to switch)
   scrollHintT: 0,              // "scroll" HUD hint: 30s after getting the gun, then gone
@@ -24,9 +24,16 @@ const player = {
 // in it, which is why Tam sells "rifle rounds" for a pistol without blinking.
 // The rifle is not a faster pistol: it hits nearly twice as hard and its round
 // travels further and flatter, and it pays for that in time between shots.
+// TWO MAGAZINES. They were one pool at first, on the theory that the ring only
+// ever had one kind of round in it — but a service rifle firing hand-packed
+// pistol rounds reads as a bug however it is justified, and it also gave the
+// best gun in the game the most plentiful ammunition. So each gun names the
+// pocket it feeds from, and the rifle's is the scarce one: the Correction
+// issued those rounds, so the only places to get them are the machines that
+// still carry them and the counter at Candlelight.
 const GUNS = {
-  pistol: { dmg: 10, cd: 0.5,  speed: 13, life: 0.5,  shake: 1.2, label: 'Scrap pistol' },
-  rifle:  { dmg: 18, cd: 0.78, speed: 18, life: 0.75, shake: 2.2, label: 'Service rifle' },
+  pistol: { dmg: 10, cd: 0.5,  speed: 13, life: 0.5,  shake: 1.2, label: 'Scrap pistol', mag: 'ammo' },
+  rifle:  { dmg: 18, cd: 0.78, speed: 18, life: 0.75, shake: 2.2, label: 'Service rifle', mag: 'ammoRifle' },
 };
 const activeGun = () => GUNS[player.gun] || GUNS.pistol;
 
@@ -397,9 +404,10 @@ function updatePlayer(dt) {
   player.fireCd -= dt; player.muzzle -= dt;
   player.swing -= dt; player.swingCd -= dt;
   if (Input.mouseDown && player.fireCd <= 0 && player.hasGun && player.active === 'gun') {
-    if (player.ammo > 0) {
-      const G = activeGun();
-      player.ammo--;
+    const G0 = activeGun();
+    if (player[G0.mag] > 0) {
+      const G = G0;
+      player[G.mag]--;
       player.combatT = 0;
       player.fireCd = G.cd; player.muzzle = 0.06;
       const dirW = screenToIso(Math.cos(player.angle), Math.sin(player.angle));
@@ -415,7 +423,8 @@ function updatePlayer(dt) {
       SFX.shot();
     } else {
       player.fireCd = 0.35;
-      showMsg('OUT OF AMMO — scroll to your melee', 1.5);
+      showMsg(player.gun === 'rifle' ? 'NO RIFLE ROUNDS — scroll to your melee'
+                                     : 'OUT OF AMMO — scroll to your melee', 1.5);
       SFX.dry();
     }
   }
@@ -557,8 +566,14 @@ function updateItems(dt) {
     consider(sc, 'wreck', Math.hypot(player.x - sc.x, player.y - sc.y), 1.1);
   }
   for (const bd of bandits) {
-    if (!bd.dead || bd.looted) continue;
+    if (!bd.dead || bd.looted || bd.deadT >= CORPSE_LINGER) continue;
     consider(bd, 'body', Math.hypot(player.x - bd.x, player.y - bd.y), 1.1);
+  }
+  if (typeof droids !== 'undefined') {
+    for (const dr of droids) {
+      if (dr.state !== 'dead' || dr.looted || dr.deadT >= CORPSE_LINGER) continue;
+      consider(dr, 'droid', Math.hypot(player.x - dr.x, player.y - dr.y), 1.2);
+    }
   }
   if (typeof droids !== 'undefined') {
     for (const dr of droids) {
@@ -646,6 +661,30 @@ function updateItems(dt) {
       else SFX.loot();
       showMsg(`Stripped the droid — ${n} scrap${extra}`);
       spawnSparks(dr.x, dr.y, 5, ['#6fd3ff', '#c9c9d2']);
+      saveGame();
+    }
+  } else if (bestKind === 'droid') {
+    const dr = best;
+    const ds = isoToScreen(dr.x, dr.y);
+    Prompt = { sx: ds.x, sy: ds.y - 22, text: 'E — strip the hull' };
+    if (Input.pressed['KeyE']) {
+      Input.pressed['KeyE'] = false;
+      // factory plate is worth more than yard junk, and the ones built around
+      // a rifle are carrying the only rounds in the ring that fit one
+      const n = 2 + ((Math.random() * 3) | 0);
+      player.inv.scrap += n;
+      let extra = '';
+      const carriedRifle = DROID_TYPES[dr.type] && DROID_TYPES[dr.type].weapon === 'rifle';
+      if (carriedRifle) {
+        const rounds = 3 + ((Math.random() * 4) | 0);
+        player.ammoRifle += rounds;
+        extra += '  · +' + rounds + ' RIFLE rounds';
+      }
+      if (Math.random() < 0.35) { player.inv.tech++; extra += '  · +1 tech component'; }
+      showMsg('Stripped ' + n + ' scrap' + extra, 2.6);
+      spawnSparks(dr.x, dr.y, 6, ['#c9c9d2', '#ffd27a']);
+      SFX.tech();
+      dr.looted = true;
       saveGame();
     }
   } else if (bestKind === 'body') {
@@ -786,7 +825,7 @@ const STOCK = {
   // he knows exactly what it is worth to somebody carrying a scrap pistol.
   tam: [
     { label: '8 rifle rounds', icon: () => Sprites.ammo, cost: { scrap: 5 },
-      buy: () => { player.ammo += 8; showMsg('Bought 8 rounds'); } },
+      buy: () => { player.ammoRifle += 8; showMsg('Bought 8 rifle rounds'); } },
     { label: 'beef MRE', icon: () => Sprites.mreBeef, cost: { scrap: 6 },
       buy: () => { player.inv.mreBeef++; showMsg('Bought a beef MRE  (H to eat)'); } },
     { label: 'chicken MRE', icon: () => Sprites.mreChicken, cost: { scrap: 4 },
@@ -1197,7 +1236,7 @@ function makeBandit(block, post, idx) {
     alert: 0, memory: 0, lastPX: post.x, lastPY: post.y,
     kbx: 0, kby: 0, detour: 0, detourX: 0, detourY: 0,
     idleT: Math.random() * 2, sway: Math.random() * 6.28,
-    dead: false, looted: false, fell: 0,
+    dead: false, looted: false, fell: 0, deadT: 0,
     // A guard watches the road he was put on: `facing` is the side you arrive
     // from, so that is the way he looks, and his sweep swings either side of it.
     faceX: block.facing, faceY: 0,
@@ -1233,16 +1272,27 @@ function banditKey(b) { return b.block.id + ':' + b.idx; }
 // junkyard's trash mountains into real cover. Before it, detection was radius
 // only: a Scrapper "saw" you through a shack, and in a city of solid buildings
 // that would have been nonsense.
+// HOW LONG THE DEAD LIE THERE. One number for every kind of enemy, because a
+// street that keeps its bodies forever stops reading as a place people live in
+// — and because the player should not have to wonder which corpses are still
+// worth searching. Loot it inside the minute or it is gone.
+const CORPSE_LINGER = 45;    // seconds lying there, fully lootable
+const CORPSE_FADE = 5;       // then this long fading out
+
 const VISION_ARC = Math.cos(60 * Math.PI / 180);   // 120 degrees, total
 const PERIPHERAL = 1.5;                            // inside this, facing stops mattering
-function canSpot(e, range) {
+// `arcCos` lets a caller widen the cone for its own kind — the droid roster
+// always carried a per-unit `arc` and nothing ever read it, so every machine in
+// the city was squinting down the same 120 degrees as a yard Scrapper.
+function canSpot(e, range, arcCos) {
   if (player.dead > 0) return false;
   const dx = player.x - e.x, dy = player.y - e.y;
   const d = Math.hypot(dx, dy);
   if (d > range) return false;
   if (d > PERIPHERAL) {
     const f = Math.hypot(e.fx, e.fy);
-    if (f > 0.001 && (dx * e.fx + dy * e.fy) / (d * f) < VISION_ARC) return false;
+    const lim = (arcCos === undefined) ? VISION_ARC : arcCos;
+    if (f > 0.001 && (dx * e.fx + dy * e.fy) / (d * f) < lim) return false;
   }
   return losClear(e.x, e.y, player.x, player.y);
 }
@@ -1299,6 +1349,7 @@ function killBandit(b) {
   b.state = 'dead';
   b.looted = false;
   b.fell = 0.35;
+  b.deadT = 0;
   SFX.banditDie();
   addShake(2);
   spawnSmoke(b.x, b.y, 3);
@@ -1365,7 +1416,7 @@ function updateBandit(dt, b) {
     b.kbx *= 0.7; b.kby *= 0.7;
     if (Math.abs(b.kbx) + Math.abs(b.kby) < 0.001) { b.kbx = 0; b.kby = 0; }
   }
-  if (b.dead) { if (b.fell > 0) b.fell -= dt; return; }
+  if (b.dead) { if (b.fell > 0) b.fell -= dt; b.deadT += dt; return; }
 
   const cfg = BANDIT_ROLES[b.role];
   const dist = Math.hypot(player.x - b.x, player.y - b.y);
