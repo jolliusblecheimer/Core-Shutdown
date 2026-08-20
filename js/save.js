@@ -120,39 +120,38 @@ function wipeSave() {
 
 const num = (v, fallback) => (typeof v === 'number' && isFinite(v)) ? v : fallback;
 
-// MAGAZINES, and the runs that predate them. `ammo`/`ammoRifle` were plain
-// round counts; magazines are a change of REPRESENTATION, not of what the
-// player owns, so the conversion must not lose a single round: fill the loaded
-// magazine first, then bag the remainder as spares. 40 rifle rounds becomes
-// 12 loaded and spares of 12, 12, 4 — still forty.
+// AMMUNITION, across all three shapes it has ever had in a save file. None of
+// them is allowed to lose a round, because every one of them was only ever a
+// change of REPRESENTATION of the same thing the player is carrying:
+//   1. `ammo` / `ammoRifle`     — one number per gun, before reloading existed
+//   2. `arms[gun].spares[]`     — the magazine pouch, briefly
+//   3. `arms[gun].reserve`      — loose rounds in a pocket, now
+// A pouch converts by pouring every spare back into the pocket; a plain number
+// converts by filling the gun first and pocketing the rest.
 function bagRounds(gun, total) {
   const cap = capOf(gun), A = magsOf(gun);
-  A.loaded = 0; A.spares.length = 0;
-  let left = Math.max(0, Math.floor(total));
+  const left = Math.max(0, Math.floor(total));
   A.loaded = Math.min(cap, left);
-  left -= A.loaded;
-  while (left > 0) { const take = Math.min(cap, left); A.spares.push(take); left -= take; }
+  A.reserve = left - A.loaded;
 }
 function loadArms(p) {
   for (const gun of ['pistol', 'rifle']) {
     const A = magsOf(gun);
-    A.loaded = 0; A.spares.length = 0;
+    A.loaded = 0; A.reserve = 0;
   }
   if (p.arms) {
-    // a save written since magazines existed
     for (const gun of ['pistol', 'rifle']) {
       const src = p.arms[gun];
       if (!src) continue;
       const A = magsOf(gun), cap = capOf(gun);
       A.loaded = Math.max(0, Math.min(cap, num(src.loaded, 0)));
+      A.reserve = Math.max(0, num(src.reserve, 0));
+      // the magazine pouch, emptied into the pocket round for round
       if (Array.isArray(src.spares))
-        for (const n of src.spares) {
-          const v = Math.max(0, Math.min(cap, num(n, 0)));
-          if (v > 0) A.spares.push(v);
-        }
+        for (const n of src.spares) A.reserve += Math.max(0, num(n, 0));
     }
   } else {
-    // ...and one written before they did
+    // ...and a run from before any of this
     bagRounds('pistol', num(p.ammo, 0));
     bagRounds('rifle', num(p.ammoRifle, 0));
   }

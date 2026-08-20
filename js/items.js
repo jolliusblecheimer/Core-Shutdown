@@ -132,29 +132,30 @@ const ITEMS = {
     have: () => player.inv.tech > 0,
     count: () => player.inv.tech,
   },
-  // Magazines, not rounds. The count is SPARES — what is in the gun is on the
-  // HUD, where it belongs, because that is the number you fight by.
-  magPistol: {
-    name: 'Pistol magazine',
+  // Loose rounds. The count is what is in your POCKET — what is in the gun is
+  // on the HUD, where it belongs, because that is the number you fight by.
+  ammo: {
+    name: 'Pistol rounds',
     tab: 'materials',
-    icon: () => Sprites.magPistol,
+    icon: () => Sprites.ammo,
     countLabel: 'spare',
-    desc: 'Six hand-packed rounds in a bent steel box. Press R to load one — ' +
-          'the magazine that comes out keeps whatever is still in it, so ' +
-          'topping up between fights never costs you a round.',
-    have: () => sparesIn('pistol').length > 0,
-    count: () => sparesIn('pistol').length,
+    desc: 'Hand-packed, mismatched, and there are never enough. Only the ' +
+          'scrap pistol takes them. It holds six — press R to fill it, and ' +
+          'do it before you need to, because filling it takes a moment.',
+    have: () => reserveOf('pistol') > 0,
+    count: () => reserveOf('pistol'),
   },
-  magRifle: {
-    name: 'Rifle magazine',
+  ammoRifle: {
+    name: 'Rifle rounds',
     tab: 'materials',
-    icon: () => Sprites.magRifle,
+    icon: () => Sprites.ammoRifle,
     countLabel: 'spare',
-    desc: 'Twelve factory rounds, curved steel, headstamped by whoever ran ' +
-          'the Correction. Nobody makes these — you take them off the ' +
-          'machines still carrying them, or you buy them at Candlelight.',
-    have: () => sparesIn('rifle').length > 0,
-    count: () => sparesIn('rifle').length,
+    desc: 'Factory rounds, all identical, headstamped by whoever ran the ' +
+          'Correction. Nobody makes these any more — you take them off the ' +
+          'machines still carrying them, or you buy them at Candlelight. ' +
+          'The rifle holds twelve.',
+    have: () => reserveOf('rifle') > 0,
+    count: () => reserveOf('rifle'),
   },
 
   // ---- key items ----

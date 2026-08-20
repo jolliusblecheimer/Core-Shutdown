@@ -81,7 +81,8 @@ if (window.ARENA_MODE) {
   player.melee = 'knife';
   player.hasGun = true;
   player.active = 'gun';
-  for (let i = 0; i < 5; i++) { giveMag('pistol'); giveMag('rifle'); }
+  giveRounds('pistol', 60); giveRounds('rifle', 60);
+  chamber('pistol'); chamber('rifle');
   player.inv.snack = 5;
   player.scrollHintT = 0;
   Tut.done = { move: 1, melee: 1, enemy: 1, loot: 1, gun: 1, stealth: 1 };
@@ -917,7 +918,11 @@ function update(dt) {
       const hit = k === 'any'
         ? (Object.keys(Input.pressed).length > 0 || Input.rPressed)
         : k.some(key => Input.pressed[key]);
-      if (hit) Tut.active = null;
+      if (hit) {
+        const done = Tut.active.onDo;
+        Tut.active = null;
+        if (done) done();          // the key that closes the lesson also does it
+      }
     }
     updateParticles(dt);
   } else if (Trade.open) {
@@ -1987,7 +1992,7 @@ function drawItem(it, x, y) {
   ctx.fillRect(Math.round(x - 5), Math.round(y - 30), 10, 30);
   drawShadow(x, y, 4);
   const img = it.type === 'pipe' ? Sprites.pipeIcon
-            : (it.gun === 'rifle' ? Sprites.magRifle : Sprites.magPistol);
+            : (it.gun === 'rifle' ? Sprites.ammoRifle : Sprites.ammo);
   ctx.drawImage(img, Math.round(x - img.width / 2), Math.round(y - 10 + bobY));
   addLight(x, y - 6, 0, 14, '255,210,120', 0.22 + Math.sin(gameTime * 3 + it.bob) * 0.06);
 }
@@ -2345,8 +2350,8 @@ function drawHUD() {
   uiRect(8, VIEW_H - 10, Math.round(42 * hpFrac), 3, `hsl(${Math.round(112 * hpFrac)}, 62%, 46%)`);
 
   // WEAPON SLOT (bottom-right): the active weapon, and for a gun the state
-  // that actually matters in the next four seconds — what is IN it, and how
-  // many magazines are behind it. A wallet total told you none of that.
+  // that actually matters in the next four seconds — what is IN it, with the
+  // pocket total behind it. A wallet total alone told you none of that.
   const SLOT_W = 70, SLOT_H = 23;
   const slotX = VIEW_W - SLOT_W - 6, slotY = VIEW_H - SLOT_H - 5;
   uiRect(slotX, slotY, SLOT_W, SLOT_H, 'rgba(0,0,0,0.55)');
@@ -2367,22 +2372,23 @@ function drawHUD() {
       uiRect(slotX + 4, py2 + 1, SLOT_W - 8, 4, 'rgba(255,255,255,0.14)');
       uiRect(slotX + 4, py2 + 1, (SLOT_W - 8) * f, 4, '#7ad27a');
     } else {
-      // ONE PIP PER SPARE MAGAZINE, filled to how full it is. A pouch of
-      // part-used magazines is the normal state after a fight, and this is
-      // where you see it.
-      const shown = Math.min(7, A.spares.length);
-      for (let i = 0; i < shown; i++) {
-        const frac = Math.max(0, Math.min(1, A.spares[i] / G.cap));
-        const h = Math.max(1, Math.round(6 * frac));
-        uiRect(slotX + 4 + i * 6, py2, 4, 6, '#2a2c31');
-        uiRect(slotX + 4 + i * 6, py2 + 6 - h, 4, h, frac >= 1 ? '#c9c9d2' : '#ffd27a');
+      // ONE PIP PER ROUND IN THE GUN — the row empties as you fire, so the
+      // moment you have to stop is visible before it arrives, not after.
+      for (let i = 0; i < G.cap; i++) {
+        const lit = i < A.loaded;
+        uiRect(slotX + 4 + i * 4, py2, 3, 6,
+          lit ? (A.loaded <= G.cap / 3 ? '#ffd27a' : '#c9c9d2') : '#2a2c31');
       }
-      if (A.spares.length > shown)
-        ptext('+' + (A.spares.length - shown), slotX + 4 + shown * 6 + 1, py2, 7, '#8d959b');
-      // empty, with something to load: say so, and keep saying it
-      if (A.loaded === 0 && A.spares.length) {
+      // and behind it, what is left in your pocket. Empty with rounds to put
+      // in says R instead, and keeps saying it.
+      if (A.loaded === 0 && A.reserve > 0) {
         const pulse = 0.55 + 0.45 * Math.sin(gameTime * 6);
         ptext('R', slotX + SLOT_W - 5, py2 - 1, 8, `rgba(255,210,122,${pulse})`, 'right');
+      } else {
+        // clamped: the rifle's twelve pips run to within a few pixels of this,
+        // and a four-digit pocket would print over them
+        ptext('×' + (A.reserve > 99 ? '99+' : A.reserve), slotX + SLOT_W - 4, py2 - 1, 7,
+          A.reserve === 0 ? '#ff5a3c' : '#8d959b', 'right');
       }
     }
   } else if (player.melee) {
@@ -2839,8 +2845,8 @@ function drawHUD() {
     const mine = [
       [Sprites.scrapBit, player.inv.scrap],
       [Sprites.techIcon, player.inv.tech],
-      [Sprites.magPistol, sparesIn('pistol').length],
-      [Sprites.magRifle, sparesIn('rifle').length],
+      [Sprites.ammo, reserveOf('pistol')],
+      [Sprites.ammoRifle, reserveOf('rifle')],
       [Sprites.snackIcon, player.inv.snack],
       [Sprites.mreBeef, player.inv.mreBeef],
       [Sprites.mreChicken, player.inv.mreChicken],

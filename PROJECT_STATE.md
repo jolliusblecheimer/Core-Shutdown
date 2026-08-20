@@ -54,20 +54,24 @@ arrows *or* the mouse. `Q`/`R`, a click or the wheel change tab; `E` equips or
 eats. What an item IS lives in `js/items.js`; `js/game.js` only lays it out.
 Design and the built-vs-planned diff in `design/inventory-botw.md`.
 
-### MAGAZINES — the reload, and the pause it costs you
-Ammunition is magazines now, never loose rounds. Each gun carries a **loaded
-magazine** and a **pouch of spares** (`player.arms`): the pistol holds 6, the
-rifle 12, and `R` swaps in the fullest spare over 1.1s / 1.6s. **The magazine
-coming out keeps its rounds** — topping up between fights never costs you
-anything, which is the habit the mechanic should reward. Reload refuses, out
-loud, when there is nothing fuller to load.
-The weapon slot shows `loaded/capacity` and one pip per spare, filled to how
-full that magazine is; reloading replaces the pips with a bar, and an empty gun
-with something to load pulses an `R`. The first dry click teaches it.
-You buy magazines, find magazines and strip magazines — a droid's is part-used,
-because it was mid-magazine when you put it down. Old saves convert without
-losing a round: 40 rifle rounds becomes 12 loaded and spares of 12, 12, 4.
-Design and the decisions behind it: `design/magazines.md`.
+### RELOADING — six and twelve, and the pause between them
+A gun holds **6** (pistol) or **12** (rifle) and then has to be filled. Each
+gun has what is in it and what you carry for it — `player.arms[gun] =
+{loaded, reserve}` — and `R` moves rounds across over 1.1s / 1.6s. Reloading
+early can never waste anything: a part-full gun just takes fewer rounds. It
+refuses out loud when the gun is full (`ALREADY LOADED`) or the pocket is empty
+(`NO ROUNDS LEFT`).
+The weapon slot shows `loaded/capacity`, **one pip per round in the gun** so
+the row empties as you fire, and the pocket total as a small `×n` that goes red
+at zero. Reloading replaces the pips with a filling bar; an empty gun with
+rounds to put in pulses an `R`. The first dry click teaches it — and the `R`
+that dismisses that lesson performs the reload, via `tutShow(..., onDo)`.
+You buy, find and strip loose **rounds**; only a handed-over weapon arrives
+loaded (Marek's pistol, Bo's straightened rifle), via `chamber()`. Saves from
+all three eras — plain `ammo` numbers, the one-day magazine pouch, and loose
+rounds — load without losing a round.
+Design and the decisions behind it, including why the magazine version was
+cut: `design/reloading.md`.
 
 ### THE SERVICE RIFLE — the ring's weapon upgrade
 The Compactor's drop, and the first thing the milestone-grant rule was written
@@ -80,7 +84,7 @@ and a stock that only has a row while you are carrying something bent.
 Repaired it does **18 damage against the pistol's 10**, flies further and
 flatter, and pays for it at 0.78s between shots against 0.5s. `player.gun`
 picks which gun is in the slot, exactly the way `player.melee` picks the melee.
-**Two magazines, not one:** each gun names the pocket it feeds from, and rifle
+**Two pockets, not one:** each gun names the pocket it feeds from, and rifle
 rounds are the scarce ones — off the machines still carrying them, or Tam's
 counter. A service rifle firing hand-packed pistol rounds read as a bug however
 it was justified, and it handed the best gun the most plentiful ammunition.

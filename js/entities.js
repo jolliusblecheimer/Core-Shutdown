@@ -10,12 +10,12 @@ const player = {
   combatT: 99,                 // seconds since last combat — passive regen after 20
   melee: null,                 // EQUIPPED melee: null | 'pipe' | 'knife'
   hasGun: false,               // hasGun = a gun is EQUIPPED
-  // A LOADED MAGAZINE AND A POUCH OF SPARES, per gun. `loaded` is what is in
-  // the weapon — the number on the HUD — and `spares` holds one entry per
-  // magazine you are carrying, being its round count. See design/magazines.md.
+  // WHAT IS IN THE GUN, AND WHAT IS IN YOUR POCKET, per gun. `loaded` is the
+  // number on the HUD — the rounds you can fire before you have to stop — and
+  // `reserve` is loose ammunition waiting to go in. See design/reloading.md.
   arms: {
-    pistol: { loaded: 0, spares: [] },
-    rifle:  { loaded: 0, spares: [] },
+    pistol: { loaded: 0, reserve: 0 },
+    rifle:  { loaded: 0, reserve: 0 },
   },
   reloadT: 0, reloadOf: null,
   gun: 'pistol',               // WHICH gun, the same way `melee` picks the melee
@@ -28,12 +28,10 @@ const player = {
 
 // melee outranges the Scrapper's reach (1.15) — spacing is the skill.
 // The knife punches through metal: higher damage, stabbing attack.
-// The two guns share one ammo pool — the ring only ever had one kind of round
-// in it, which is why Tam sells "rifle rounds" for a pistol without blinking.
 // The rifle is not a faster pistol: it hits nearly twice as hard and its round
 // travels further and flatter, and it pays for that in time between shots.
-// TWO MAGAZINES. They were one pool at first, on the theory that the ring only
-// ever had one kind of round in it — but a service rifle firing hand-packed
+// TWO POCKETS OF AMMUNITION. They were one pool at first, on the theory that
+// the ring only had one kind of round in it — but a service rifle firing hand-packed
 // pistol rounds reads as a bug however it is justified, and it also gave the
 // best gun in the game the most plentiful ammunition. So each gun names the
 // pocket it feeds from, and the rifle's is the scarce one: the Correction
@@ -45,47 +43,37 @@ const GUNS = {
 };
 const activeGun = () => GUNS[player.gun] || GUNS.pistol;
 
-// ---------- MAGAZINES ----------
-// The one rule the whole system turns on: RELOADING NEVER THROWS ROUNDS AWAY.
-// The magazine coming out of the gun goes back in the pouch with whatever is
-// still in it, and will be loaded again later. Topping up between fights is
-// therefore always safe, which is the habit the mechanic should reward — a
-// system that punished it would just teach players to fight on empty.
+// ---------- RELOADING ----------
+// A gun holds six or twelve, and then you have to stop and fill it. That pause
+// is the whole mechanic: it is the moment where a machine walking at you costs
+// you something. What it is NOT is bookkeeping — ammunition is loose rounds in
+// a pocket, one number per gun, and reloading simply moves them into the
+// weapon. Nothing is ever lost by reloading early, because there is nothing to
+// lose: a part-full gun just takes fewer rounds to fill.
 function magsOf(gun) { return player.arms[gun] || player.arms.pistol; }
-const loadedIn = (gun) => magsOf(gun).loaded;
-const sparesIn = (gun) => magsOf(gun).spares;
+const reserveOf = (gun) => magsOf(gun).reserve;
 const capOf = (gun) => (GUNS[gun] || GUNS.pistol).cap;
 
-// a magazine arriving from anywhere: a shop, a body, the ground.
-// `n` defaults to a full one; a part-used magazine is clamped to the capacity.
-function giveMag(gun, n) {
-  const cap = capOf(gun);
-  const rounds = Math.max(0, Math.min(cap, n === undefined ? cap : n));
-  const A = magsOf(gun);
-  // if the gun is empty and has never been loaded, chamber it straight away so
-  // a first-time pickup is usable without an explanation
-  if (A.loaded === 0 && !A.spares.length) A.loaded = rounds;
-  else A.spares.push(rounds);
+// rounds arriving from anywhere: a shop, a body, the ground. They go in the
+// pocket, never straight into the gun — putting them in is what R is for.
+function giveRounds(gun, n) {
+  const rounds = Math.max(0, Math.floor(n === undefined ? capOf(gun) : n));
+  magsOf(gun).reserve += rounds;
   return rounds;
 }
-// total rounds for this gun, loaded and pouched — used by the pack and by save
-function roundsOf(gun) {
-  const A = magsOf(gun);
-  return A.loaded + A.spares.reduce((t, n) => t + n, 0);
+// fill the gun on the spot, no pause — for the moment a weapon is handed over
+function chamber(gun) {
+  const A = magsOf(gun), take = Math.min(capOf(gun) - A.loaded, A.reserve);
+  A.loaded += take; A.reserve -= take;
 }
+// everything you hold for this gun — used by the pack and by save migration
+function roundsOf(gun) { const A = magsOf(gun); return A.loaded + A.reserve; }
 
 function startReload() {
   if (!player.hasGun || player.reloadT > 0 || player.dead > 0) return;
   const gun = player.gun, A = magsOf(gun);
-  if (!A.spares.length) {
-    showMsg('NO SPARE MAGAZINES', 1.4); SFX.dry(); return;
-  }
-  // the fullest spare is the one worth swapping to
-  let best = 0;
-  for (let i = 1; i < A.spares.length; i++) if (A.spares[i] > A.spares[best]) best = i;
-  if (A.spares[best] <= A.loaded) {
-    showMsg('NOTHING FULLER TO LOAD', 1.4); SFX.dry(); return;
-  }
+  if (A.loaded >= capOf(gun)) { showMsg('ALREADY LOADED', 1.2); return; }
+  if (A.reserve <= 0) { showMsg('NO ROUNDS LEFT', 1.4); SFX.dry(); return; }
   player.reloadT = (GUNS[gun] || GUNS.pistol).reload;
   player.reloadOf = gun;
   SFX.reload ? SFX.reload() : SFX.switchW();
@@ -94,14 +82,7 @@ function startReload() {
 function finishReload() {
   const gun = player.reloadOf || player.gun;
   player.reloadOf = null;
-  const A = magsOf(gun);
-  if (!A.spares.length) return;
-  let best = 0;
-  for (let i = 1; i < A.spares.length; i++) if (A.spares[i] > A.spares[best]) best = i;
-  const incoming = A.spares.splice(best, 1)[0];
-  // THE PARTIAL GOES BACK IN THE POUCH. Nothing is lost by reloading early.
-  if (A.loaded > 0) A.spares.push(A.loaded);
-  A.loaded = incoming;
+  chamber(gun);
   SFX.buy();
   saveGame();
 }
@@ -113,10 +94,13 @@ const MELEE = {
 
 // ---- staged tutorial: freezes the world briefly and explains one thing ----
 const Tut = { active: null, done: {} };
-function tutShow(id, lines, keys, footer) {
+// `onDo` runs when the taught key is finally pressed. The press that dismisses
+// a lesson is swallowed by the freeze — so without this, being told "press R"
+// and pressing R would teach you that pressing R does nothing.
+function tutShow(id, lines, keys, footer, onDo) {
   if (Tut.done[id]) return;
   Tut.done[id] = true;
-  Tut.active = { id, lines, keys, footer, grace: 0.3 };
+  Tut.active = { id, lines, keys, footer, onDo, grace: 0.3 };
   SFX.blip();
 }
 
@@ -504,14 +488,14 @@ function updatePlayer(dt) {
       // once, the first time it ever happens.
       player.fireCd = 0.35;
       SFX.dry();
-      if (A.spares.length) {
+      if (A.reserve > 0) {
         tutShow('reload',
-          ['The magazine is empty.', 'Press R to load a fresh one —',
-           'the part-used one goes back in your pouch.'],
-          ['KeyR'], 'PRESS R');
+          ['The gun is empty.', 'Press R to reload it —',
+           'it takes a moment, so pick your moment.'],
+          ['KeyR'], 'PRESS R', startReload);
         showMsg('EMPTY — press R to reload', 1.4);
       } else {
-        showMsg('NO MAGAZINES LEFT — scroll to your melee', 1.8);
+        showMsg('NO ROUNDS LEFT — scroll to your melee', 1.8);
       }
     }
   }
@@ -763,9 +747,9 @@ function updateItems(dt) {
       let extra = '';
       const carriedRifle = DROID_TYPES[dr.type] && DROID_TYPES[dr.type].weapon === 'rifle';
       if (carriedRifle) {
-        // it was part-way through its own magazine when you put it down
-        const n = giveMag('rifle', 4 + ((Math.random() * 8) | 0));
-        extra += '  · RIFLE MAGAZINE (' + n + ')';
+        // it was part-way through its own load when you put it down
+        const n = giveRounds('rifle', 4 + ((Math.random() * 8) | 0));
+        extra += '  · +' + n + ' RIFLE rounds';
       }
       if (Math.random() < 0.35) { player.inv.tech++; extra += '  · +1 tech component'; }
       showMsg('Stripped ' + n + ' scrap' + extra, 2.6);
@@ -784,9 +768,9 @@ function updateItems(dt) {
       const n = 1 + ((Math.random() * 3) | 0);
       player.inv.scrap += n;
       let extra = '';
-      if (bd.role !== 'knife') {                 // the shooters carried magazines
-        const rounds = giveMag('pistol', 2 + ((Math.random() * 5) | 0));
-        extra += ` · PISTOL MAGAZINE (${rounds})`;
+      if (bd.role !== 'knife') {                 // the shooters carried rounds
+        const rounds = giveRounds('pistol', 2 + ((Math.random() * 5) | 0));
+        extra += `  · +${rounds} rounds`;
       }
       if (Math.random() < 0.3) { player.inv.snack++; extra += '  · +1 snack bar'; }
       showMsg(`Searched the body — ${n} scrap${extra}`);
@@ -808,11 +792,9 @@ function updateItems(dt) {
           ['Click toward a target to swing the pipe.', 'It outranges the machines — strike from', 'the edge of your reach.'],
           ['LMB'], 'CLICK TO CONTINUE');
       } else {
-        // The item type stays 'ammo' so saved take-lists still match by key —
-        // what it HANDS you is a magazine now, not a handful of rounds.
         const gun = best.gun || 'pistol';
-        const n = giveMag(gun, best.amount);
-        showMsg((gun === 'rifle' ? 'RIFLE' : 'PISTOL') + ` MAGAZINE (${n})`);
+        const n = giveRounds(gun, best.amount);
+        showMsg(`+${n}` + (gun === 'rifle' ? ' RIFLE rounds' : ' rounds'));
       }
       spawnSparks(best.x, best.y, 8, ['#ffd27a', '#fff2c0']);
       SFX.pickup();
@@ -839,8 +821,8 @@ function talkToNpc() {
   } else if (mission.state === 'complete') {
     startDialog([
       "Ha. Not bad for a corpse.",
-      "Take this — my old sidearm. Six in the magazine, and a spare.",
-      "It holds six. When it clicks, press R and put the other one in.",
+      "Take this — my old sidearm. Loaded, and six more in your hand.",
+      "It holds six. When it clicks, press R and fill it again.",
       "And these — keys to the yard gate.",
       "When you're ready, the city waits beyond it.",
       "Bring me scrap meanwhile — I trade. Food, rounds, steel.",
@@ -850,10 +832,10 @@ function talkToNpc() {
     player.hasGun = true;
     player.active = 'gun';
     player.scrollHintT = 30;
-    giveMag('pistol');           // loaded
-    giveMag('pistol');           // and a spare in the pouch
+    giveRounds('pistol', 12);
+    chamber('pistol');           // six in the gun, six in the pocket
     player.inv.gateKey = true;
-    showMsg('SCRAP PISTOL + 2 MAGAZINES + GATE KEY', 3.5);
+    showMsg('SCRAP PISTOL + 12 ROUNDS + GATE KEY', 3.5);
     saveGame();
     tutShow('gun',
       ['Scroll the MOUSE WHEEL to switch', 'between pistol and melee.', 'LMB uses the selected weapon.'],
@@ -886,8 +868,8 @@ const STOCK = {
   marek: [
     { label: 'snack bar', icon: () => Sprites.snackIcon, cost: { scrap: 4 },
       buy: () => { player.inv.snack++; showMsg('Bought a snack bar  (H to eat)'); } },
-    { label: 'pistol magazine', icon: () => Sprites.magPistol, cost: { scrap: 6 },
-      buy: () => { giveMag('pistol'); showMsg('Bought a PISTOL MAGAZINE (6)'); } },
+    { label: '6 rounds', icon: () => Sprites.ammo, cost: { scrap: 6 },
+      buy: () => { giveRounds('pistol', 6); showMsg('Bought 6 pistol rounds'); } },
     { label: 'piercing knife', icon: () => Sprites.knifeIcon, cost: { tech: 2 },
       sold: () => player.owned.knife,
       buy: () => {
@@ -908,14 +890,15 @@ const STOCK = {
         player.gun = 'rifle';
         player.hasGun = true;
         player.active = 'gun';
+        chamber('rifle');        // he hands it back loaded, if you have rounds
         showMsg('SERVICE RIFLE — straightened, and it works');
       } },
   ] : []),
   // Tam's counter. Rations and rounds, and one tech part at a price that says
   // he knows exactly what it is worth to somebody carrying a scrap pistol.
   tam: [
-    { label: 'rifle magazine', icon: () => Sprites.magRifle, cost: { scrap: 7 },
-      buy: () => { giveMag('rifle'); showMsg('Bought a RIFLE MAGAZINE (12)'); } },
+    { label: '12 rifle rounds', icon: () => Sprites.ammoRifle, cost: { scrap: 7 },
+      buy: () => { giveRounds('rifle', 12); showMsg('Bought 12 rifle rounds'); } },
     { label: 'beef MRE', icon: () => Sprites.mreBeef, cost: { scrap: 6 },
       buy: () => { player.inv.mreBeef++; showMsg('Bought a beef MRE  (H to eat)'); } },
     { label: 'chicken MRE', icon: () => Sprites.mreChicken, cost: { scrap: 4 },

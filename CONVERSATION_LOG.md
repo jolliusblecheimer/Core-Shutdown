@@ -1680,3 +1680,58 @@ rounds came back as 6+[6,3] and 12+[12,12,4] — measured, still 15 and 40.
 Verified with real key presses rather than by calling the functions: hold the
 trigger to a dry click, R to reload, R refused when full, and an early reload
 at 4/6 leaving a 4-round magazine in the pouch.
+
+---
+
+## Reloading, without the magazines (2026-08-20)
+
+**Laurens:** *"ok how about you just have to reload every 6/12 bullets
+depending on the gun, so no stupid mag stuff. make the change."*
+
+The day-old magazine system is gone; the pause it was built around stays. Each
+gun now has `{loaded, reserve}` — what is in it, and loose rounds in your
+pocket for it — and `R` moves `min(cap - loaded, reserve)` across over
+1.1s / 1.6s. The rule the pouch needed a paragraph to state ("a partial
+magazine is never thrown away") now needs none: a part-full gun simply takes
+fewer rounds to fill, so reloading early cannot cost anything. Reload refuses
+out loud in the only two cases where it would do nothing — `ALREADY LOADED`
+and `NO ROUNDS LEFT`.
+
+**What went.** `spares[]` and every function that maintained it, the
+`magPistol`/`magRifle` pack items and their two icons, magazines in the shops,
+in droid strips, in body searches and in ground pickups, and the HUD pip row
+that showed one part-lit pip per spare. Marek sells 6 rounds for 6 scrap again
+and Tam 12 rifle rounds for 7 — the same prices per round the magazines had, so
+the economy is untouched.
+
+**What the slot shows now.** `loaded/capacity` as before, then **one pip per
+round in the gun** — the row empties as you fire, which puts the moment you
+have to stop *before* it happens rather than after — and the pocket total as a
+small grey `×n` that turns red at zero. Reloading still replaces the pips with
+a filling bar; an empty gun with rounds to put in still pulses an `R`.
+
+**One thing fixed on the way.** The freeze-frame lesson says *press R*, and the
+press that dismissed it was swallowed by the freeze — so being told to press R
+and pressing R did nothing. `tutShow` takes an `onDo` now, and the key that
+closes a lesson performs it. Measured: 0/6 with 8 in the pocket, one R,
+6 loaded and 2 left.
+
+**Saves.** Three shapes exist in the wild and all three load without losing a
+round: plain `ammo`/`ammoRifle` numbers (15 and 40 → 6+9 and 12+28), the
+one-day magazine pouch (`2 + [6,4]` → 2+10, poured into the pocket), and the
+new `reserve`. Round-tripped through save/load as well.
+
+**Verified in the browser**, not by calling the functions: held the trigger to
+a dry click, R to reload, R refused when full, an early reload at 4/6 taking
+only the two rounds it needed, the rifle filling to 12/12, the whole Marek
+handover → shop → fire dry → reload chain in a live run, and screenshots of
+every slot state (part full, full, empty-with-rounds, bone dry, mid-reload),
+the pack, both counters and the tutorial. No console errors.
+
+One unrelated thing caught by the same sweep: `arena.html` never loaded
+`js/droids.js`, so the boss arena threw `updateDroids is not defined` on every
+frame. One script tag, verified clean.
+
+Docs: `design/magazines.md` is now `design/reloading.md`, rewritten, with a
+section on why the magazine version was cut and where to find it if it is ever
+wanted back. `PROJECT_STATE.md` updated to match.

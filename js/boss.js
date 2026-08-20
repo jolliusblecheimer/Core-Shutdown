@@ -563,7 +563,8 @@ function updateBoss(dt) {
 function resetArena() {
   player.x = 16.5; player.y = 21.5;
   player.hp = player.maxHp;
-  for (let i = 0; i < 5; i++) { giveMag('pistol'); giveMag('rifle'); }
+  giveRounds('pistol', 60); giveRounds('rifle', 60);
+  chamber('pistol'); chamber('rifle');
   player.dead = 0; player.iframes = 1;
   Thoughts.done = {}; Thoughts.t = 0;
   spawnBoss(16.5, 14.5);
