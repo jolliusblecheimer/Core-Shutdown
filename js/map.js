@@ -1111,6 +1111,8 @@ const Areas = {
     id: 'fringe', name: 'THE FRINGE', build: buildFringe,
     world: { x: 0, y: 0 },
     hasScrapper: false, hasBoss: false, hasNpc: false, hasBandits: true,
+    // raiders hold the roadblocks; the droid squads patrol between them
+    hasDroids: true,
     tint: '#efe0cc',      // thinner, cooler, brighter than the yard's dusk
     makeItems: () => ([
       { type: 'ammo', x: 150.5, y: 130.5, amount: 6, bob: 0.8 },

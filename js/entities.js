@@ -458,6 +458,8 @@ function updatePlayer(dt) {
       banditHit(bd, m.dmg, dx / (d || 1), dy / (d || 1), m.stab);
       addShake(2);
     }
+    // and the droids standing in it — one swing, every foe in the arc
+    if (typeof droidMeleeHit === 'function') droidMeleeHit(m, ps);
   }
 
   // ---- eat something ----
@@ -537,6 +539,12 @@ function updateItems(dt) {
     if (!bd.dead || bd.looted) continue;
     consider(bd, 'body', Math.hypot(player.x - bd.x, player.y - bd.y), 1.1);
   }
+  if (typeof droids !== 'undefined') {
+    for (const dr of droids) {
+      if (dr.state !== 'dead' || dr.looted) continue;
+      consider(dr, 'droidWreck', Math.hypot(player.x - dr.x, player.y - dr.y), 1.1);
+    }
+  }
 
   if (bestKind === 'gate') {
     const gs = isoToScreen(30.6, 12.5);
@@ -599,6 +607,25 @@ function updateItems(dt) {
       tutShow('loot',
         ['Dead machines can be looted for scrap', 'and rare tech components.', 'Press I to open your pack.'],
         ['KeyI', 'Tab'], 'PRESS I');
+    }
+  } else if (bestKind === 'droidWreck') {
+    // HHDs carry better parts than yard machines — but NO rifle. The ring's
+    // weapon upgrade comes off the Compactor damaged and is repaired at the
+    // camp, so a droid is never the way you get your gun (Laurens, 2026-08-19).
+    const dr = best;
+    const ds = isoToScreen(dr.x, dr.y);
+    Prompt = { sx: ds.x, sy: ds.y - 20, text: 'E — strip the droid' };
+    if (Input.pressed['KeyE']) {
+      Input.pressed['KeyE'] = false;
+      dr.looted = true;
+      const n = 2 + ((Math.random() * 2) | 0);
+      player.inv.scrap += n;
+      let extra = '';
+      if (Math.random() < 0.45) { player.inv.tech++; extra = '  · +1 tech component'; SFX.tech(); }
+      else SFX.loot();
+      showMsg(`Stripped the droid — ${n} scrap${extra}`);
+      spawnSparks(dr.x, dr.y, 5, ['#6fd3ff', '#c9c9d2']);
+      saveGame();
     }
   } else if (bestKind === 'body') {
     const bd = best;
@@ -874,6 +901,7 @@ function updateBullets(dt) {
         break;                          // one bullet, one machine
       }
     }
+    if (!hit && typeof droidBulletHit === 'function' && droidBulletHit(b)) hit = true;
     if (!hit) {
       for (const bd of bandits) {
         if (bd.dead) continue;

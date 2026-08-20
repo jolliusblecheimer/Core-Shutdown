@@ -1274,3 +1274,166 @@ about two seconds.
 
 Steps 3–9 are the squads and the four units themselves, and four open questions
 in that doc genuinely gate them.
+## Session 2 — 2026-08-19
+
+### 71. Read the docs, then: the church looks like a hotel
+**Laurens:** Read all the .md files. Then: do you have everything you need to
+build a custom building for the city? — and the building is **St Martin's**:
+*"the church for the main quest looks more like a hotel, make it look more like
+a cathedral"*, with two references (a gothic west front — twin towers, rose
+window, great portal, stained lancets, buttresses, churchyard — and a small
+pixel church with a verdigris copper spire).
+**Claude:** Read all sixteen docs, then traced the church through the code
+before proposing anything.
+
+**The diagnosis:** the church is `kind: 'R'` running through the *same generic
+path as every other building*. `BUILD_STYLE.R` changes six colours, the height
+and the ridge; everything else is shared code — including `winRow`'s grid of
+small dark rectangles, which is precisely what makes a building read as a hotel.
+Plus the generic `isSouth` door (one 14%-wide rectangle) instead of a portal, no
+vertical articulation, and a 14px ridge cross as the only church cue in the
+whole building. It is a hotel with a cross on it.
+
+**Found dead code while checking:** `drawRoof()`'s pitched branch
+(`game.js:963`) and the `kind === 'R'` facade panel (`sprites.js:797`) both
+still carry their own church drawing from the retired wall-panel system — only
+`canopy` calls `drawRoof` now. Inert, but a trap for whoever edits the church
+next. To be deleted with this work.
+
+**Plan written to `design/cathedral.md`, awaiting approval.** The key move is
+orientation, not detail: the camera shows the south and east faces, and the
+player arrives from the south off the east cross — so the footprint goes
+**12×14 → 10 wide × 22 long**, making the south face the **west front** (towers,
+rose, portal, seen three-quarters on) and the east face the **nave flank**
+(buttressed bays receding). The near-square box cannot produce that composition
+at any level of detail. Then: twin towers at ~1.7× nave height, recessed pointed
+portal, buttress fins with pinnacles, tall stained lancets with a warm glow
+(Candlelight is lit from inside — story-true), ridge 20 → 34, and a verdigris
+copper flèche. Still **one pre-rendered volume from shared corners**, towers
+included, so the panel rule is untouched; all detail integer-filled, with a new
+scanline disc helper for the rose window because `ctx.arc` would scuff exactly
+like the walls did in #70. Churchyard held back as a second pass.
+No code written yet — plan first, and this is a big art change, so it gets built
+locally and screenshotted before any push.
+
+### 72. Plan the robot squads for the city
+**Laurens:** Plan the robot squadrons in the city. They should vary in size and
+weaponry, be a bit bigger, travel in packs, patrol so you can hide with SHIFT
+behind an object or fight them, and look **modern** — not like the old
+Scrappers.
+**Claude:** Read the enemy, stealth and patrol code before planning. Two
+findings shaped the whole thing.
+
+**The blocker: the game can only hold one enemy.** `scrapper` is a single global
+object (`entities.js:63`), not a list — ~62 references across four files all
+assume one. `updateBullets` tests one hypot; the draw is one `drawImage`; the
+minimap plots one blip. **Packs are impossible until it becomes an array**, so
+phase 0 is a refactor of the oldest code in the game, verified on its own with
+junkyard behaviour byte-identical, before any HHD exists.
+
+**The second finding: robots currently see through walls.** Detection is
+radius-only (`entities.js:577`) with no line-of-sight test at all. In the yard
+the sparse mounds hid it; in a city of solid buildings it is nonsense, and
+Laurens' actual ask — *hide behind an object* — simply would not work. So the
+plan adds LOS (Bresenham over the `solid` grid), **facing with a ~120° vision
+arc** plus a small peripheral radius, and **squad-shared alert**. Crouch finally
+pays off because breaking sight becomes possible.
+
+**Good news:** the Fringe already has 12 patrol waypoints and 6 hidden
+`moundSpawns` built and unused (`map.js:657-665`) — it only lacks enemies
+because the area is flagged `hasScrapper: false`.
+
+**Roster** (four units, all bigger than the Scrapper): SPOTTER (1.25×, unarmed,
+its weapon is a flare that wakes the squad — kill it first), BAILIFF (1.15×,
+shock baton, flusher), MARSHAL (1.35×, burst rifle, takes cover, **drops the
+rifle** — the ring's weapon upgrade), MAGISTRATE (1.9×, riot shield + cannon,
+rare, zero-damage frontal shield as a "not yet" wall). Packs are 2–4 with a role
+mix, never copies. Armour is a softer version of the boss language — frontal
+0.5×, amber rear sensor spine 2×, so flanking is the skill.
+
+**Modern look:** matte composite panels, one amber sensor *bar* not a bulb,
+seamless joints, a stencilled WARDEN chevron identical on every unit. The
+Scrapper is something the city threw together; an HHD is something it was
+issued — uniformity is the horror.
+
+Written to `design/hhd-squads.md` with four open questions (heavy's name and
+whether it belongs in the Fringe; stealth kills; squad respawn). No code — plan
+first.
+
+### 73. Building the patrol droids (LOCAL ONLY, NOT PUSHED)
+**Laurens:** Call the Spotter **Scout** in the files but leave it out for now.
+The Magistrate stays, but **no naming in the game** — code only. Cleared squads
+respawn after about **a minute**, enough to traverse the area they patrolled.
+**Start designing the patrol droids, don't push anything**, then explain how it
+works. Also: **the Marshal will not drop its rifle** — the Compactor drops a
+badly damaged rifle that cannot shoot, and the man dismantling the droid in the
+church repairs it, so the player should **avoid the droids first** and only
+later fight them for drops.
+**Claude:** Built the whole system in `js/droids.js`. Nothing committed, nothing
+pushed.
+
+**Changed the plan's phase 0 on purpose.** The plan said to refactor the
+`scrapper` singleton into an array first. Instead the droids are an **additive
+`droids[]` system and the Scrapper is untouched** — the Scrapper is a bespoke
+tutorial enemy (mission-gated, respawn-on-loot, wired into the freeze-frame
+lessons and the save), and folding it into a general squad system would force
+its quirks onto every droid. This way the junkyard cannot regress and a live
+save cannot break. Verified: the yard still reports 0 droids and a patrolling
+Scrapper.
+
+**No save bump needed** — `save.js` already says robots re-enter fresh, so
+squads just rebuild on area entry. (`applySave` can change area without going
+through `enterArea`, so it rebuilds them too.)
+
+**Built:** 4 unit types (Scout defined + sprited but spawned by nobody; Bailiff,
+Marshal, Magistrate live), 8 squads / 23 droids on the street junctions with the
+density gradient, formation patrol, **line of sight** (Bresenham over `solid`),
+**120° vision cones with a standing-watch head sweep**, squad-shared alert with
+12s memory, locational armour (front ×0.5, spine ×2, Magistrate shield ×0),
+laser-sight telegraphs, 60s squad respawn that refuses to fire within 22 tiles
+of the player.
+
+**Two real bugs found and fixed while testing:**
+- **Half the squads silently vanished.** Routes were dropped whole if a waypoint
+  was not standable — and street dressing sits exactly on some junctions.
+  `map.js` loses three junctions from its own `patrolPoints` the same way. Now
+  waypoints **snap** to the nearest standable tile, and a route that truly
+  cannot be placed says so. 4 squads → 8.
+- **Idle droids were blind statues.** A stopped patrol never turned, so waiting
+  behind cover was free. They now sweep their cone while standing watch, out of
+  phase with each other.
+
+**Also learned (worth keeping):** headless browser testing of this game needs
+`Tut.active = null` every step — the world PAUSES while a tutorial is up and
+only a real keypress clears it, so an unattended test freezes after a second and
+looks like a physics bug. Driving `update(1/60)` by hand also beats
+`requestAnimationFrame`, which headless Chromium throttles.
+
+Verified in the browser with screenshots: junkyard unregressed, stealth
+(open/crouched/behind cover), alert propagation, the full combat state machine,
+damage zones, the respawn clock, and 0.012ms/frame for 23 droids.
+
+### 74. The droids glow Core blue, not amber
+**Laurens:** "instead of yellow go for the core kind of blue"
+**Claude:** Swapped every light on an HHD to cold Core blue (`#6fd3ff` /
+`#2b7fb5`) — sensor bars, baton tips, rifle muzzles, the Magistrate's cannon,
+their projectiles, and the sparks those bolts throw off a wall.
+
+It turned out to be a better call than a recolour. It **is the palette journey
+arriving early**: amber/rust is the outskirts, cold blue is the Core, and an HHD
+is issued equipment carrying WARDEN's own light out to the edge where it does
+not belong. The Scrapper's amber bulb is junk the city threw together; a droid
+is the machine that built it. On the Fringe's warm dusk the blue is the only
+cold thing on screen, so a patrol reads as foreign before the shape resolves.
+
+**And it tightens the damage law instead of breaking it.** *What glows amber can
+be hurt; dull plate cannot* now has no competition — no warm light exists on the
+machine at all, so the only amber on a droid is the flash and sparks of a
+weak-point hit. **Blue is WARDEN, amber is damage.** Red stays reserved for the
+laser-sight warning, and warm glows for player cues (a lootable wreck).
+
+Written into `art-style.md` as a general rule — colour tells you *whose* machine
+it is, not just where you are. One bug caught on the way: removing the amber
+constants left `AMBER_D` referenced by the wreck sprite, which would have thrown
+at load. All ten checks re-run and still green; cost is now 0.009ms/frame.
+Still local — nothing committed, nothing pushed.

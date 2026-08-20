@@ -200,6 +200,10 @@ clamped to 1.1 tiles and measured to a prop's anchor corner. Fixed.
    is a thing, and whether cleared squads respawn.
 8. `design/cathedral.md` is built except its phase-2 churchyard (headstones, a
    low wall with railings, trees, a lych gate).
+6. Open questions never answered: day/night.
+   *(Answered 2026-08-19: the Compactor drops a **badly damaged rifle**, repaired
+   by a droid-dismantler at Candlelight — HHDs do NOT drop rifles. See
+   `design/hhd-squads.md`.)*
 
 ## Known risks
 - The cathedral is ~250 px tall and the viewport is 180. From the parvis you

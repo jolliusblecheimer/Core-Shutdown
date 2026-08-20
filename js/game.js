@@ -619,6 +619,9 @@ function enterArea(id, entry) {
   spawnBandits();
   restoreBandits(id);
   foeBullets.length = 0;
+  // squads rebuild on entry — enemies are never persisted (see save.js)
+  if (Areas[id].hasDroids) spawnFringeSquads();
+  else clearDroids();
   buildFolk(Areas[id].folk);
   if (entry) {
     player.x = entry.x; player.y = entry.y;
@@ -927,6 +930,7 @@ function update(dt) {
       updatePlayer(dt);
       updateScrappers(dt);
       updateBandits(dt);
+      updateDroids(dt);
       updateItems(dt);
       checkExits(dt);
       markExplored(player.x, player.y, 9);
@@ -1143,6 +1147,15 @@ function render() {
       ? isoToScreen(p.foot[0] + p.foot[2], p.foot[1] + p.foot[3]).y - 1
       : (p.foot ? s.y + (p.foot[2] + p.foot[3]) * 4 : s.y);
     draws.push({ depth, draw: () => drawProp(p, s.x - ox, s.y - oy) });
+  }
+  if (currentAreaDef().hasDroids) {
+    for (const d of droids) {
+      // cull off-screen units before sorting — 23 of them on a 200x150 map
+      const s = isoToScreen(d.x, d.y);
+      if (s.x - ox < -40 || s.x - ox > VIEW_W + 40 ||
+          s.y - oy < -60 || s.y - oy > VIEW_H + 40) continue;
+      draws.push({ depth: s.y, draw: () => drawDroid(d, s.x - ox, s.y - oy) });
+    }
   }
   for (const sc of scrappers) {
     if (sc.state === 'off') continue;
@@ -2377,6 +2390,12 @@ function drawHUD() {
     if (sc.state !== 'dead' && sc.state !== 'off' &&
         Math.hypot(sc.x - player.x, sc.y - player.y) < 8)
       blip(sc.x, sc.y, '#ff5a3c');
+  }
+  if (currentAreaDef().hasDroids) {
+    for (const d of droids) {
+      if (d.state === 'dead') continue;
+      if (Math.hypot(d.x - player.x, d.y - player.y) < 8) blip(d.x, d.y, '#ff5a3c');
+    }
   }
   // the objective, if it is in the area you are standing in. Same source as
   // the HUD line and the map — it pulses so it reads as a marker, not a prop.

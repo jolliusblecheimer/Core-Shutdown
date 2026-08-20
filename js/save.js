@@ -184,6 +184,9 @@ function applySave(d) {
   // roadblocks existed simply has no list, and every post is manned.
   spawnBandits();
   restoreBandits(currentArea);
+  // ...and the droid squads, for the same reason
+  if (currentAreaDef().hasDroids) spawnFringeSquads();
+  else clearDroids();
   foeBullets.length = 0;
   // And the camp. THIS WAS THE "sometimes the NPCs don't spawn" BUG: `folk` was
   // only ever built inside enterArea(), and loading a save does not go through

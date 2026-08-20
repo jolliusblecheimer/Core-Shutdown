@@ -15,6 +15,21 @@
 - Camera zoom: fixed or player-controlled zoom levels?
 - How dark is dark? (night/interior visibility — flashlight mechanic?)
 
+## COLOUR TELLS YOU WHOSE MACHINE IT IS (2026-08-19)
+The palette journey (rust/amber outside → cold neon blue/white at the Core) is
+not only about *place* — it marks **whose** a machine is.
+- **Amber/rust glow = improvised, local, junk.** The Scrapper's bulb eye.
+- **Cold Core blue = issued by WARDEN.** The HHD squads in the Fringe glow
+  `#6fd3ff`: every sensor bar, muzzle, baton tip and projectile. They carry the
+  Core's light out to the edge, where it does not belong — which is exactly why
+  they read as foreign against the Fringe's warm dusk.
+- **This tightens the damage law rather than breaking it.** *What glows amber
+  can be hurt; dull plate cannot* — since no warm light exists on a droid at
+  all, the only amber on one is the flash of a weak-point hit. Blue is WARDEN,
+  amber is damage.
+- Red is reserved for **warnings** (the laser sight during a wind-up), and warm
+  glows for **player cues** (a lootable wreck).
+
 ## THE ANGLE RULE (2026-08-17) — applies to EVERY texture
 Isometric projection: screen-right-down = world +x, screen-left-down = world +y.
 **Anything lying on the ground or running along a road/wall must be sheared to
