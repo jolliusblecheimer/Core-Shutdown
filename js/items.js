@@ -58,8 +58,30 @@ const ITEMS = {
     have: () => player.owned.pistol,
     // no round count on the tile: the rounds are a MATERIAL and are badged
     // there. Counting them twice made the weapons tab look like a magazine.
-    equipped: () => player.hasGun,
+    equipped: () => player.hasGun && player.gun === 'pistol',
     action: 'equip',
+  },
+
+  rifle: {
+    name: 'Service rifle',
+    tab: 'weapons',
+    icon: () => Sprites.rifleIcon,
+    desc: 'Army issue, straightened out on a survivor\'s bench. It hits ' +
+          'nearly twice as hard as the pistol and reaches twice as far, and ' +
+          'it is slower for it. Feeding it is the whole problem.',
+    have: () => player.owned.rifle,
+    equipped: () => player.hasGun && player.gun === 'rifle',
+    action: 'equip',
+  },
+  brokenRifle: {
+    name: 'Broken rifle',
+    tab: 'key',
+    icon: () => Sprites.rifleBroken,
+    desc: 'Prised out of the Compactor\'s wreck. The cover is sprung, the ' +
+          'magazine is gone and the barrel sits off true — it will not fire ' +
+          'and it will not be made to by anyone out here. Somebody who works ' +
+          'on machines could straighten it.',
+    have: () => !!player.inv.brokenRifle,
   },
 
   // ---- food ----
@@ -126,9 +148,19 @@ const ITEMS = {
     tab: 'materials',
     icon: () => Sprites.ammo,
     desc: 'Hand-packed, mismatched, and there are never enough. Only the ' +
-          'scrap pistol takes them.',
-    have: () => player.ammo > 0,
-    count: () => player.ammo,
+          'scrap pistol takes them. The Sergeant will turn three of these ' +
+          'into one rifle round if you are carrying the wrong sort.',
+    have: () => player.pistolAmmo > 0,
+    count: () => player.pistolAmmo,
+  },
+  rifleAmmo: {
+    name: 'Rifle rounds',
+    tab: 'materials',
+    icon: () => Sprites.ammoRifle,
+    desc: 'Long, necked, factory-made — nobody in the ring is pressing these. ' +
+          'Every one you have came off a man who was pointing it at you.',
+    have: () => player.rifleAmmo > 0,
+    count: () => player.rifleAmmo,
   },
 
   // ---- key items ----

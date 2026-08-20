@@ -511,7 +511,7 @@ function droidBulletHit(b) {
   for (const d of droids) {
     if (d.state === 'dead') continue;
     if (Math.hypot(b.x - d.x, b.y - d.y) < d.r + 0.14) {
-      droidHit(d, b.x, b.y, 10, 'bullet');
+      droidHit(d, b.x, b.y, (b.dmg || 10), 'bullet');
       d.kbx += b.vx * 0.012; d.kby += b.vy * 0.012;
       return true;
     }

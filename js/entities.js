@@ -9,13 +9,40 @@ const player = {
   iframes: 0, flash: 0, dead: 0,
   combatT: 99,                 // seconds since last combat — passive regen after 20
   melee: null,                 // EQUIPPED melee: null | 'pipe' | 'knife'
-  hasGun: false, ammo: 0,      // hasGun = pistol EQUIPPED
+  hasGun: false,               // hasGun = a gun is EQUIPPED in the gun slot
+  gun: 'pistol',               // WHICH gun that slot holds: 'pistol' | 'rifle'
+  // Two calibres, never one pool. A round you are carrying is a round for a
+  // SPECIFIC gun, which is what makes "which of these is this worth" a
+  // decision instead of a formality.
+  pistolAmmo: 0, rifleAmmo: 0,
   active: 'melee',             // which equipped weapon LMB uses (scroll to switch)
   scrollHintT: 0,              // "scroll" HUD hint: 30s after getting the gun, then gone
-  owned: { pipe: false, knife: false, pistol: false },
-  inv: { scrap: 0, tech: 0, snack: 0, mreBeef: 0, mreChicken: 0, gateKey: false },
+  owned: { pipe: false, knife: false, pistol: false, rifle: false },
+  inv: { scrap: 0, tech: 0, snack: 0, mreBeef: 0, mreChicken: 0, gateKey: false,
+         brokenRifle: false },
   respawnX: 6.5, respawnY: 26.5, homeSet: false,
 };
+
+// TWO GUNS. The scrap pistol is what Marek could spare; the rifle is what an
+// army carried. It hits nearly twice as hard and reaches twice as far, and it
+// pays for that by being slower and by only eating rounds you took off
+// somebody who was shooting at you.
+const GUNS = {
+  pistol: {
+    label: 'SCRAP PISTOL', ammo: 'pistolAmmo', dmg: 10,
+    cd: 0.5, life: 0.5, speed: 13, shake: 1.2,
+    icon: () => Sprites.pistolIconS, held: () => Sprites.pistolHeld,
+  },
+  rifle: {
+    label: 'SERVICE RIFLE', ammo: 'rifleAmmo', dmg: 18,
+    cd: 0.75, life: 1.0, speed: 17, shake: 2.2,
+    icon: () => Sprites.rifleIconS, held: () => Sprites.rifleHeld,
+  },
+};
+// the gun actually in the slot, and the rounds it eats
+function curGun() { return GUNS[player.owned[player.gun] ? player.gun : 'pistol']; }
+function gunAmmo() { return player[curGun().ammo]; }
+function ownedGuns() { return ['pistol', 'rifle'].filter(g => player.owned[g]); }
 
 // melee outranges the Scrapper's reach (1.15) — spacing is the skill.
 // The knife punches through metal: higher damage, stabbing attack.
@@ -132,11 +159,24 @@ const FOLK = {
       "Door stays shut after dark. That is the one rule that matters.",
       "You walked the sign road, so you can read. That already puts you ahead.",
       "Anything of ours you want, you ask. Nobody here minds being asked." ] },
-    { key: 'osk', name: 'OSK', x: 3.5, y: 13.5, lines: [
-      "That lot's the camp's. Not yours.",
-      "Nothing personal, stranger. I'd say it to my own brother.",
-      "Ask Halden. He's the one allowed to give things away." ] },
-    { key: 'bo', name: 'BO', x: 3.5, y: 6.5, lines: [
+    // He was army before the Longest Night. He does not tell war stories and
+    // nobody asks — you can hear it in the fact that he counts things. He was
+    // already the one standing over the camp's stores; now you know why.
+    { key: 'osk', name: 'THE SERGEANT', x: 3.5, y: 13.5, stock: 'sergeant', lines: [
+      ["That lot's the camp's. Not yours.",
+       "Nothing personal, stranger. I'd say it to my own brother.",
+       "But rounds are different. Rounds I'll deal in, if you're carrying the",
+       "wrong sort."],
+      ["Wrong calibre in your pocket is the same as no calibre at all.",
+       "I've seen a man die holding forty of what his gun didn't take.",
+       "Bring them here. We'll sort it out."],
+      ["Twenty-two years, and the last order I got was to stand down.",
+       "So I count what's on the shelf. It's the same job with the shouting",
+       "taken out."] ] },
+    // The camp's machine-breaker, already at the bench with a Hunter-Killer in
+    // the vice. He is the only person in the game established as someone who
+    // opens things up and puts them back together, so the rifle goes to him.
+    { key: 'bo', name: 'BO', x: 3.5, y: 6.5, repair: true, lines: [
       "Don't touch that. Its cell is still hot.",
       "They come apart easier than they look. Everything does.",
       "I keep the eye lit while I work. Tells me there's still charge in it." ] },
@@ -171,7 +211,40 @@ function buildFolk(kind) {
 // one line at a time, in order, then round again — so talking to somebody
 // twice is worth doing and talking to them nine times is not. An entry may be
 // several lines: a trader needs room to say what he is before he sells it.
+const RIFLE_REPAIR_TECH = 3;      // the knife is 2 — this sits one step above
 function talkToFolk(f) {
+  // BO answers the rifle before he says anything else, every time, until it
+  // is fixed: a man at a workbench does not small-talk at somebody holding a
+  // broken gun.
+  if (f.repair && player.inv.brokenRifle && !player.owned.rifle) {
+    if (player.inv.tech >= RIFLE_REPAIR_TECH) {
+      player.inv.tech -= RIFLE_REPAIR_TECH;
+      player.inv.brokenRifle = false;
+      player.owned.rifle = true;
+      player.rifleAmmo += 12;
+      player.hasGun = true;
+      player.gun = 'rifle';
+      player.active = 'gun';
+      player.scrollHintT = 30;
+      SFX.tech();
+      showMsg('SERVICE RIFLE repaired  ·  12 rounds', 4);
+      saveGame();
+      startDialog([
+        f.name + ": Give me that. — Cover's sprung, mag's gone, barrel's off true.",
+        "Held together by somebody who never had to fire it, is the trouble.",
+        "...There. Straightened, re-sprung, and I found you a magazine.",
+        "Twelve rounds in it. That's every one this camp had for it.",
+        "Don't come to me for more — I fix things, I don't make ammunition.",
+        "The men on the roads carry it. Take it off them." ]);
+      return;
+    }
+    startDialog([
+      f.name + ": That's an army rifle, and it's been dropped on something hard.",
+      "I can straighten it. I need " + RIFLE_REPAIR_TECH + " tech parts to do it —",
+      "the spring and the pins have to come out of something.",
+      "Bring me those and you'll walk out of here with a rifle." ]);
+    return;
+  }
   const said = f.lines[f.said % f.lines.length];
   const lines = Array.isArray(said) ? said.slice() : [said];
   lines[0] = f.name + ': ' + lines[0];
@@ -380,21 +453,27 @@ function updatePlayer(dt) {
   player.fireCd -= dt; player.muzzle -= dt;
   player.swing -= dt; player.swingCd -= dt;
   if (Input.mouseDown && player.fireCd <= 0 && player.hasGun && player.active === 'gun') {
-    if (player.ammo > 0) {
-      player.ammo--;
+    const G = curGun();
+    if (player[G.ammo] > 0) {
+      player[G.ammo]--;
       player.combatT = 0;
-      player.fireCd = 0.5; player.muzzle = 0.06;
+      player.fireCd = G.cd; player.muzzle = 0.06;
       const dirW = screenToIso(Math.cos(player.angle), Math.sin(player.angle));
       const dl = Math.hypot(dirW.x, dirW.y);
       bullets.push({
         x: player.x + (dirW.x / dl) * 0.35, y: player.y + (dirW.y / dl) * 0.35,
-        vx: (dirW.x / dl) * 13, vy: (dirW.y / dl) * 13, life: 0.5,
+        vx: (dirW.x / dl) * G.speed, vy: (dirW.y / dl) * G.speed,
+        life: G.life, dmg: G.dmg,     // the bullet carries the gun's damage
       });
-      addShake(1.2);
+      addShake(G.shake);
       SFX.shot();
     } else {
       player.fireCd = 0.35;
-      showMsg('OUT OF AMMO — scroll to your melee', 1.5);
+      // name the calibre: with two of them, "out of ammo" is not enough
+      const other = player.gun === 'pistol' ? 'rifleAmmo' : 'pistolAmmo';
+      showMsg(player[other] > 0
+        ? 'NO ' + (player.gun === 'pistol' ? 'PISTOL' : 'RIFLE') + ' ROUNDS — scroll to switch'
+        : 'OUT OF AMMO — scroll to your melee', 1.6);
       SFX.dry();
     }
   }
@@ -637,11 +716,17 @@ function updateItems(dt) {
       const n = 1 + ((Math.random() * 3) | 0);
       player.inv.scrap += n;
       let extra = '';
-      if (bd.role !== 'knife') {                 // the shooters carried rounds
-        const rounds = bd.role === 'rifle' ? 4 + ((Math.random() * 4) | 0)
-                                           : 2 + ((Math.random() * 4) | 0);
-        player.ammo += rounds;
-        extra += `  · +${rounds} rounds`;
+      // A man drops the rounds he was firing, and nothing else. This is the
+      // whole ammo economy now that the street pickups are gone: the rifle
+      // only stays loaded for as long as you keep taking roadblocks.
+      if (bd.role === 'rifle') {
+        const rounds = 3 + ((Math.random() * 4) | 0);
+        player.rifleAmmo += rounds;
+        extra += `  · +${rounds} rifle rounds`;
+      } else if (bd.role === 'pistol') {
+        const rounds = 2 + ((Math.random() * 4) | 0);
+        player.pistolAmmo += rounds;
+        extra += `  · +${rounds} pistol rounds`;
       }
       if (Math.random() < 0.3) { player.inv.snack++; extra += '  · +1 snack bar'; }
       showMsg(`Searched the body — ${n} scrap${extra}`);
@@ -662,9 +747,16 @@ function updateItems(dt) {
         tutShow('melee',
           ['Click toward a target to swing the pipe.', 'It outranges the machines — strike from', 'the edge of your reach.'],
           ['LMB'], 'CLICK TO CONTINUE');
+      } else if (best.type === 'brokenRifle') {
+        player.inv.brokenRifle = true;
+        showMsg('BROKEN RIFLE  ·  it does not fire', 3.5);
+        startDialog([
+          "An army rifle, and the machine that had it did not carry it gently.",
+          "The cover is sprung, the magazine is gone, the barrel sits off true.",
+          "It will not fire. Somebody who knows machines might make it." ]);
       } else {
-        player.ammo += best.amount;
-        showMsg(`+${best.amount} rounds`);
+        player.pistolAmmo += best.amount;
+        showMsg(`+${best.amount} pistol rounds`);
       }
       spawnSparks(best.x, best.y, 8, ['#ffd27a', '#fff2c0']);
       SFX.pickup();
@@ -701,7 +793,7 @@ function talkToNpc() {
     player.hasGun = true;
     player.active = 'gun';
     player.scrollHintT = 30;
-    player.ammo += 6;
+    player.pistolAmmo += 6;
     player.inv.gateKey = true;
     showMsg('SCRAP PISTOL + YARD GATE KEY acquired', 3.5);
     saveGame();
@@ -736,8 +828,8 @@ const STOCK = {
   marek: [
     { label: 'snack bar', icon: () => Sprites.snackIcon, cost: { scrap: 4 },
       buy: () => { player.inv.snack++; showMsg('Bought a snack bar  (H to eat)'); } },
-    { label: '6 rounds', icon: () => Sprites.ammo, cost: { scrap: 6 },
-      buy: () => { player.ammo += 6; showMsg('Bought 6 rounds'); } },
+    { label: '6 pistol rounds', icon: () => Sprites.ammo, cost: { scrap: 6 },
+      buy: () => { player.pistolAmmo += 6; showMsg('Bought 6 pistol rounds'); } },
     { label: 'piercing knife', icon: () => Sprites.knifeIcon, cost: { tech: 2 },
       sold: () => player.owned.knife,
       buy: () => {
@@ -748,8 +840,13 @@ const STOCK = {
   // Tam's counter. Rations and rounds, and one tech part at a price that says
   // he knows exactly what it is worth to somebody carrying a scrap pistol.
   tam: [
-    { label: '8 rifle rounds', icon: () => Sprites.ammo, cost: { scrap: 5 },
-      buy: () => { player.ammo += 8; showMsg('Bought 8 rounds'); } },
+    // Three scrap a round. Deliberately steep (Laurens): the rifle is meant
+    // to be fed off the men you take it from, and this counter is the expensive
+    // way out of being stuck, never the comfortable one.
+    { label: '4 rifle rounds', icon: () => Sprites.ammoRifle, cost: { scrap: 12 },
+      buy: () => { player.rifleAmmo += 4; showMsg('Bought 4 rifle rounds'); } },
+    { label: '6 pistol rounds', icon: () => Sprites.ammo, cost: { scrap: 6 },
+      buy: () => { player.pistolAmmo += 6; showMsg('Bought 6 pistol rounds'); } },
     { label: 'beef MRE', icon: () => Sprites.mreBeef, cost: { scrap: 6 },
       buy: () => { player.inv.mreBeef++; showMsg('Bought a beef MRE  (H to eat)'); } },
     { label: 'chicken MRE', icon: () => Sprites.mreChicken, cost: { scrap: 4 },
@@ -758,8 +855,26 @@ const STOCK = {
       buy: () => { player.inv.tech++; showMsg('Bought a low-quality tech component'); } },
   ],
 };
-const COST_NAME = { scrap: 'scrap', tech: 'low-q tech' };
-const canAfford = (row) => Object.keys(row.cost).every(k => player.inv[k] >= row.cost[k]);
+// THE SERGEANT'S EXCHANGE. Lossy in BOTH directions on purpose: 3 pistol buys
+// 1 rifle, 1 rifle buys 2 pistol, so a round trip burns your supply instead of
+// printing it. He is a way out of carrying the wrong calibre, never a way to
+// manufacture the right one.
+STOCK.sergeant = [
+  { label: '1 rifle round', icon: () => Sprites.ammoRifle, cost: { pistolAmmo: 3 },
+    buy: () => { player.rifleAmmo += 1; showMsg('Traded 3 pistol rounds for 1 rifle round'); } },
+  { label: '2 pistol rounds', icon: () => Sprites.ammo, cost: { rifleAmmo: 1 },
+    buy: () => { player.pistolAmmo += 2; showMsg('Traded 1 rifle round for 2 pistol rounds'); } },
+];
+
+const COST_NAME = { scrap: 'scrap', tech: 'low-q tech',
+                    pistolAmmo: 'pistol rounds', rifleAmmo: 'rifle rounds' };
+// ammo is not in `inv` — it lives on the player, because the HUD reads it every
+// frame. So a price can be denominated in either place.
+const priceHeld = (k) => (k === 'pistolAmmo' || k === 'rifleAmmo') ? player[k] : player.inv[k];
+const payPrice = (k, n) => {
+  if (k === 'pistolAmmo' || k === 'rifleAmmo') player[k] -= n; else player.inv[k] -= n;
+};
+const canAfford = (row) => Object.keys(row.cost).every(k => priceHeld(k) >= row.cost[k]);
 const costText = (row) => Object.keys(row.cost)
   .map(k => row.cost[k] + ' ' + COST_NAME[k]).join(' + ');
 
@@ -773,7 +888,7 @@ function tradeBuy(n) {
   if (!row) return;
   if (row.sold && row.sold()) { showMsg('Already sold', 1.5); SFX.deny(); return; }
   if (!canAfford(row)) { showMsg('Not enough — ' + costText(row), 1.6); SFX.deny(); return; }
-  for (const k of Object.keys(row.cost)) player.inv[k] -= row.cost[k];
+  for (const k of Object.keys(row.cost)) payPrice(k, row.cost[k]);
   row.buy();
   SFX.buy();
   saveGame();                    // every purchase is committed instantly
@@ -884,14 +999,14 @@ function updateBullets(dt) {
         boss.state !== 'hidden' && boss.state !== 'dead' &&
         Math.hypot(b.x - boss.x, b.y - boss.y) < boss.r + 0.15) {
       hit = true;
-      bossHit(b.x, b.y, 10, 'bullet');
+      bossHit(b.x, b.y, (b.dmg || 10), 'bullet');
     }
     if (!hit) {
       for (const sc of scrappers) {
         if (sc.state === 'dead' || sc.state === 'off') continue;
         if (Math.hypot(b.x - sc.x, b.y - sc.y) >= 0.45) continue;
         hit = true;
-        sc.hp -= 10;
+        sc.hp -= (b.dmg || 10);
         sc.hitFlash = 0.08;
         sc.kbx += b.vx * 0.02; sc.kby += b.vy * 0.02;
         spawnSparks(b.x, b.y, 6, ['#ffd27a', '#ffb02e', '#8a8a92']);
@@ -907,7 +1022,7 @@ function updateBullets(dt) {
         if (bd.dead) continue;
         if (Math.hypot(b.x - bd.x, b.y - bd.y) >= 0.45) continue;
         hit = true;
-        banditHit(bd, 10, b.vx * 0.1, b.vy * 0.1, false);
+        banditHit(bd, (b.dmg || 10), b.vx * 0.1, b.vy * 0.1, false);
         break;                          // one bullet, one raider
       }
     }

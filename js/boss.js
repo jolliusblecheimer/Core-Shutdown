@@ -317,6 +317,12 @@ function bossHit(wx, wy, dmg, kind) {
       spawnSmoke(boss.x, boss.y, 15);
       player.inv.tech += 2;
       player.inv.scrap += 8;
+      // THE RIFLE. It comes out of the wreck bent and open and useless, and
+      // it stays that way until somebody at the camp can be persuaded to
+      // look at it. Dropped on the gate side, so you walk over it going out.
+      if (!window.ARENA_MODE && !player.owned.rifle && !player.inv.brokenRifle) {
+        items.push({ type: 'brokenRifle', x: 27.5, y: 12.5, bob: 0.9 });
+      }
       if (window.ARENA_MODE) {
         showMsg('BOSS DOWN — press R to refight', 4);
       } else {
@@ -552,7 +558,7 @@ function updateBoss(dt) {
 function resetArena() {
   player.x = 16.5; player.y = 21.5;
   player.hp = player.maxHp;
-  player.ammo = 60;
+  player.pistolAmmo = 60; player.rifleAmmo = 40;
   player.dead = 0; player.iframes = 1;
   Thoughts.done = {}; Thoughts.t = 0;
   spawnBoss(16.5, 14.5);

@@ -7,7 +7,7 @@
 const SAVE_KEY_REAL = 'coreshutdown_save_v1';
 const SAVE_KEY_TEST = 'coreshutdown_save_test';
 const saveKey = () => (window.TEST_MODE ? SAVE_KEY_TEST : SAVE_KEY_REAL);
-const SAVE_VERSION = 3;
+const SAVE_VERSION = 4;
 
 let playerName = '';
 
@@ -20,7 +20,8 @@ function saveGame() {
       v: SAVE_VERSION,
       name: playerName,
       player: {
-        x: player.x, y: player.y, hp: player.hp, ammo: player.ammo,
+        x: player.x, y: player.y, hp: player.hp,
+        pistolAmmo: player.pistolAmmo, rifleAmmo: player.rifleAmmo, gun: player.gun,
         melee: player.melee, hasGun: player.hasGun, active: player.active,
         owned: { ...player.owned }, inv: { ...player.inv },
         respawnX: player.respawnX, respawnY: player.respawnY, homeSet: player.homeSet,
@@ -98,6 +99,17 @@ function migrate(d) {
     d.area = 'junkyard';
     d.v = 3;
   }
+  if (d.v < 4) {
+    // v3 -> v4: ONE ammo pool becomes two calibres. Every round an existing
+    // run is carrying was fired out of the scrap pistol, so that is what it
+    // becomes; the rifle has not been found yet, which is exactly true.
+    if (d.player) {
+      d.player.pistolAmmo = num(d.player.ammo, 0);
+      d.player.rifleAmmo = 0;
+      d.player.gun = 'pistol';
+    }
+    d.v = 4;
+  }
   if (!Areas[d.area]) d.area = 'junkyard';   // an area we no longer ship
   if (!d.name) d.name = 'TRAVELLER';         // never throw a run away over a blank name
   return d;
@@ -118,7 +130,9 @@ function applySave(d) {
   player.x = num(p.x, player.x);
   player.y = num(p.y, player.y);
   player.hp = Math.min(player.maxHp, Math.max(1, num(p.hp, player.maxHp)));
-  player.ammo = Math.max(0, num(p.ammo, 0));
+  player.pistolAmmo = Math.max(0, num(p.pistolAmmo, 0));
+  player.rifleAmmo = Math.max(0, num(p.rifleAmmo, 0));
+  player.gun = p.gun === 'rifle' ? 'rifle' : 'pistol';
   player.respawnX = num(p.respawnX, player.respawnX);
   player.respawnY = num(p.respawnY, player.respawnY);
   player.scrollHintT = num(p.scrollHintT, 0);
@@ -127,9 +141,10 @@ function applySave(d) {
   player.hasGun = !!p.hasGun;
   player.active = p.active === 'gun' ? 'gun' : 'melee';
   // merge onto defaults so fields added in later updates keep their default
-  player.owned = Object.assign({ pipe: false, knife: false, pistol: false }, p.owned || {});
+  player.owned = Object.assign({ pipe: false, knife: false, pistol: false, rifle: false }, p.owned || {});
   player.inv = Object.assign(
-    { scrap: 0, tech: 0, snack: 0, mreBeef: 0, mreChicken: 0, gateKey: false }, p.inv || {});
+    { scrap: 0, tech: 0, snack: 0, mreBeef: 0, mreChicken: 0, gateKey: false,
+      brokenRifle: false }, p.inv || {});
   for (const k of ['scrap', 'tech', 'snack', 'mreBeef', 'mreChicken'])
     player.inv[k] = Math.max(0, num(player.inv[k], 0));
   // transient state always starts clean

@@ -1,4 +1,6 @@
-# TWO CALIBRES — the rifle, split ammo, and the Sergeant (PLAN)
+# TWO CALIBRES — the rifle, split ammo, and the Sergeant
+
+**Status: BUILT and verified in the browser, 2026-08-20.**
 
 Laurens, 2026-08-20: *"differentiate between pistol ammo and rifle ammo, design
 the rifle, make the compactor drop a broken rifle and the dude with the broken
@@ -46,7 +48,7 @@ the only reason the gun keeps working.
 | Damage | 10 | **18** |
 | Fire delay | 0.5s | **0.75s** |
 | Range (bullet life) | 0.5s ≈ 6.5 tiles | **1.0s ≈ 13 tiles** |
-| Source | Marek, Tam, junkyard pickups, pistol raiders | **rifle raiders only** (+ the Sergeant) |
+| Source | Marek, Tam, junkyard pickups, pistol raiders | rifle raiders, Tam at 3 scrap a round, the Sergeant |
 
 Slower and rarer, but it reaches across a street and takes a Bailiff's spine off
 in two. It should feel like the first thing you own that the city respects.
@@ -156,12 +158,31 @@ being unobtainable.
 | `js/map.js` | street ammo removed |
 | `js/sprites.js` | rifle held sprite, HUD icon, broken variant, two round icons |
 
-## Open — need Laurens
+## Decided (Laurens, 2026-08-20)
 
-1. **Tam currently sells "8 rifle rounds" for 5 scrap.** If that stays, rifle
-   ammo is purchasable and the whole scarcity loop collapses. *(my lean: Tam's
-   rounds become pistol rounds — he is the general trader; rifle ammo comes only
-   from rifle raiders and the Sergeant's exchange)*
-2. **Exchange rates** — 3 pistol → 1 rifle, and 1 rifle → 2 pistol. Too harsh,
-   too generous?
-3. **Repair cost** — 3 low-q tech. The knife is 2.
+1. **Tam sells 4 rifle rounds for 12 scrap.** Better than removing them: three
+   scrap a round is steep enough that feeding the rifle off the men carrying it
+   stays the sane way to do it, while nobody can ever be permanently stuck
+   holding a rifle and no ammunition. A price, not a wall.
+2. **Exchange rates as proposed** — 3 pistol → 1 rifle, 1 rifle → 2 pistol.
+3. **Repair cost as proposed** — 3 low-q tech.
+
+## Verified in the browser
+
+Two pools that never leak into each other · rifle at 18 damage / 0.75s / 17
+speed and the pistol untouched at 10 / 0.5s / 13 · the wheel walking melee →
+pistol → rifle → melee · rifle raiders dropping only rifle rounds, pistol
+raiders only pistol rounds, knife raiders none · zero ammo left on Fringe
+streets (junkyard and camp keep theirs) · the Sergeant converting both ways and
+refusing when you cannot pay · BO turning down a player with 1 tech and
+repairing at 3, returning 12 rounds · the Compactor dropping the broken rifle
+once · **a v3 save migrating its 23 rounds into 23 pistol rounds with the run
+otherwise intact**.
+
+## One thing fixed on the way past
+
+`drawHUD` read `tabs[InvUI.tab].id` with no bounds check. `update()` clamps that
+index before every render, so it was not reachable in play — but the draw should
+not depend on its update having run, and this change moves items between pages,
+which is exactly when a page can disappear under a stale index. The draw now
+clamps for itself and highlights the page it is actually showing.
