@@ -1131,6 +1131,29 @@ function outlined(src) {
     px(arg, 2, 5, 6, 1, '#333a2a');
     Sprites.ammoRifle = outlined(ar);
 
+    // ---- MAGAZINES.
+    // These replace loose rounds everywhere, so they have to be told apart at
+    // ten pixels in a pack tile and on the ground. One cue does it: the pistol
+    // magazine is a SHORT STRAIGHT box, the rifle magazine is LONGER and
+    // CURVED. Both carry a witness slot down the side — the stripe that says
+    // how full a real magazine is, and the same thing the HUD pips quote.
+    const magSprite = (tall, curved, body, lip, wit) => {
+      const w = 9, h = tall;
+      const c = makeCanvas(w, h), g = c.getContext('2d');
+      px(g, 1, 0, 7, 2, lip);                       // feed lips
+      px(g, 1, 1, 7, 1, '#20242a');
+      for (let y = 2; y < h; y++) {
+        // a curved magazine leans out as it descends; a straight one does not
+        const off = curved ? Math.round((y - 2) / 5) : 0;
+        px(g, 1 + off, y, 6, 1, body);
+        px(g, 1 + off, y, 1, 1, wit);               // the witness stripe
+      }
+      px(g, 1 + (curved ? Math.round((h - 3) / 5) : 0), h - 1, 6, 1, '#20242a');
+      return outlined(c);
+    };
+    Sprites.magPistol = magSprite(11, false, '#4a4f54', '#7d818c', '#8d959b');
+    Sprites.magRifle  = magSprite(16, true,  '#5f5343', '#8a7a61', '#a8977b');
+
     // ---- MAP ICONS.
     // Seven pixels across, so every one of them is drawn with px() and nothing
     // else — a path at this size would antialias into mush, and these have to

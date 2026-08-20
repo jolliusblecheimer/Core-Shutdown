@@ -132,24 +132,29 @@ const ITEMS = {
     have: () => player.inv.tech > 0,
     count: () => player.inv.tech,
   },
-  ammo: {
-    name: 'Pistol rounds',
+  // Magazines, not rounds. The count is SPARES — what is in the gun is on the
+  // HUD, where it belongs, because that is the number you fight by.
+  magPistol: {
+    name: 'Pistol magazine',
     tab: 'materials',
-    icon: () => Sprites.ammo,
-    desc: 'Hand-packed, mismatched, and there are never enough. Only the ' +
-          'scrap pistol takes them.',
-    have: () => player.ammo > 0,
-    count: () => player.ammo,
+    icon: () => Sprites.magPistol,
+    countLabel: 'spare',
+    desc: 'Six hand-packed rounds in a bent steel box. Press R to load one — ' +
+          'the magazine that comes out keeps whatever is still in it, so ' +
+          'topping up between fights never costs you a round.',
+    have: () => sparesIn('pistol').length > 0,
+    count: () => sparesIn('pistol').length,
   },
-  ammoRifle: {
-    name: 'Rifle rounds',
+  magRifle: {
+    name: 'Rifle magazine',
     tab: 'materials',
-    icon: () => Sprites.ammoRifle,
-    desc: 'Factory rounds, all identical, headstamped by whoever ran the ' +
-          'Correction. Nobody makes these any more — you take them off the ' +
+    icon: () => Sprites.magRifle,
+    countLabel: 'spare',
+    desc: 'Twelve factory rounds, curved steel, headstamped by whoever ran ' +
+          'the Correction. Nobody makes these — you take them off the ' +
           'machines still carrying them, or you buy them at Candlelight.',
-    have: () => player.ammoRifle > 0,
-    count: () => player.ammoRifle,
+    have: () => sparesIn('rifle').length > 0,
+    count: () => sparesIn('rifle').length,
   },
 
   // ---- key items ----

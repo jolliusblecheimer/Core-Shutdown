@@ -1626,3 +1626,57 @@ the east column is cistern, preserves, preserves, leaving one-tile gaps that
 only x=7 serves, so two of my fixes just moved the pocket. In the end I stopped
 guessing and searched every free tile for one that seals nothing and can be
 reached.
+
+### 99. Magazines
+**Laurens:** "Quite a large combat change now. Instead of just firing
+continuously, show how many bullets are left in the mag — and now there are mags
+too. You don't buy rounds but mags, you don't find bullets but mags. The rifle
+you reload every 12 bullets, the pistol every 6. If you reload a mag with
+bullets left you use them. Make explanations and new texture mechanics etc.
+This is a big change, be thorough."
+
+**Claude:** Planned first in `design/magazines.md`, then built whole.
+
+**Why the old number was weak, stated so the design has something to answer.**
+`player.ammo` was one integer and the trigger read it directly. Forty rounds
+and six played identically until it hit zero; the number was a wallet, not a
+weapon; and nothing could ever catch you out. A round count answers *can I keep
+shooting at all*. A magazine answers *can I keep shooting right now*, and only
+the second question is worth asking in a fight.
+
+**The model.** Each gun owns `{ loaded, spares: [] }` — one entry per magazine
+carried, holding its round count. Pistol 6, rifle 12.
+
+**The rule everything turns on:** reloading takes the fullest spare, and the
+magazine coming out **goes back in the pouch with its rounds still in it**.
+Nothing is ever lost by reloading early, which is exactly Laurens' *"if you
+reload a mag with bullets left you use them"*. A system that punished topping
+up would only teach players to fight on empty. The consequence — a pouch of
+part-used magazines after a long fight — is correct, and the HUD pips show it.
+Reload refuses out loud when there is nothing fuller to swap to.
+
+**What you see.** The weapon slot carries `loaded/capacity` (amber on the last
+third, red on empty) and one pip per spare, each filled to how full that
+magazine is. Reloading replaces the pips with a filling bar so the pause is
+visible and its length legible. Empty with spares pulses an `R`; empty with
+nothing says so once. The first dry click fires the freeze-frame lesson.
+
+**Where they come from.** Nothing hands out loose rounds any more: the yard
+pickups, the two that shake loose at the gate, Marek, Tam, a stripped droid and
+a searched raider all give magazines. The drops are deliberately PART-USED —
+the machine was mid-magazine when you put it down — which is the pouch-of-
+partials situation the reload rule exists for.
+
+**Art.** Two icons that must differ at ten pixels: the pistol magazine is a
+short straight steel box, the rifle magazine is longer and CURVED, which is the
+one silhouette cue that survives at that size. Both carry a witness stripe, the
+same thing the HUD pips quote.
+
+**Saves.** `ammo`/`ammoRifle` were plain numbers, and this is a change of
+representation rather than of what the player owns, so the conversion loses
+nothing: fill the loaded magazine, bag the remainder. 15 pistol and 40 rifle
+rounds came back as 6+[6,3] and 12+[12,12,4] — measured, still 15 and 40.
+
+Verified with real key presses rather than by calling the functions: hold the
+trigger to a dry click, R to reload, R refused when full, and an early reload
+at 4/6 leaving a 4-round magazine in the pouch.

@@ -54,6 +54,21 @@ arrows *or* the mouse. `Q`/`R`, a click or the wheel change tab; `E` equips or
 eats. What an item IS lives in `js/items.js`; `js/game.js` only lays it out.
 Design and the built-vs-planned diff in `design/inventory-botw.md`.
 
+### MAGAZINES — the reload, and the pause it costs you
+Ammunition is magazines now, never loose rounds. Each gun carries a **loaded
+magazine** and a **pouch of spares** (`player.arms`): the pistol holds 6, the
+rifle 12, and `R` swaps in the fullest spare over 1.1s / 1.6s. **The magazine
+coming out keeps its rounds** — topping up between fights never costs you
+anything, which is the habit the mechanic should reward. Reload refuses, out
+loud, when there is nothing fuller to load.
+The weapon slot shows `loaded/capacity` and one pip per spare, filled to how
+full that magazine is; reloading replaces the pips with a bar, and an empty gun
+with something to load pulses an `R`. The first dry click teaches it.
+You buy magazines, find magazines and strip magazines — a droid's is part-used,
+because it was mid-magazine when you put it down. Old saves convert without
+losing a round: 40 rifle rounds becomes 12 loaded and spares of 12, 12, 4.
+Design and the decisions behind it: `design/magazines.md`.
+
 ### THE SERVICE RIFLE — the ring's weapon upgrade
 The Compactor's drop, and the first thing the milestone-grant rule was written
 for. It comes out of the **wreck**, not the machine: the Compactor spent a year

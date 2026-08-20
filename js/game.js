@@ -81,7 +81,7 @@ if (window.ARENA_MODE) {
   player.melee = 'knife';
   player.hasGun = true;
   player.active = 'gun';
-  player.ammo = 60; player.ammoRifle = 40;
+  for (let i = 0; i < 5; i++) { giveMag('pistol'); giveMag('rifle'); }
   player.inv.snack = 5;
   player.scrollHintT = 0;
   Tut.done = { move: 1, melee: 1, enemy: 1, loot: 1, gun: 1, stealth: 1 };
@@ -1986,7 +1986,8 @@ function drawItem(it, x, y) {
   ctx.fillStyle = grad;
   ctx.fillRect(Math.round(x - 5), Math.round(y - 30), 10, 30);
   drawShadow(x, y, 4);
-  const img = it.type === 'pipe' ? Sprites.pipeIcon : Sprites.ammo;
+  const img = it.type === 'pipe' ? Sprites.pipeIcon
+            : (it.gun === 'rifle' ? Sprites.magRifle : Sprites.magPistol);
   ctx.drawImage(img, Math.round(x - img.width / 2), Math.round(y - 10 + bobY));
   addLight(x, y - 6, 0, 14, '255,210,120', 0.22 + Math.sin(gameTime * 3 + it.bob) * 0.06);
 }
@@ -2343,18 +2344,52 @@ function drawHUD() {
   uiRect(8, VIEW_H - 10, 42, 3, '#2a1410');
   uiRect(8, VIEW_H - 10, Math.round(42 * hpFrac), 3, `hsl(${Math.round(112 * hpFrac)}, 62%, 46%)`);
 
-  // weapon slot (bottom-right): shows only the ACTIVE weapon (scroll to switch)
-  uiRect(VIEW_W - 60, VIEW_H - 21, 54, 16, 'rgba(0,0,0,0.55)');
+  // WEAPON SLOT (bottom-right): the active weapon, and for a gun the state
+  // that actually matters in the next four seconds — what is IN it, and how
+  // many magazines are behind it. A wallet total told you none of that.
+  const SLOT_W = 70, SLOT_H = 23;
+  const slotX = VIEW_W - SLOT_W - 6, slotY = VIEW_H - SLOT_H - 5;
+  uiRect(slotX, slotY, SLOT_W, SLOT_H, 'rgba(0,0,0,0.55)');
   const showGun = player.active === 'gun' && player.hasGun;
   if (showGun) {
-    uiIcon(player.gun === 'rifle' ? Sprites.rifleIconS : Sprites.pistolIconS, VIEW_W - 56, VIEW_H - 17);
-    const mag = (GUNS[player.gun] || GUNS.pistol).mag, rnds = player[mag] || 0;
-    ptext('' + rnds, VIEW_W - 12, VIEW_H - 15, 8, rnds > 0 ? '#e8d9c0' : '#ff5a3c', 'right');
+    const G = GUNS[player.gun] || GUNS.pistol;
+    const A = player.arms[player.gun] || player.arms.pistol;
+    uiIcon(player.gun === 'rifle' ? Sprites.rifleIconS : Sprites.pistolIconS, slotX + 4, slotY + 3);
+    // loaded / capacity — amber on the last third, red on empty
+    const col = A.loaded === 0 ? '#ff5a3c'
+              : A.loaded <= G.cap / 3 ? '#ffd27a' : '#e8d9c0';
+    ptext(A.loaded + '/' + G.cap, slotX + SLOT_W - 4, slotY + 3, 8, col, 'right');
+
+    const py2 = slotY + 14;
+    if (player.reloadT > 0) {
+      // the pause made visible: the pips give way to a filling bar
+      const f = 1 - Math.max(0, player.reloadT) / G.reload;
+      uiRect(slotX + 4, py2 + 1, SLOT_W - 8, 4, 'rgba(255,255,255,0.14)');
+      uiRect(slotX + 4, py2 + 1, (SLOT_W - 8) * f, 4, '#7ad27a');
+    } else {
+      // ONE PIP PER SPARE MAGAZINE, filled to how full it is. A pouch of
+      // part-used magazines is the normal state after a fight, and this is
+      // where you see it.
+      const shown = Math.min(7, A.spares.length);
+      for (let i = 0; i < shown; i++) {
+        const frac = Math.max(0, Math.min(1, A.spares[i] / G.cap));
+        const h = Math.max(1, Math.round(6 * frac));
+        uiRect(slotX + 4 + i * 6, py2, 4, 6, '#2a2c31');
+        uiRect(slotX + 4 + i * 6, py2 + 6 - h, 4, h, frac >= 1 ? '#c9c9d2' : '#ffd27a');
+      }
+      if (A.spares.length > shown)
+        ptext('+' + (A.spares.length - shown), slotX + 4 + shown * 6 + 1, py2, 7, '#8d959b');
+      // empty, with something to load: say so, and keep saying it
+      if (A.loaded === 0 && A.spares.length) {
+        const pulse = 0.55 + 0.45 * Math.sin(gameTime * 6);
+        ptext('R', slotX + SLOT_W - 5, py2 - 1, 8, `rgba(255,210,122,${pulse})`, 'right');
+      }
+    }
   } else if (player.melee) {
     const mi = player.melee === 'pipe' ? Sprites.pipeIcon : Sprites.knifeIcon;
-    uiIcon(mi, VIEW_W - 52, VIEW_H - 16);
+    uiIcon(mi, slotX + 6, slotY + 5);
   } else {
-    ptext('UNARMED', VIEW_W - 54, VIEW_H - 15, 7, 'rgba(232,217,192,0.45)');
+    ptext('UNARMED', slotX + 6, slotY + 8, 7, 'rgba(232,217,192,0.45)');
   }
   if (player.melee && player.hasGun && player.scrollHintT > 0) {
     ptext('scroll', VIEW_W - 33, VIEW_H - 27, 7, 'rgba(232,217,192,0.35)', 'center');
@@ -2804,8 +2839,8 @@ function drawHUD() {
     const mine = [
       [Sprites.scrapBit, player.inv.scrap],
       [Sprites.techIcon, player.inv.tech],
-      [Sprites.ammo, player.ammo],
-      [Sprites.ammoRifle, player.ammoRifle],
+      [Sprites.magPistol, sparesIn('pistol').length],
+      [Sprites.magRifle, sparesIn('rifle').length],
       [Sprites.snackIcon, player.inv.snack],
       [Sprites.mreBeef, player.inv.mreBeef],
       [Sprites.mreChicken, player.inv.mreChicken],

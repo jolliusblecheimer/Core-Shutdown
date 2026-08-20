@@ -25,7 +25,8 @@ function saveGame() {
       v: SAVE_VERSION,
       name: playerName,
       player: {
-        x: player.x, y: player.y, hp: player.hp, ammo: player.ammo, ammoRifle: player.ammoRifle,
+        x: player.x, y: player.y, hp: player.hp,
+        arms: JSON.parse(JSON.stringify(player.arms)),
         melee: player.melee, hasGun: player.hasGun, active: player.active, gun: player.gun,
         owned: { ...player.owned }, inv: { ...player.inv },
         respawnX: player.respawnX, respawnY: player.respawnY, homeSet: player.homeSet,
@@ -119,6 +120,44 @@ function wipeSave() {
 
 const num = (v, fallback) => (typeof v === 'number' && isFinite(v)) ? v : fallback;
 
+// MAGAZINES, and the runs that predate them. `ammo`/`ammoRifle` were plain
+// round counts; magazines are a change of REPRESENTATION, not of what the
+// player owns, so the conversion must not lose a single round: fill the loaded
+// magazine first, then bag the remainder as spares. 40 rifle rounds becomes
+// 12 loaded and spares of 12, 12, 4 — still forty.
+function bagRounds(gun, total) {
+  const cap = capOf(gun), A = magsOf(gun);
+  A.loaded = 0; A.spares.length = 0;
+  let left = Math.max(0, Math.floor(total));
+  A.loaded = Math.min(cap, left);
+  left -= A.loaded;
+  while (left > 0) { const take = Math.min(cap, left); A.spares.push(take); left -= take; }
+}
+function loadArms(p) {
+  for (const gun of ['pistol', 'rifle']) {
+    const A = magsOf(gun);
+    A.loaded = 0; A.spares.length = 0;
+  }
+  if (p.arms) {
+    // a save written since magazines existed
+    for (const gun of ['pistol', 'rifle']) {
+      const src = p.arms[gun];
+      if (!src) continue;
+      const A = magsOf(gun), cap = capOf(gun);
+      A.loaded = Math.max(0, Math.min(cap, num(src.loaded, 0)));
+      if (Array.isArray(src.spares))
+        for (const n of src.spares) {
+          const v = Math.max(0, Math.min(cap, num(n, 0)));
+          if (v > 0) A.spares.push(v);
+        }
+    }
+  } else {
+    // ...and one written before they did
+    bagRounds('pistol', num(p.ammo, 0));
+    bagRounds('rifle', num(p.ammoRifle, 0));
+  }
+}
+
 // pour a loaded save back into the live game state, defensively
 function applySave(d) {
   playerName = d.name;
@@ -128,8 +167,7 @@ function applySave(d) {
   player.x = num(p.x, player.x);
   player.y = num(p.y, player.y);
   player.hp = Math.min(player.maxHp, Math.max(1, num(p.hp, player.maxHp)));
-  player.ammo = Math.max(0, num(p.ammo, 0));
-  player.ammoRifle = Math.max(0, num(p.ammoRifle, 0));
+  loadArms(p);
   player.respawnX = num(p.respawnX, player.respawnX);
   player.respawnY = num(p.respawnY, player.respawnY);
   player.scrollHintT = num(p.scrollHintT, 0);
