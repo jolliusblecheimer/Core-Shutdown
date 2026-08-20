@@ -170,6 +170,10 @@ function applySave(d) {
   // robots re-enter fresh (never saved mid-chase)
   if (mission.state !== 'none' && currentAreaDef().hasScrapper) spawnScrapper();
   else scrapper.state = 'off';
+  // ...and so do squads. applySave can switch area without going through
+  // enterArea, so it has to rebuild them itself.
+  if (currentAreaDef().hasDroids) spawnFringeSquads();
+  else clearDroids();
 }
 
 // nearest open tile, spiralling outward

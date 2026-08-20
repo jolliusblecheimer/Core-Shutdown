@@ -359,6 +359,9 @@ function enterArea(id, entry) {
   explosions.length = 0; fuses.length = 0;
   if (Areas[id].hasScrapper && mission.state !== 'none') spawnScrapper();
   else scrapper.state = 'off';
+  // squads rebuild on entry — enemies are never persisted (see save.js)
+  if (Areas[id].hasDroids) spawnFringeSquads();
+  else clearDroids();
   if (entry) {
     player.x = entry.x; player.y = entry.y;
     if (!canStand(player.x, player.y, player.r)) {
@@ -600,6 +603,10 @@ function update(dt) {
       updatePlayer(dt);
       updateScrapper(dt);
       updateItems(dt);
+      // after updateItems: it clears Prompt each frame, and a droid wreck
+      // should never steal a prompt from an item you are standing on
+      updateDroids(dt);
+      droidLoot(dt);
       checkExits(dt);
       markExplored(player.x, player.y, 9);
     }
@@ -760,6 +767,16 @@ function render() {
   }
   { const s = isoToScreen(scrapper.x, scrapper.y);
     draws.push({ depth: s.y, draw: () => drawScrapper(s.x - ox, s.y - oy) }); }
+  if (currentAreaDef().hasDroids) {
+    for (const d of droids) {
+      // cull off-screen units before sorting — 23 droids on a 200x150 map
+      const s = isoToScreen(d.x, d.y);
+      if (s.x - ox < -40 || s.x - ox > VIEW_W + 40 ||
+          s.y - oy < -60 || s.y - oy > VIEW_H + 40) continue;
+      draws.push({ depth: s.y, draw: () => drawDroid(d, s.x - ox, s.y - oy) });
+    }
+    drawDroidShots(ox, oy, draws);
+  }
   if (boss.active && boss.state !== 'hidden') {
     const s = isoToScreen(boss.x, boss.y);
     draws.push({ depth: s.y + 2, draw: () => drawBoss(s.x - ox, s.y - oy) });
@@ -1750,6 +1767,12 @@ function drawHUD() {
   if (scrapper.state !== 'dead' && scrapper.state !== 'off' &&
       Math.hypot(scrapper.x - player.x, scrapper.y - player.y) < 8)
     blip(scrapper.x, scrapper.y, '#ff5a3c');
+  if (currentAreaDef().hasDroids) {
+    for (const d of droids) {
+      if (d.state === 'dead') continue;
+      if (Math.hypot(d.x - player.x, d.y - player.y) < 8) blip(d.x, d.y, '#ff5a3c');
+    }
+  }
   blip(player.x, player.y, '#ffffff');
   g.strokeStyle = '#5a4a38';
   g.lineWidth = U;

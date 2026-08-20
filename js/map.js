@@ -687,7 +687,7 @@ function buildFringe() {
 const Areas = {
   junkyard: {
     id: 'junkyard', name: 'THE JUNKYARD', build: buildJunkyard,
-    hasScrapper: true, hasBoss: true, hasNpc: true,
+    hasScrapper: true, hasBoss: true, hasNpc: true, hasDroids: false,
     tint: '#e6c092',
     makeItems: () => ([
       { type: 'pipe', x: 9.5, y: 23.5, bob: 0 },
@@ -700,7 +700,7 @@ const Areas = {
   },
   fringe: {
     id: 'fringe', name: 'THE FRINGE', build: buildFringe,
-    hasScrapper: false, hasBoss: false, hasNpc: false,
+    hasScrapper: false, hasBoss: false, hasNpc: false, hasDroids: true,
     tint: '#efe0cc',      // thinner, cooler, brighter than the yard's dusk
     makeItems: () => ([
       { type: 'ammo', x: 150.5, y: 130.5, amount: 6, bob: 0.8 },

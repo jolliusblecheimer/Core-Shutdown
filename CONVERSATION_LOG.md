@@ -436,3 +436,81 @@ issued — uniformity is the horror.
 Written to `design/hhd-squads.md` with four open questions (heavy's name and
 whether it belongs in the Fringe; stealth kills; squad respawn). No code — plan
 first.
+
+### 73. Building the patrol droids (LOCAL ONLY, NOT PUSHED)
+**Laurens:** Call the Spotter **Scout** in the files but leave it out for now.
+The Magistrate stays, but **no naming in the game** — code only. Cleared squads
+respawn after about **a minute**, enough to traverse the area they patrolled.
+**Start designing the patrol droids, don't push anything**, then explain how it
+works. Also: **the Marshal will not drop its rifle** — the Compactor drops a
+badly damaged rifle that cannot shoot, and the man dismantling the droid in the
+church repairs it, so the player should **avoid the droids first** and only
+later fight them for drops.
+**Claude:** Built the whole system in `js/droids.js`. Nothing committed, nothing
+pushed.
+
+**Changed the plan's phase 0 on purpose.** The plan said to refactor the
+`scrapper` singleton into an array first. Instead the droids are an **additive
+`droids[]` system and the Scrapper is untouched** — the Scrapper is a bespoke
+tutorial enemy (mission-gated, respawn-on-loot, wired into the freeze-frame
+lessons and the save), and folding it into a general squad system would force
+its quirks onto every droid. This way the junkyard cannot regress and a live
+save cannot break. Verified: the yard still reports 0 droids and a patrolling
+Scrapper.
+
+**No save bump needed** — `save.js` already says robots re-enter fresh, so
+squads just rebuild on area entry. (`applySave` can change area without going
+through `enterArea`, so it rebuilds them too.)
+
+**Built:** 4 unit types (Scout defined + sprited but spawned by nobody; Bailiff,
+Marshal, Magistrate live), 8 squads / 23 droids on the street junctions with the
+density gradient, formation patrol, **line of sight** (Bresenham over `solid`),
+**120° vision cones with a standing-watch head sweep**, squad-shared alert with
+12s memory, locational armour (front ×0.5, spine ×2, Magistrate shield ×0),
+laser-sight telegraphs, 60s squad respawn that refuses to fire within 22 tiles
+of the player.
+
+**Two real bugs found and fixed while testing:**
+- **Half the squads silently vanished.** Routes were dropped whole if a waypoint
+  was not standable — and street dressing sits exactly on some junctions.
+  `map.js` loses three junctions from its own `patrolPoints` the same way. Now
+  waypoints **snap** to the nearest standable tile, and a route that truly
+  cannot be placed says so. 4 squads → 8.
+- **Idle droids were blind statues.** A stopped patrol never turned, so waiting
+  behind cover was free. They now sweep their cone while standing watch, out of
+  phase with each other.
+
+**Also learned (worth keeping):** headless browser testing of this game needs
+`Tut.active = null` every step — the world PAUSES while a tutorial is up and
+only a real keypress clears it, so an unattended test freezes after a second and
+looks like a physics bug. Driving `update(1/60)` by hand also beats
+`requestAnimationFrame`, which headless Chromium throttles.
+
+Verified in the browser with screenshots: junkyard unregressed, stealth
+(open/crouched/behind cover), alert propagation, the full combat state machine,
+damage zones, the respawn clock, and 0.012ms/frame for 23 droids.
+
+### 74. The droids glow Core blue, not amber
+**Laurens:** "instead of yellow go for the core kind of blue"
+**Claude:** Swapped every light on an HHD to cold Core blue (`#6fd3ff` /
+`#2b7fb5`) — sensor bars, baton tips, rifle muzzles, the Magistrate's cannon,
+their projectiles, and the sparks those bolts throw off a wall.
+
+It turned out to be a better call than a recolour. It **is the palette journey
+arriving early**: amber/rust is the outskirts, cold blue is the Core, and an HHD
+is issued equipment carrying WARDEN's own light out to the edge where it does
+not belong. The Scrapper's amber bulb is junk the city threw together; a droid
+is the machine that built it. On the Fringe's warm dusk the blue is the only
+cold thing on screen, so a patrol reads as foreign before the shape resolves.
+
+**And it tightens the damage law instead of breaking it.** *What glows amber can
+be hurt; dull plate cannot* now has no competition — no warm light exists on the
+machine at all, so the only amber on a droid is the flash and sparks of a
+weak-point hit. **Blue is WARDEN, amber is damage.** Red stays reserved for the
+laser-sight warning, and warm glows for player cues (a lootable wreck).
+
+Written into `art-style.md` as a general rule — colour tells you *whose* machine
+it is, not just where you are. One bug caught on the way: removing the amber
+constants left `AMBER_D` referenced by the wreck sprite, which would have thrown
+at load. All ten checks re-run and still green; cost is now 0.009ms/frame.
+Still local — nothing committed, nothing pushed.

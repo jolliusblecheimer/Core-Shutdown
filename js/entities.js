@@ -219,6 +219,7 @@ function updatePlayer(dt) {
         }
       }
     }
+    if (typeof droidMeleeHit === 'function') droidMeleeHit(m, ps);
     if (scrapper.state !== 'dead') {
       const dx = scrapper.x - player.x, dy = scrapper.y - player.y;
       const d = Math.hypot(dx, dy);
@@ -522,6 +523,7 @@ function updateBullets(dt) {
       hit = true;
       bossHit(b.x, b.y, 10, 'bullet');
     }
+    if (!hit && typeof droidBulletHit === 'function' && droidBulletHit(b)) hit = true;
     if (!hit && scrapper.state !== 'dead' && Math.hypot(b.x - scrapper.x, b.y - scrapper.y) < 0.45) {
       hit = true;
       scrapper.hp -= 10;

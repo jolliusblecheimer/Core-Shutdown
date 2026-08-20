@@ -68,9 +68,10 @@ Handmade sign trail (planks, bedsheet banners, painted road arrows) leading
    station, respawn re-anchor, mission board.
 4. Interiors (enterable shops/houses, roof fade).
 5. Field 12 + the drone crash (Q3) and the Underpass to Ring 4.
-6. Open questions never answered: HHDs dropping their rifles as the ring's
-   weapon upgrade; day/night; the Compactor's loot drop (armour plate vs
-   piston maul vs grabber claw vs eye lens).
+6. Open questions never answered: day/night.
+   *(Answered 2026-08-19: the Compactor drops a **badly damaged rifle**, repaired
+   by a droid-dismantler at Candlelight — HHDs do NOT drop rifles. See
+   `design/hhd-squads.md`.)*
 
 ## Known risks
 - Compactor at 200 HP + full heal ≈ 334 damage budget; fine in the arena with
