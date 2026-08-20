@@ -1437,3 +1437,34 @@ it is, not just where you are. One bug caught on the way: removing the amber
 constants left `AMBER_D` referenced by the wreck sprite, which would have thrown
 at load. All ten checks re-run and still green; cost is now 0.009ms/frame.
 Still local — nothing committed, nothing pushed.
+
+### 95. Two sessions on the same plan at once
+**Claude:** Pushing the stealth work turned up something worth recording: while
+this session built step 2 of `hhd-squads.md`, **another session built steps 3–9
+of the same plan** and merged it as PR #2. Both landed. Nothing was lost and
+nothing was duplicated, for one specific reason.
+
+That session's merge commit says it: *"put the droid squads on its systems, not
+beside them"*. The droids ask `canSpot` / `canSpotWide` / `losClear` /
+`faceToward` — the functions this session had just written — instead of
+answering "can it see me" their own way. Their file says why, and it is the
+right reason: *a droid asking that question its own way would make hiding
+guesswork instead of a skill*.
+
+They also made the opposite call to the plan on purpose and said so: the squads
+are ADDITIVE rather than the singleton refactor step 1 asked for, because
+`scrapper` is a bespoke tutorial enemy — mission-gated, respawn-on-loot, wired
+into the freeze-frame lessons — and folding it in would force its quirks onto
+every droid, or the squad's shape onto the tutorial.
+
+Verified the merged tree rather than assuming: the three vision cases still
+behave (cover holds alert at zero, open ground climbs, turned away decays),
+Scrappers still engage in about a second, a roadblock still turns in under two,
+eight squads and twenty-three droids spawn in the Fringe and attack, and the
+whole camp/map/save/audit suite is clean.
+
+**What the merge did cost was the docs.** `PROJECT_STATE.md` came out with two
+item 6s, an item 2 that still called the HHDs outstanding, and an item 7 from
+this session claiming steps 3–9 were unbuilt — all true when written, all false
+by the time they merged. Reconciled. That is the real tax of parallel sessions:
+not the code, which merged clean, but the prose about the code.

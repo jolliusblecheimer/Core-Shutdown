@@ -1,14 +1,24 @@
 # HHD SQUADS — the machines that hold the Fringe
 
-**Status: steps 1 and 2 of the build order are DONE (2026-08-20); 3–9 are not,
-and four of them need the open questions at the bottom answered first.**
+**Status: BUILT (2026-08-20), across two sessions working in parallel.**
 
-- **Step 1, the singleton→array refactor this plan calls its blocker, is done** —
-  cleared in passing by the two-Scrapper work and the cordon. `scrappers[]` and
-  `bandits[]` both exist; nothing is a singleton any more.
-- **Step 2, line of sight and facing arcs, is done.** See §"what actually
-  changed" at the bottom — half of it (cover) had already arrived with the
-  bandits, and the Scrappers had been left behind seeing through walls.
+- **Step 1, the singleton→array refactor this plan calls its blocker** — cleared
+  in passing by the two-Scrapper work and the cordon, before anyone read this
+  plan back. `scrappers[]` and `bandits[]` both exist.
+- **Step 2, line of sight and facing arcs.** See §"what actually changed" at the
+  bottom — half of it (cover) had already arrived with the bandits, and the
+  Scrappers had been left behind seeing through walls.
+- **Steps 3–9, the squads themselves** — `js/droids.js`. Eight squads on the
+  junctions, in role mixes. Built ADDITIVE rather than as the refactor step 1
+  called for: `scrapper` is a bespoke tutorial enemy, and folding it in would
+  force its quirks onto every droid or the squad shape onto the tutorial. It
+  asks the same `canSpot`/`canSpotWide`/`losClear`/`faceToward` the rest of the
+  world asks, so hiding means one thing everywhere rather than a different
+  thing per enemy.
+
+**Not deployed:** the Scout. It is designed and drawn, and held back until
+Laurens decides whether the alarm belongs in this phase — see the open
+questions, which are now three, not four.
 
 Laurens, 2026-08-19: *"make a plan for the robot squadrons in the city, make the
 robots vary in size and weaponry. they should be a bit bigger and travel in
@@ -218,6 +228,9 @@ This is multi-session work.
 ---
 
 ## Open questions — need Laurens
+
+*(Q1, the names, is answered: they are CODE-ONLY. Nothing in the game ever
+shows a unit name.)*
 
 1. **Names.** Marshal / Bailiff / Spotter are already in `PROJECT_STATE.md`.
    **Magistrate** for the heavy keeps the judicial theme (these are the machines

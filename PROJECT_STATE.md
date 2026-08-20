@@ -173,11 +173,17 @@ clamped to 1.1 tiles and measured to a prop's anchor corner. Fixed.
    the sprite on its footprint centre, give the prop a `foot`, and let
    `clearPropSolid` free it. See the new section in `design/art-style.md`;
    the cars and the bus have been through this, these have not.
-2. **HHDs — Human-Hunter-Droids.** Still outstanding: the roadblocks put
-   people on two crossroads, not machines on the streets between them.
-   Marshal (rifle, bursts, takes cover), Bailiff (short-range flusher),
-   Spotter (calls them in). Scrappers stay in the yard. Design in
-   `design/fringe-plan.html`.
+2. **HHDs — BUILT** (`js/droids.js`, 2026-08-20). Eight squads hold the street
+   junctions between the two roadblocks: Bailiff (baton, closes and flushes),
+   Marshal (burst rifle, holds its distance and telegraphs), and one Magistrate
+   deep north whose frontal shield takes zero damage and is meant to read as
+   *come back later*. Additive rather than a refactor of `scrapper` — the yard's
+   tutorial machine keeps its quirks and a live save cannot regress. They ask
+   the same `canSpot`/`losClear` the whole world asks, so hiding means the same
+   thing everywhere. **Left:** the SCOUT is designed but deliberately not
+   deployed (its flare wakes the squad — held pending your call on whether the
+   alarm belongs in this phase), plus a balance pass against pipe/knife/~18
+   rounds.
 3. **Candlelight — the rest of it.** The camp is IN (see below), and so is
    per-trader stock. Still to do from `design/candlelight.md`: stock lists for
    Halden and Bo, Ade healing for a price, the sleeping bay re-anchoring
@@ -186,24 +192,15 @@ clamped to 1.1 tiles and measured to a prop's anchor corner. Fixed.
    somebody does live there.
 4. Interiors (enterable shops/houses, roof fade).
 5. Field 12 + the drone crash (Q3) and the Underpass to Ring 4.
-6. Open questions never answered: HHDs dropping their rifles as the ring's
-   weapon upgrade; day/night; the Compactor's loot drop (armour plate vs
-   piston maul vs grabber claw vs eye lens).
-7. **`design/hhd-squads.md` — steps 1–2 built, 3–9 not.** The array refactor and
-   now line of sight + facing arcs are in (see below). Still to build: the squad
-   object with shared alert and formation, the four units (Spotter, Bailiff,
-   Marshal, Magistrate), their sprites in the modern language, Fringe placement
-   with a density gradient and a safe radius round Candlelight, the Marshal's
-   rifle as loot, save v4, and a balance pass. **Four open questions in that doc
-   gate most of it** and need Laurens: the Spotter's name, whether the
-   Magistrate belongs in the Fringe at all, whether a stealth kill on a Spotter
-   is a thing, and whether cleared squads respawn.
-8. `design/cathedral.md` is built except its phase-2 churchyard (headstones, a
-   low wall with railings, trees, a lych gate).
 6. Open questions never answered: day/night.
    *(Answered 2026-08-19: the Compactor drops a **badly damaged rifle**, repaired
    by a droid-dismantler at Candlelight — HHDs do NOT drop rifles. See
    `design/hhd-squads.md`.)*
+7. `design/cathedral.md` is built except its phase-2 churchyard (headstones, a
+   low wall with railings, trees, a lych gate).
+8. **Still open in `design/hhd-squads.md`:** whether the Scout's flare belongs
+   in this phase at all (it is built and held back), whether a stealth kill on
+   one before it flares is a thing, and whether cleared squads respawn.
 
 ## Known risks
 - The cathedral is ~250 px tall and the viewport is 180. From the parvis you
