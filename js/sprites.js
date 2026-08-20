@@ -1245,6 +1245,108 @@ function outlined(src) {
     px(phg, 4, 6, 2, 2, '#2f323a');
     Sprites.pistolHeld = outlined(ph);
 
+    // ================= THE SERVICE RIFLE =================
+    // Army issue, and it has to read as ARMY next to a pistol wired together
+    // out of a scrap yard: straight lines, a wooden stock, a carry handle.
+    // The silhouette does the work — at 320x180 the player never sees the
+    // detail, only that the thing in his hands got LONGER.
+    // Muzzle right, stock left, matching the pistol icons' facing.
+    const R_WOOD = '#6b4b2e', R_WOOD_H = '#835f3c', R_WOOD_D = '#4a341f';
+    const R_METAL = '#9ba0ab', R_METAL_H = '#c2c7d2', R_BODY = '#3a3d45';
+    const R_BODY_H = '#4a4e57', R_DARK = '#2e3138', R_SIGHT = '#7c828e';
+
+    // ---- pack icon (big, 30x16) ----
+    const r = makeCanvas(30, 16), rg = r.getContext('2d');
+    px(rg, 0, 6, 8, 5, R_WOOD);                 // butt stock
+    px(rg, 0, 6, 8, 1, R_WOOD_H);
+    px(rg, 0, 10, 8, 1, R_WOOD_D);
+    px(rg, 0, 5, 2, 1, R_WOOD_D);               // heel of the butt plate
+    px(rg, 7, 5, 10, 6, R_BODY);                // receiver
+    px(rg, 7, 5, 10, 1, R_BODY_H);
+    px(rg, 9, 3, 7, 2, R_SIGHT);                // carry handle
+    px(rg, 9, 3, 7, 1, R_METAL_H);
+    px(rg, 11, 5, 3, 1, R_DARK);                // under the handle
+    px(rg, 17, 6, 11, 3, R_METAL);              // barrel
+    px(rg, 17, 6, 11, 1, R_METAL_H);
+    px(rg, 20, 5, 4, 1, R_WOOD);                // handguard band
+    px(rg, 26, 4, 1, 2, R_SIGHT);               // front sight post
+    px(rg, 28, 6, 2, 3, '#5d626e');             // muzzle
+    px(rg, 12, 11, 4, 5, R_DARK);               // magazine
+    px(rg, 12, 11, 4, 1, '#41454e');
+    px(rg, 8, 11, 3, 4, '#33363e');             // pistol grip
+    px(rg, 9, 10, 2, 1, R_DARK);                // trigger guard
+    Sprites.rifleIcon = outlined(r);
+
+    // ---- HUD slot (compact, 20x11) ----
+    const rs = makeCanvas(20, 11), rsg = rs.getContext('2d');
+    px(rsg, 0, 4, 5, 3, R_WOOD);
+    px(rsg, 0, 4, 5, 1, R_WOOD_H);
+    px(rsg, 4, 3, 8, 4, R_BODY);
+    px(rsg, 4, 3, 8, 1, R_BODY_H);
+    px(rsg, 6, 2, 4, 1, R_SIGHT);               // carry handle
+    px(rsg, 12, 4, 7, 2, R_METAL);
+    px(rsg, 12, 4, 7, 1, R_METAL_H);
+    px(rsg, 17, 3, 1, 1, R_SIGHT);              // front sight
+    px(rsg, 19, 4, 1, 2, '#5d626e');
+    px(rsg, 7, 7, 3, 4, R_DARK);                // magazine
+    px(rsg, 5, 7, 2, 3, '#33363e');             // grip
+    Sprites.rifleIconS = outlined(rs);
+
+    // ---- held, for the aiming pose (16x8) — longer than the pistol's 12 ----
+    const rh = makeCanvas(16, 8), rhg = rh.getContext('2d');
+    px(rhg, 0, 3, 4, 3, R_WOOD);                // stock against the shoulder
+    px(rhg, 0, 3, 4, 1, R_WOOD_H);
+    px(rhg, 3, 2, 6, 3, R_BODY);                // receiver
+    px(rhg, 3, 2, 6, 1, R_BODY_H);
+    px(rhg, 5, 1, 3, 1, R_SIGHT);               // carry handle
+    px(rhg, 9, 3, 6, 2, R_METAL);               // barrel
+    px(rhg, 9, 3, 6, 1, R_METAL_H);
+    px(rhg, 15, 3, 1, 2, '#5d626e');            // muzzle
+    px(rhg, 6, 5, 2, 3, R_DARK);                // magazine
+    px(rhg, 4, 5, 2, 2, '#33363e');             // grip
+    Sprites.rifleHeld = outlined(rh);
+
+    // ---- BROKEN. The same gun, unmistakably: same length, same stock, same
+    // handle — but the receiver is open, the magazine is gone, the barrel is
+    // bent off true and every colour has the life washed out of it. The
+    // repair has to read as THIS THING, FIXED, not as a different rifle.
+    const B_WOOD = '#4e3a26', B_METAL = '#6e727a', B_BODY = '#31343a';
+    const rb = makeCanvas(30, 16), rbg = rb.getContext('2d');
+    px(rbg, 0, 7, 8, 4, B_WOOD);                // stock, cracked through
+    px(rbg, 0, 7, 8, 1, '#5f4931');
+    px(rbg, 4, 7, 1, 4, '#241a11');             // the split
+    px(rbg, 7, 6, 10, 5, B_BODY);               // receiver, cover sprung open
+    px(rbg, 8, 4, 8, 2, B_BODY);                // the cover, hinged up
+    px(rbg, 8, 4, 8, 1, '#40444b');
+    px(rbg, 9, 7, 6, 2, '#1b1d21');             // the empty inside of it
+    px(rbg, 17, 7, 8, 3, B_METAL);              // barrel...
+    px(rbg, 17, 7, 8, 1, '#868b94');
+    px(rbg, 25, 8, 5, 3, B_METAL);              // ...bent, and stepped down
+    px(rbg, 25, 8, 5, 1, '#868b94');
+    px(rbg, 8, 11, 3, 4, '#2b2e34');            // grip, magazine GONE
+    px(rbg, 12, 11, 4, 1, '#1b1d21');           // the empty magazine well
+    Sprites.rifleBroken = outlined(rb);
+
+    // ---- two calibres, told apart by SHAPE, not colour: they sit next to
+    // each other in the pack and a colour swap alone would not read.
+    // Pistol rounds are the existing stubby box. Rifle rounds are a taller
+    // crate with long necked brass standing out of it.
+    // Rifle rounds are a STRIPPER CLIP — three long necked cartridges standing
+    // in a band. The pistol's is a stubby box. They sit next to each other in
+    // the pack, and a colour swap alone would have read as the same object
+    // twice; the silhouettes have to differ or the player has to squint.
+    const ar = makeCanvas(10, 12), arg = ar.getContext('2d');
+    for (const x of [0, 3, 6]) {
+      px(arg, x + 1, 0, 1, 3, '#a8842f');      // necked shoulder + tip
+      px(arg, x, 3, 3, 7, '#c9a24a');          // case body
+      px(arg, x, 3, 1, 7, '#e8c877');          // lit edge
+      px(arg, x + 2, 3, 1, 7, '#8f6f27');      // shaded edge
+    }
+    px(arg, 0, 8, 9, 3, '#4a4e57');            // the clip holding them
+    px(arg, 0, 8, 9, 1, '#5f6570');
+    px(arg, 0, 11, 9, 1, '#2e3138');
+    Sprites.ammoRifle = outlined(ar);
+
     // metal pipe (ground item + icon)
     const pi = makeCanvas(20, 7), pig = pi.getContext('2d');
     px(pig, 1, 2, 18, 3, '#6a6a72');

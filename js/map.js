@@ -1115,9 +1115,10 @@ const Areas = {
     hasDroids: true,
     tint: '#efe0cc',      // thinner, cooler, brighter than the yard's dusk
     makeItems: () => ([
-      { type: 'ammo', x: 150.5, y: 130.5, amount: 6, bob: 0.8 },
-      { type: 'ammo', x: 62.5, y: 122.5, amount: 6, bob: 2.4 },
-      { type: 'ammo', x: 33.5, y: 88.5, amount: 6, bob: 1.5 },
+      // NO ROUNDS IN THE STREET (Laurens, 2026-08-20). Ammo in the open city
+      // comes off the men who were firing it, or off a trader's counter —
+      // never off the tarmac. That is what makes taking a roadblock a supply
+      // decision instead of a detour.
     ]),
     // back through the yard gate, and in at the west door of St Martin's
     exits: [

@@ -77,11 +77,12 @@ if (pendingSave) playerName = pendingSave.name;
 // arena loadout: fully armed, tutorials off, boss waiting
 if (window.ARENA_MODE) {
   playerName = 'ARENA';
-  player.owned = { pipe: true, knife: true, pistol: true };
+  player.owned = { pipe: true, knife: true, pistol: true, rifle: true };
   player.melee = 'knife';
   player.hasGun = true;
   player.active = 'gun';
-  player.ammo = 60;
+  player.gun = 'rifle';
+  player.pistolAmmo = 60; player.rifleAmmo = 40;
   player.inv.snack = 5;
   player.scrollHintT = 0;
   Tut.done = { move: 1, melee: 1, enemy: 1, loot: 1, gun: 1, stealth: 1 };
@@ -138,12 +139,29 @@ canvas.addEventListener('wheel', e => {
   if (InvUI.open) return;
   // The map swallows it too, and spends it as zoom on the next frame.
   if (MapUI.open) { MapUI.wheel += e.deltaY; return; }
-  if (player.melee && player.hasGun) {
-    player.active = player.active === 'gun' ? 'melee' : 'gun';
+  // With two guns the wheel walks a RING of everything equipped: the melee,
+  // then each gun you own. Owning only the pistol leaves it a straight
+  // melee <-> gun toggle, exactly as it has always been.
+  const guns = ownedGuns();
+  const ring = [];
+  if (player.melee) ring.push({ kind: 'melee' });
+  if (player.hasGun) for (const g of guns) ring.push({ kind: 'gun', gun: g });
+  if (ring.length > 1) {
+    let at = ring.findIndex(r => player.active === 'gun'
+      ? (r.kind === 'gun' && r.gun === player.gun)
+      : r.kind === 'melee');
+    if (at < 0) at = 0;
+    const dir = e.deltaY > 0 ? 1 : -1;
+    const next = ring[(at + dir + ring.length) % ring.length];
+    if (next.kind === 'melee') {
+      player.active = 'melee';
+      showMsg(MELEE[player.melee].label.toUpperCase() + ' selected', 1);
+    } else {
+      player.active = 'gun';
+      player.gun = next.gun;
+      showMsg(GUNS[next.gun].label + ' selected', 1);
+    }
     SFX.switchW();
-    showMsg(player.active === 'gun'
-      ? 'SCRAP PISTOL selected'
-      : MELEE[player.melee].label.toUpperCase() + ' selected', 1);
   }
 }, { passive: false });
 window.addEventListener('mouseup', e => { if (e.button === 0) Input.mouseDown = false; });
@@ -1069,8 +1087,11 @@ function invAction(it) {
   if (it.id === 'pipe' || it.id === 'knife') {
     player.melee = player.melee === it.id ? null : it.id;
     SFX.switchW();
-  } else if (it.id === 'pistol') {
-    player.hasGun = !player.hasGun;
+  } else if (it.id === 'pistol' || it.id === 'rifle') {
+    // taking a gun out of the slot puts THAT gun away; picking one up while
+    // the other is held simply swaps which one you are carrying
+    if (player.hasGun && player.gun === it.id) player.hasGun = false;
+    else { player.hasGun = true; player.gun = it.id; player.active = 'gun'; }
     SFX.switchW();
   } else if (FOOD.some(f => f.id === it.id)) {
     // in the pack you pick what to eat; H picks for you
@@ -1970,7 +1991,9 @@ function drawItem(it, x, y) {
   ctx.fillStyle = grad;
   ctx.fillRect(Math.round(x - 5), Math.round(y - 30), 10, 30);
   drawShadow(x, y, 4);
-  const img = it.type === 'pipe' ? Sprites.pipeIcon : Sprites.ammo;
+  const img = it.type === 'pipe' ? Sprites.pipeIcon
+            : it.type === 'brokenRifle' ? Sprites.rifleBroken
+            : Sprites.ammo;
   ctx.drawImage(img, Math.round(x - img.width / 2), Math.round(y - 10 + bobY));
   addLight(x, y - 6, 0, 14, '255,210,120', 0.22 + Math.sin(gameTime * 3 + it.bob) * 0.06);
 }
@@ -2328,8 +2351,11 @@ function drawHUD() {
   uiRect(VIEW_W - 60, VIEW_H - 21, 54, 16, 'rgba(0,0,0,0.55)');
   const showGun = player.active === 'gun' && player.hasGun;
   if (showGun) {
-    uiIcon(Sprites.pistolIconS, VIEW_W - 56, VIEW_H - 17);
-    ptext('' + player.ammo, VIEW_W - 12, VIEW_H - 15, 8, player.ammo > 0 ? '#e8d9c0' : '#ff5a3c', 'right');
+    // the number on screen is always the number that will be spent
+    const G = curGun();
+    const rounds = player[G.ammo];
+    uiIcon(G.icon(), VIEW_W - 56, VIEW_H - 17);
+    ptext('' + rounds, VIEW_W - 12, VIEW_H - 15, 8, rounds > 0 ? '#e8d9c0' : '#ff5a3c', 'right');
   } else if (player.melee) {
     const mi = player.melee === 'pipe' ? Sprites.pipeIcon : Sprites.knifeIcon;
     uiIcon(mi, VIEW_W - 52, VIEW_H - 16);
@@ -2640,13 +2666,18 @@ function drawHUD() {
     ptext('THE PACK', VIEW_W / 2, 7, 8, '#ffd27a', 'center');
 
     const tabs = visibleTabs();
-    const items = tabs.length ? itemsOnTab(tabs[InvUI.tab].id) : [];
+    // update() clamps InvUI.tab to the visible pages before we ever get here,
+    // but the draw must not DEPEND on that having happened: a page can vanish
+    // the moment you spend the last thing on it, and a render that ran without
+    // its update would read straight off the end of the list.
+    const tab = tabs[Math.max(0, Math.min(InvUI.tab, tabs.length - 1))];
+    const items = tab ? itemsOnTab(tab.id) : [];
     const sel = items[InvUI.cur] || null;
 
     // ---- tabs. A tab with nothing in it is not drawn at all ----
     const tabRects = packTabRects(tabs);
     for (let i = 0; i < tabs.length; i++) {
-      const r = tabRects[i], on = i === InvUI.tab;
+      const r = tabRects[i], on = tabs[i] === tab;   // the page actually shown
       if (on) uiRect(r.x, r.y, r.w, r.h, 'rgba(255,210,122,0.16)');
       ptext(tabs[i].label, r.x + 4, r.y + 3, 8, on ? '#ffd27a' : 'rgba(232,217,192,0.45)');
     }
@@ -2765,7 +2796,8 @@ function drawHUD() {
     const mine = [
       [Sprites.scrapBit, player.inv.scrap],
       [Sprites.techIcon, player.inv.tech],
-      [Sprites.ammo, player.ammo],
+      [Sprites.ammo, player.pistolAmmo],
+      [Sprites.ammoRifle, player.rifleAmmo],
       [Sprites.snackIcon, player.inv.snack],
       [Sprites.mreBeef, player.inv.mreBeef],
       [Sprites.mreChicken, player.inv.mreChicken],
