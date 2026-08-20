@@ -321,9 +321,20 @@ function bossHit(wx, wy, dmg, kind) {
         showMsg('BOSS DOWN — press R to refight', 4);
       } else {
         bossDefeated = true;
+        // THE RIFLE. It comes out of the wreck, not out of the machine: the
+        // Compactor spent a year swallowing whatever was left in this yard,
+        // and one of the things it swallowed was carrying this. Bent double
+        // and no use to anybody — until Candlelight, where somebody takes
+        // machines apart for a living.
+        if (!player.owned.rifle) {
+          player.inv.rifleBroken = (player.inv.rifleBroken || 0) + 1;
+          if (typeof granted !== 'undefined') granted['compactor-rifle'] = 1;
+        }
         openGate();
         SFX.chime();
         showMsg('THE COMPACTOR IS DOWN — the gate stands open', 4.5);
+        // the banner is one slot, so the rifle gets the other channel
+        think('rifle', 'A rifle in the wreck. Bent in half — but somebody might straighten it.');
         saveGame();
       }
     }

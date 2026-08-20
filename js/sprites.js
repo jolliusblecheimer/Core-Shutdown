@@ -1245,6 +1245,68 @@ function outlined(src) {
     px(phg, 4, 6, 2, 2, '#2f323a');
     Sprites.pistolHeld = outlined(ph);
 
+    // ---- THE SERVICE RIFLE.
+    // The one the Correction issued, and the only long gun in the ring. It is
+    // a different LANGUAGE from the scrap pistol on purpose: the pistol is
+    // wire and hope, this is factory work — long, straight, one clean line
+    // from stock to muzzle, the same off-white composite as the droids.
+    // Two versions of it, and the difference has to read at a glance in the
+    // pack: BROKEN is bent, dark, and missing its optic; WORKING is straight,
+    // pale, and the sight is back on.
+    const rifle = (broken) => {
+      const c = makeCanvas(26, 11), g = c.getContext('2d');
+      const BODY = broken ? '#5e5f5a' : '#9aa0a4';
+      const HI   = broken ? '#6e6f68' : '#c3c9cd';
+      const DARK = broken ? '#3b3c38' : '#54585c';
+      const FURN = broken ? '#37312a' : '#4a4f54';
+      if (broken) {
+        // the barrel is bent: it drops a pixel past the crush point, and the
+        // receiver behind it is dented in. That kink is the whole silhouette.
+        px(g, 3, 4, 11, 3, BODY); px(g, 3, 4, 11, 1, HI);
+        px(g, 14, 5, 6, 3, BODY); px(g, 14, 5, 6, 1, HI);
+        px(g, 20, 6, 4, 2, DARK);                       // muzzle, drooping
+        px(g, 9, 3, 3, 1, '#2b2723');                   // dent in the top rail
+        px(g, 16, 7, 2, 1, '#2b2723');
+        px(g, 6, 2, 1, 2, '#43443f');                   // optic mount, empty
+      } else {
+        px(g, 3, 4, 17, 3, BODY); px(g, 3, 4, 17, 1, HI);
+        px(g, 20, 4, 4, 2, DARK);                       // muzzle, straight
+        px(g, 6, 2, 5, 2, DARK); px(g, 6, 2, 5, 1, '#7f858a');   // optic back on
+        px(g, 18, 3, 1, 1, DARK);                       // front sight
+      }
+      px(g, 0, 4, 4, 4, FURN);                          // stock
+      px(g, 0, 4, 4, 1, broken ? '#484239' : '#5c6167');
+      px(g, 4, 7, 3, 3, FURN);                          // grip
+      px(g, 8, 7, 4, 3, DARK);                          // magazine
+      px(g, 8, 7, 4, 1, broken ? '#4a4b46' : '#63686d');
+      if (!broken) px(g, 13, 5, 1, 1, '#ffb02e');       // the charge light, live
+      return outlined(c);
+    };
+    Sprites.rifleBrokenIcon = rifle(true);
+    Sprites.rifleIcon = rifle(false);
+
+    // HUD slot version — smaller, and only the working one is ever equipped
+    // A long gun has to read as LONG in a 54px slot, so the barrel runs the
+    // full width and everything else is kept low and back — centring the optic
+    // and the grip made a plus sign instead of a rifle.
+    const rs = makeCanvas(18, 8), rsg = rs.getContext('2d');
+    px(rsg, 3, 2, 15, 2, '#9aa0a4'); px(rsg, 3, 2, 15, 1, '#c3c9cd');   // barrel, full width
+    px(rsg, 16, 2, 2, 2, '#54585c');                                     // muzzle
+    px(rsg, 5, 1, 3, 1, '#54585c');                                      // optic, low and back
+    px(rsg, 0, 2, 3, 3, '#4a4f54');                                      // stock
+    px(rsg, 4, 4, 2, 3, '#54585c');                                      // grip, behind the mag
+    px(rsg, 7, 4, 3, 2, '#63686d');                                      // magazine
+    Sprites.rifleIconS = outlined(rs);
+
+    // held, for the aiming pose — longer than the pistol, which is the point
+    const rh = makeCanvas(16, 7), rhg = rh.getContext('2d');
+    px(rhg, 3, 2, 11, 2, '#9aa0a4'); px(rhg, 3, 2, 11, 1, '#c3c9cd');
+    px(rhg, 14, 2, 2, 1, '#54585c');
+    px(rhg, 5, 1, 3, 1, '#54585c');                     // optic
+    px(rhg, 0, 2, 3, 3, '#4a4f54');                     // stock into the shoulder
+    px(rhg, 5, 4, 2, 2, '#54585c');
+    Sprites.rifleHeld = outlined(rh);
+
     // metal pipe (ground item + icon)
     const pi = makeCanvas(20, 7), pig = pi.getContext('2d');
     px(pig, 1, 2, 18, 3, '#6a6a72');

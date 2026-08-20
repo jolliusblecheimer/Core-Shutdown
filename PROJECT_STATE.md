@@ -54,6 +54,21 @@ arrows *or* the mouse. `Q`/`R`, a click or the wheel change tab; `E` equips or
 eats. What an item IS lives in `js/items.js`; `js/game.js` only lays it out.
 Design and the built-vs-planned diff in `design/inventory-botw.md`.
 
+### THE SERVICE RIFLE — the ring's weapon upgrade
+The Compactor's drop, and the first thing the milestone-grant rule was written
+for. It comes out of the **wreck**, not the machine: the Compactor spent a year
+swallowing this yard and one of the things it swallowed was carrying a rifle.
+Bent double and no use to anyone — until **Bo** at Candlelight, the one who
+takes a Hunter-Killer apart for a living, straightens it for **3 tech + 10
+scrap**. His counter is the trade panel with a different verb on it (`REPAIRS`)
+and a stock that only has a row while you are carrying something bent.
+Repaired it does **18 damage against the pistol's 10**, flies further and
+flatter, and pays for it at 0.78s between shots against 0.5s. One ammo pool —
+the ring only ever had one kind of round in it. `player.gun` picks which gun is
+in the slot, exactly the way `player.melee` picks the melee.
+A run that killed the Compactor before any of this existed is handed the
+damaged rifle on load.
+
 ### Content — THE COMPACTOR (first boss, complete)
 Hidden in the junk until you unlock the gate; four-legged crawler, one big
 glowing eye (2× damage), armoured front plow (bullets/pipe clank, knife

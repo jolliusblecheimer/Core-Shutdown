@@ -26,7 +26,7 @@ function saveGame() {
       name: playerName,
       player: {
         x: player.x, y: player.y, hp: player.hp, ammo: player.ammo,
-        melee: player.melee, hasGun: player.hasGun, active: player.active,
+        melee: player.melee, hasGun: player.hasGun, active: player.active, gun: player.gun,
         owned: { ...player.owned }, inv: { ...player.inv },
         respawnX: player.respawnX, respawnY: player.respawnY, homeSet: player.homeSet,
         scrollHintT: Math.max(0, player.scrollHintT),
@@ -137,10 +137,12 @@ function applySave(d) {
   player.hasGun = !!p.hasGun;
   player.active = p.active === 'gun' ? 'gun' : 'melee';
   // merge onto defaults so fields added in later updates keep their default
-  player.owned = Object.assign({ pipe: false, knife: false, pistol: false }, p.owned || {});
+  player.owned = Object.assign({ pipe: false, knife: false, pistol: false, rifle: false }, p.owned || {});
+  player.gun = (p.gun === 'rifle' && player.owned.rifle) ? 'rifle' : 'pistol';
   player.inv = Object.assign(
-    { scrap: 0, tech: 0, snack: 0, mreBeef: 0, mreChicken: 0, gateKey: false }, p.inv || {});
-  for (const k of ['scrap', 'tech', 'snack', 'mreBeef', 'mreChicken'])
+    { scrap: 0, tech: 0, snack: 0, mreBeef: 0, mreChicken: 0, gateKey: false, rifleBroken: 0 },
+    p.inv || {});
+  for (const k of ['scrap', 'tech', 'snack', 'mreBeef', 'mreChicken', 'rifleBroken'])
     player.inv[k] = Math.max(0, num(player.inv[k], 0));
   // transient state always starts clean
   player.dead = 0; player.iframes = 1; player.flash = 0;

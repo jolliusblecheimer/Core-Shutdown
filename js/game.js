@@ -905,7 +905,7 @@ function update(dt) {
       if (Dialog.idx >= Dialog.lines.length) {
         Dialog.active = false;
         // a trader's pitch ends at his counter
-        if (Trade.pending) openTrade(Trade.pending.who, Trade.pending.stock);
+        if (Trade.pending) openTrade(Trade.pending.who, Trade.pending.stock, Trade.pending.verb);
       }
     }
     updateParticles(dt);
@@ -1073,8 +1073,11 @@ function invAction(it) {
   if (it.id === 'pipe' || it.id === 'knife') {
     player.melee = player.melee === it.id ? null : it.id;
     SFX.switchW();
-  } else if (it.id === 'pistol') {
-    player.hasGun = !player.hasGun;
+  } else if (it.id === 'pistol' || it.id === 'rifle') {
+    // one gun slot, two guns that can go in it — putting the other one away is
+    // the same gesture as swapping pipe for knife
+    if (player.hasGun && player.gun === it.id) player.hasGun = false;
+    else { player.gun = it.id; player.hasGun = true; }
     SFX.switchW();
   } else if (FOOD.some(f => f.id === it.id)) {
     // in the pack you pick what to eat; H picks for you
@@ -2037,7 +2040,7 @@ function drawPlayer(x, y) {
     if (Math.cos(player.angle) < 0) ctx.scale(1, -1);
     ctx.fillStyle = '#26262c';           // coat sleeve
     ctx.fillRect(1, -1, 4, 2);
-    ctx.drawImage(Sprites.pistolHeld, 5, -5);
+    ctx.drawImage(player.gun === 'rifle' ? Sprites.rifleHeld : Sprites.pistolHeld, 5, -5);
     ctx.fillStyle = '#0e0e12';           // gloved hand wrapping the grip
     ctx.fillRect(7, -1, 3, 2);
     ctx.restore();
@@ -2332,7 +2335,7 @@ function drawHUD() {
   uiRect(VIEW_W - 60, VIEW_H - 21, 54, 16, 'rgba(0,0,0,0.55)');
   const showGun = player.active === 'gun' && player.hasGun;
   if (showGun) {
-    uiIcon(Sprites.pistolIconS, VIEW_W - 56, VIEW_H - 17);
+    uiIcon(player.gun === 'rifle' ? Sprites.rifleIconS : Sprites.pistolIconS, VIEW_W - 56, VIEW_H - 17);
     ptext('' + player.ammo, VIEW_W - 12, VIEW_H - 15, 8, player.ammo > 0 ? '#e8d9c0' : '#ff5a3c', 'right');
   } else if (player.melee) {
     const mi = player.melee === 'pipe' ? Sprites.pipeIcon : Sprites.knifeIcon;
@@ -2751,7 +2754,7 @@ function drawHUD() {
     const px0 = (VIEW_W - total) / 2, py0 = (VIEW_H - ph) / 2 - 8;
     const DIM = 'rgba(232,217,192,0.4)';
     uiFrame(px0, py0, pw, ph);
-    ptext('TRADE — ' + Trade.who, px0 + pw / 2, py0 + 5, 8, '#7ad27a', 'center');
+    ptext(Trade.verb + ' — ' + Trade.who, px0 + pw / 2, py0 + 5, 8, '#7ad27a', 'center');
     rows.forEach((r, i) => {
       const ry = py0 + 18 + i * 12;
       const gone = r.sold && r.sold();

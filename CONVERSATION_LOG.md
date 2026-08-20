@@ -1505,3 +1505,44 @@ computed and then not reaching disk until some later save. Committed at once
 now. Verified by loading a genuine pre-system save through the splash and the
 title the way a player does: both items handed over, announced on screen, and
 the ledger on disk immediately.
+
+### 97. The rifle in the wreck
+**Laurens:** "Build the damaged rifle, the option to fix it at the NPC, write
+the description and make it so it drops from the boss. Then check if the player
+has defeated the boss — if yes, give him the damaged rifle."
+
+**Claude:** Built, and it is the first thing the rule from #96 was actually for.
+
+**Where it comes from.** The Compactor spent a year swallowing this yard, and
+one of the things it swallowed was carrying a rifle. So it comes out of the
+WRECK, not out of the machine — the drop is a bent, dark, optic-less thing in
+the KEY ITEMS tab, not a weapon. The banner is a single slot and the gate
+announcement already owns it, so the rifle gets the thought channel instead:
+*"A rifle in the wreck. Bent in half — but somebody might straighten it."*
+
+**Who fixes it.** Bo, because he is already the man taking a Hunter-Killer
+apart at the workbench — the only person in the ring who could. It costs
+**3 tech and 10 scrap**, which is one tech more than the boss hands you, so it
+is a small errand through Tam's counter rather than a formality.
+
+His bench is the trade panel with two changes, both small: a **verb**, so it
+reads `REPAIRS — BO` instead of `TRADE — BO`, and a **stock that is a function
+rather than a list**, so the row only exists while you are carrying something
+bent. Talk to him with a working rifle and he just talks.
+
+**What it does.** 18 damage against the pistol's 10, further and flatter, and
+0.78s between shots against 0.5s. One ammo pool — the ring only ever had one
+kind of round in it, which is why Tam has been selling "rifle rounds" for a
+pistol all along. `player.gun` picks which gun is in the slot, the same way
+`player.melee` picks the melee, so swapping guns is the gesture you already know.
+
+**One thing had to be undone first.** Bullet damage was the number `10` written
+into four separate hit sites — Scrapper, bandit, droid, boss. A second gun was
+impossible until the bullet carried its own damage. It does now, defaulting to
+10, so nothing else changed.
+
+**And the back-payment.** `bossDefeated` → the damaged rifle, with `has`
+counting the REPAIRED one too, so somebody who already fixed theirs is not
+handed a second broken one. Verified all four ways: killed early gets it,
+reloading does not duplicate it, an already-repaired run is owed nothing, and a
+run that never beat the boss gets nothing.

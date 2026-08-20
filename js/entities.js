@@ -9,16 +9,27 @@ const player = {
   iframes: 0, flash: 0, dead: 0,
   combatT: 99,                 // seconds since last combat — passive regen after 20
   melee: null,                 // EQUIPPED melee: null | 'pipe' | 'knife'
-  hasGun: false, ammo: 0,      // hasGun = pistol EQUIPPED
+  hasGun: false, ammo: 0,      // hasGun = a gun is EQUIPPED
+  gun: 'pistol',               // WHICH gun, the same way `melee` picks the melee
   active: 'melee',             // which equipped weapon LMB uses (scroll to switch)
   scrollHintT: 0,              // "scroll" HUD hint: 30s after getting the gun, then gone
-  owned: { pipe: false, knife: false, pistol: false },
-  inv: { scrap: 0, tech: 0, snack: 0, mreBeef: 0, mreChicken: 0, gateKey: false },
+  owned: { pipe: false, knife: false, pistol: false, rifle: false },
+  inv: { scrap: 0, tech: 0, snack: 0, mreBeef: 0, mreChicken: 0, gateKey: false, rifleBroken: 0 },
   respawnX: 6.5, respawnY: 26.5, homeSet: false,
 };
 
 // melee outranges the Scrapper's reach (1.15) — spacing is the skill.
 // The knife punches through metal: higher damage, stabbing attack.
+// The two guns share one ammo pool — the ring only ever had one kind of round
+// in it, which is why Tam sells "rifle rounds" for a pistol without blinking.
+// The rifle is not a faster pistol: it hits nearly twice as hard and its round
+// travels further and flatter, and it pays for that in time between shots.
+const GUNS = {
+  pistol: { dmg: 10, cd: 0.5,  speed: 13, life: 0.5,  shake: 1.2, label: 'Scrap pistol' },
+  rifle:  { dmg: 18, cd: 0.78, speed: 18, life: 0.75, shake: 2.2, label: 'Service rifle' },
+};
+const activeGun = () => GUNS[player.gun] || GUNS.pistol;
+
 const MELEE = {
   pipe: { dmg: 7, cd: 0.55, range: 1.5, label: 'Metal pipe', stab: false },
   knife: { dmg: 18, cd: 0.4, range: 1.35, label: 'Piercing knife', stab: true },
@@ -136,8 +147,9 @@ const FOLK = {
       "That lot's the camp's. Not yours.",
       "Nothing personal, stranger. I'd say it to my own brother.",
       "Ask Halden. He's the one allowed to give things away." ] },
-    { key: 'bo', name: 'BO', x: 3.5, y: 6.5, lines: [
-      "Don't touch that. Its cell is still hot.",
+    { key: 'bo', name: 'BO', x: 3.5, y: 6.5, stock: 'bo', verb: 'REPAIRS', lines: [
+      ["Don't touch that. Its cell is still hot.",
+       "That thing you're carrying, though. Let me see it."],
       "They come apart easier than they look. Everything does.",
       "I keep the eye lit while I work. Tells me there's still charge in it." ] },
     { key: 'ade', name: 'SISTER ADE', x: 9.5, y: 5.5, lines: [
@@ -178,8 +190,13 @@ function talkToFolk(f) {
   startDialog(lines);
   f.said++;
   SFX.uiOpen();
-  // the counter opens when he has finished saying it, not over the top of it
-  if (f.stock && STOCK[f.stock]) Trade.pending = { who: f.name, stock: STOCK[f.stock] };
+  // the counter opens when he has finished saying it, not over the top of it —
+  // and only if there is anything on it. Bo has nothing to offer a traveller
+  // who is not carrying something bent.
+  if (f.stock && STOCK[f.stock]) {
+    const rows = resolveStock(STOCK[f.stock]);
+    if (rows.length) Trade.pending = { who: f.name, stock: rows, verb: f.verb };
+  }
 }
 
 // the map table, and the rest of the camp's fittings
@@ -254,7 +271,7 @@ function startDialog(lines) { Dialog.active = true; Dialog.lines = lines; Dialog
 // The counter. It used to be one panel with Marek's three items written into
 // the drawing code, which meant a second trader could not exist. Now the panel
 // is empty furniture and whoever opened it supplies the stock.
-const Trade = { open: false, who: 'SURVIVOR', stock: [], pending: null };
+const Trade = { open: false, who: 'SURVIVOR', stock: [], pending: null, verb: 'TRADE' };
 const InvUI = { open: false };
 
 const mission = { state: 'none' };   // none -> active -> complete -> turned
@@ -381,16 +398,20 @@ function updatePlayer(dt) {
   player.swing -= dt; player.swingCd -= dt;
   if (Input.mouseDown && player.fireCd <= 0 && player.hasGun && player.active === 'gun') {
     if (player.ammo > 0) {
+      const G = activeGun();
       player.ammo--;
       player.combatT = 0;
-      player.fireCd = 0.5; player.muzzle = 0.06;
+      player.fireCd = G.cd; player.muzzle = 0.06;
       const dirW = screenToIso(Math.cos(player.angle), Math.sin(player.angle));
       const dl = Math.hypot(dirW.x, dirW.y);
+      // the bullet carries its own damage — it used to be the number 10
+      // written into four separate hit sites, which made a second gun impossible
       bullets.push({
         x: player.x + (dirW.x / dl) * 0.35, y: player.y + (dirW.y / dl) * 0.35,
-        vx: (dirW.x / dl) * 13, vy: (dirW.y / dl) * 13, life: 0.5,
+        vx: (dirW.x / dl) * G.speed, vy: (dirW.y / dl) * G.speed, life: G.life,
+        dmg: G.dmg,
       });
-      addShake(1.2);
+      addShake(G.shake);
       SFX.shot();
     } else {
       player.fireCd = 0.35;
@@ -745,6 +766,22 @@ const STOCK = {
         showMsg('PIERCING KNIFE acquired');
       } },
   ],
+  // BO'S BENCH. Not a shop — one job, and only while you are carrying the job.
+  // He is the one taking a Hunter-Killer apart at the workbench, so he is the
+  // only person in the ring who could straighten a service rifle, and the
+  // price is in the parts it takes rather than in what it is worth.
+  bo: () => (((player.inv.rifleBroken || 0) > 0 && !player.owned.rifle) ? [
+    { label: 'straighten the rifle', icon: () => Sprites.rifleIcon,
+      cost: { tech: 3, scrap: 10 },
+      buy: () => {
+        player.inv.rifleBroken--;
+        player.owned.rifle = true;
+        player.gun = 'rifle';
+        player.hasGun = true;
+        player.active = 'gun';
+        showMsg('SERVICE RIFLE — straightened, and it works');
+      } },
+  ] : []),
   // Tam's counter. Rations and rounds, and one tech part at a price that says
   // he knows exactly what it is worth to somebody carrying a scrap pistol.
   tam: [
@@ -763,8 +800,13 @@ const canAfford = (row) => Object.keys(row.cost).every(k => player.inv[k] >= row
 const costText = (row) => Object.keys(row.cost)
   .map(k => row.cost[k] + ' ' + COST_NAME[k]).join(' + ');
 
-function openTrade(who, stock) {
-  Trade.open = true; Trade.who = who; Trade.stock = stock; Trade.pending = null;
+// `stock` may be a list or a function returning one — Bo's counter only has a
+// row on it while you are carrying something broken.
+const resolveStock = (s) => (typeof s === 'function' ? s() : s) || [];
+function openTrade(who, stock, verb) {
+  Trade.open = true; Trade.who = who; Trade.stock = resolveStock(stock);
+  Trade.verb = verb || 'TRADE';
+  Trade.pending = null;
   SFX.uiOpen();
 }
 
@@ -884,14 +926,14 @@ function updateBullets(dt) {
         boss.state !== 'hidden' && boss.state !== 'dead' &&
         Math.hypot(b.x - boss.x, b.y - boss.y) < boss.r + 0.15) {
       hit = true;
-      bossHit(b.x, b.y, 10, 'bullet');
+      bossHit(b.x, b.y, b.dmg || 10, 'bullet');
     }
     if (!hit) {
       for (const sc of scrappers) {
         if (sc.state === 'dead' || sc.state === 'off') continue;
         if (Math.hypot(b.x - sc.x, b.y - sc.y) >= 0.45) continue;
         hit = true;
-        sc.hp -= 10;
+        sc.hp -= (b.dmg || 10);
         sc.hitFlash = 0.08;
         sc.kbx += b.vx * 0.02; sc.kby += b.vy * 0.02;
         spawnSparks(b.x, b.y, 6, ['#ffd27a', '#ffb02e', '#8a8a92']);
@@ -907,7 +949,7 @@ function updateBullets(dt) {
         if (bd.dead) continue;
         if (Math.hypot(b.x - bd.x, b.y - bd.y) >= 0.45) continue;
         hit = true;
-        banditHit(bd, 10, b.vx * 0.1, b.vy * 0.1, false);
+        banditHit(bd, b.dmg || 10, b.vx * 0.1, b.vy * 0.1, false);
         break;                          // one bullet, one raider
       }
     }

@@ -58,7 +58,18 @@ const ITEMS = {
     have: () => player.owned.pistol,
     // no round count on the tile: the rounds are a MATERIAL and are badged
     // there. Counting them twice made the weapons tab look like a magazine.
-    equipped: () => player.hasGun,
+    equipped: () => player.hasGun && player.gun !== 'rifle',
+    action: 'equip',
+  },
+  rifle: {
+    name: 'Service rifle',
+    tab: 'weapons',
+    icon: () => Sprites.rifleIcon,
+    desc: 'Straightened, re-crowned and given back its optic. It was issued ' +
+          'to something that hunted people, and it hits like it — near twice ' +
+          'the pistol, and it carries. Slower between shots; make them count.',
+    have: () => player.owned.rifle,
+    equipped: () => player.hasGun && player.gun === 'rifle',
     action: 'equip',
   },
 
@@ -132,6 +143,17 @@ const ITEMS = {
   },
 
   // ---- key items ----
+  rifleBroken: {
+    name: 'Damaged rifle',
+    tab: 'key',
+    icon: () => Sprites.rifleBrokenIcon,
+    desc: 'Bent double in the Compactor\'s jaws, with whoever was carrying ' +
+          'it. The barrel droops, the optic is gone and the receiver is ' +
+          'dented shut. Useless as it is — but it was made properly once, ' +
+          'and somebody who takes machines apart could put it back.',
+    have: () => (player.inv.rifleBroken || 0) > 0,
+    count: () => player.inv.rifleBroken,
+  },
   gateKey: {
     name: 'Yard gate key',
     tab: 'key',
@@ -185,6 +207,17 @@ const MILESTONE_GRANTS = [
     when: () => mission.state === 'turned',
     has: () => !!player.inv.gateKey,
     give: () => { player.inv.gateKey = true; },
+  },
+  {
+    // The first one this rule was actually written for: the Compactor's drop
+    // was added long after people had already killed it. `has` counts the
+    // REPAIRED rifle too — somebody who already had it fixed is not owed a
+    // second broken one.
+    id: 'compactor-rifle',
+    name: 'DAMAGED RIFLE',
+    when: () => bossDefeated,
+    has: () => (player.inv.rifleBroken || 0) > 0 || player.owned.rifle,
+    give: () => { player.inv.rifleBroken = 1; },
   },
 ];
 
