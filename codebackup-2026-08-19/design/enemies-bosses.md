@@ -93,15 +93,6 @@
   bridge**; Chorister and Surgeon exist for replay variety.
 - **The Last Guardian** (Ring 0) — final fight; its wreckage provides the cutscene Scrapper.
 
-**THE COMPACTOR'S DROP — DECIDED (Laurens, 2026-08-19):** a **badly damaged
-rifle**. It cannot fire: the traveller carries it out of the yard as dead
-weight. A survivor at Candlelight — the one dismantling a droid inside the
-church — **repairs it**. This is the Fringe's weapon upgrade, and it is
-deliberately *not* an HHD drop, because the pacing depends on it: you reach the
-open city with a pistol and a broken rifle, so the right answer to a droid
-squad is to **avoid it**. You come back for them later, once the rifle works.
-Avoidance first, combat second — which is what the stealth system exists for.
-
 **THE LOOT RULE:** every boss (optional ones especially) drops high-quality
 materials/gear pieces that only **the Forge at Cinder Row** can craft into great
 equipment — each boss holds a UNIQUE forge material, so no optional boss is ever

@@ -1,0 +1,349 @@
+<meta charset="utf-8">
+<title>The Open Fringe</title>
+<style>
+  :root {
+    --bg: #0e0f11; --screen: #08090a;
+    --ink: #dfe3e8; --ink-dim: #94a0aa; --line: #253038;
+    --rust: #c96a35; --neon: #4fc3ff; --amber: #ffb544;
+    --green: #7ad27a; --red: #ff5040; --tar: #6f7d86;
+    --mono: ui-monospace, "Cascadia Mono", Consolas, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--ink); font-family: system-ui, sans-serif;
+         line-height: 1.55; margin: 0; padding: 32px 20px 80px; }
+  .wrap { max-width: 980px; margin: 0 auto; }
+  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .18em;
+             text-transform: uppercase; color: var(--rust); margin: 0 0 6px; }
+  h1 { font-family: var(--mono); font-size: clamp(24px, 4vw, 36px); letter-spacing: .05em;
+       margin: 0 0 10px; text-wrap: balance; }
+  h1 .hl { color: var(--neon); }
+  .lede { color: var(--ink-dim); max-width: 64ch; margin: 0; }
+  .lede strong { color: var(--amber); font-weight: 600; }
+
+  .scrapped { margin: 22px 0 0; border-left: 3px solid var(--red); background: #17100f;
+              padding: 12px 16px; font-size: 14px; color: var(--ink-dim); }
+  .scrapped b { color: var(--red); }
+
+  figure { margin: 30px 0 8px; background: var(--screen); border: 1px solid var(--line);
+           border-radius: 6px; padding: 10px; overflow-x: auto; }
+  figure svg { display: block; max-width: 100%; height: auto; min-width: 680px; margin: 0 auto; }
+  figcaption { font-family: var(--mono); font-size: 12px; color: var(--ink-dim); padding: 8px 6px 2px; }
+
+  h2 { font-family: var(--mono); font-size: 15px; letter-spacing: .12em; text-transform: uppercase;
+       margin: 46px 0 6px; color: var(--amber); }
+  h2 .n { color: var(--ink-dim); }
+  h3 { font-family: var(--mono); font-size: 13px; letter-spacing: .06em; margin: 26px 0 4px; }
+  p.sub { color: var(--ink-dim); font-size: 14px; margin: 0 0 14px; max-width: 72ch; }
+
+  .tablewrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+       color: var(--ink-dim); text-align: left; padding: 6px 12px 6px 0; border-bottom: 1px solid var(--line); }
+  td { padding: 7px 12px 7px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  td.k { font-family: var(--mono); white-space: nowrap; color: var(--ink); }
+  .num { font-variant-numeric: tabular-nums; }
+  .q { color: var(--amber); } .camp { color: var(--green); } .boss { color: var(--red); }
+  .new { color: var(--neon); } .dim { color: var(--ink-dim); }
+
+  .signs { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin-top: 12px; }
+  .sign { font-family: var(--mono); font-size: 12px; border: 1px solid #3a4a52; border-radius: 3px;
+          background: #131a1e; padding: 10px 12px; color: #b9c6cd; }
+  .sign span { display: block; color: var(--ink-dim); font-size: 11px; margin-top: 5px; font-family: system-ui, sans-serif; }
+
+  ol.beats { counter-reset: b; list-style: none; padding: 0; margin: 10px 0 0; }
+  ol.beats li { counter-increment: b; position: relative; padding: 0 0 10px 34px; color: var(--ink-dim); font-size: 14px; }
+  ol.beats li::before { content: counter(b); position: absolute; left: 0; top: 0;
+    font-family: var(--mono); font-size: 11px; color: var(--amber);
+    border: 1px solid var(--line); border-radius: 3px; width: 22px; height: 18px;
+    display: grid; place-items: center; }
+  ol.beats li b { color: var(--ink); font-weight: 600; }
+  .note { margin-top: 40px; border: 1px dashed var(--line); border-radius: 6px; padding: 14px 18px;
+          color: var(--ink-dim); font-size: 14px; max-width: 74ch; }
+  .note strong { color: var(--ink); }
+</style>
+
+<div class="wrap">
+<p class="eyebrow">Design document · build plan · Ring 5 · v2</p>
+<h1>The Open <span class="hl">Fringe</span></h1>
+<p class="lede">One continuous city map outside the yard — real streets, real buildings,
+armed patrols. <strong>No boxed areas, no walls except the ones that make sense.</strong>
+The tutorial was small on purpose; nothing after it needs to be.</p>
+
+<p class="scrapped"><b>SCRAPPED:</b> the four-boxed-areas plan and the Approach as built —
+it was junkyard tiles, junkyard props and junkyard robots rearranged into a square. Deleted in
+step 1. The <em>area system</em> underneath it survives, but only for interiors and, later, other rings.</p>
+
+<h2>Where this sits <span class="n">· in the whole city</span></h2>
+<p class="sub">Orientation first. The city on the atlas is six rings; everything on this page is the
+south-east slice of the outermost one — the ground you cross before the Sprawl even begins.</p>
+
+<figure>
+<svg viewBox="0 0 900 330" role="img" aria-label="Locator diagram: the six concentric city rings with the south-eastern slice of the outer ring highlighted, expanded into the street map built on this page">
+  <rect width="900" height="330" fill="#08090a"/>
+
+  <!-- the city, small -->
+  <g>
+    <ellipse cx="150" cy="150" rx="130" ry="115" fill="#2a2018"/>
+    <ellipse cx="150" cy="150" rx="106" ry="94" fill="#2b2620"/>
+    <ellipse cx="150" cy="150" rx="82" ry="72" fill="#26272c"/>
+    <ellipse cx="150" cy="150" rx="57" ry="50" fill="#1e242c"/>
+    <ellipse cx="150" cy="150" rx="34" ry="30" fill="#2f3740"/>
+    <ellipse cx="150" cy="150" rx="16" ry="14" fill="#0d2431" stroke="#4fc3ff" stroke-width="1.2"/>
+    <g fill="none" stroke="#5d6a72" stroke-opacity=".4" stroke-dasharray="4 4">
+      <ellipse cx="150" cy="150" rx="106" ry="94"/>
+      <ellipse cx="150" cy="150" rx="82" ry="72"/>
+      <ellipse cx="150" cy="150" rx="57" ry="50"/>
+      <ellipse cx="150" cy="150" rx="34" ry="30"/>
+    </g>
+  </g>
+
+  <!-- the slice we are building -->
+  <polygon points="249.6,223.9 215,249.6 172.6,263.2 127.4,263.2 85,249.6 50.4,223.9 69,210 97.2,230.9 131.6,242 168.4,242 202.9,230.9 231,210"
+           fill="#ffb544" fill-opacity=".3" stroke="#ffb544" stroke-width="1.6"/>
+
+  <!-- zoom cone -->
+  <polygon points="231,210 249.6,223.9 470,300 470,60" fill="#ffb544" fill-opacity=".05"/>
+  <g stroke="#ffb544" stroke-opacity=".55" stroke-dasharray="5 4" fill="none">
+    <path d="M 231 210 L 470 60"/>
+    <path d="M 249.6 223.9 L 470 300"/>
+  </g>
+
+  <!-- the built map -->
+  <rect x="470" y="60" width="400" height="240" fill="#12171a" stroke="#ffb544" stroke-width="1.6"/>
+  <g stroke="#3c464d" stroke-width="9" fill="none" stroke-linecap="round">
+    <path d="M 840 268 L 700 250 L 600 250"/>
+    <path d="M 600 250 L 600 96"/>
+    <path d="M 600 178 L 790 190"/>
+  </g>
+  <g fill="#1b2226" stroke="#252f35">
+    <rect x="500" y="90" width="70" height="52"/><rect x="500" y="160" width="60" height="60"/>
+    <rect x="630" y="86" width="76" height="48"/><rect x="640" y="210" width="70" height="52"/>
+    <rect x="740" y="96" width="60" height="46"/><rect x="730" y="222" width="70" height="44"/>
+  </g>
+  <circle cx="700" cy="250" r="4" fill="#ffb544"/>
+  <rect x="833" y="262" width="9" height="9" fill="#a8873a"/>
+  <polygon points="600,176 606,188 594,188" fill="#7ad27a"/>
+  <rect x="595" y="90" width="9" height="9" fill="#4fc3ff"/>
+
+  <g font-family="ui-monospace,Consolas,monospace" font-size="10" fill="#94a0aa">
+    <text x="150" y="26" fill="#dfe3e8" text-anchor="middle" letter-spacing="2">THE WHOLE CITY</text>
+    <text x="150" y="292" fill="#ffb544" text-anchor="middle">the slice we build now</text>
+    <text x="150" y="306" text-anchor="middle">≈ 20% of Ring 5 · ~6% of the city</text>
+    <text x="670" y="46" fill="#dfe3e8" text-anchor="middle" letter-spacing="2">THIS PAGE — THE OPEN FRINGE</text>
+    <text x="670" y="318" text-anchor="middle">200 × 150 tiles · one continuous map · no loading</text>
+    <text x="852" y="278" fill="#a8873a" text-anchor="end">gate</text>
+    <text x="700" y="270" fill="#ffb544" text-anchor="middle">station</text>
+    <text x="586" y="182" fill="#7ad27a" text-anchor="end">camp</text>
+    <text x="614" y="98" fill="#4fc3ff">to the Sprawl</text>
+    <text x="150" y="150" fill="#4fc3ff" font-size="9" text-anchor="middle">CORE</text>
+  </g>
+</svg>
+<figcaption>Everything on this page is that amber slice — the outermost ring's south-east corner. The Core is six rings inward.</figcaption>
+</figure>
+
+<div class="tablewrap"><table>
+  <tr><th>Scale check</th><th>Tiles</th><th>Vs the junkyard</th><th>Status</th></tr>
+  <tr><td class="k">The junkyard (tutorial)</td><td class="num">1,024</td><td class="num">1×</td><td class="dim">built</td></tr>
+  <tr><td class="k q">The open Fringe (this page)</td><td class="num">30,000</td><td class="num">29×</td><td class="q">next</td></tr>
+  <tr><td class="k">Ring 5 in full, if we built it all</td><td class="num">~150,000</td><td class="num">~145×</td><td class="dim">we won't — the rest is closed by fire, flood, fence and rubble</td></tr>
+  <tr><td class="k">The whole city at this density</td><td class="num">~500,000</td><td class="num">~490×</td><td class="dim">never — every ring inward is built as the path you actually walk, not the whole disc</td></tr>
+</table></div>
+<p class="sub">That last row is the strategy in one line: <strong style="color:var(--ink)">we build corridors through
+a city that only <em>looks</em> complete.</strong> The rings get smaller as you go inward, so each one
+costs less than the last — and the Core is a single room.</p>
+
+<h2>The Fringe itself <span class="n">· street by street</span></h2>
+
+<figure>
+<svg viewBox="0 0 900 600" role="img" aria-label="The open Fringe map: one continuous street network running from the junkyard gate north-west, past a gas station, terraces and a church camp, out to an airstrip and an underpass, bounded by fire, flood, a fence and a collapsed viaduct">
+  <rect width="900" height="600" fill="#08090a"/>
+
+  <!-- city blocks (buildings = most of the map) -->
+  <g fill="#161b1f" stroke="#232c33">
+    <rect x="120" y="120" width="120" height="90"/><rect x="250" y="130" width="90" height="80"/>
+    <rect x="120" y="230" width="90" height="110"/><rect x="225" y="240" width="115" height="60"/>
+    <rect x="120" y="360" width="140" height="80"/><rect x="275" y="330" width="70" height="110"/>
+    <rect x="430" y="120" width="110" height="70"/><rect x="560" y="130" width="90" height="60"/>
+    <rect x="430" y="215" width="80" height="70"/><rect x="530" y="215" width="120" height="55"/>
+    <rect x="415" y="390" width="110" height="70"/><rect x="545" y="380" width="90" height="80"/>
+    <rect x="660" y="300" width="90" height="70"/><rect x="655" y="395" width="105" height="65"/>
+    <rect x="120" y="465" width="110" height="60"/><rect x="250" y="470" width="90" height="55"/>
+  </g>
+
+  <!-- streets -->
+  <g stroke="#3c464d" stroke-width="20" fill="none" stroke-linecap="round">
+    <path d="M 800 500 L 620 470 L 470 470 L 360 470"/>       <!-- gate road -->
+    <path d="M 360 470 L 360 100"/>                            <!-- the spine, north -->
+    <path d="M 360 320 L 660 340"/>                            <!-- east cross street -->
+    <path d="M 360 200 L 700 175"/>                            <!-- north cross street -->
+    <path d="M 660 340 L 690 470"/>                            <!-- link south -->
+  </g>
+  <g stroke="#8d9aa2" stroke-width="1.4" stroke-dasharray="10 12" fill="none" opacity=".55">
+    <path d="M 800 500 L 620 470 L 470 470 L 360 470"/>
+    <path d="M 360 470 L 360 100"/>
+    <path d="M 360 320 L 660 340"/><path d="M 360 200 L 700 175"/>
+  </g>
+
+  <!-- barriers -->
+  <g stroke="#ff5040" stroke-width="5" stroke-opacity=".7" stroke-dasharray="7 5" fill="none">
+    <path d="M 96 100 C 74 240 78 380 100 540"/>
+    <path d="M 130 74 C 300 52 560 50 760 70"/>
+    <path d="M 836 120 C 862 250 858 400 830 540"/>
+  </g>
+  <g font-family="ui-monospace,Consolas,monospace" font-size="10" fill="#ff8b66">
+    <text x="72" y="320" transform="rotate(-90 72 320)" text-anchor="middle">THE ASHFIELD — fire</text>
+    <text x="440" y="44" text-anchor="middle">THE CORDON — electrified fence · VIADUCT COLLAPSE</text>
+    <text x="862" y="330" transform="rotate(90 862 330)" text-anchor="middle">GREY RUN FLOODPLAIN</text>
+  </g>
+
+  <!-- POIs -->
+  <g font-family="ui-monospace,Consolas,monospace" font-size="11">
+    <rect x="778" y="486" width="12" height="12" fill="#a8873a"/>
+    <text x="800" y="524" fill="#a8873a" text-anchor="middle">YARD GATE</text>
+    <text x="800" y="537" font-size="9" fill="#94a0aa" text-anchor="middle">you start here</text>
+
+    <circle cx="620" cy="470" r="7" fill="#ffb544"/>
+    <text x="620" y="504" fill="#ffb544" text-anchor="middle">GAS STATION</text>
+    <text x="620" y="516" font-size="9" fill="#94a0aa" text-anchor="middle">canopy · pumps · shop</text>
+
+    <polygon points="360,300 368,314 352,314" fill="#7ad27a"/>
+    <text x="300" y="298" fill="#7ad27a" text-anchor="end">CANDLELIGHT</text>
+    <text x="300" y="310" font-size="9" fill="#94a0aa" text-anchor="end">church camp · Q2</text>
+
+    <polygon points="700,168 707,175 700,182 693,175" fill="#ffb544"/>
+    <text x="722" y="172" fill="#ffb544">FIELD 12 · Q3</text>
+    <text x="722" y="184" font-size="9" fill="#94a0aa">airstrip · drone crash</text>
+
+    <rect x="354" y="94" width="12" height="12" fill="#4fc3ff"/>
+    <text x="360" y="84" fill="#4fc3ff" text-anchor="middle">THE UNDERPASS → SPRAWL</text>
+
+    <circle cx="360" cy="410" r="5" fill="#8d9aa2"/>
+    <text x="392" y="414" fill="#94a0aa">terraces</text>
+    <circle cx="470" cy="470" r="5" fill="#8d9aa2"/>
+    <text x="470" y="452" fill="#94a0aa" text-anchor="middle">parade of shops</text>
+    <circle cx="660" cy="340" r="5" fill="#8d9aa2"/>
+    <text x="660" y="322" fill="#94a0aa" text-anchor="middle">depot yard</text>
+  </g>
+
+  <!-- legend -->
+  <g font-family="ui-monospace,Consolas,monospace" font-size="10">
+    <rect x="18" y="556" width="290" height="30" fill="#08090a" stroke="#253038"/>
+    <rect x="28" y="566" width="12" height="10" fill="#161b1f" stroke="#232c33"/>
+    <text x="48" y="575" fill="#dfe3e8">buildings</text>
+    <line x1="120" y1="571" x2="140" y2="571" stroke="#3c464d" stroke-width="8"/>
+    <text x="148" y="575" fill="#dfe3e8">street</text>
+    <line x1="200" y1="571" x2="216" y2="571" stroke="#ff5040" stroke-width="4" stroke-dasharray="5 4"/>
+    <text x="224" y="575" fill="#dfe3e8">barrier</text>
+  </g>
+</svg>
+<figcaption>One map. The street network is the skeleton; buildings fill everything between; every POI hangs off a road you can walk without a loading screen.</figcaption>
+</figure>
+
+<h2>The model <span class="n">· one open map, not rooms</span></h2>
+<p class="sub">The whole Fringe wedge becomes a single continuous world you can walk across.
+Interiors (shops, houses, the church) are the only "areas" — you step through a door and the
+inside loads, exactly like the shack does today.</p>
+<div class="tablewrap"><table>
+  <tr><th>Property</th><th>Value</th><th>Why</th></tr>
+  <tr><td class="k">Map size</td><td class="num">200 × 150 tiles</td><td>≈ <strong>29× the junkyard's area.</strong> Big enough that the horizon is buildings, not a fence</td></tr>
+  <tr><td class="k">Walkable share</td><td class="num">~30%</td><td>The insight that makes it affordable: <strong>in a city most of the map is buildings you can't enter.</strong> We author facades, not floorplans</td></tr>
+  <tr><td class="k">Street network</td><td>1 spine + 3 cross streets + alleys</td><td>Hand-drawn; everything else grows off it procedurally from blocks</td></tr>
+  <tr><td class="k">Loading</td><td>None inside the Fringe</td><td>Walk from the yard gate to the Underpass without a single transition</td></tr>
+  <tr><td class="k">Edges</td><td>Fire · flood · fence · rubble</td><td>The barriers already designed — no invisible walls anywhere</td></tr>
+</table></div>
+
+<h2>New ground <span class="n">· it must not look like the yard</span></h2>
+<p class="sub">Every tile and prop below is <span class="new">new art</span>. Nothing from the junkyard
+set carries over except rubble and the odd wreck — you left that place behind.</p>
+<h3>Tiles</h3>
+<div class="tablewrap"><table>
+  <tr><th>Tile</th><th>Detail</th></tr>
+  <tr><td class="k new">Road asphalt</td><td>Darker, smoother than yard ground; oil ghosts, patched repairs, tyre polish down the wheel lines</td></tr>
+  <tr><td class="k new">Lane paint</td><td>Centre dashes, solid edge lines, faded crosswalk bars, junction arrows, a bus-lane legend</td></tr>
+  <tr><td class="k new">Kerb + pavement</td><td>Raised kerbstone edge, then paving slabs with joints — the visual line that says "not the road"</td></tr>
+  <tr><td class="k new">Broken pavement</td><td>Slabs heaved by roots, weeds through the joints, missing pieces</td></tr>
+  <tr><td class="k new">Verge / dead lawn</td><td>Grey-green dead grass, gravel shoulder, a strip of dirt where a hedge died</td></tr>
+  <tr><td class="k new">Forecourt concrete</td><td>Poured slab with expansion joints — the gas station and depot floor</td></tr>
+  <tr><td class="k new">Interior floors</td><td>Shop lino, floorboards, church stone</td></tr>
+</table></div>
+<h3>Street furniture &amp; buildings</h3>
+<div class="tablewrap"><table>
+  <tr><th>Prop</th><th>Notes</th></tr>
+  <tr><td class="k new">Building facades</td><td>Modular: brick wall, shopfront window (smashed / boarded / intact), doorway, roller shutter, fire escape. Multi-tile footprints, roof fades when you enter</td></tr>
+  <tr><td class="k new">Streetlights</td><td>Tall, dead — except a handful still flickering, which become the only real light sources at night</td></tr>
+  <tr><td class="k new">Traffic lights</td><td>Dark, some hanging off their arm. One still cycles, pointlessly, forever</td></tr>
+  <tr><td class="k new">Bus stop + bench</td><td>Shelter with shattered glass, a timetable nobody will read</td></tr>
+  <tr><td class="k new">Dumpsters, bins, hydrants, phone box, postbox, planters</td><td>The everyday clutter that sells "this was a street" — and doubles as cover</td></tr>
+  <tr><td class="k new">Abandoned traffic</td><td>Cars in lanes, doors open; a bus across a junction; a delivery van on the kerb — <em>arranged like a jam</em>, not scattered like scrap</td></tr>
+  <tr><td class="k new">Barricades</td><td>Police barriers, sandbags, a burnt checkpoint — where people tried to hold the street</td></tr>
+</table></div>
+
+<h2>Signs <span class="n">· what this place used to be</span></h2>
+<p class="sub">Small readable signs across the whole map. Walk close and the text appears; they cost
+nothing to place and do more for the world than any amount of rubble. Some are directions, some are
+what the building was, some are from the last days.</p>
+<div class="signs">
+  <div class="sign">ALDERGROVE 2 · CITY CENTRE 9<span>Motorway sign, half the letters shot out</span></div>
+  <div class="sign">MARA'S GROCERY — EST. 2019<span>Shopfront, shutters down forever</span></div>
+  <div class="sign">ST. MARTIN'S — ALL WELCOME<span>The church that is now Candlelight</span></div>
+  <div class="sign">FUEL · AIR · COFFEE<span>The gas station canopy</span></div>
+  <div class="sign">EVACUATION POINT → FIELD 12<span>Official notice. Nobody was evacuated</span></div>
+  <div class="sign">SCHOOL — DRIVE SLOWLY<span>Faded paint on the road itself</span></div>
+  <div class="sign">CURFEW 20:00 · BY ORDER<span>Stapled to a pole, from the week before</span></div>
+  <div class="sign">WE ARE INSIDE. KNOCK 3×<span>Chalk on a door. No one answers</span></div>
+</div>
+
+<h2>The gas station <span class="n">· first real POI</span></h2>
+<p class="sub">The landmark you see from the gate road, and the plan's proof that a POI can carry a
+whole encounter without a quest attached to it.</p>
+<ol class="beats">
+  <li><b>The canopy.</b> A wide roof on pillars — the first structure you walk <em>under</em>. Rain-shadow, dark, echoing.</li>
+  <li><b>The pumps.</b> Four islands. <span class="boss">They explode</span> — the same barrel system, scaled up: a pump chain-detonates its neighbours. The best and most dangerous cover in the ring.</li>
+  <li><b>The shop.</b> Enterable interior: shelves stripped, one aisle untouched, a till drawer forced. Loot, and a sign that says what it sold.</li>
+  <li><b>The residents.</b> <span class="new">HHD patrol</span> uses the forecourt as a waypoint. Fighting here means fighting around live fuel.</li>
+</ol>
+
+<h2>New enemies <span class="n">· HHD — Human-Hunter-Droids</span></h2>
+<p class="sub">Scrappers are yard machines: junk, no weapons, no purpose beyond being in the way.
+The street belongs to something built for the job. HHDs are the first machines the AI made
+<em>to hunt people</em> — and they carry guns.</p>
+<div class="tablewrap"><table>
+  <tr><th>Unit</th><th>Role</th><th>Behaviour</th><th>Feel</th></tr>
+  <tr><td class="k new">HHD-1 "Marshal"</td><td>Armed grunt</td><td>Patrols the street on a route, rifle at rest. On detection: shoulders the weapon, fires 3-round bursts with a visible laser line, backs off to keep range, takes cover behind traffic</td><td>The first enemy that <strong>shoots back properly</strong>. Two of them is a real fight</td></tr>
+  <tr><td class="k new">HHD-2 "Bailiff"</td><td>Close pressure</td><td>Shotgun-ish spread at short range; charges when you hide, forcing you out of cover the Marshal is watching</td><td>The pair is the point: one pins, one flushes</td></tr>
+  <tr><td class="k new">Spotter</td><td>Flying eye</td><td>Unarmed drone that circles high, sees far, and <strong>calls HHDs to your position</strong> — killing it fast is the whole skill</td><td>Turns stealth from optional into urgent</td></tr>
+  <tr><td class="k dim">Scrapper</td><td class="dim">yard only</td><td class="dim">Stays behind the junkyard fence where it belongs</td><td class="dim">You've graduated</td></tr>
+</table></div>
+<p class="sub">They also change how the map plays: HHDs hold <em>positions</em> (junctions, the forecourt,
+the church approach) rather than wandering, so the street network becomes a set of contested crossings —
+and the alleys and shop interiors become the way around them.</p>
+
+<h2>Engineering for open world</h2>
+<p class="sub">Honest list. None of it is exotic; all of it is required before a 200×150 map is playable at 60fps.</p>
+<div class="tablewrap"><table>
+  <tr><th>Work</th><th>What it is</th><th>Why now</th></tr>
+  <tr><td class="k new">Viewport tile culling</td><td>Compute the visible tile range from the camera instead of looping the whole grid</td><td>Today we touch every tile every frame — fine at 1,024, wasteful at 30,000</td></tr>
+  <tr><td class="k new">Spatial prop buckets</td><td>Props bucketed into 16×16-tile cells; only nearby cells get drawn and depth-sorted</td><td>Sorting thousands of props per frame is the one thing that would actually break performance</td></tr>
+  <tr><td class="k new">Windowed minimap</td><td>Pre-render the whole map small once, show a scrolling window around the player</td><td>A 200×150 minimap can't sit in the corner at 1.5px/tile</td></tr>
+  <tr><td class="k new">Procedural block fill</td><td>Hand-place the street network and POIs; generate terraces, alleys, and clutter from a block library seeded per district</td><td>The only way one person authors 30,000 tiles at quality</td></tr>
+  <tr><td class="k new">Region save state</td><td>Position-keyed records (already how barrels and items work) extended to cleared POIs and looted interiors</td><td>Save v4, migrating v3 runs intact — the rule stands</td></tr>
+  <tr><td class="k new">Distance ambience</td><td>Wind, distant machinery and reverb shifting by district; night streetlight pools</td><td>A big map is dead without local atmosphere</td></tr>
+</table></div>
+
+<h2>Build order <span class="n">· each step playable</span></h2>
+<ol class="beats">
+  <li><b>Delete the Approach.</b> Strip the rejected area; keep the area system for interiors.</li>
+  <li><b>Open-world engine.</b> Tile culling, prop buckets, windowed minimap — proven on an empty 200×150 test map that runs at full speed.</li>
+  <li><b>Street tileset + block library.</b> Road, kerbs, pavement, verges; facades, streetlights, traffic, signage. The look lands here.</li>
+  <li><b>The gate road + gas station.</b> First playable slice of the real Fringe: walk out, follow the road, find the station, read the signs.</li>
+  <li><b>HHDs + Spotters.</b> The street gets dangerous; the junction-holding behaviour ships with them.</li>
+  <li><b>The rest of the network.</b> Terraces, parade of shops, depot yard, and the roads reaching Candlelight, Field 12 and the Underpass.</li>
+</ol>
+
+<div class="note">
+<strong>Calls I need from you:</strong> map size — is 200×150 the right ambition, or should the first
+open build be tighter (say 140×110) and grow?  ·  do HHDs drop <em>their guns</em> as the ring's weapon
+upgrade (I think yes — a rifle from the first thing that shoots at you is a perfect reward)  ·
+should night fall as you travel, so streetlights and headlights matter, or stay permanent dusk?
+</div>
+</div>

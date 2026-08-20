@@ -13,7 +13,7 @@ const player = {
   active: 'melee',             // which equipped weapon LMB uses (scroll to switch)
   scrollHintT: 0,              // "scroll" HUD hint: 30s after getting the gun, then gone
   owned: { pipe: false, knife: false, pistol: false },
-  inv: { scrap: 0, tech: 0, snack: 0, mreBeef: 0, mreChicken: 0, gateKey: false },
+  inv: { scrap: 0, tech: 0, snack: 0, gateKey: false },
   respawnX: 6.5, respawnY: 26.5, homeSet: false,
 };
 
@@ -84,7 +84,6 @@ function makeScrapper() {
     alert: 0, idleT: 0,                // detection meter & patrol idle pause
     patrolFlip: false,                 // alternates heap ↔ central hub
     memory: 0, lastPX: 0, lastPY: 0,   // remembers a spotted player for 12s
-    fx: 0, fy: 1, scan: 0,             // which way it is looking, and its sweep
   };
 }
 const scrappers = [];
@@ -118,188 +117,13 @@ function scrappersOff() { for (const s of scrappers) s.state = 'off'; }
 
 const npc = { x: 21.5, y: 6.5, animT: 0, frame: 0 };
 
-// ---------- THE CAMP ----------
-// This engine has had exactly one NPC in it since the beginning: Marek, above,
-// named directly by the interaction code. A camp needs several in one room, so
-// they are a LIST beside him rather than a rewrite of him — his mission, his
-// trade and his dialogue are untouched, and nothing that already works had to
-// be re-tested to get six more people standing in a church.
-// Nobody here learns the player's name. Traveller, stranger, or nothing.
-let folk = [];
-const FOLK = {
-  camp: [
-    { key: 'vesna', name: 'VESNA', x: 7.5, y: 13.5, lines: [
-      "Door stays shut after dark. That is the one rule that matters.",
-      "You walked the sign road, so you can read. That already puts you ahead.",
-      "Anything of ours you want, you ask. Nobody here minds being asked." ] },
-    { key: 'osk', name: 'OSK', x: 3.5, y: 13.5, lines: [
-      "That lot's the camp's. Not yours.",
-      "Nothing personal, stranger. I'd say it to my own brother.",
-      "Ask Halden. He's the one allowed to give things away." ] },
-    { key: 'bo', name: 'BO', x: 3.5, y: 6.5, lines: [
-      "Don't touch that. Its cell is still hot.",
-      "They come apart easier than they look. Everything does.",
-      "I keep the eye lit while I work. Tells me there's still charge in it." ] },
-    { key: 'ade', name: 'SISTER ADE', x: 9.5, y: 5.5, lines: [
-      "You're not bleeding. Come back when you are.",
-      "The name stuck because of the building. I was a vet's assistant.",
-      "Two cots. One of them has been the same man for eleven days." ] },
-    { key: 'halden', name: 'HALDEN', x: 9.5, y: 8.5, lines: [
-      "Stand by the drum a while. Nobody gets asked anything until they're warm.",
-      "This place was cold for a year before we got the stove in.",
-      "I'll trade you fair. I'm too old to be clever about it." ] },
-    { key: 'ivar', name: 'IVAR', x: 7.5, y: 2.5, lines: [
-      "You came up the sign road. People only do that with nothing left.",
-      "Read the table. Everything this camp knows about the ring is on it.",
-      "We don't ask what you did before. Nobody here would like the answer." ] },
-    // Tam keeps the camp's counter. He never asks where you came from — he
-    // only knows what came up the road, which is that the way in is clear.
-    { key: 'tam', name: 'TAM', x: 6.5, y: 6.5, stock: 'tam', lines: [
-      ["Thank you for taking care of the bandits out there. The last three",
-       "runners in said that road couldn't be walked.",
-       "Anyway. I've got goods up for trade — are you interested?"],
-      ["Back again. Nothing's moved. Have a look.",
-       "Everything on the board is spoken for by somebody, so pay for it."],
-      ["Take what you need and leave the scrap. That's the whole system.",
-       "There's a room under the floor, too. I'm not allowed down. You might be."] ] },
-  ],
-  crypt: [],
-};
-function buildFolk(kind) {
-  folk = (FOLK[kind] || []).map(f => Object.assign({ animT: 0, frame: 0, said: 0 }, f));
-}
-// one line at a time, in order, then round again — so talking to somebody
-// twice is worth doing and talking to them nine times is not. An entry may be
-// several lines: a trader needs room to say what he is before he sells it.
-function talkToFolk(f) {
-  const said = f.lines[f.said % f.lines.length];
-  const lines = Array.isArray(said) ? said.slice() : [said];
-  lines[0] = f.name + ': ' + lines[0];
-  startDialog(lines);
-  f.said++;
-  SFX.uiOpen();
-  // the counter opens when he has finished saying it, not over the top of it
-  if (f.stock && STOCK[f.stock]) Trade.pending = { who: f.name, stock: STOCK[f.stock] };
-}
-
-// the map table, and the rest of the camp's fittings
-let campMapRead = false;
-function readMapTable() {
-  if (campMapRead) {
-    startDialog(["The ring, drawn by people who walked it. You have it all copied down."]);
-    return;
-  }
-  campMapRead = true;
-  // THE payoff of finding this place: somebody else's legwork, handed over.
-  if (typeof exploredByArea !== 'undefined' && exploredByArea.fringe) exploredByArea.fringe.fill(1);
-  SFX.tech();
-  showMsg('THE RING, MAPPED  ·  M', 3.2);
-  startDialog([
-    "Streets, crossings, every way out, in three different hands.",
-    "Somebody walked all of this so the next one would not have to.",
-  ]);
-}
-// Fittings you can use. Each one answers twice: with `ask` it returns the
-// prompt, without it, it does the thing.
-const USABLE = {
-  mapTable: (p, ask) => ask ? 'E — read the map' : readMapTable(),
-  chest: (p, ask) => ask ? (p.open ? 'empty' : 'E — open') : openChest(p),
-  strongbox: (p, ask) => ask ? 'locked' : startDialog([
-    "Padlocked, and the key is not in this room.",
-    "Whatever the camp keeps in there, it keeps from everyone." ]),
-  cistern: (p, ask) => ask ? 'E — drink' : drinkFromCistern(),
-  waterVat: (p, ask) => ask ? 'E — drink' : drinkFromCistern(),
-  hayStack: (p, ask) => ask ? 'E — look' : startDialog([
-    "Bales carried down a hatch one at a time, by somebody who is not young.",
-    "Bedding, and feed for animals this camp does not have yet." ]),
-  workbench: (p, ask) => ask ? 'E — look' : startDialog([
-    "A Hunter-Killer with its casing off and one arm in the vice.",
-    "The eye is still lit. Whatever is in there has charge left." ]),
-  hearth: (p, ask) => ask ? 'E — look' : startDialog([
-    "A drum with a fire in it and a flue punched through a boarded window.",
-    "The first warm thing you have stood next to since the yard." ]),
-};
-
-function drinkFromCistern() {
-  const before = player.hp;
-  player.hp = Math.min(player.maxHp, player.hp + 12);
-  SFX.eat();
-  startDialog([player.hp > before
-    ? "Cold, and it tastes of the roof. You have had worse."
-    : "Cold, and it tastes of the roof."]);
-}
-function openChest(p) {
-  if (p.open) { startDialog(["Empty. You already had this one."]); return; }
-  p.open = true;
-  SFX.loot();
-  if (p.loot === 'crypt') {
-    player.inv.tech += 2; player.inv.scrap += 3;
-    showMsg('+2 tech  ·  +3 scrap');
-  } else if (p.loot === 'scrap') {
-    player.inv.scrap += 4;
-    showMsg('+4 scrap');
-  } else if (p.loot === 'mre') {
-    player.inv.mreBeef++;
-    showMsg('+1 beef MRE  (H to eat)');
-  } else {
-    player.inv.scrap += 2;
-    if (player.inv.snack !== undefined) player.inv.snack++;
-    showMsg('+2 scrap  ·  +1 snack bar');
-  }
-}
-
 const Dialog = { active: false, lines: [], idx: 0 };
 function startDialog(lines) { Dialog.active = true; Dialog.lines = lines; Dialog.idx = 0; }
 
-// The counter. It used to be one panel with Marek's three items written into
-// the drawing code, which meant a second trader could not exist. Now the panel
-// is empty furniture and whoever opened it supplies the stock.
-const Trade = { open: false, who: 'SURVIVOR', stock: [], pending: null };
+const Trade = { open: false };
 const InvUI = { open: false };
 
 const mission = { state: 'none' };   // none -> active -> complete -> turned
-
-// ---------- WHAT NOW, AND WHERE ----------
-// There is no quest system to hang a marker on, and building one to draw a dot
-// would be the tail wagging the dog. So this is the smallest honest thing: one
-// function that reads live state and answers both halves of the question.
-//
-// It matters that it is ONE function. Before this, the HUD carried its own
-// hard-coded objective string, and the "quest marker" was the NPC blip on the
-// minimap — which meant "the quest is there" only by accident, and stopped
-// meaning it the moment a second NPC existed. (It does now: seven of them, in
-// the church.) The HUD line, the minimap dot and the map dot all read this.
-//
-// Coordinates are given in their OWN area and are hard-coded rather than read
-// off live globals like patrolCenter, because the question has to be
-// answerable from anywhere — you should be able to open the map in the church
-// and see where the yard wants you.
-function currentObjective() {
-  // ---- Q1: the yard
-  if (!bossDefeated) {
-    if (mission.state === 'none') return {
-      title: 'Talk to the survivor', area: 'junkyard', x: 21.5, y: 7.5,
-      detail: 'There is a light on in the shack, and a man in it who has not shot at me yet.' };
-    if (mission.state === 'active') return {
-      title: `Destroy Scrappers — loot scrap ${Math.min(player.inv.scrap, 5)}/5`,
-      area: 'junkyard', x: 21.5, y: 12.5,
-      detail: 'The old man fed me. He will want something for the pipe. They patrol the middle of the yard.' };
-    if (mission.state === 'complete') return {
-      title: 'Return to the survivor', area: 'junkyard', x: 21.5, y: 7.5,
-      detail: 'Five scrap, and the machines that were carrying it are not any more.' };
-    if (!(gateProp && gateProp.open)) return {
-      title: 'Unlock the yard gate', area: 'junkyard', x: 30.5, y: 12.5,
-      detail: 'He gave me the key with the look of a man who does not expect it back.' };
-    // The gate is open and the Compactor is still in the junk. THE AMBUSH IS
-    // NEVER MARKED — a dot pointing at it gives the whole thing away.
-    return null;
-  }
-  // ---- Q2: the road out, and the shelter at the end of it
-  if (!campMapRead) return {
-    title: 'Reach the shelter', area: 'fringe', x: 56, y: 68,
-    detail: 'Somebody painted the signs after. Follow them west and there is a church people live in.' };
-  return null;
-}
 
 const Msg = { text: '', t: 0 };
 function showMsg(text, dur = 2.5) { Msg.text = text; Msg.t = dur; }
@@ -458,36 +282,20 @@ function updatePlayer(dt) {
       banditHit(bd, m.dmg, dx / (d || 1), dy / (d || 1), m.stab);
       addShake(2);
     }
-    // and the droids standing in it — one swing, every foe in the arc
-    if (typeof droidMeleeHit === 'function') droidMeleeHit(m, ps);
   }
 
-  // ---- eat something ----
+  // ---- eat snack bar ----
   if (Input.pressed['KeyH']) {
     Input.pressed['KeyH'] = false;
-    eatSomething();
+    if (player.inv.snack > 0 && player.hp < player.maxHp) {
+      player.inv.snack--;
+      player.hp = Math.min(player.maxHp, player.hp + 40);
+      showMsg('Ate a snack bar  (+40 HP)');
+      SFX.eat();
+    } else if (player.inv.snack <= 0) {
+      showMsg('No snack bars — the survivor trades them', 1.8);
+    }
   }
-}
-
-// H eats the WORST thing you are carrying that still helps, so the good ration
-// is still in the pack when it matters. Cheapest first, never the last resort.
-const FOOD = [
-  { id: 'snack', heal: 40, label: 'a snack bar' },
-  { id: 'mreChicken', heal: 45, label: 'a chicken MRE' },
-  { id: 'mreBeef', heal: 60, label: 'a beef MRE' },
-];
-function eatSomething() {
-  const have = FOOD.filter(f => player.inv[f.id] > 0);
-  if (!have.length) { showMsg('Nothing to eat — the camp trades rations', 1.8); return; }
-  if (player.hp >= player.maxHp) { showMsg('Already at full health', 1.5); SFX.deny(); return; }
-  const f = have[0];
-  eatFood(f);
-}
-function eatFood(f) {
-  player.inv[f.id]--;
-  player.hp = Math.min(player.maxHp, player.hp + f.heal);
-  showMsg('Ate ' + f.label + '  (+' + f.heal + ' HP)');
-  SFX.eat();
 }
 
 // ---- interactions: items, NPC, lootable wrecks ----
@@ -495,55 +303,30 @@ function updateItems(dt) {
   Prompt = null;
   if (player.dead > 0) return;
 
-  // Each kind of thing has its own reach, and the CLOSEST RELATIVE TO ITS OWN
-  // REACH wins. It used to be one shared `bestD` seeded at 1.1, which quietly
-  // clamped every larger reach back down to 1.1 — the map table, two tiles
-  // wide and measured to its anchor CORNER, could not be stood close enough to
-  // at all. Distances are to the nearest tile of a prop's footprint now, and
-  // to tile centres, not corners.
-  let best = null, bestScore = Infinity, bestKind = null;
-  const consider = (obj, kind, d, reach) => {
-    if (d >= reach) return;
-    const score = d / reach;
-    if (score < bestScore) { bestScore = score; best = obj; bestKind = kind; }
-  };
-  // how far the player is from the nearest tile a prop actually stands on
-  const propDist = (p) => {
-    const f = p.foot || [p.gx, p.gy, 1, 1];
-    const tx = Math.max(f[0], Math.min(Math.floor(player.x), f[0] + f[2] - 1));
-    const ty = Math.max(f[1], Math.min(Math.floor(player.y), f[1] + f[3] - 1));
-    return Math.hypot(player.x - (tx + 0.5), player.y - (ty + 0.5));
-  };
-  for (const it of items) consider(it, 'item', Math.hypot(player.x - it.x, player.y - it.y), 1.1);
-  if (currentAreaDef().hasNpc)
-    consider(npc, 'npc', Math.hypot(player.x - npc.x, player.y - npc.y), 1.3);
-  for (const f of folk)
-    consider(f, 'folk', Math.hypot(player.x - f.x, player.y - f.y), 1.4);
-  // the camp's fittings you can actually use
-  if (currentAreaDef().indoors) {
-    for (const p of props) {
-      if (!USABLE[p.type]) continue;
-      consider(p, 'fitting', propDist(p), 1.4);
-    }
+  let best = null, bestD = 1.1, bestKind = null;
+  for (const it of items) {
+    const d = Math.hypot(player.x - it.x, player.y - it.y);
+    if (d < bestD) { bestD = d; best = it; bestKind = 'item'; }
+  }
+  if (currentAreaDef().hasNpc) {
+    const npcD = Math.hypot(player.x - npc.x, player.y - npc.y);
+    if (npcD < 1.3 && npcD < bestD) { bestD = npcD; best = npc; bestKind = 'npc'; }
   }
   // the yard gate (main game only, never during the fight or cutscene)
   if (!window.ARENA_MODE && currentArea === 'junkyard' && !GateCine.active &&
       !(boss.active && boss.state !== 'dead' && !bossDefeated)) {
-    consider('gate', 'gate', Math.hypot(player.x - 30.3, player.y - 12.5), 1.7);
+    const gd = Math.hypot(player.x - 30.3, player.y - 12.5);
+    if (gd < 1.7 && gd < bestD) { bestD = gd; best = 'gate'; bestKind = 'gate'; }
   }
   for (const sc of scrappers) {
     if (sc.state !== 'dead' || sc.looted) continue;
-    consider(sc, 'wreck', Math.hypot(player.x - sc.x, player.y - sc.y), 1.1);
+    const d = Math.hypot(player.x - sc.x, player.y - sc.y);
+    if (d < 1.1 && d < bestD) { bestD = d; best = sc; bestKind = 'wreck'; }
   }
   for (const bd of bandits) {
     if (!bd.dead || bd.looted) continue;
-    consider(bd, 'body', Math.hypot(player.x - bd.x, player.y - bd.y), 1.1);
-  }
-  if (typeof droids !== 'undefined') {
-    for (const dr of droids) {
-      if (dr.state !== 'dead' || dr.looted) continue;
-      consider(dr, 'droidWreck', Math.hypot(player.x - dr.x, player.y - dr.y), 1.1);
-    }
+    const d = Math.hypot(player.x - bd.x, player.y - bd.y);
+    if (d < 1.1 && d < bestD) { bestD = d; best = bd; bestKind = 'body'; }
   }
 
   if (bestKind === 'gate') {
@@ -571,14 +354,6 @@ function updateItems(dt) {
     const s = isoToScreen(npc.x, npc.y);
     Prompt = { sx: s.x, sy: s.y - 30, text: mission.state === 'turned' ? 'E — trade' : 'E — talk' };
     if (Input.pressed['KeyE']) { Input.pressed['KeyE'] = false; talkToNpc(); }
-  } else if (bestKind === 'folk') {
-    const s = isoToScreen(best.x, best.y);
-    Prompt = { sx: s.x, sy: s.y - 30, text: 'E — talk' };
-    if (Input.pressed['KeyE']) { Input.pressed['KeyE'] = false; talkToFolk(best); }
-  } else if (bestKind === 'fitting') {
-    const s = isoToScreen(best.gx, best.gy);
-    Prompt = { sx: s.x, sy: s.y - 26, text: USABLE[best.type](best, true) };
-    if (Input.pressed['KeyE']) { Input.pressed['KeyE'] = false; USABLE[best.type](best, false); }
   } else if (bestKind === 'wreck') {
     const wreck = best;
     const s = isoToScreen(wreck.x, wreck.y);
@@ -607,25 +382,6 @@ function updateItems(dt) {
       tutShow('loot',
         ['Dead machines can be looted for scrap', 'and rare tech components.', 'Press I to open your pack.'],
         ['KeyI', 'Tab'], 'PRESS I');
-    }
-  } else if (bestKind === 'droidWreck') {
-    // HHDs carry better parts than yard machines — but NO rifle. The ring's
-    // weapon upgrade comes off the Compactor damaged and is repaired at the
-    // camp, so a droid is never the way you get your gun (Laurens, 2026-08-19).
-    const dr = best;
-    const ds = isoToScreen(dr.x, dr.y);
-    Prompt = { sx: ds.x, sy: ds.y - 20, text: 'E — strip the droid' };
-    if (Input.pressed['KeyE']) {
-      Input.pressed['KeyE'] = false;
-      dr.looted = true;
-      const n = 2 + ((Math.random() * 2) | 0);
-      player.inv.scrap += n;
-      let extra = '';
-      if (Math.random() < 0.45) { player.inv.tech++; extra = '  · +1 tech component'; SFX.tech(); }
-      else SFX.loot();
-      showMsg(`Stripped the droid — ${n} scrap${extra}`);
-      spawnSparks(dr.x, dr.y, 5, ['#6fd3ff', '#c9c9d2']);
-      saveGame();
     }
   } else if (bestKind === 'body') {
     const bd = best;
@@ -724,58 +480,29 @@ function talkToNpc() {
       "Read the signs. This city still says where it goes.",
     ]);
   } else {
-    openTrade('SURVIVOR', STOCK.marek);
+    Trade.open = true;
+    SFX.uiOpen();
   }
 }
 
-// ---------- what the traders keep on the board ----------
-// A row is: what it is called, what it costs, whether it is gone, and what
-// happens when you buy it. Nothing about it is drawn here — the panel reads
-// this list, so a new trader is a new list and no UI work at all.
-const STOCK = {
-  marek: [
-    { label: 'snack bar', icon: () => Sprites.snackIcon, cost: { scrap: 4 },
-      buy: () => { player.inv.snack++; showMsg('Bought a snack bar  (H to eat)'); } },
-    { label: '6 rounds', icon: () => Sprites.ammo, cost: { scrap: 6 },
-      buy: () => { player.ammo += 6; showMsg('Bought 6 rounds'); } },
-    { label: 'piercing knife', icon: () => Sprites.knifeIcon, cost: { tech: 2 },
-      sold: () => player.owned.knife,
-      buy: () => {
-        player.owned.knife = true; player.melee = 'knife';
-        showMsg('PIERCING KNIFE acquired');
-      } },
-  ],
-  // Tam's counter. Rations and rounds, and one tech part at a price that says
-  // he knows exactly what it is worth to somebody carrying a scrap pistol.
-  tam: [
-    { label: '8 rifle rounds', icon: () => Sprites.ammo, cost: { scrap: 5 },
-      buy: () => { player.ammo += 8; showMsg('Bought 8 rounds'); } },
-    { label: 'beef MRE', icon: () => Sprites.mreBeef, cost: { scrap: 6 },
-      buy: () => { player.inv.mreBeef++; showMsg('Bought a beef MRE  (H to eat)'); } },
-    { label: 'chicken MRE', icon: () => Sprites.mreChicken, cost: { scrap: 4 },
-      buy: () => { player.inv.mreChicken++; showMsg('Bought a chicken MRE  (H to eat)'); } },
-    { label: 'low-q tech part', icon: () => Sprites.techIcon, cost: { scrap: 9 },
-      buy: () => { player.inv.tech++; showMsg('Bought a low-quality tech component'); } },
-  ],
-};
-const COST_NAME = { scrap: 'scrap', tech: 'low-q tech' };
-const canAfford = (row) => Object.keys(row.cost).every(k => player.inv[k] >= row.cost[k]);
-const costText = (row) => Object.keys(row.cost)
-  .map(k => row.cost[k] + ' ' + COST_NAME[k]).join(' + ');
-
-function openTrade(who, stock) {
-  Trade.open = true; Trade.who = who; Trade.stock = stock; Trade.pending = null;
-  SFX.uiOpen();
-}
-
 function tradeBuy(n) {
-  const row = Trade.stock[n - 1];
-  if (!row) return;
-  if (row.sold && row.sold()) { showMsg('Already sold', 1.5); SFX.deny(); return; }
-  if (!canAfford(row)) { showMsg('Not enough — ' + costText(row), 1.6); SFX.deny(); return; }
-  for (const k of Object.keys(row.cost)) player.inv[k] -= row.cost[k];
-  row.buy();
-  SFX.buy();
+  const inv = player.inv;
+  if (n === 1) {
+    if (inv.scrap >= 4) { inv.scrap -= 4; inv.snack++; showMsg('Bought a snack bar  (H to eat)'); SFX.buy(); }
+    else { showMsg('Not enough scrap (need 4)', 1.5); SFX.deny(); return; }
+  } else if (n === 2) {
+    if (inv.scrap >= 6) { inv.scrap -= 6; player.ammo += 6; showMsg('Bought 6 rounds'); SFX.buy(); }
+    else { showMsg('Not enough scrap (need 6)', 1.5); SFX.deny(); return; }
+  } else if (n === 3) {
+    if (player.owned.knife) { showMsg('Already own the knife', 1.5); SFX.deny(); return; }
+    if (inv.tech >= 2) {
+      inv.tech -= 2;
+      player.owned.knife = true;
+      player.melee = 'knife';
+      showMsg('PIERCING KNIFE acquired');
+      SFX.buy();
+    } else { showMsg('Need 2 low-quality tech parts', 1.5); SFX.deny(); return; }
+  }
   saveGame();                    // every purchase is committed instantly
 }
 
@@ -901,7 +628,6 @@ function updateBullets(dt) {
         break;                          // one bullet, one machine
       }
     }
-    if (!hit && typeof droidBulletHit === 'function' && droidBulletHit(b)) hit = true;
     if (!hit) {
       for (const bd of bandits) {
         if (bd.dead) continue;
@@ -954,14 +680,13 @@ function updateScrapper(dt, s) {
   switch (s.state) {
     case 'patrol': {
       // gradual detection: machines don't magically know where you are.
-      // Their sight (4.5) is shorter than yours; crouching shrinks it to 2.2.
-      // It now goes through canSpot, so it has to be LOOKING at you and there
-      // has to be nothing between — a heap you stand behind is real cover, and
-      // that is the whole point of the crouch key.
+      // Their sight (4.5) is shorter than yours; crouching shrinks it to 2.2
+      // — but up close (<1.6) they see you no matter what.
       const sightR = player.crouch ? 2.2 : 4.5;
-      if (!playerSafe && canSpot(s, sightR)) {
-        if (canSpot(s, PERIPHERAL + 0.1)) s.alert = 1;   // right on top of it
-        else s.alert += dt * (0.5 + 1.6 * (1 - distP / sightR));
+      if (player.dead <= 0 && !playerSafe) {
+        if (distP < 1.6) s.alert = 1;
+        else if (distP < sightR) s.alert += dt * (0.5 + 1.6 * (1 - distP / sightR));
+        else s.alert = Math.max(0, s.alert - dt * 0.5);
       } else {
         s.alert = Math.max(0, s.alert - dt * 0.5);
       }
@@ -974,16 +699,8 @@ function updateScrapper(dt, s) {
         tutEnemy();
         break;
       }
-      // walk heap to heap, pausing to "scan" — and the scan is real now: it
-      // sweeps its sensor either side of the way it was walking, so a stopped
-      // machine is not permanently blind down one side of itself.
-      if (s.idleT > 0) {
-        s.idleT -= dt;
-        s.scan += dt * 1.1;
-        const a = Math.atan2(s.fy, s.fx) + Math.sin(s.scan) * 0.5 * dt * 4;
-        faceToward(s, Math.cos(a), Math.sin(a), dt);
-        break;
-      }
+      // walk heap to heap, pausing to "scan"
+      if (s.idleT > 0) { s.idleT -= dt; break; }
       aiMove(s, s.tx, s.ty, 1.4 * dt, dt);
       if (Math.hypot(s.tx - s.x, s.ty - s.y) < 0.8) {
         s.idleT = 0.8 + Math.random() * 1.6;
@@ -998,11 +715,7 @@ function updateScrapper(dt, s) {
       player.combatT = 0;      // being hunted counts as combat — no regen
       // 12-second memory: losing sight doesn't shake them immediately —
       // they push toward where they last saw you until the memory fades
-      // A chase you cannot break is not a chase. Losing sight now means losing
-      // sight: put something solid between you and it pushes to where you were
-      // last, then gives up when the memory runs out. Its cone is wider once it
-      // is hunting — it is actively looking for you, not walking a route.
-      const seesYou = !playerSafe && canSpotWide(s, 7.5);
+      const seesYou = !playerSafe && player.dead <= 0 && distP < 7.5;
       if (seesYou) {
         s.memory = 12;
         s.lastPX = player.x; s.lastPY = player.y;
@@ -1077,9 +790,6 @@ function aiMove(s, tx, ty, step, dt) {
   const d = Math.hypot(dx, dy);
   if (d < 0.05) return;
   const bx = dx / d, by = dy / d;
-  // it looks where it is going. Every walker goes through here, so this is the
-  // one place a facing has to be kept up to date.
-  faceToward(s, bx, by, dt);
   const ox = s.x, oy = s.y;
   tryMove(s, bx * step, by * step);
   if (Math.hypot(s.x - ox, s.y - oy) < step * 0.3) {
@@ -1119,22 +829,17 @@ function aiMove(s, tx, ty, step, dt) {
 // it is the only place any of them can see you from.
 // =====================================================================
 const BANDIT_ROLES = {
-  // Tuned against a player standing in the gap doing nothing: four of them
-  // took a passive 100 HP down in about six seconds, which is a wall, not a
-  // fight. Softened to roughly nine — long enough that someone carrying only
-  // the pipe can back out through the chicane and take them a piece at a time,
-  // still short enough that standing in the open is a death sentence.
   knife: {
-    hp: 34, sight: 7.0, speed: 3.1, dmg: 10, reach: 1.15,
-    windup: 0.38, swing: 0.15, recover: 0.58,
+    hp: 34, sight: 7.0, speed: 3.1, dmg: 12, reach: 1.15,
+    windup: 0.34, swing: 0.15, recover: 0.42,
   },
   pistol: {
-    hp: 30, sight: 8.5, speed: 2.5, dmg: 7,
-    range: [2.6, 7.5], hold: 4.8, cd: 1.35, aim: 0.36, spread: 0.11, speedB: 10.5,
+    hp: 30, sight: 8.5, speed: 2.5, dmg: 8,
+    range: [2.6, 7.5], hold: 4.8, cd: 1.15, aim: 0.34, spread: 0.10, speedB: 10.5,
   },
   rifle: {
-    hp: 26, sight: 11.5, speed: 2.0, dmg: 16,
-    range: [3.2, 15.0], hold: 9.0, cd: 2.7, aim: 1.05, spread: 0.03, speedB: 17,
+    hp: 26, sight: 11.5, speed: 2.0, dmg: 20,
+    range: [3.2, 15.0], hold: 9.0, cd: 2.3, aim: 1.05, spread: 0.028, speedB: 17,
   },
 };
 
@@ -1154,10 +859,6 @@ function makeBandit(block, post, idx) {
     kbx: 0, kby: 0, detour: 0, detourX: 0, detourY: 0,
     idleT: Math.random() * 2, sway: Math.random() * 6.28,
     dead: false, looted: false, fell: 0,
-    // A guard watches the road he was put on: `facing` is the side you arrive
-    // from, so that is the way he looks, and his sweep swings either side of it.
-    faceX: block.facing, faceY: 0,
-    fx: block.facing, fy: 0, scan: Math.random() * 6.28,
   };
 }
 
@@ -1174,57 +875,6 @@ function spawnBandits() {
 function banditKey(b) { return b.block.id + ':' + b.idx; }
 
 // ---- can this one actually see that spot, or is its own barricade in the way?
-// ---------- CAN IT SEE YOU ----------
-// One answer, for every machine and every raider in the game. It has to be one
-// function: "can it see me" is the whole of stealth, and if a Scrapper and a
-// bandit answer it differently then hiding is guesswork rather than a skill.
-//
-// Three tests, in the order that costs least:
-//   RANGE      — how far this thing can see at all, halved when you crouch
-//   ARC        — it has to be LOOKING at you. A 120 degree forward cone, with a
-//                small all-round bubble so you cannot stand on its heel.
-//   COVER      — and nothing solid in between.
-//
-// The cover test is what makes buildings, dumpsters, cars, walls and the
-// junkyard's trash mountains into real cover. Before it, detection was radius
-// only: a Scrapper "saw" you through a shack, and in a city of solid buildings
-// that would have been nonsense.
-const VISION_ARC = Math.cos(60 * Math.PI / 180);   // 120 degrees, total
-const PERIPHERAL = 1.5;                            // inside this, facing stops mattering
-function canSpot(e, range) {
-  if (player.dead > 0) return false;
-  const dx = player.x - e.x, dy = player.y - e.y;
-  const d = Math.hypot(dx, dy);
-  if (d > range) return false;
-  if (d > PERIPHERAL) {
-    const f = Math.hypot(e.fx, e.fy);
-    if (f > 0.001 && (dx * e.fx + dy * e.fy) / (d * f) < VISION_ARC) return false;
-  }
-  return losClear(e.x, e.y, player.x, player.y);
-}
-// Something already hunting you sweeps a much wider arc — near enough all
-// round, minus what is directly behind it. Cover still breaks it.
-const WIDE_ARC = Math.cos(140 * Math.PI / 180);
-function canSpotWide(e, range) {
-  if (player.dead > 0) return false;
-  const dx = player.x - e.x, dy = player.y - e.y;
-  const d = Math.hypot(dx, dy);
-  if (d > range) return false;
-  if (d > PERIPHERAL) {
-    const f = Math.hypot(e.fx, e.fy);
-    if (f > 0.001 && (dx * e.fx + dy * e.fy) / (d * f) < WIDE_ARC) return false;
-  }
-  return losClear(e.x, e.y, player.x, player.y);
-}
-// where a unit is looking, as a unit vector, turned smoothly rather than snapped
-function faceToward(e, dx, dy, dt) {
-  const d = Math.hypot(dx, dy);
-  if (d < 0.001) return;
-  const k = Math.min(1, 9 * (dt || 1));
-  e.fx += (dx / d - e.fx) * k;
-  e.fy += (dy / d - e.fy) * k;
-}
-
 function losClear(x0, y0, x1, y1) {
   const dx = x1 - x0, dy = y1 - y0;
   const n = Math.ceil(Math.hypot(dx, dy) * 3);
@@ -1299,13 +949,10 @@ function foeShot(b, tx, ty, cfg, sound) {
 // grind against their own wall and the fight never happens.
 function banditGoal(b, px, py) {
   const rb = b.block;
-  const side = (v) => (v - rb.lineX) * rb.facing > 0;   // true = the way in
-  if (side(b.x) === side(px)) return { x: px, y: py, via: false };
-  // Aim THROUGH the chicane, not AT it. Pointed at the gap itself they walked
-  // up, arrived, and stood in the hole forever — the whole block piled into
-  // the doorway and the player watched them from six feet away.
-  const dir = side(px) ? 1 : -1;
-  return { x: rb.gate.x + rb.facing * dir * 1.9, y: rb.gate.y, via: true };
+  const meOut = (b.x - rb.lineX) * rb.facing > 0;
+  const pOut = (px - rb.lineX) * rb.facing > 0;
+  if (meOut !== pOut) return { x: rb.gate.x, y: rb.gate.y, via: true };
+  return { x: px, y: py, via: false };
 }
 
 function updateBandits(dt) {
@@ -1333,28 +980,18 @@ function updateBandit(dt, b) {
   // ---- noticing you ----
   if (b.state === 'guard') {
     const sight = player.crouch ? cfg.sight * 0.45 : cfg.sight;
-    // They already had cover; now they have a FACING too, and the sweep below
-    // turns it. A man watching the road is not watching the whole world.
-    if (canSpot(b, 1.8)) b.alert = 1;
-    else if (canSpot(b, sight)) b.alert += dt * (0.55 + 1.5 * (1 - dist / sight));
+    const sees = alive && dist < sight && losClear(b.x, b.y, player.x, player.y);
+    if (alive && dist < 1.8) b.alert = 1;
+    else if (sees) b.alert += dt * (0.55 + 1.5 * (1 - dist / sight));
     else b.alert = Math.max(0, b.alert - dt * 0.7);
-    // NOT tutStealth() — that one says "a machine noticed movement", and
-    // these are not machines. It also freezes the world the moment the bar
-    // twitches, which left the whole block standing at ease while the player
-    // walked up and stood on their boots.
+    if (b.alert > 0.15) tutStealth();
     if (b.alert >= 1) {
       alertBlock(b.block, player.x, player.y, true);
       tutBandit();
       return;
     }
-    // idling at the post: they shift their weight and look up and down the
-    // road. That sweep is real now — the arc it turns is the arc it sees in,
-    // so a guard genuinely has a moment when he is looking the other way.
+    // idling at the post: they shift their weight and look up and down the road
     b.sway += dt;
-    b.scan += dt * 0.7;
-    const base = Math.atan2(b.faceY || 1, b.faceX || 0);
-    const a = base + Math.sin(b.scan) * 0.8;
-    faceToward(b, Math.cos(a), Math.sin(a), dt * 0.6);
     if (b.idleT > 0) { b.idleT -= dt; return; }
     const dh = Math.hypot(b.homeX - b.x, b.homeY - b.y);
     if (dh > 0.6) aiMove(b, b.homeX, b.homeY, cfg.speed * 0.5 * dt, dt);
@@ -1482,12 +1119,6 @@ function tutBandit() {
 function updateNpc(dt) {
   npc.animT += dt;
   if (npc.animT > 0.6) { npc.animT = 0; npc.frame = 1 - npc.frame; }
-  // the camp breathes on its own clock, so seven people are not all shifting
-  // their weight on the same frame
-  for (const f of folk) {
-    f.animT += dt;
-    if (f.animT > 0.55 + (f.x % 1) * 0.5) { f.animT = 0; f.frame = 1 - f.frame; }
-  }
 }
 
 function tutEnemy() {

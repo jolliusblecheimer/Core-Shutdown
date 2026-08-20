@@ -132,12 +132,6 @@ canvas.addEventListener('mousedown', e => {
 // scroll wheel switches the active weapon
 canvas.addEventListener('wheel', e => {
   e.preventDefault();
-  // The pack swallows the wheel. It must not switch weapons behind an open
-  // pack (this listener writes player.active directly, bypassing updatePlayer)
-  // and it must not change page either — pages are chosen by clicking them.
-  if (InvUI.open) return;
-  // The map swallows it too, and spends it as zoom on the next frame.
-  if (MapUI.open) { MapUI.wheel += e.deltaY; return; }
   if (player.melee && player.hasGun) {
     player.active = player.active === 'gun' ? 'melee' : 'gun';
     SFX.switchW();
@@ -247,8 +241,6 @@ function buildTilesets() {
   TILESETS[2] = Sprites.rubble;  TILESETS[3] = Sprites.planks;
   TILESETS[4] = Sprites.road;    TILESETS[5] = Sprites.pavement;
   TILESETS[6] = Sprites.verge;   TILESETS[7] = Sprites.forecourt;
-  TILESETS[8] = Sprites.flag;    TILESETS[9] = Sprites.flagWorn;
-  TILESETS[10] = Sprites.straw;  TILESETS[11] = Sprites.crypt;
 }
 buildTilesets();
 
@@ -320,224 +312,7 @@ function fogFromString(s, len) {
   return a;
 }
 
-// ---------- THE MAP ----------
-// One continuous view. `zoom` is pixels per tile and `cx,cy` is the centre in
-// WORLD tile coordinates, so framing one area and framing the whole city are
-// the same draw call with a different number — there is no second "world view"
-// to keep in sync with the area view.
-const MapUI = {
-  open: false,
-  zoom: 1, cx: 0, cy: 0,
-  sel: null, hits: [], questHit: null,
-  wheel: 0,                 // accumulated by the wheel listener, spent per frame
-  drag: null,               // {x, y, cx, cy, moved} while the button is down
-};
-const MAP_TOP = 18, MAP_VIEW_H = VIEW_H - 18 - 16;
-const ZOOM_MAX = 4;
-
-// Each area you have walked keeps a thumbnail of what you know of it: one
-// pixel per fog cell, the same building/road/ground colours the map has always
-// used. Rebuilt when the map opens — the world is frozen while it is up, so
-// fog cannot change underneath it — and only for the area you are standing in,
-// because that is the only one whose tile arrays are live.
-const mapThumbs = {};
-function buildMapThumb(areaId) {
-  const c = makeCanvas(fogW, fogH), g2 = c.getContext('2d');
-  for (let j = 0; j < fogH; j++) {
-    for (let i = 0; i < fogW; i++) {
-      if (!explored[j * fogW + i]) continue;
-      const tx = i * FOG, ty = j * FOG;
-      let road = 0, build = 0, n = 0;
-      for (let y = ty; y < Math.min(MAP_H, ty + FOG); y++)
-        for (let x = tx; x < Math.min(MAP_W, tx + FOG); x++) {
-          n++;
-          if (solid[y][x]) build++;
-          else if (ground[y][x] === 4 || ground[y][x] === 5 || ground[y][x] === 7) road++;
-        }
-      if (!n) continue;
-      g2.fillStyle = build > n * 0.5 ? '#4c5054' : road > n * 0.3 ? '#8d959b' : '#3a4238';
-      g2.fillRect(i, j, 1, 1);
-    }
-  }
-  mapThumbs[areaId] = c;
-}
-
-const POI_ICON = {};   // filled once Sprites exists (sprites.js loads first)
-function initPoiIcons() {
-  POI_ICON.camp = Sprites.icoCamp;
-  POI_ICON.site = Sprites.icoSite;
-  POI_ICON.gate = Sprites.icoGate;
-  POI_ICON.landmark = Sprites.icoLandmark;
-  POI_ICON.sign = Sprites.icoSign;
-}
-initPoiIcons();
-
-const poiWorldX = (p) => Areas[p.area].world.x + p.x;
-const poiWorldY = (p) => Areas[p.area].world.y + p.y;
-
-// A place is KNOWN when its tile is explored — nothing else is stored, and
-// nothing new is saved. Its own area's fog answers it; for areas you are not
-// standing in, that fog is still in exploredByArea.
-function poiKnown(p) {
-  const fog = exploredByArea[p.area];
-  if (!fog) return false;
-  // an area's thumbnail is exactly fogW x fogH for that area, so it carries the
-  // row stride for areas whose tile arrays are not the live ones
-  const fw = p.area === currentArea ? fogW : (mapThumbs[p.area] || {}).width;
-  if (!fw) return false;
-  const i = Math.floor(p.x / FOG), j = Math.floor(p.y / FOG);
-  const k = j * fw + i;
-  return i >= 0 && j >= 0 && i < fw && k < fog.length && fog[k] === 1;
-}
-
-// DECLUTTER BY ZOOM. Pull back far enough and only the things you would
-// actually navigate by survive — otherwise the city becomes a pile of icons.
-function visiblePois() {
-  const z = MapUI.zoom;
-  // Calibrated to what the areas actually FIT at, not to round numbers: the
-  // city is 200x150 on a 320x180 screen, so "framed on the Fringe" is about
-  // 0.9 px/tile and "the whole ring" is 0.81. A threshold at 1 would have hidden
-  // the landmarks at every zoom you ever actually look at the city from.
-  const keep = z >= 1.8 ? ['camp', 'site', 'gate', 'landmark', 'sign']
-             : z >= 0.85 ? ['camp', 'site', 'gate', 'landmark']
-             : ['camp', 'site', 'gate'];
-  const out = [];
-  for (const id of Object.keys(Areas)) {
-    if (Areas[id].indoors) continue;              // rooms are not places on the map
-    for (const p of poisFor(id)) {
-      if (!keep.includes(p.kind)) continue;
-      if (!poiKnown(p)) continue;
-      out.push(p);
-    }
-  }
-  return out;
-}
-
-// Somewhere you can go, and whether you may go there right now.
-// Camps only, discovered only, and never with something on your heels.
-function travelState(p) {
-  if (!p.travel) return null;
-  if (p.area === currentArea && Math.hypot(player.x - p.travel.x, player.y - p.travel.y) < 6)
-    return { ok: false, text: "YOU'RE HERE" };
-  if (beingHunted()) return { ok: false, text: 'NOT WHILE HUNTED' };
-  return { ok: true, text: '[E] TRAVEL' };
-}
-// Opening the map frames the area you are standing in, centred on you — so
-// until you touch the wheel it behaves exactly as it always did.
-function openMap() {
-  buildMapThumb(currentArea);
-  const def = currentAreaDef();
-  MapUI.zoom = Math.min(ZOOM_MAX, Math.min((VIEW_W - 24) / MAP_W, (MAP_VIEW_H - 10) / MAP_H));
-  // framed on the AREA, not on you — otherwise a small area opens cropped and
-  // the map stops behaving the way it always has until you touch the wheel
-  MapUI.cx = def.world.x + MAP_W / 2;
-  MapUI.cy = def.world.y + MAP_H / 2;
-  MapUI.sel = null;
-  MapUI.drag = null;
-  MapUI.wheel = 0;
-}
-
-// The floor of the zoom is whatever frames every area you know at once, so you
-// can never pull back into empty black. Recomputed as the world grows.
-function mapZoomMin() {
-  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-  for (const id of Object.keys(Areas)) {
-    const th = mapThumbs[id];
-    if (!th || (Areas[id].indoors && id !== currentArea)) continue;
-    const w = Areas[id].world;
-    x0 = Math.min(x0, w.x); y0 = Math.min(y0, w.y);
-    x1 = Math.max(x1, w.x + th.width * FOG); y1 = Math.max(y1, w.y + th.height * FOG);
-  }
-  if (!isFinite(x0)) return 1;
-  return Math.max(0.05, Math.min((VIEW_W - 24) / (x1 - x0), (MAP_VIEW_H - 24) / (y1 - y0)));
-}
-
-function updateMap(dt) {
-  const zMin = Math.min(mapZoomMin(), ZOOM_MAX);
-  // ---- wheel zooms ABOUT THE CURSOR, so you push toward what you are looking at
-  if (MapUI.wheel) {
-    const before = MapUI.wheel;
-    MapUI.wheel = 0;
-    const mxw = MapUI.cx + (Input.mouseX - VIEW_W / 2) / MapUI.zoom;
-    const myw = MapUI.cy + (Input.mouseY - (MAP_TOP + MAP_VIEW_H / 2)) / MapUI.zoom;
-    const next = Math.max(zMin, Math.min(ZOOM_MAX, MapUI.zoom * Math.pow(0.9, before / 100)));
-    if (next !== MapUI.zoom) {
-      MapUI.zoom = next;
-      MapUI.cx = mxw - (Input.mouseX - VIEW_W / 2) / next;
-      MapUI.cy = myw - (Input.mouseY - (MAP_TOP + MAP_VIEW_H / 2)) / next;
-    }
-  }
-  if (MapUI.zoom < zMin) MapUI.zoom = zMin;
-
-  // ---- drag to pan. A press that travels less than three pixels is a click.
-  if (Input.mouseDown) {
-    if (!MapUI.drag) MapUI.drag = { x: Input.mouseX, y: Input.mouseY, cx: MapUI.cx, cy: MapUI.cy, moved: 0 };
-    const d = MapUI.drag;
-    d.moved = Math.max(d.moved, Math.hypot(Input.mouseX - d.x, Input.mouseY - d.y));
-    if (d.moved >= 3) {
-      MapUI.cx = d.cx - (Input.mouseX - d.x) / MapUI.zoom;
-      MapUI.cy = d.cy - (Input.mouseY - d.y) / MapUI.zoom;
-    }
-  } else if (MapUI.drag) {
-    const wasClick = MapUI.drag.moved < 3;
-    MapUI.drag = null;
-    if (wasClick) mapClick(Input.mouseX, Input.mouseY);
-  }
-  // arrow keys pan too, for anyone not using a mouse
-  const pan = 90 * dt / MapUI.zoom;
-  if (Input.keys['ArrowLeft']) MapUI.cx -= pan;
-  if (Input.keys['ArrowRight']) MapUI.cx += pan;
-  if (Input.keys['ArrowUp']) MapUI.cy -= pan;
-  if (Input.keys['ArrowDown']) MapUI.cy += pan;
-
-  // ---- E travels, when the selected place will have you
-  if (Input.pressed['KeyE']) {
-    Input.pressed['KeyE'] = false;
-    if (MapUI.sel) {
-      const t = travelState(MapUI.sel);
-      if (t && t.ok) fastTravel(MapUI.sel);
-      else if (t) { SFX.deny(); showMsg(t.text === 'NOT WHILE HUNTED'
-        ? "Not with something on your heels." : 'You are already there.', 2); }
-    }
-  }
-  Input.pressed['LMB'] = false;
-}
-
-// Click a place to select it; click empty ground to let it go.
-function mapClick(mx, my) {
-  let best = null, bd = 7;
-  for (const h of (MapUI.hits || [])) {
-    const d = Math.hypot(mx - h.x, my - h.y);
-    if (d < bd) { bd = d; best = h.poi; }
-  }
-  // the objective answers too — clicking it says what you are meant to be doing
-  const obj = currentObjective();
-  if (obj && MapUI.questHit && Math.hypot(mx - MapUI.questHit.x, my - MapUI.questHit.y) < 7) {
-    best = { id: '__obj', name: obj.title.toUpperCase(), blurb: obj.detail, kind: 'quest' };
-  }
-  if (best !== MapUI.sel) SFX.blip();
-  MapUI.sel = best;
-}
-
-function fastTravel(p) {
-  MapUI.open = false;
-  MapUI.sel = null;
-  SFX.uiClose();
-  // The same fade either way — a hop inside the area you are already in just
-  // has nothing to rebuild on the far side of it.
-  startTransition(p.area, { x: p.travel.x, y: p.travel.y });
-  showMsg(p.name, 2.2);
-}
-
-// Anything that has seen you, plus the fight you cannot walk out of.
-function beingHunted() {
-  if (boss.active && boss.state !== 'hidden' && boss.state !== 'dead') return true;
-  for (const sc of scrappers)
-    if (sc.state !== 'off' && sc.state !== 'dead' && (sc.alert > 0.6 || sc.memory > 0)) return true;
-  for (const bd of bandits)
-    if (!bd.dead && (bd.alert > 0.6 || bd.memory > 0)) return true;
-  return false;
-}
+const MapUI = { open: false };
 
 // ---------- area transitions ----------
 // Fade out, swap the world, fade in. Per-area state (what you took, what you
@@ -546,18 +321,11 @@ const areaState = {};
 const Trans = { active: false, t: 0, to: null, entry: null, swapped: false };
 
 function stashArea() {
-  // What you know of this area, kept as a picture before its tile arrays are
-  // thrown away — it is the only moment they are still live, and without it an
-  // area you have walked would be missing from the world map until you went
-  // back and opened M inside it.
-  if (explored) buildMapThumb(currentArea);
   areaState[currentArea] = {
     deadBarrels: boomBarrels.filter(b => !b.alive).map(b => b.gx + ',' + b.gy),
     takenItems: (START_ITEMS_BY_AREA[currentArea] || []).filter(
       k => !items.some(it => itemKey(it) === k)),
     deadBandits: collectDeadBandits(),
-    // a chest you emptied stays empty when you come back through the door
-    openChests: props.filter(p => p.type === 'chest' && p.open).map(p => p.gx + ',' + p.gy),
   };
 }
 // A raider you killed stays killed. Respawning them would turn a roadblock
@@ -597,8 +365,6 @@ function restoreArea(id) {
   for (let i = items.length - 1; i >= 0; i--) {
     if (taken.has(itemKey(items[i]))) items.splice(i, 1);
   }
-  const opened = new Set(st.openChests || []);
-  for (const p of props) if (p.type === 'chest' && opened.has(p.gx + ',' + p.gy)) p.open = true;
 }
 
 function enterArea(id, entry) {
@@ -619,10 +385,6 @@ function enterArea(id, entry) {
   spawnBandits();
   restoreBandits(id);
   foeBullets.length = 0;
-  // squads rebuild on entry — enemies are never persisted (see save.js)
-  if (Areas[id].hasDroids) spawnFringeSquads();
-  else clearDroids();
-  buildFolk(Areas[id].folk);
   if (entry) {
     player.x = entry.x; player.y = entry.y;
     if (!canStand(player.x, player.y, player.r)) {
@@ -650,17 +412,7 @@ function updateTransition(dt) {
   Trans.t += dt;
   if (!Trans.swapped && Trans.t >= 0.45) {
     Trans.swapped = true;
-    if (Trans.to === currentArea) {
-      // fast travel across an area you are already standing in: the same fade,
-      // but there is nothing to rebuild — only you move
-      player.x = Trans.entry.x; player.y = Trans.entry.y;
-      player.iframes = 0.8;
-      camInit = false;
-      exitArmed = false;
-      saveGame();
-    } else {
-      enterArea(Trans.to, Trans.entry);
-    }
+    enterArea(Trans.to, Trans.entry);
   }
   if (Trans.t >= 1.0) Trans.active = false;
 }
@@ -803,23 +555,21 @@ function update(dt) {
   if (GameState === 'playing' && (Input.pressed['KeyM'] || (MapUI.open && Input.pressed['Escape']))) {
     Input.pressed['KeyM'] = false;
     MapUI.open = !MapUI.open;
-    if (MapUI.open) { InvUI.open = false; SFX.uiOpen(); openMap(); } else SFX.uiClose();
+    if (MapUI.open) { InvUI.open = false; SFX.uiOpen(); } else SFX.uiClose();
   }
   if (MapUI.open) {
     Input.pressed['Escape'] = false;
-    updateMap(dt);
     updateParticles(dt);
     Msg.t -= dt;
     return;
   }
 
-  if (Input.pressed['KeyI'] || Input.pressed['Tab'] || (InvUI.open && !InvUI.ask && Input.pressed['Escape'])) {
+  if (Input.pressed['KeyI'] || Input.pressed['Tab'] || (InvUI.open && Input.pressed['Escape'])) {
     Input.pressed['KeyI'] = Input.pressed['Tab'] = false;
     InvUI.open = !InvUI.open;
     if (InvUI.open) SFX.uiOpen(); else SFX.uiClose();
     InvUI.tab = InvUI.tab || 0;
     InvUI.cur = 0;
-    InvUI.ask = null;
     // opening the pack IS the action the inventory tutorial teaches —
     // dismiss it here, or it would hang waiting behind the pack screen
     if (Tut.active && (Tut.active.keys === 'any' || Tut.active.keys.includes('KeyI') || Tut.active.keys.includes('Tab'))) {
@@ -828,65 +578,14 @@ function update(dt) {
   }
 
   if (InvUI.open) {
-    // The pack is POINTED AT, not driven with keys: you click a page to go to
-    // it and you click a thing to be asked what to do with it. The only key
-    // left is the one that closes it, and that is all the footer has to say.
-    const tabs = visibleTabs();
-    InvUI.tab = Math.max(0, Math.min(InvUI.tab, tabs.length - 1));
-    const items = tabs.length ? itemsOnTab(tabs[InvUI.tab].id) : [];
-
-    // the ask: clicking an item raises it, and nothing else can be touched
-    // until it is answered
-    if (InvUI.ask) {
-      const still = items.find(i => i.id === InvUI.ask.id);
-      if (!still) InvUI.ask = null;        // spent the last one — nothing to ask about
-    }
-    if (InvUI.ask) {
-      const btns = packAskButtons(InvUI.ask);
-      InvUI.askHover = -1;
-      for (const b of btns) {
-        if (packHit(b, Input.mouseX, Input.mouseY)) InvUI.askHover = b.i;
-      }
-      if (Input.pressed['LMB'] && InvUI.askHover === 0) {
-        invAction(items.find(i => i.id === InvUI.ask.id));
-        InvUI.ask = null;
-      } else if (Input.pressed['LMB'] && InvUI.askHover === 1) {
-        InvUI.ask = null; SFX.uiClose();
-      } else if (Input.pressed['Escape']) {
-        InvUI.ask = null; SFX.uiClose();
-      }
-      for (const k of ['LMB', 'Escape', 'KeyE']) Input.pressed[k] = false;
-      updateParticles(dt);
-      Msg.t -= dt;
-      return;
-    }
-
-    InvUI.cur = Math.max(0, Math.min(InvUI.cur, items.length - 1));
-    // hover is what selects — the description panel follows the pointer
-    for (let i = 0; i < items.length; i++) {
-      if (packHit(packCell(i), Input.mouseX, Input.mouseY)) { InvUI.cur = i; break; }
-    }
-    const tabRects = packTabRects(tabs);
-    if (Input.pressed['LMB']) {
-      let onTab = false;
-      for (const r of tabRects) {
-        if (!packHit(r, Input.mouseX, Input.mouseY)) continue;
-        if (r.i !== InvUI.tab) { InvUI.tab = r.i; InvUI.cur = 0; SFX.blip(); }
-        onTab = true; break;
-      }
-      if (!onTab) {
-        for (let i = 0; i < items.length; i++) {
-          if (!packHit(packCell(i), Input.mouseX, Input.mouseY)) continue;
-          InvUI.cur = i;
-          // only things you can DO something with raise the ask. Scrap has no
-          // answer to "equip or cancel"; clicking it just reads it.
-          if (items[i].action) { InvUI.ask = { id: items[i].id }; SFX.uiOpen(); }
-          break;
-        }
-      }
-    }
-    for (const k of ['KeyA', 'KeyD', 'KeyW', 'KeyS', 'KeyQ', 'KeyR', 'LMB',
-                     'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyE'])
+    // BotW-style: the world is frozen while the pack is open
+    if (Input.pressed['KeyA'] || Input.pressed['ArrowLeft']) { InvUI.tab = (InvUI.tab + 3) % 4; InvUI.cur = 0; }
+    if (Input.pressed['KeyD'] || Input.pressed['ArrowRight']) { InvUI.tab = (InvUI.tab + 1) % 4; InvUI.cur = 0; }
+    const rows = invEntries();
+    if (Input.pressed['KeyW'] || Input.pressed['ArrowUp']) InvUI.cur = Math.max(0, InvUI.cur - 1);
+    if (Input.pressed['KeyS'] || Input.pressed['ArrowDown']) InvUI.cur = Math.min(Math.max(0, rows.length - 1), InvUI.cur + 1);
+    if (Input.pressed['KeyE'] && rows[InvUI.cur]) invAction(rows[InvUI.cur]);
+    for (const k of ['KeyA', 'KeyD', 'KeyW', 'KeyS', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyE'])
       Input.pressed[k] = false;   // consumed — never double-fire on multi-step frames
     updateParticles(dt);
     Msg.t -= dt;
@@ -898,11 +597,7 @@ function update(dt) {
       Input.pressed['KeyE'] = false;
       Dialog.idx++;
       SFX.blip();
-      if (Dialog.idx >= Dialog.lines.length) {
-        Dialog.active = false;
-        // a trader's pitch ends at his counter
-        if (Trade.pending) openTrade(Trade.pending.who, Trade.pending.stock);
-      }
+      if (Dialog.idx >= Dialog.lines.length) Dialog.active = false;
     }
     updateParticles(dt);
   } else if (Tut.active) {
@@ -917,10 +612,11 @@ function update(dt) {
     }
     updateParticles(dt);
   } else if (Trade.open) {
-    for (let n = 1; n <= Trade.stock.length; n++)
-      if (Input.pressed['Digit' + n]) tradeBuy(n);
+    if (Input.pressed['Digit1']) tradeBuy(1);
+    if (Input.pressed['Digit2']) tradeBuy(2);
+    if (Input.pressed['Digit3']) tradeBuy(3);
     if (Input.pressed['KeyE'] || Input.pressed['Escape']) { Trade.open = false; SFX.uiClose(); }
-    for (const k of ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'KeyE', 'Escape'])
+    for (const k of ['Digit1', 'Digit2', 'Digit3', 'KeyE', 'Escape'])
       Input.pressed[k] = false;
     updateParticles(dt);
   } else {
@@ -930,7 +626,6 @@ function update(dt) {
       updatePlayer(dt);
       updateScrappers(dt);
       updateBandits(dt);
-      updateDroids(dt);
       updateItems(dt);
       checkExits(dt);
       markExplored(player.x, player.y, 9);
@@ -963,20 +658,11 @@ function update(dt) {
   }
 
   // camera: the player normally; the boss during its cutscenes; during the
-  // gate cutscene, first the gate lock — then whatever rises behind you.
-  //
-  // The lock used to be the literal pair of numbers (21.5, 30.0), which is
-  // where the gate stood when it was in the south wall. It has been in the
-  // EAST wall for a long time, so the first beat of the cutscene panned
-  // eighteen tiles to an empty corner of the yard, sat there while the lock
-  // ground, and then flew all the way back when the Compactor rose. It reads
-  // off the gate itself now, so moving the gate again cannot break it.
+  // gate cutscene, first the gate lock — then whatever rises behind you
   const cineOn = boss.active && (boss.state === 'cine2' || boss.state === 'cine3');
   let focus;
   if (GateCine.active) {
-    const lockX = gateProp ? gateProp.gx - 0.4 : player.x;
-    const lockY = gateProp ? gateProp.gy + 0.5 : player.y;
-    focus = GateCine.spawned ? isoToScreen(boss.x, boss.y) : isoToScreen(lockX, lockY);
+    focus = GateCine.spawned ? isoToScreen(boss.x, boss.y) : isoToScreen(21.5, 30.0);
   } else if (cineOn) {
     focus = isoToScreen(boss.x, boss.y);
   } else {
@@ -990,93 +676,45 @@ function update(dt) {
   cineZoom += (zoomTarget - cineZoom) * Math.min(1, 5 * dt);
 }
 
-// ---------- THE PACK: a grid of what you carry ----------
-// It was a list of text rows. It is squares now, the way BotW does it: you
-// scan tiles, one description panel explains the tile under the cursor, and
-// a thing you have none of is simply not there. What an item IS lives in
-// js/items.js — this file only lays it out.
-//
-// The screen is 320x180 logical pixels, about the size of one BotW item tile,
-// so this is the grammar of that screen and not a copy of it.
-const PACK = {
-  CELL: 26, GAP: 3, COLS: 5, ROWS: 4,   // 20 slots — far more than we can fill
-  GX0: 12, GY0: 44,                     // grid origin
-  PX0: 162, PW: 146,                    // description panel
-  PY0: 44, PH: 113,
-};
-function packCell(i) {
-  const c = i % PACK.COLS, r = (i / PACK.COLS) | 0;
-  return {
-    x: PACK.GX0 + c * (PACK.CELL + PACK.GAP),
-    y: PACK.GY0 + r * (PACK.CELL + PACK.GAP),
-    w: PACK.CELL, h: PACK.CELL,
-  };
-}
-// tab hit rects — built the same way for input and for drawing, so what you
-// click is always exactly what you see
-function packTabRects(tabs) {
-  const out = [];
-  let tx = PACK.GX0;
-  for (let i = 0; i < tabs.length; i++) {
-    const w = ptWidth(tabs[i].label, 8) + 8;
-    out.push({ x: tx - 3, y: 22, w: w, h: 12, i });
-    tx += w + 8;
+// ---------- inventory data & actions (BotW-style pack) ----------
+const INV_TABS = ['WEAPONS', 'ARMOUR', 'FOOD', 'ITEMS'];
+function invEntries() {
+  const t = InvUI.tab;
+  if (t === 0) {
+    const rows = [];
+    if (player.owned.pipe) rows.push({ id: 'pipe', icon: Sprites.pipeIcon, label: 'Metal pipe', eq: player.melee === 'pipe' });
+    if (player.owned.knife) rows.push({ id: 'knife', icon: Sprites.knifeIcon, label: 'Piercing knife', eq: player.melee === 'knife' });
+    if (player.owned.pistol) rows.push({ id: 'pistol', icon: Sprites.pistolIcon, label: `Scrap pistol (${player.ammo})`, eq: player.hasGun });
+    return rows;
   }
-  return out;
-}
-const packHit = (r, x, y) => x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h;
-
-// The ask: click a thing, be asked what to do with it. Two buttons, and the
-// geometry is shared between the hit test and the drawing so what you click is
-// always what you see.
-const ASK = { W: 104, H: 46, BW: 44, BH: 13 };
-function packAskRect() {
-  return { x: Math.round((VIEW_W - ASK.W) / 2), y: Math.round((VIEW_H - ASK.H) / 2) - 6,
-           w: ASK.W, h: ASK.H };
-}
-function packAskButtons() {
-  const r = packAskRect(), gap = 8;
-  const y = r.y + r.h - ASK.BH - 6;
-  const x0 = r.x + (r.w - (ASK.BW * 2 + gap)) / 2;
-  return [
-    { x: x0, y, w: ASK.BW, h: ASK.BH, i: 0 },
-    { x: x0 + ASK.BW + gap, y, w: ASK.BW, h: ASK.BH, i: 1 },
+  if (t === 1) return [];
+  if (t === 2) {
+    return player.inv.snack > 0
+      ? [{ id: 'snack', icon: Sprites.snackIcon, label: `Snack bar × ${player.inv.snack}`, use: 'EAT' }]
+      : [];
+  }
+  const rows = [
+    { id: 'scrap', icon: Sprites.scrapBit, label: `Scrap × ${player.inv.scrap}` },
+    { id: 'tech', icon: Sprites.techIcon, label: `Low-q tech comp × ${player.inv.tech}` },
   ];
+  if (player.inv.gateKey) rows.push({ id: 'key', icon: null, label: 'Yard gate key' });
+  return rows;
 }
-// what the confirming button says for this item
-function packAskVerb(it) {
-  if (!it) return 'DO IT';
-  if (it.action === 'eat') return 'EAT';
-  return (it.equipped && it.equipped()) ? 'PUT AWAY' : 'EQUIP';
-}
-
-// largest INTEGER scale that still fits the cell — pixel art never blurs
-function packIconScale(img, it) {
-  if (it.scale) return it.scale;
-  const room = PACK.CELL - 2;
-  return Math.max(1, Math.min(3, Math.floor(room / Math.max(img.width, img.height))));
-}
-
-// ptWrap already wraps by character count, and the 5x7 font is fixed-advance,
-// so all a pixel width needs is converting into a character count first.
-function ptFit(str, pxWidth, size) {
-  const adv = ptWidth('MMMMMMMMMM', size) / 10;
-  return ptWrap(str, Math.max(4, Math.floor(pxWidth / adv)));
-}
-
-function invAction(it) {
-  if (!it) return;
-  if (it.id === 'pipe' || it.id === 'knife') {
-    player.melee = player.melee === it.id ? null : it.id;
+function invAction(row) {
+  if (row.id === 'pipe' || row.id === 'knife') {
+    player.melee = player.melee === row.id ? null : row.id;
     SFX.switchW();
-  } else if (it.id === 'pistol') {
+  } else if (row.id === 'pistol') {
     player.hasGun = !player.hasGun;
     SFX.switchW();
-  } else if (FOOD.some(f => f.id === it.id)) {
-    // in the pack you pick what to eat; H picks for you
-    if (player.hp >= player.maxHp) { showMsg('Already at full health', 1.5); SFX.deny(); return; }
-    eatFood(FOOD.find(f => f.id === it.id));
-  } else return;            // materials and key items are carried, not used
+  } else if (row.id === 'snack') {
+    if (player.hp < player.maxHp) {
+      player.inv.snack--;
+      player.hp = Math.min(player.maxHp, player.hp + 40);
+      showMsg('Ate a snack bar  (+40 HP)');
+      SFX.eat();
+    } else { showMsg('Already at full health', 1.5); SFX.deny(); return; }
+  }
   saveGame();
 }
 
@@ -1148,15 +786,6 @@ function render() {
       : (p.foot ? s.y + (p.foot[2] + p.foot[3]) * 4 : s.y);
     draws.push({ depth, draw: () => drawProp(p, s.x - ox, s.y - oy) });
   }
-  if (currentAreaDef().hasDroids) {
-    for (const d of droids) {
-      // cull off-screen units before sorting — 23 of them on a 200x150 map
-      const s = isoToScreen(d.x, d.y);
-      if (s.x - ox < -40 || s.x - ox > VIEW_W + 40 ||
-          s.y - oy < -60 || s.y - oy > VIEW_H + 40) continue;
-      draws.push({ depth: s.y, draw: () => drawDroid(d, s.x - ox, s.y - oy) });
-    }
-  }
   for (const sc of scrappers) {
     if (sc.state === 'off') continue;
     const s = isoToScreen(sc.x, sc.y);
@@ -1178,10 +807,6 @@ function render() {
     const s = isoToScreen(bd.x, bd.y);
     // bodies sort a hair behind the living, so nobody stands inside a corpse
     draws.push({ depth: s.y - (bd.dead ? 0.02 : 0), draw: () => drawBandit(bd, s.x - ox, s.y - oy) });
-  }
-  for (const f of folk) {
-    const s = isoToScreen(f.x, f.y);
-    draws.push({ depth: s.y, draw: () => drawFolk(f, s.x - ox, s.y - oy) });
   }
   for (const b of foeBullets) {
     const s = isoToScreen(b.x, b.y);
@@ -1361,18 +986,6 @@ function occlusionAlpha(p) {
   const d = Math.hypot(dx, dy);
   if (d > 3.2) return 1;
   return 0.3 + 0.7 * Math.min(1, Math.max(0, (d - 1.2) / 2));
-}
-
-// A pier is 54px of stone standing in open floor: it crosses the player from
-// four tiles away, which is outside occlusionAlpha's world-distance reach, and
-// only ever when it is in the same SCREEN column. So this one measures where
-// the sprites actually land instead of how far apart the tiles are.
-function pierAlpha(p) {
-  if (player.dead > 0) return 1;
-  const s = isoToScreen(p.gx + 0.5, p.gy + 0.5), q = isoToScreen(player.x, player.y);
-  const dx = Math.abs(s.x - q.x), dy = s.y - q.y;
-  if (dy < 0 || dx > 16 || dy > 50) return 1;      // behind, or nowhere near
-  return 0.35 + 0.65 * Math.max(dx / 16, dy / 50);
 }
 
 // A building's roof: a quad lifted to the facade height, styled by what the
@@ -1649,67 +1262,6 @@ function drawProp(p, x, y) {
     img = Sprites.stove; oyOff = -14; drawShadow(x, y, 6);
     addLight(x, y - 7, 0, 18 + Math.sin(gameTime * 9) * 3, '255,140,60', 0.35);
   }
-  // ---- CANDLELIGHT. Everything that burns puts light on the floor: the
-  // camp is the only warm room in the ring and it has to be lit that way,
-  // not tinted that way.
-  // A pier is the one tall thing standing in the open floor, so it is the one
-  // thing the player can walk behind and disappear into. It fades like the
-  // yard's posts and corner columns do.
-  else if (T === 'pier') {
-    drawShadow(x, y, 8);
-    const a = pierAlpha(p);
-    if (a < 1) ctx.globalAlpha = a;
-    ctx.drawImage(Sprites.pier, Math.round(x - Sprites.pier.width / 2), Math.round(y - 52));
-    ctx.globalAlpha = 1;
-    return;
-  }
-  else if (T === 'brazier') {
-    img = Sprites.brazier; oyOff = -19; drawShadow(x, y, 6);
-    addLight(x, y - 12, 0, 34 + Math.sin(gameTime * 7 + p.gx) * 4, '255,150,60', 0.44);
-  }
-  else if (T === 'candles') {
-    img = Sprites.candles; oyOff = -17; drawShadow(x, y, 6);
-    addLight(x, y - 10, 0, 20 + Math.sin(gameTime * 5 + p.gy) * 2, '255,210,140', 0.34);
-  }
-  else if (T === 'hearth') {
-    img = Sprites.hearth; oyOff = -28; drawShadow(x, y, 7);
-    addLight(x, y - 9, 0, 30 + Math.sin(gameTime * 8) * 3, '255,140,60', 0.40);
-  }
-  else if (T === 'bedding') { img = Sprites.bedding; oyOff = -11; drawShadow(x, y, 10); }
-  else if (T === 'sacks') { img = Sprites.sacks; oyOff = -12; drawShadow(x, y, 8); }
-  else if (T === 'curtain') { img = Sprites.curtain[p.dir === 'y' ? 'y' : 'x']; oyOff = -30; }
-  else if (T === 'pew') { img = Sprites.pew[p.dir === 'y' ? 'y' : 'x']; oyOff = -12; drawShadow(x, y, 13); }
-  else if (T === 'pewBroken') { img = Sprites.pewBroken[p.dir === 'y' ? 'y' : 'x']; oyOff = -12; drawShadow(x, y, 10); }
-  else if (T === 'workbench') {
-    img = Sprites.workbench; oyOff = -22; drawShadow(x, y, 15);
-    // the drone's eye, still live. What glows amber can be hurt — here it is
-    // with its lid off, which is the point of the whole vignette.
-    addLight(x + 4, y - 16, 0, 9 + Math.sin(gameTime * 3) * 2, '255,176,46', 0.30);
-  }
-  else if (T === 'mapTable') {
-    img = Sprites.mapTable; oyOff = -18; drawShadow(x, y, 14);
-    addLight(x + 10, y - 16, 0, 16, '255,210,140', 0.30);
-  }
-  else if (T === 'chest') { img = Sprites.chest[p.open ? 1 : 0]; oyOff = -13; drawShadow(x, y, 8); }
-  else if (T === 'stairDown') {
-    img = Sprites.stairDown; oyOff = -11;
-    addLight(x, y - 4, 0, 13, '120,140,170', 0.22);      // cold air off the crypt
-  }
-  else if (T === 'stairUp') {
-    // the same hole seen from under it: a ladder, and the room above spilling
-    // down the shaft. The light hangs at the OPENING, not on the floor.
-    img = Sprites.ladderUp; oyOff = -45;
-    addLight(x, y - 31, 0, 24, '255,206,138', 0.34);
-    addLight(x, y - 2, 0, 16, '255,206,138', 0.20);
-  }
-  else if (T === 'rope') { img = Sprites.rope; oyOff = -7; }
-  else if (T === 'cistern') { img = Sprites.cistern; oyOff = -22; drawShadow(x, y, 9); }
-  // hay and water: built in tile space, so their anchor is the tile centre
-  // inside the sprite and the offset is arithmetic, not taste
-  else if (T === 'hayStack') { img = Sprites.hayStack; oyOff = -36; drawShadow(x, y, 13); }
-  else if (T === 'waterVat') { img = Sprites.waterVat; oyOff = -28; drawShadow(x, y, 9); }
-  else if (T === 'preserves') { img = Sprites.preserves; oyOff = -14; drawShadow(x, y, 8); }
-  else if (T === 'strongbox') { img = Sprites.strongbox; oyOff = -14; drawShadow(x, y, 8); }
   if (img) ctx.drawImage(img, Math.round(x - img.width / 2), Math.round(y + oyOff));
 }
 
@@ -2048,12 +1600,6 @@ function drawPlayer(x, y) {
   }
 }
 
-function drawFolk(f, x, y) {
-  drawShadow(x, y, 5);
-  const set = Sprites.folk[f.key] || Sprites.folk.vesna;
-  ctx.drawImage(set[f.frame], Math.round(x - 8), Math.round(y - 21));
-}
-
 function drawNpc(x, y) {
   drawShadow(x, y, 5);
   ctx.drawImage(Sprites.npc[npc.frame], Math.round(x - 8), Math.round(y - 21));
@@ -2103,23 +1649,13 @@ function drawBandit(b, x, y) {
   if (b.state === 'aim') {
     const ps = isoToScreen(player.x, player.y);
     const t = Math.min(1, b.aimT / (BANDIT_ROLES[b.role].aim || 1));
-    // DASHED, not a solid beam. Nobody on this road has a laser sight; this is
-    // the game telling you where a barrel is pointed, in the same grammar as
-    // the Scrapper's red blink before it swings.
-    ctx.setLineDash(b.role === 'rifle' ? [2, 3] : [1, 4]);
-    ctx.lineDashOffset = -gameTime * 22;
-    ctx.globalAlpha = (b.role === 'rifle' ? 0.14 + 0.42 * t : 0.08 + 0.2 * t);
+    ctx.globalAlpha = (b.role === 'rifle' ? 0.16 + 0.54 * t : 0.1 + 0.24 * t);
     ctx.strokeStyle = b.role === 'rifle' ? '#ff5a3c' : '#ffa07a';
     ctx.beginPath();
     ctx.moveTo(Math.round(x), Math.round(y - 12));
     ctx.lineTo(Math.round(ps.x - lastOx), Math.round(ps.y - lastOy - 10));
     ctx.stroke();
-    ctx.setLineDash([]);
     ctx.globalAlpha = 1;
-    if (b.role === 'rifle') {                 // and the same blink overhead
-      ctx.fillStyle = ((performance.now() / 90) | 0) % 2 ? '#ff5a3c' : '#ffb02e';
-      ctx.fillRect(Math.round(x - 1), Math.round(y - 25), 2, 2);
-    }
   }
   if (b.muzzle > 0) {
     ctx.fillStyle = '#ffe08a';
@@ -2177,15 +1713,6 @@ function drawScrapper(s, x, y) {
   }
   const hunting = s.state === 'chase' || s.state === 'windup' || s.state === 'swing';
   addLight(x + 0.5, y - 11, 0, hunting ? 14 : 9, '255,176,46', hunting ? 0.5 : 0.3);
-  // WHICH WAY IT IS LOOKING. It has a vision cone now, and a cone the player
-  // cannot read is not a stealth mechanic, it is bad luck — so its sensor
-  // throws a patch of light on the ground in front of it. Amber is the "this
-  // can be hurt" colour, so the beam is a cold white-blue instead.
-  if (!hunting && s.state !== 'dead') {
-    const gaze = isoToScreen(s.x + s.fx * 1.6, s.y + s.fy * 1.6);
-    const here = isoToScreen(s.x, s.y);
-    addLight(x + (gaze.x - here.x), y + (gaze.y - here.y), 0, 13, '150,190,220', 0.16);
-  }
   if (s.state === 'windup') {
     ctx.fillStyle = ((performance.now() / 80) | 0) % 2 ? '#ff5a3c' : '#ffb02e';
     ctx.fillRect(Math.round(x - 1), Math.round(y - 23), 2, 2);
@@ -2313,11 +1840,6 @@ function drawHUD() {
     return;
   }
 
-  // The pack covers the whole screen, so the world HUD would print straight
-  // through it — health bar under the footer hint, minimap over the tiles.
-  // Everything from here to the floating message belongs to the world.
-  if (!InvUI.open) {
-
   // health bar — colour slides green → yellow → orange → red with amount
   const hpFrac = Math.max(0, player.hp / player.maxHp);
   uiRect(6, VIEW_H - 12, 46, 7, 'rgba(0,0,0,0.55)');
@@ -2340,10 +1862,6 @@ function drawHUD() {
     ptext('scroll', VIEW_W - 33, VIEW_H - 27, 7, 'rgba(232,217,192,0.35)', 'center');
   }
 
-  // What now, and where. Read ONCE per frame and shared by the HUD line below
-  // and the dot on the minimap, so the two can never disagree.
-  const obj = currentObjective();
-
   // minimap — whole map when small, a scrolling window when the area is big
   const mw = mmWindowed ? MM_VIEW * MMS : minimap.width;
   const mh = mmWindowed ? MM_VIEW * MMS : minimap.height;
@@ -2358,30 +1876,13 @@ function drawHUD() {
   g.imageSmoothingEnabled = false;
   g.drawImage(minimap, srcX, srcY, mw, mh, mx * U, my * U, mw * U, mh * U);
   g.globalAlpha = 1;
-  // FOG, SOFTLY. The two maps used to disagree about what the traveller knows:
-  // M showed walked ground only, the minimap showed the whole area including
-  // streets you have never seen. Unexplored ground is dimmed rather than
-  // blacked out, so a new area reads as UNLIT instead of MISSING — you can
-  // still make out the shape of the street you are about to walk down.
-  for (let j = 0; j < fogH; j++) {
-    for (let i = 0; i < fogW; i++) {
-      if (explored[j * fogW + i]) continue;
-      const fx = mx + i * FOG * MMS - srcX, fy = my + j * FOG * MMS - srcY;
-      const x0 = Math.max(mx, fx), y0 = Math.max(my, fy);
-      const x1 = Math.min(mx + mw, fx + FOG * MMS), y1 = Math.min(my + mh, fy + FOG * MMS);
-      if (x1 <= x0 || y1 <= y0) continue;
-      uiRect(x0, y0, x1 - x0, y1 - y0, 'rgba(10,12,14,0.65)');
-    }
-  }
   function blip(wx, wy, col) {
     const px2 = mx + wx * MMS - srcX - 1, py2 = my + wy * MMS - srcY - 1;
     if (px2 < mx - 1 || py2 < my - 1 || px2 > mx + mw || py2 > my + mh) return;
     uiRect(px2, py2, 2, 2, col);
   }
   for (const it of items) blip(it.x, it.y, '#ffd27a');
-  // NO NPC BLIPS. Green is the objective and nothing else now — a green dot on
-  // every person made the yard's marker work by accident, and the camp turned
-  // it into seven dots that mean nothing.
+  if (currentAreaDef().hasNpc) blip(npc.x, npc.y, '#7ad27a');
   for (const ex of (currentAreaDef().exits || [])) {
     if (ex.needsGate && !(gateProp && gateProp.open)) continue;
     blip((ex.x0 + ex.x1) / 2, (ex.y0 + ex.y1) / 2, '#4fc3ff');
@@ -2390,25 +1891,6 @@ function drawHUD() {
     if (sc.state !== 'dead' && sc.state !== 'off' &&
         Math.hypot(sc.x - player.x, sc.y - player.y) < 8)
       blip(sc.x, sc.y, '#ff5a3c');
-  }
-  if (currentAreaDef().hasDroids) {
-    for (const d of droids) {
-      if (d.state === 'dead') continue;
-      if (Math.hypot(d.x - player.x, d.y - player.y) < 8) blip(d.x, d.y, '#ff5a3c');
-    }
-  }
-  // the objective, if it is in the area you are standing in. Same source as
-  // the HUD line and the map — it pulses so it reads as a marker, not a prop.
-  if (obj && obj.area === currentArea) {
-    const qx = mx + obj.x * MMS - srcX, qy = my + obj.y * MMS - srcY;
-    if (qx > mx - 2 && qy > my - 2 && qx < mx + mw + 2 && qy < my + mh + 2) {
-      const qi = Sprites.icoQuest;
-      g.globalAlpha = 0.72 + 0.28 * Math.sin(gameTime * 3);
-      g.imageSmoothingEnabled = false;
-      g.drawImage(qi, Math.round(qx - qi.width / 2) * U, Math.round(qy - qi.height / 2) * U,
-                  qi.width * U, qi.height * U);
-      g.globalAlpha = 1;
-    }
   }
   blip(player.x, player.y, '#ffffff');
   g.strokeStyle = '#5a4a38';
@@ -2460,10 +1942,12 @@ function drawHUD() {
     uiRect(mx2, my2 + gap + 1, 1, len, rc);
   }
 
-  // mission objective (top-left) — from the same `obj` the minimap dot uses
-  if (obj) {
+  // mission objective (top-left)
+  if (mission.state === 'active' || mission.state === 'complete') {
     ptext('*', 8, 8, 8, '#ffd27a');
-    ptext(obj.title, 16, 8, 8);
+    ptext(mission.state === 'active'
+      ? `Destroy Scrappers - loot scrap ${Math.min(player.inv.scrap, 5)}/5`
+      : 'Return to the survivor', 16, 8, 8);
   }
 
   // street signs read themselves when you get close
@@ -2517,268 +2001,133 @@ function drawHUD() {
     ptext(Msg.text, VIEW_W / 2, 24, 8, '#ffd27a', 'center', Math.min(1, Msg.t));
   }
 
-  }   // ---- end of the world HUD ----
-
-  // THE MAP — everywhere you have walked, and nothing you haven't.
-  // One world space at MapUI.zoom pixels per tile: framing an area and framing
-  // the whole city are the same draw call with a different number in it.
+  // THE MAP — everywhere you have walked, and nothing you haven't
   if (MapUI.open) {
     uiRect(0, 0, VIEW_W, VIEW_H, 'rgba(6,7,8,0.9)');
-    const z = MapUI.zoom;
-    // the HUD's `obj` lives inside the world-HUD block, which is skipped while
-    // the map is up — same function, same answer, read again here
-    const mobj = currentObjective();
-    // world tile -> screen pixel
-    const sx2 = (wx) => VIEW_W / 2 + (wx - MapUI.cx) * z;
-    const sy2 = (wy) => MAP_TOP + MAP_VIEW_H / 2 + (wy - MapUI.cy) * z;
-
-    // ---- the ground: one cached thumbnail per area you have been in.
-    // Two passes, because the areas overlap on screen and the second area's
-    // ground would otherwise paint over the first area's name.
-    const drawn = [];
-    for (const id of Object.keys(Areas)) {
-      const th = mapThumbs[id];
-      if (!th) continue;
-      const def = Areas[id];
-      if (def.indoors && id !== currentArea) continue;         // rooms, not places
-      const ox2 = sx2(def.world.x), oy2 = sy2(def.world.y);
-      const w2 = th.width * FOG * z, h2 = th.height * FOG * z;
-      if (ox2 > VIEW_W || oy2 > VIEW_H || ox2 + w2 < 0 || oy2 + h2 < 0) continue;
-      uictx.imageSmoothingEnabled = false;
-      uictx.globalAlpha = id === currentArea ? 1 : 0.82;
-      uictx.drawImage(th, Math.round(ox2 * U), Math.round(oy2 * U),
-                      Math.round(w2 * U), Math.round(h2 * U));
-      uictx.globalAlpha = 1;
-      drawn.push({ id, def, ox2, oy2, w2, h2 });
-    }
-    // names, once an area is small enough to need telling apart. Never the one
-    // you are standing in — the title bar and YOU ARE HERE both say that
-    // already, and printing it a third time stacked it under its own title.
-    if (z < 1) for (const d of drawn) {
-      if (d.id === currentArea) continue;
-      const lw = ptWidth(d.def.name, 7);
-      const lx = Math.max(lw / 2 + 4, Math.min(VIEW_W - lw / 2 - 4, d.ox2 + d.w2 / 2));
-      ptext(d.def.name, lx, Math.max(MAP_TOP, d.oy2 - 9), 7, 'rgba(232,217,192,0.55)', 'center');
-    }
-
-    // ---- the places, at a FIXED pixel size whatever the zoom. What changes
-    // with zoom is how many are drawn, not how big they are.
-    const hits = [];
-    for (const p of visiblePois()) {
-      const px3 = sx2(poiWorldX(p)), py3 = sy2(poiWorldY(p));
-      if (px3 < -8 || py3 < -8 || px3 > VIEW_W + 8 || py3 > VIEW_H + 8) continue;
-      const img = POI_ICON[p.kind];
-      if (!img) continue;
-      uictx.imageSmoothingEnabled = false;
-      const sel = MapUI.sel && MapUI.sel.id === p.id;
-      if (sel) uiRect(px3 - img.width / 2 - 1, py3 - img.height / 2 - 1,
-                      img.width + 2, img.height + 2, 'rgba(255,210,122,0.30)');
-      uictx.drawImage(img, Math.round(px3 - img.width / 2) * U,
-                      Math.round(py3 - img.height / 2) * U, img.width * U, img.height * U);
-      hits.push({ poi: p, x: px3, y: py3 });
-    }
-    MapUI.hits = hits;
-
-    // ---- the objective, over everything, and the only green on the map
-    if (mobj && Areas[mobj.area] && mapThumbs[mobj.area]) {
-      const qw = Areas[mobj.area].world;
-      const qx2 = sx2(qw.x + mobj.x), qy2 = sy2(qw.y + mobj.y);
-      const qi = Sprites.icoQuest;
-      uictx.globalAlpha = 0.7 + 0.3 * Math.sin(gameTime * 3);
-      uictx.imageSmoothingEnabled = false;
-      uictx.drawImage(qi, Math.round(qx2 - qi.width / 2) * U, Math.round(qy2 - qi.height / 2) * U,
-                      qi.width * U, qi.height * U);
-      uictx.globalAlpha = 1;
-      MapUI.questHit = { x: qx2, y: qy2 };
-    } else MapUI.questHit = null;
-
-    // ---- you. The full traveller while the map is close, a dot once it isn't
-    const cw = currentAreaDef().world;
-    const pxm = sx2(cw.x + player.x), pym = sy2(cw.y + player.y);
-    if (z >= 1) {
-      const pim = Sprites.player[0];
-      uictx.imageSmoothingEnabled = false;
-      uictx.drawImage(pim, Math.round(pxm - pim.width / 2) * U, Math.round(pym - pim.height + 3) * U,
-                      pim.width * U, pim.height * U);
-    } else {
-      uiRect(pxm - 1.5, pym - 1.5, 3, 3, '#ffffff');
-      const yw = ptWidth('YOU ARE HERE', 7);
-      ptext('YOU ARE HERE', Math.max(yw / 2 + 4, Math.min(VIEW_W - yw / 2 - 4, pxm)),
-            pym + 5, 7, 'rgba(255,255,255,0.75)', 'center');
-    }
-
-    // What you are looking at: a place if you picked one, the area while you are
-    // framed on it, and the whole ring once you have pulled back past it — the
-    // areas label themselves down on the map, so this must not repeat one.
-    ptext(MapUI.sel ? MapUI.sel.name : (z < 1 ? 'THE RING' : currentAreaDef().name),
-          VIEW_W / 2, 8, 8, '#ffd27a', 'center');
-
-    // ---- the panel: what this place is, and whether you can go there
-    if (MapUI.sel) {
-      const p = MapUI.sel, ph2 = 42, py4 = VIEW_H - ph2 - 10;
-      uiRect(10, py4, VIEW_W - 20, ph2, 'rgba(10,12,14,0.92)');
-      uictx.strokeStyle = '#3a4a52'; uictx.lineWidth = U;
-      uictx.strokeRect(10 * U, py4 * U, (VIEW_W - 20) * U, ph2 * U);
-      ptext(p.name, 16, py4 + 4, 8, '#ffd27a');
-      let ly = py4 + 15;
-      for (const line of ptFit(p.blurb, VIEW_W - 32, 7).slice(0, 2)) {
-        ptext(line, 16, ly, 7, '#e8d9c0'); ly += 9;
+    const pad = 16, top = 22;
+    const availW = VIEW_W - pad * 2, availH = VIEW_H - top - 20;
+    const sc = Math.min(availW / MAP_W, availH / MAP_H);
+    const mw2 = MAP_W * sc, mh2 = MAP_H * sc;
+    const mx2 = (VIEW_W - mw2) / 2, my2 = top + (availH - mh2) / 2;
+    ptext(currentAreaDef().name, VIEW_W / 2, 8, 8, '#ffd27a', 'center');
+    uictx.strokeStyle = '#3a4a52';
+    uictx.lineWidth = U;
+    uictx.strokeRect((mx2 - 2) * U, (my2 - 2) * U, (mw2 + 4) * U, (mh2 + 4) * U);
+    // explored cells only
+    for (let j = 0; j < fogH; j++) {
+      for (let i = 0; i < fogW; i++) {
+        if (!explored[j * fogW + i]) continue;
+        const tx = i * FOG, ty = j * FOG;
+        let road = 0, build = 0, n = 0;
+        for (let y = ty; y < Math.min(MAP_H, ty + FOG); y++)
+          for (let x = tx; x < Math.min(MAP_W, tx + FOG); x++) {
+            n++;
+            if (solid[y][x]) build++;
+            else if (ground[y][x] === 4 || ground[y][x] === 5 || ground[y][x] === 7) road++;
+          }
+        if (!n) continue;
+        const col = build > n * 0.5 ? '#4c5054' : road > n * 0.3 ? '#8d959b' : '#3a4238';
+        uiRect(mx2 + i * FOG * sc, my2 + j * FOG * sc, FOG * sc + 0.6, FOG * sc + 0.6, col);
       }
-      const t = travelState(p);
-      if (t) ptext(t.text, VIEW_W - 16, py4 + 4, 8, t.ok ? '#7ad27a' : 'rgba(232,217,192,0.4)', 'right');
     }
-
-    ptext(z < 1 ? 'scroll to zoom  ·  drag to pan  ·  M or ESC to close'
-                : 'scroll to zoom out  ·  drag to pan  ·  click a place',
-          VIEW_W / 2, VIEW_H - 8, 7, 'rgba(232,217,192,0.5)', 'center');
+    // landmarks you have actually seen
+    if (typeof signs !== 'undefined') {
+      for (const s of signs) {
+        if (!isExplored(s.gx, s.gy)) continue;
+        uiRect(mx2 + s.gx * sc - 1, my2 + s.gy * sc - 1, 2, 2, '#7ad27a');
+      }
+    }
+    for (const ex of (currentAreaDef().exits || [])) {
+      if (ex.needsGate && !(gateProp && gateProp.open)) continue;
+      const ex2 = (ex.x0 + ex.x1) / 2, ey2 = (ex.y0 + ex.y1) / 2;
+      if (isExplored(ex2, ey2)) uiRect(mx2 + ex2 * sc - 1.5, my2 + ey2 * sc - 1.5, 3, 3, '#4fc3ff');
+    }
+    // you — a tiny version of the traveller, with a ring so you can find him
+    const pxm = mx2 + player.x * sc, pym = my2 + player.y * sc;
+    // No ring — the marker IS the traveller. Drawn full size and pixel-snapped
+    // so it is the same character you are looking at down in the street.
+    const pim = Sprites.player[0];
+    uictx.imageSmoothingEnabled = false;
+    uictx.drawImage(pim, Math.round(pxm - pim.width / 2) * U, Math.round(pym - pim.height + 3) * U,
+                    pim.width * U, pim.height * U);
+    ptext('walked ground only  ·  M or ESC to close', VIEW_W / 2, VIEW_H - 12, 7, 'rgba(232,217,192,0.5)', 'center');
     return;
   }
 
-  // THE PACK — full screen, world frozen while it is open
+  // BotW-style full-screen pack (world frozen while open)
   if (InvUI.open) {
-    uiRect(0, 0, VIEW_W, VIEW_H, 'rgba(0,0,0,0.72)');
-    ptext('THE PACK', VIEW_W / 2, 7, 8, '#ffd27a', 'center');
-
-    const tabs = visibleTabs();
-    const items = tabs.length ? itemsOnTab(tabs[InvUI.tab].id) : [];
-    const sel = items[InvUI.cur] || null;
-
-    // ---- tabs. A tab with nothing in it is not drawn at all ----
-    const tabRects = packTabRects(tabs);
-    for (let i = 0; i < tabs.length; i++) {
-      const r = tabRects[i], on = i === InvUI.tab;
-      if (on) uiRect(r.x, r.y, r.w, r.h, 'rgba(255,210,122,0.16)');
-      ptext(tabs[i].label, r.x + 4, r.y + 3, 8, on ? '#ffd27a' : 'rgba(232,217,192,0.45)');
+    uiRect(0, 0, VIEW_W, VIEW_H, 'rgba(0,0,0,0.55)');
+    const pw = 250, ph = 130, px0 = (VIEW_W - pw) / 2, py0 = (VIEW_H - ph) / 2;
+    uiFrame(px0, py0, pw, ph);
+    // section tabs
+    let tx = px0 + 10;
+    for (let t = 0; t < 4; t++) {
+      const sel = t === InvUI.tab;
+      const tw = ptWidth(INV_TABS[t], 8);
+      if (sel) uiRect(tx - 3, py0 + 4, tw + 6, 11, 'rgba(255,210,122,0.15)');
+      ptext(INV_TABS[t], tx, py0 + 6, 8, sel ? '#ffd27a' : 'rgba(232,217,192,0.45)');
+      tx += tw + 14;
     }
-    uiRect(PACK.GX0, 37, VIEW_W - PACK.GX0 * 2, 1, '#5a4a38');
-
-    if (tabs.length === 0) {
-      ptext('You are carrying nothing at all.', VIEW_W / 2, 90, 8, 'rgba(232,217,192,0.5)', 'center');
+    uiRect(px0 + 6, py0 + 18, pw - 12, 1, '#5a4a38');
+    // rows
+    const rows = invEntries();
+    if (rows.length === 0) {
+      const emptyText = InvUI.tab === 1 ? 'No armour yet — the city will provide.'
+        : InvUI.tab === 2 ? 'No food. The survivor trades snack bars.'
+        : 'Nothing here yet.';
+      ptext(emptyText, px0 + pw / 2, py0 + 52, 8, 'rgba(232,217,192,0.5)', 'center');
     }
-
-    // ---- the grid ----
-    for (let i = 0; i < PACK.COLS * PACK.ROWS; i++) {
-      const c = packCell(i), it = items[i];
-      // every slot draws its well, so the grid reads as a grid and not as a
-      // ragged row of whatever you happen to be carrying
-      uiRect(c.x, c.y, c.w, c.h, it ? 'rgba(28,24,20,0.92)' : 'rgba(18,16,14,0.55)');
-      if (!it) continue;
-      const cur = i === InvUI.cur;
-      if (cur) uiRect(c.x, c.y, c.w, c.h, 'rgba(255,210,122,0.18)');
-      const img = it.icon();
-      if (img) {
-        const sc = packIconScale(img, it);
-        uiIcon(img, c.x + (c.w - img.width * sc) / 2, c.y + (c.h - img.height * sc) / 2, sc);
-      }
-      // count badge, and only where a count means anything — never "x1" on
-      // the one pipe you own
-      const n = it.count ? it.count() : null;
-      if (n !== null && n !== undefined) {
-        const label = 'x' + n, lw = ptWidth(label, 7);
-        uiRect(c.x + c.w - lw - 3, c.y + c.h - 9, lw + 3, 9, 'rgba(10,8,6,0.8)');
-        ptext(label, c.x + c.w - 2, c.y + c.h - 8, 7, '#e8d9c0', 'right');
-      }
-      if (it.equipped && it.equipped()) uiRect(c.x, c.y, c.w, 2, '#7ad27a');
-      // the cursor's border goes on last so nothing paints over it
-      if (cur) {
-        uictx.strokeStyle = '#ffd27a';
-        uictx.lineWidth = U;
-        uictx.strokeRect(c.x * U, c.y * U, c.w * U, c.h * U);
-      }
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i], ry = py0 + 26 + i * 16;
+      const sel = i === InvUI.cur;
+      if (sel) uiRect(px0 + 8, ry - 2, pw - 16, 14, 'rgba(255,210,122,0.12)');
+      ptext(sel ? '>' : ' ', px0 + 12, ry, 8, '#ffd27a');
+      if (r.icon) uiIcon(r.icon, px0 + 20, ry - 2);
+      ptext(r.label, px0 + 48, ry, 8, sel ? '#ffd27a' : '#e8d9c0');
+      if (r.eq !== undefined && r.eq) ptext('[EQUIPPED]', px0 + pw - 12, ry, 8, '#7ad27a', 'right');
+      else if (r.eq !== undefined) ptext('[E] equip', px0 + pw - 12, ry, 8, 'rgba(232,217,192,0.4)', 'right');
+      if (r.use) ptext('[E] ' + r.use.toLowerCase(), px0 + pw - 12, ry, 8, sel ? '#7ad27a' : 'rgba(232,217,192,0.4)', 'right');
     }
-
-    // ---- the description panel: what it is, and what it is for ----
-    if (sel) {
-      uiRect(PACK.PX0, PACK.PY0, PACK.PW, PACK.PH, 'rgba(18,16,14,0.72)');
-      let y = PACK.PY0 + 6;
-      for (const line of ptFit(sel.name, PACK.PW - 12, 8)) {
-        ptext(line, PACK.PX0 + 6, y, 8, '#ffd27a');
-        y += 10;
-      }
-      const n = sel.count ? sel.count() : null;
-      if (n !== null && n !== undefined) {
-        ptext('carrying ' + n + (sel.countLabel ? ' ' + sel.countLabel : ''),
-              PACK.PX0 + 6, y, 7, 'rgba(232,217,192,0.6)');
-        y += 9;
-      }
-      y += 3;
-      uiRect(PACK.PX0 + 6, y, PACK.PW - 12, 1, '#5a4a38');
-      y += 6;
-      for (const line of ptFit(sel.desc, PACK.PW - 12, 7)) {
-        ptext(line, PACK.PX0 + 6, y, 7, '#e8d9c0');
-        y += 9;
-      }
-    }
-
-    // the only key worth naming is the one that gets you out
-    ptext('I — close inventory', VIEW_W / 2, VIEW_H - 11, 7,
-          'rgba(232,217,192,0.38)', 'center');
-
-    // ---- the ask, over everything ----
-    if (InvUI.ask) {
-      const it = items.find(i => i.id === InvUI.ask.id);
-      const r = packAskRect();
-      uiRect(0, 0, VIEW_W, VIEW_H, 'rgba(0,0,0,0.45)');
-      uiFrame(r.x, r.y, r.w, r.h);
-      for (const line of ptFit(it ? it.name : '', r.w - 10, 8)) {
-        ptext(line, r.x + r.w / 2, r.y + 7, 8, '#ffd27a', 'center');
-      }
-      const btns = packAskButtons();
-      const labels = [packAskVerb(it), 'CANCEL'];
-      for (let i = 0; i < 2; i++) {
-        const b = btns[i], on = InvUI.askHover === i;
-        uiRect(b.x, b.y, b.w, b.h, on ? 'rgba(255,210,122,0.22)' : 'rgba(255,255,255,0.06)');
-        uictx.strokeStyle = on ? '#ffd27a' : '#5a4a38';
-        uictx.lineWidth = U;
-        uictx.strokeRect(b.x * U, b.y * U, b.w * U, b.h * U);
-        ptext(labels[i], b.x + b.w / 2, b.y + 3, 8,
-              on ? '#ffd27a' : 'rgba(232,217,192,0.7)', 'center');
-      }
-    }
+    ptext('A/D section · W/S select · E use · I close', px0 + pw / 2, py0 + ph - 12, 7, 'rgba(232,217,192,0.5)', 'center');
   }
 
   // trade panel + your items alongside it
-  // Nothing about any particular trader is written here any more: the rows,
-  // the prices and the sold-out state all come off Trade.stock.
   if (Trade.open) {
-    const rows = Trade.stock;
-    const pw = 168, sw = 78, gap = 6, ph = 18 + rows.length * 12 + 20;
+    const pw = 168, sw = 78, gap = 6, ph = 76;
     const total = pw + gap + sw;
     const px0 = (VIEW_W - total) / 2, py0 = (VIEW_H - ph) / 2 - 8;
-    const DIM = 'rgba(232,217,192,0.4)';
     uiFrame(px0, py0, pw, ph);
-    ptext('TRADE — ' + Trade.who, px0 + pw / 2, py0 + 5, 8, '#7ad27a', 'center');
-    rows.forEach((r, i) => {
-      const ry = py0 + 18 + i * 12;
-      const gone = r.sold && r.sold();
-      const col = (gone || !canAfford(r)) ? DIM : '#e8d9c0';
-      uiIcon(r.icon(), px0 + 7, ry + 1);
-      ptext('[' + (i + 1) + '] ' + r.label, px0 + 26, ry, 8, col);
-      ptext(gone ? 'SOLD' : costText(r), px0 + pw - 8, ry, 8, col, 'right');
-    });
-    ptext('E close', px0 + pw / 2, py0 + ph - 13, 7, 'rgba(232,217,192,0.6)', 'center');
+    ptext('TRADE — SURVIVOR', px0 + pw / 2, py0 + 5, 8, '#7ad27a', 'center');
+    const can = c => player.inv.scrap >= c ? '#e8d9c0' : 'rgba(232,217,192,0.4)';
+    uiIcon(Sprites.snackIcon, px0 + 8, py0 + 19);
+    ptext('[1] snack bar', px0 + 26, py0 + 18, 8, can(4));
+    ptext('4 scrap', px0 + pw - 8, py0 + 18, 8, can(4), 'right');
+    uiIcon(Sprites.ammo, px0 + 8, py0 + 31);
+    ptext('[2] 6 rounds', px0 + 26, py0 + 30, 8, can(6));
+    ptext('6 scrap', px0 + pw - 8, py0 + 30, 8, can(6), 'right');
+    uiIcon(Sprites.knifeIcon, px0 + 6, py0 + 43);
+    const canK = player.inv.tech >= 2 ? '#e8d9c0' : 'rgba(232,217,192,0.4)';
+    if (player.owned.knife) {
+      ptext('[3] piercing knife', px0 + 26, py0 + 42, 8, 'rgba(232,217,192,0.4)');
+      ptext('SOLD', px0 + pw - 8, py0 + 42, 8, 'rgba(232,217,192,0.4)', 'right');
+    } else {
+      ptext('[3] piercing knife', px0 + 26, py0 + 42, 8, canK);
+      ptext('2 low-q tech', px0 + pw - 8, py0 + 42, 8, canK, 'right');
+    }
+    ptext('E close', px0 + pw / 2, py0 + 63, 7, 'rgba(232,217,192,0.6)', 'center');
 
     // what you're carrying, right next to the offer
     const sx0 = px0 + pw + gap;
     uiFrame(sx0, py0, sw, ph);
     ptext('YOURS', sx0 + sw / 2, py0 + 5, 8, '#ffd27a', 'center');
-    const mine = [
-      [Sprites.scrapBit, player.inv.scrap],
-      [Sprites.techIcon, player.inv.tech],
-      [Sprites.ammo, player.ammo],
-      [Sprites.snackIcon, player.inv.snack],
-      [Sprites.mreBeef, player.inv.mreBeef],
-      [Sprites.mreChicken, player.inv.mreChicken],
-    ];
-    // scrap, tech and ammo always; rations only if you have any — and never
-    // more lines than the frame is tall, whoever's counter this is
-    const shown = mine.filter((m, i) => i < 3 || m[1] > 0)
-      .slice(0, Math.floor((ph - 26) / 12));
-    shown.forEach((m, i) => {
-      const ry = py0 + 18 + i * 12;
-      uiIcon(m[0], sx0 + 6, ry + 1);
-      ptext('× ' + m[1], sx0 + sw - 6, ry, 8, '#e8d9c0', 'right');
-    });
+    uiIcon(Sprites.scrapBit, sx0 + 6, py0 + 19);
+    ptext('× ' + player.inv.scrap, sx0 + sw - 6, py0 + 18, 8, '#e8d9c0', 'right');
+    uiIcon(Sprites.techIcon, sx0 + 5, py0 + 31);
+    ptext('× ' + player.inv.tech, sx0 + sw - 6, py0 + 31, 8, '#e8d9c0', 'right');
+    uiIcon(Sprites.snackIcon, sx0 + 5, py0 + 44);
+    ptext('× ' + player.inv.snack, sx0 + sw - 6, py0 + 44, 8, '#e8d9c0', 'right');
+    uiIcon(Sprites.ammo, sx0 + 5, py0 + 56);
+    ptext('× ' + player.ammo, sx0 + sw - 6, py0 + 56, 8, '#e8d9c0', 'right');
   }
 
   // dialogue box (word-wrapped)

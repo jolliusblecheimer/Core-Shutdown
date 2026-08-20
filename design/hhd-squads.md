@@ -1,4 +1,14 @@
-# HHD SQUADS — the machines that hold the Fringe (PLAN, awaiting approval)
+# HHD SQUADS — the machines that hold the Fringe
+
+**Status: steps 1 and 2 of the build order are DONE (2026-08-20); 3–9 are not,
+and four of them need the open questions at the bottom answered first.**
+
+- **Step 1, the singleton→array refactor this plan calls its blocker, is done** —
+  cleared in passing by the two-Scrapper work and the cordon. `scrappers[]` and
+  `bandits[]` both exist; nothing is a singleton any more.
+- **Step 2, line of sight and facing arcs, is done.** See §"what actually
+  changed" at the bottom — half of it (cover) had already arrived with the
+  bandits, and the Scrappers had been left behind seeing through walls.
 
 Laurens, 2026-08-19: *"make a plan for the robot squadrons in the city, make the
 robots vary in size and weaponry. they should be a bit bigger and travel in
@@ -52,36 +62,13 @@ is what they were made to hold.
 
 - **Matte composite panels** — off-white and graphite, not rust. Flat colours,
   clean seams, no weathering except grime at the feet.
-- **One CORE-BLUE sensor bar**, not a glowing bulb — a horizontal slit that
-  sweeps when scanning. See the colour rule below.
+- **One amber sensor bar**, not a glowing bulb — a horizontal slit that sweeps
+  when scanning. Keeps the law (*what glows amber can be hurt*) while looking
+  manufactured.
 - **Seamless joints** — no exposed cabling, no bolts, no asymmetry.
 - **A stencilled WARDEN chevron** on the shoulder, identical on every unit.
   Uniformity is the horror: the Scrapper is a scavenger, these are *issued*.
 - Silhouette reads at 320×180 from the head shape alone.
-
-### THE MACHINES GLOW CORE BLUE, NOT AMBER (Laurens, 2026-08-19)
-
-Every light on an HHD — sensor bar, baton tip, rifle muzzle, the Magistrate's
-cannon, its projectiles, and the sparks those bolts throw off a wall — is the
-cold neon blue of the Core (`#6fd3ff` / `#2b7fb5`), never amber.
-
-Two reasons it is the right call:
-
-1. **It is the palette journey, arriving early.** `art-style.md` runs
-   rust/amber at the outskirts to cold neon blue/white at the Core. An HHD is
-   *issued equipment* carrying WARDEN's own light out to the edge, where it does
-   not belong. The Scrapper's amber bulb is junk the city threw together; this
-   is the machine that built it. Against the Fringe's warm dusk the blue is the
-   only cold thing on screen, so a patrol reads as foreign before you have
-   parsed its shape.
-2. **It makes the amber law stricter, not weaker.** *What glows amber can be
-   hurt; dull plate cannot* now has no competition: no warm light exists
-   anywhere on the machine, so the only amber you ever see on a droid is the
-   flash and sparks of a **weak-point hit**. Blue is WARDEN. Amber is damage.
-
-The laser sight stays **red** — it is a warning, not machinery, and it has to be
-the loudest thing on screen during a wind-up. The lootable-wreck glow stays warm
-too, because that cue belongs to the player, not the machine.
 
 ---
 
@@ -90,51 +77,27 @@ too, because that cue belongs to the player, not the machine.
 Player is 14×18px; the Scrapper about 18px tall. All four are bigger, per the
 ask. `PROJECT_STATE.md` already names the first three.
 
-**NAMES ARE CODE-ONLY** (Laurens, 2026-08-19). Nothing in the game ever shows a
-unit name — no labels, no bestiary, no dialogue naming them. These names exist
-so we can talk about them.
+| Unit | Size | Weapon | Role | HP |
+|---|---|---|---|---|
+| **SPOTTER** | 1.25× player, small body on tall thin legs | none — its weapon is the **flare** | support / alarm | 35 |
+| **BAILIFF** | 1.15×, squat and wide | shock baton, short reach | flusher — drives you out of cover | 45 |
+| **MARSHAL** | 1.35×, upright | rifle, 3-round bursts | the core threat, keeps distance | 55 |
+| **MAGISTRATE** | 1.9×, 2×1 footprint | riot shield + arm cannon | heavy — rare, a "not yet" wall | 140 |
 
-| Unit | Size | Weapon | Role | HP | In this phase? |
-|---|---|---|---|---|---|
-| **SCOUT** | 1.25× player, small body on tall thin legs | none — its weapon is the **flare** | support / alarm | 35 | **no — held back** |
-| **BAILIFF** | 1.15×, squat and wide | shock baton, short reach | flusher — drives you out of cover | 45 | yes |
-| **MARSHAL** | 1.35×, upright | rifle, 3-round bursts | the core threat, keeps distance | 55 | yes |
-| **MAGISTRATE** | 1.9×, 2×1 footprint | riot shield + arm cannon | heavy — rare, a "not yet" wall | 140 | yes, one |
-
-- **SCOUT** *(was "Spotter" — renamed, and **left out of this phase**; Laurens is
-  not yet sure the alarm belongs here)*. Fragile and unarmed, but on detection
-  it fires a flare that wakes the whole squad *and* pulls the nearest one. Kill
-  it first: that is the lesson. It stays defined in `DROID_TYPES` and has a
-  sprite, so nothing is lost — it is simply spawned by nobody.
+- **SPOTTER** — fragile and unarmed, but on detection it fires a flare that
+  wakes the whole squad *and* pulls the nearest one. Kill it first: that is the
+  lesson, and it answers the open question in `enemies-bosses.md` about an alarm
+  system.
 - **BAILIFF** — fastest. Will not stand and trade at range; it closes and
   flushes. This is what punishes hiding in one spot forever.
 - **MARSHAL** — holds ~5 tiles, takes cover behind props, telegraphs each burst
-  with a laser sight line (the fair-telegraph rule). It does **not** drop its
-  rifle — see the weapon-upgrade route below.
+  with a laser sight line (the fair-telegraph rule). **Drops its rifle** — the
+  ring's weapon upgrade, and the answer to that open question in
+  `PROJECT_STATE.md`.
 - **MAGISTRATE** — the size variety. Slow, frontal shield takes **zero** damage
   (boss-grade), so it must be flanked or avoided. Rare and deep-north only: it
   should read as *come back later*, which is how the pressure gradient is
   supposed to work without walls.
-
-## THE RIFLE COMES OFF THE COMPACTOR, NOT THE MARSHAL
-
-Laurens, 2026-08-19. The ring's weapon upgrade does **not** drop from HHDs:
-
-1. **The Compactor drops a badly damaged rifle** that cannot fire at all —
-   carried, not usable. (This also answers the long-open question in
-   `PROJECT_STATE.md` about what the Compactor drops.)
-2. **A survivor at Candlelight — the one dismantling a droid in the church —
-   repairs it** for the traveller. A new NPC, and a reason for the camp to
-   matter beyond trade.
-
-The consequence for pacing is the point: when you first reach the Fringe you
-have a pistol and a broken rifle, so **HHDs are to be avoided**. You come back
-for them later, once the rifle works, and only then are they worth fighting for
-drops. Avoidance first, combat second — which is exactly what the stealth
-system is for.
-
-They still drop scrap and higher-grade tech than yard machines, so a fight is
-never worthless — just not the way you get your gun.
 
 ### Packs, not blobs
 
@@ -145,10 +108,9 @@ something else.
 | Patrol | Composition |
 |---|---|
 | Light | Bailiff + Marshal |
-| Standard | 2 Bailiff + Marshal |
-| Heavy (deep north, one only) | 2 Bailiff + Marshal + Magistrate |
-
-*(Each of these gains a Scout at the front if the Scout is ever switched on.)*
+| Standard | Spotter + Bailiff + Marshal |
+| Heavy | Spotter + 2 Bailiff + Marshal |
+| Rare (deep north) | + Magistrate |
 
 They walk a route in **loose formation** — leader on the waypoint line, others
 offset laterally ±0.8 tiles and staggered back — each still running `aiMove`, so
@@ -222,21 +184,12 @@ Only squads within ~25 tiles of the player update fully; the rest advance a
 cheap route position with no steering, no LOS, no animation. Measure before and
 after — the budget is the thing that keeps this map open-world.
 
-## Respawn
+## Save
 
-A wiped squad comes back on its route after **60 seconds** (Laurens) — long
-enough to cross the ground it was patrolling, so clearing a street buys you real
-passage, but the city never stays empty. It will not respawn while the player is
-standing within 22 tiles of its start: machines are never seen popping into
-existence.
-
-## Save — NOT NEEDED
-
-`save.js` already declares *"robots re-enter fresh (never saved mid-chase)"* —
-enemies are not persisted at all, only the kill count. Squads rebuild on area
-entry, so this needs **no save version bump and no migration**. The one wrinkle:
-`applySave` can switch area without going through `enterArea`, so it has to
-rebuild squads itself.
+v3 → **v4**: per-area squad state (which are dead, respawn timers) alongside the
+existing per-area world state. Migration must keep every existing run intact —
+`save.js` merges onto live defaults, so a v3 save loads with zero squads cleared
+and repopulates normally.
 
 ---
 
@@ -264,21 +217,55 @@ This is multi-session work.
 
 ---
 
-## Decided (Laurens, 2026-08-19)
+## Open questions — need Laurens
 
-- Spotter is renamed **Scout**, and is **left out of this phase**.
-- **Magistrate stays.** One, deep north.
-- **Names are code-only** — nothing in the game is ever labelled.
-- Cleared squads **respawn after ~60s**.
-- The rifle comes off **the Compactor**, damaged, and is repaired at the church.
+1. **Names.** Marshal / Bailiff / Spotter are already in `PROJECT_STATE.md`.
+   **Magistrate** for the heavy keeps the judicial theme (these are the machines
+   that "processed" people). Spotter is the odd one out — **Clerk** would fit
+   the theme better. Keep Spotter, or rename?
+2. **Does the Magistrate belong in the Fringe at all**, or is it a Sprawl unit
+   that occasionally strays south? *(my lean: rare, deep-north Fringe only — a
+   visible "not yet")*
+3. **Stealth kills.** Should killing a Spotter from crouch, before it flares, be
+   an instant kill? It would make stealth a real playstyle rather than just
+   avoidance — but it is a new mechanic, not a tuning knob.
+4. **Do cleared squads respawn?** Still open in `enemies-bosses.md`. *(my lean:
+   yes, slowly and off-screen — an empty city undoes the pressure gradient)*
 
-## Still open
+---
 
-1. **Stealth kills.** Should a kill from crouch, before the squad alerts, be an
-   instant kill? It would make stealth a playstyle rather than just avoidance —
-   but it is a new mechanic, not a tuning knob.
-2. **Does the Scout come in later**, and does the flare pull a *neighbouring*
-   squad or only its own?
-3. **Balance.** Untested against a real run: a standard pack is 2 Bailiffs and a
-   Marshal, and the player arrives with a pistol, a knife and no working rifle.
-   The intent is that this fight is one you decline.
+## What actually changed, when step 2 was built
+
+This plan said "today, robots see through walls. Detection is radius-only.
+There is no line-of-sight test at all." **That was already half wrong by the
+time anyone read it back** — the cordon shipped `losClear()` and the bandits
+have been using it since. What had been left behind was the older code: the
+**Scrappers** were still radius-only, in the yard the plan describes as the
+place where it never showed.
+
+So step 2 was two things, not three:
+
+1. **The Scrappers joined the cover rule.** Patrol detection and — the one that
+   changes how the game plays — the CHASE. `seesYou` was `distP < 7.5` with no
+   cover test, so a chase could not be broken by hiding; it only ended by
+   outrunning the radius. Now breaking line of sight starts the memory clock,
+   the machine pushes to where you were last, and gives up. That is the crouch
+   key finally paying for itself.
+2. **Facing arcs, for everything.** A 120° forward cone with a 1.5-tile
+   all-round bubble so you cannot stand on a heel, widening to 280° once
+   something is already hunting you — a machine actively looking for you is not
+   walking a route. Units face their direction of travel (set in `aiMove`, the
+   one function every walker goes through), a stopped Scrapper sweeps its
+   sensor rather than staring down one line forever, and a bandit at his post
+   sweeps either side of the road he was put on to watch.
+
+And one thing the plan did not ask for but the game needed: **a cone the player
+cannot read is not a stealth mechanic, it is bad luck.** Each machine throws a
+patch of cold blue-white light on the ground where it is looking. Cold, because
+amber in this game means *this can be hurt* and the beam is not a target.
+
+All three cases verified in the browser: behind cover with the machine staring
+straight at you, alert stays at zero; in the open, it climbs; in the open with
+the machine turned away, it decays. The yard still plays — Scrappers engage
+within about a second of you standing next to them in the open, and a roadblock
+still turns in about two.

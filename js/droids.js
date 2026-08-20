@@ -16,6 +16,14 @@
 //
 // Enemies are never persisted (`save.js`: "robots re-enter fresh") — squads
 // rebuild on area entry, so this needs no save version bump.
+//
+// THIS FILE OWNS SQUADS, NOT SEEING OR SHOOTING. Sight, facing, cover and
+// enemy bullets are the game's, not the droids': `canSpot` / `canSpotWide` /
+// `losClear` / `faceToward` / `foeShot` / `foeBullets` in entities.js already
+// answer "can it see me" for every raider and machine in the world. A droid
+// asking that question its own way would make hiding guesswork instead of a
+// skill, so it asks the same one. What is genuinely new here is the SQUAD:
+// packs with a shared alert, a formation, a route and a respawn clock.
 // =====================================================================
 
 // ---------------------------------------------------------------------
@@ -85,7 +93,6 @@ const FRINGE_ROUTES = [
 
 const droids = [];        // every live unit, flat, for collision and drawing
 const squads = [];        // { pts, i, idleT, alert, memory, lastPX, lastPY, members, respawnT }
-const droidShots = [];    // { x, y, vx, vy, life, dmg }
 
 const SQUAD_RESPAWN = 60; // seconds — long enough to cross the ground they
                           // were patrolling before they are back (Laurens)
@@ -102,40 +109,18 @@ const MEMORY = 12;        // shared with the Scrapper's 12s memory rule
 // small all-round peripheral radius so you cannot stand on a droid's heel.
 // ---------------------------------------------------------------------
 
-// Walk the line between two points and stop at the first solid tile.
-// Two samples per tile is enough at this scale and costs nothing, because
-// it only ever runs for a droid that already has the player in range.
-function hasLOS(x0, y0, x1, y1) {
-  const dx = x1 - x0, dy = y1 - y0;
-  const steps = Math.max(2, Math.ceil(Math.hypot(dx, dy) * 2));
-  for (let i = 1; i < steps; i++) {
-    const t = i / steps;
-    if (isSolid(x0 + dx * t, y0 + dy * t)) return false;
-  }
-  return true;
-}
-
-// shortest signed distance between two angles
-function angDiff(a, b) {
-  let d = a - b;
-  while (d > Math.PI) d -= Math.PI * 2;
-  while (d < -Math.PI) d += Math.PI * 2;
-  return d;
-}
-
-// Can this droid see that point RIGHT NOW? Range shrinks when the player
-// crouches; inside the peripheral radius facing stops mattering, but line
-// of sight never does — cover works even at point blank.
-function droidSees(d, tx, ty) {
+// Sight range per unit, and the crouch rule the whole game shares: crouching
+// halves what a machine can see, so breaking line of sight is finally worth
+// doing. Everything else — the 120 degree cone, the peripheral bubble, the
+// cover test — is `canSpot` in entities.js.
+function droidRange(d) {
   const t = DROID_TYPES[d.type];
-  const dist = Math.hypot(tx - d.x, ty - d.y);
-  const range = player.crouch ? t.sightCrouch : t.sight;
-  if (dist > range) return false;
-  if (dist > 1.4) {
-    const a = Math.atan2(ty - d.y, tx - d.x);
-    if (Math.abs(angDiff(a, d.face)) > t.arc) return false;
-  }
-  return hasLOS(d.x, d.y, tx, ty);
+  return player.crouch ? t.sightCrouch : t.sight;
+}
+// A droid already hunting sweeps the wider arc, same as a raider does.
+function droidSees(d) {
+  const r = droidRange(d);
+  return (d.squad && d.squad.alert >= 1) ? canSpotWide(d, r) : canSpot(d, r);
 }
 
 // ---------------------------------------------------------------------
@@ -144,7 +129,6 @@ function droidSees(d, tx, ty) {
 function clearDroids() {
   droids.length = 0;
   squads.length = 0;
-  droidShots.length = 0;
 }
 
 function makeDroid(type, x, y, squad, idx) {
@@ -152,7 +136,10 @@ function makeDroid(type, x, y, squad, idx) {
   const d = {
     type, squad, x, y, r: t.r,
     hp: t.hp, maxHp: t.hp,
-    state: 'patrol', t: 0, face: Math.random() * Math.PI * 2,
+    state: 'patrol', t: 0,
+    // facing is a UNIT VECTOR, not an angle — that is what canSpot and
+    // faceToward expect, and the whole game shares them
+    fx: 1, fy: 0, scan: Math.random() * 6.28,
     animT: 0, frame: 0, hitFlash: 0, clank: 0,
     kbx: 0, kby: 0, detour: 0, detourX: 0, detourY: 0,
     alert: 0, burst: 0, burstT: 0,
@@ -240,7 +227,6 @@ function respawnSquad(sq) {
 function updateDroids(dt) {
   if (!currentAreaDef().hasDroids) return;
   for (const sq of squads) updateSquad(sq, dt);
-  updateDroidShots(dt);
 }
 
 function updateSquad(sq, dt) {
@@ -264,7 +250,7 @@ function updateSquad(sq, dt) {
   const canBeSeen = player.dead <= 0 && !insideShack(player.x, player.y);
   for (const d of alive) {
     if (sq.alert >= 1) break;                 // already hunting; skip the meter
-    if (canBeSeen && droidSees(d, player.x, player.y)) {
+    if (canBeSeen && droidSees(d)) {
       const dist = Math.hypot(player.x - d.x, player.y - d.y);
       const range = player.crouch ? DROID_TYPES[d.type].sightCrouch : DROID_TYPES[d.type].sight;
       d.alert += dt * (0.5 + 1.6 * (1 - dist / range));
@@ -287,7 +273,7 @@ function updateSquad(sq, dt) {
     player.combatT = 0;                       // being hunted counts as combat
     let anySees = false;
     for (const d of alive) {
-      if (canBeSeen && droidSees(d, player.x, player.y)) { anySees = true; break; }
+      if (canBeSeen && droidSees(d)) { anySees = true; break; }
     }
     if (anySees) {
       sq.memory = MEMORY;
@@ -313,7 +299,7 @@ function updateSquad(sq, dt) {
         // each unit sweeps its cone from wherever it happened to stop, and
         // they start out of phase so the pack covers the street between them
         sq.members.forEach((m, k) => {
-          m.scanBase = m.face;
+          m.scanBase = Math.atan2(m.fy, m.fx);
           m.scanT = k * 1.1;
         });
       }
@@ -337,10 +323,8 @@ function formationPoint(sq, d) {
   };
 }
 
-function faceToward(d, tx, ty, dt) {
-  const want = Math.atan2(ty - d.y, tx - d.x);
-  d.face += angDiff(want, d.face) * Math.min(1, dt * 6);
-}
+// look at a point, using the game's shared turner (entities.js)
+function droidLookAt(d, tx, ty, dt) { faceToward(d, tx - d.x, ty - d.y, dt); }
 
 function updateDroidUnit(d, sq, dt) {
   const t = DROID_TYPES[d.type];
@@ -362,7 +346,8 @@ function updateDroidUnit(d, sq, dt) {
       // back. A frozen facing would make a stopped patrol a blind statue —
       // and would make waiting behind cover free.
       d.scanT += dt * 1.5;
-      d.face = d.scanBase + Math.sin(d.scanT) * 0.9;
+      const a = d.scanBase + Math.sin(d.scanT) * 0.9;
+      d.fx = Math.cos(a); d.fy = Math.sin(a);
       return;
     }
     const tgt = formationPoint(sq, d);
@@ -370,15 +355,15 @@ function updateDroidUnit(d, sq, dt) {
     aiMove(d, tgt.x, tgt.y, t.speed * dt, dt);
     // face the way you are actually walking, not the way you meant to
     if (Math.hypot(d.x - before.x, d.y - before.y) > 0.0005) {
-      faceToward(d, d.x + (d.x - before.x), d.y + (d.y - before.y), dt);
+      faceToward(d, d.x - before.x, d.y - before.y, dt);
     }
     return;
   }
 
   // ---------------- combat ----------------
-  const tx = sq.memory > 0 && !droidSees(d, player.x, player.y) ? sq.lastPX : player.x;
-  const ty = sq.memory > 0 && !droidSees(d, player.x, player.y) ? sq.lastPY : player.y;
-  faceToward(d, tx, ty, dt);
+  const tx = sq.memory > 0 && !droidSees(d) ? sq.lastPX : player.x;
+  const ty = sq.memory > 0 && !droidSees(d) ? sq.lastPY : player.y;
+  droidLookAt(d, tx, ty, dt);
 
   switch (d.state) {
     case 'patrol':
@@ -386,13 +371,13 @@ function updateDroidUnit(d, sq, dt) {
       d.state = 'chase';
       if (t.weapon === 'baton') {
         aiMove(d, tx, ty, t.chaseSpeed * dt, dt);
-        if (dist < t.reach * 0.8 && droidSees(d, player.x, player.y)) {
+        if (dist < t.reach * 0.8 && droidSees(d)) {
           d.state = 'windup'; d.t = t.windup;
           SFX.charge();
         }
       } else {
         // RANGED: hold a working distance, and only shoot with a clear line
-        const sees = droidSees(d, player.x, player.y);
+        const sees = droidSees(d);
         if (!sees || dist > t.hold * 1.15) {
           aiMove(d, tx, ty, t.chaseSpeed * dt, dt);
         } else if (dist < t.hold * 0.65) {
@@ -411,7 +396,7 @@ function updateDroidUnit(d, sq, dt) {
       if (!d.didHit) {
         d.didHit = true;
         if (dist < t.reach && player.iframes <= 0 && player.dead <= 0) {
-          hurtPlayerBy(d, t.dmg, dist);
+          hurtPlayer(t.dmg, d.x, d.y);
         }
       }
       d.t -= dt;
@@ -441,49 +426,13 @@ function updateDroidUnit(d, sq, dt) {
   }
 }
 
-function hurtPlayerBy(d, dmg, dist) {
-  player.hp -= dmg;
-  player.combatT = 0;
-  player.iframes = 0.5; player.flash = 0.28;
-  addShake(4);
-  spawnSparks(player.x, player.y, 5, ['#ff5a3c', '#ffb02e']);
-  const dd = dist || 1;
-  tryMove(player, ((player.x - d.x) / dd) * 0.5, ((player.y - d.y) / dd) * 0.5);
-  SFX.hurt();
-  if (player.hp <= 0) { player.hp = 0; player.dead = 2; SFX.die(); }
-}
-
+// Their bolts go into `foeBullets` with everyone else's, so one system draws
+// them, one system collides them with you, and a droid's shot and a raider's
+// shot obey the same rules.
 function fireDroidShot(d, t) {
-  const a = Math.atan2(player.y - d.y, player.x - d.x);
-  const spread = (Math.random() - 0.5) * 0.10;
-  droidShots.push({
-    x: d.x + Math.cos(a) * 0.4, y: d.y + Math.sin(a) * 0.4,
-    vx: Math.cos(a + spread) * 11, vy: Math.sin(a + spread) * 11,
-    life: 0.75, dmg: t.dmg, big: !!t.shield,
-  });
-  SFX.shot();
-  addShake(0.6);
-}
-
-function updateDroidShots(dt) {
-  for (let i = droidShots.length - 1; i >= 0; i--) {
-    const s = droidShots[i];
-    s.life -= dt;
-    s.x += s.vx * dt; s.y += s.vy * dt;
-    let gone = s.life <= 0;
-    if (!gone && isSolid(s.x, s.y)) {
-      gone = true;
-      spawnSparks(s.x, s.y, 4, ['#9fe4ff', '#6fd3ff', '#c9c9d2']);   // their bolt, their colour
-      SFX.ricochet();
-    }
-    if (!gone && player.dead <= 0 && player.iframes <= 0 &&
-        Math.hypot(s.x - player.x, s.y - player.y) < 0.42) {
-      gone = true;
-      hurtPlayerBy({ x: s.x - s.vx, y: s.y - s.vy }, s.dmg,
-                   Math.hypot(s.x - player.x, s.y - player.y) || 1);
-    }
-    if (gone) droidShots.splice(i, 1);
-  }
+  foeShot(d, player.x, player.y,
+          { spread: t.shield ? 0.05 : 0.09, speedB: t.shield ? 13 : 11, dmg: t.dmg },
+          SFX.shot);
 }
 
 // ---------------------------------------------------------------------
@@ -495,10 +444,13 @@ function updateDroidShots(dt) {
 // Magistrate's shield is true zero, which is what marks it as boss-adjacent.
 // ---------------------------------------------------------------------
 function droidZoneAt(d, hx, hy) {
-  const a = Math.atan2(hy - d.y, hx - d.x);
-  const off = Math.abs(angDiff(a, d.face));
-  if (off < 1.2) return 'front';
-  if (off > 2.1) return 'spine';
+  const dx = hx - d.x, dy = hy - d.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const f = Math.hypot(d.fx, d.fy) || 1;
+  // cos of the angle between "where it is looking" and "where it was hit"
+  const dot = (dx * d.fx + dy * d.fy) / (len * f);
+  if (dot > 0.36) return 'front';     // within ~69 degrees of dead ahead
+  if (dot < -0.5) return 'spine';     // behind it, where the sensor spine runs
   return 'side';
 }
 
@@ -591,30 +543,9 @@ function droidMeleeHit(m, ps) {
   return false;
 }
 
-// wrecks are lootable, same as a Scrapper's. HHDs carry better tech than
-// yard machines — but NO rifle: the ring's weapon upgrade comes off the
-// Compactor damaged and gets repaired at Candlelight (Laurens, 2026-08-19).
-function droidLoot(dt) {
-  if (!currentAreaDef().hasDroids) return;
-  for (const d of droids) {
-    if (d.state !== 'dead' || d.looted) continue;
-    if (Math.hypot(d.x - player.x, d.y - player.y) > 1.1) continue;
-    const s = isoToScreen(d.x, d.y);
-    if (!Prompt) Prompt = { sx: s.x, sy: s.y - 20, text: 'E — loot wreck' };
-    if (Input.pressed['KeyE']) {
-      Input.pressed['KeyE'] = false;
-      d.looted = true;
-      const scrap = 2 + ((Math.random() * 2) | 0);
-      player.inv.scrap += scrap;
-      let msg = '+' + scrap + ' scrap';
-      if (Math.random() < 0.45) { player.inv.tech++; msg += ', +1 tech component'; SFX.tech(); }
-      else SFX.loot();
-      showMsg(msg);
-      saveGame();
-    }
-    return;
-  }
-}
+// Looting a droid wreck lives in entities.js with every other interaction,
+// so it competes for the prompt fairly against items, bodies and wrecks
+// instead of fighting them for it.
 
 // =====================================================================
 // SPRITES — the modern design language
@@ -867,13 +798,4 @@ function drawDroid(d, x, y) {
   }
 }
 
-function drawDroidShots(ox, oy, draws) {
-  for (const s of droidShots) {
-    const ss = isoToScreen(s.x, s.y);
-    draws.push({ depth: ss.y + 1, draw: () => {
-      ctx.fillStyle = s.big ? '#9fe4ff' : '#6fd3ff';
-      ctx.fillRect(Math.round(ss.x - ox - 1), Math.round(ss.y - oy - 7), s.big ? 3 : 2, s.big ? 3 : 2);
-      addLight(ss.x - ox, ss.y - oy - 6, 0, 9, '110,200,255', 0.28);
-    } });
-  }
-}
+// (droid bolts are drawn by the game's own foeBullets pass — nothing here)

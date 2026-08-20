@@ -15,21 +15,6 @@
 - Camera zoom: fixed or player-controlled zoom levels?
 - How dark is dark? (night/interior visibility — flashlight mechanic?)
 
-## COLOUR TELLS YOU WHOSE MACHINE IT IS (2026-08-19)
-The palette journey (rust/amber outside → cold neon blue/white at the Core) is
-not only about *place* — it marks **whose** a machine is.
-- **Amber/rust glow = improvised, local, junk.** The Scrapper's bulb eye.
-- **Cold Core blue = issued by WARDEN.** The HHD squads in the Fringe glow
-  `#6fd3ff`: every sensor bar, muzzle, baton tip and projectile. They carry the
-  Core's light out to the edge, where it does not belong — which is exactly why
-  they read as foreign against the Fringe's warm dusk.
-- **This tightens the damage law rather than breaking it.** *What glows amber
-  can be hurt; dull plate cannot* — since no warm light exists on a droid at
-  all, the only amber on one is the flash of a weak-point hit. Blue is WARDEN,
-  amber is damage.
-- Red is reserved for **warnings** (the laser sight during a wind-up), and warm
-  glows for **player cues** (a lootable wreck).
-
 ## THE ANGLE RULE (2026-08-17) — applies to EVERY texture
 Isometric projection: screen-right-down = world +x, screen-left-down = world +y.
 **Anything lying on the ground or running along a road/wall must be sheared to
@@ -74,40 +59,6 @@ The three rejected attempts, so nobody repeats them:
 
 **The rule: iso geometry, flat colours, integer pixels.** Detail must survive
 being 30 pixels wide. Anything that needs antialiasing to read is wrong here.
-
-## BIG LANDMARKS ARE BUILT IN TILE SPACE, NOT FACE SPACE (2026-08-19 — the cathedral)
-`makeBuilding` lays its ornament out in *face space*: fractions along a wall
-and up it. That works for a box. It cannot describe a building that is several
-masses stuck together — a nave with aisles either side, towers at one end, a
-spire over the crossing — because there is no single face to be a fraction of.
-
-`Sprites.makeCathedral` is the pattern for anything at that scale. Everything
-is expressed in **tile space** — `tx` along world +x, `ty` along world +y, `z`
-in real pixels straight up — and projected once through one function:
-
-    S(tx, ty, z) = [ax + (tx - ty) * 16, ay + (tx + ty) * 8 - z]
-
-This is the angle rule enforced by construction rather than by inspection.
-There is no rectangle anywhere in the code to shear, so nothing can come out
-axis-aligned: a buttress is a little box in the world, a string course is a
-band on a wall in the world, a rose window is a circle in a wall plane and
-comes out sheared because the wall is. Wall ornament still gets a face mapper,
-but `(u, v)` are **screen pixels along the wall and up it**, so the face keeps
-its own slope and the detail rides on it.
-
-Three things learned building it:
-- **Painter order is the whole game.** Draw strictly far-to-near by the near
-  corner of each mass (west aisle → west tower → nave → east aisle → fleche →
-  east tower). The west tower must be drawn BEFORE the nave, or its receding
-  east wall paints over the west front.
-- **Do not draw faces that are engaged.** Two masses that butt together have a
-  hidden face between them. Drawing it is what put a grey slab across the rose
-  window: the east aisle was run the full width of the church, so its south end
-  landed on the facade.
-- **A roof slope pitched shallower than 1:2 turns back towards the camera.**
-  The far slope of a ridge then shows as a grey sliver above the ridge line.
-  Gothic pitches are steep enough that the problem disappears; anything gentler
-  needs the far slope drawn properly.
 
 ## A FLAT ROOF IS A WELL, NOT A LID (2026-08-17)
 The parapet stands up around the edge and the deck is set DOWN inside it, with
