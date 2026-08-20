@@ -1437,3 +1437,61 @@ it is, not just where you are. One bug caught on the way: removing the amber
 constants left `AMBER_D` referenced by the wreck sprite, which would have thrown
 at load. All ten checks re-run and still green; cost is now 0.009ms/frame.
 Still local — nothing committed, nothing pushed.
+
+### 75. Pushed, and a collision with another session
+**Laurens:** Push these changes. Then: approve and push to main.
+**Claude:** Pushed the droids, then **stopped short of merging** — main had moved
+on by 56 files and ~16,800 lines while this branch was building. Another session
+had already landed the singleton→array refactor (`scrappers[]`, `bandits[]`),
+line of sight and facing arcs, Candlelight, a map UI, and **raiders holding
+roadblocks in the Fringe** — plus its own `hhd-squads.md` and `cathedral.md`
+written from the same prompts.
+
+**Laurens:** Isn't there supposed to be conflict as we are making changes?
+**Claude:** Fair challenge, and I had overstated it. Ran the merge: 18 hunks, all
+the same shape (`scrapper` singular vs `scrappers` array), every dependency still
+present. It would have merged and run. The problem was never the conflict — it
+was being left with three enemy systems, two projectile systems and two answers
+to "can it see me".
+
+**Laurens:** On top of the raiders.
+**Claude:** So the droids went in as the machine presence patrolling *between*
+the roadblocks — people hold the chokepoints, machines walk the streets. Ported
+onto main's systems and deleted my duplicates: `hasLOS`, `droidSees`,
+`droidShots`, `hurtPlayerBy` and a `droidLoot` that set the interaction prompt
+behind the real one's back, all replaced by `canSpot` / `canSpotWide` /
+`losClear` / `faceToward` / `foeShot` / `hurtPlayer` / `consider()`. Facing moved
+from an angle to the `fx`/`fy` vector, and the armour zones now read it with a
+dot product.
+
+**The one that mattered:** my `faceToward` had the same name as the game's, and
+`droids.js` loads after `entities.js` — it was silently replacing the real one.
+Every raider in the game would have stopped turning to look at anything, and
+since the raiders had just shipped it would have read as *their* bug. There is a
+regression test for it now.
+
+Merged to main as `e5b1040`. **Lesson worth keeping: check what is already on
+main before building. Two sessions built the same feature from the same prompt.**
+
+### 76. Two calibres, the rifle, and the Sergeant
+**Laurens:** Split pistol and rifle ammo. Design the rifle. The Compactor drops a
+**broken** rifle; the man with the broken droid at Candlelight repairs it for tech
+parts, and it comes back with **12 bullets**. **No bullets in the street** —
+rifle raiders drop rifle ammo, pistol raiders drop pistol ammo. Change one NPC to
+trade ammo both ways: he is **the SERGEANT**, military before the takeover.
+**Claude:** Traced all ~20 touchpoints and wrote `design/rifle-and-ammo.md`.
+
+The loop is the good part and worth stating plainly: **the rifle is a reason to
+fight raiders, and raiders are the only reason the rifle keeps working.** Taking
+rounds out of the street is what turns ammo from a pickup into a decision.
+
+Two people in the camp already fit their new jobs without inventing anyone:
+**BO** stands at the workbench with a Hunter-Killer in the vice (*"They come
+apart easier than they look"*) — the only established machine-fixer, so he
+repairs the rifle. **OSK** guards the camp's stores (*"That lot's the camp's. Not
+yours."*) — discipline that reads as ex-army the moment you know, so he becomes
+the SERGEANT.
+
+Plan only, awaiting answers on three things: Tam currently sells 8 rifle rounds
+for 5 scrap, which would collapse the scarcity loop; the exchange rates; and the
+repair cost.
