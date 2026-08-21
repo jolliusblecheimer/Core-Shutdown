@@ -1,0 +1,252 @@
+# THE GUNSMITH — Bo's bench, and what a rifle can become
+
+**Status: PLANNED, 2026-08-21. Not built. Needs Laurens' yes.**
+
+Laurens, 2026-08-21: *"remove the robot on the table, and the dialogue attached
+to it — instead make it a weapon mod station, make it like the image a bit.
+What is changeable about weapons is different for every one. The pipe, scrap
+pistol and knife can't be modded but the rifle can. For the rifle I want it to
+be possible to change a part — probably the barrel — to make it shoot bursts.
+The mag, so you can go for a drum mag to not have to reload so often but
+reloading takes longer. Think of any other stuff that would be cool to mod."*
+Reference: the MW3 gunsmith screen — a weapon laid out big with its slots
+around it.
+
+---
+
+## 1. What this is for
+
+The rifle is the only weapon in the game you *earn*: it comes off the
+Compactor bent double and somebody has to straighten it. That makes it the
+right — and the only — thing to build a modification system on. The pipe, the
+knife and the scrap pistol stay exactly as they are: they are what you make do
+with, and making do is their whole character. **What can be changed is a
+property of the weapon, not a rule of the game.**
+
+The point of the system is not numbers going up. It is that two people who
+both own the rifle should be carrying visibly different guns:
+
+- **burst barrel + drum + compensator** — a room-clearer that almost never
+  stops to reload, and burns the ring's scarcest ammunition doing it.
+- **long barrel + light box + laser** — a marksman that kills at a distance
+  and tops up between every fight.
+
+Both are the same rifle. Both are legible on the sprite from across the room.
+
+## 2. The bench, and the machine that has to come off it
+
+Today `Sprites.workbench` is *a Hunter-Killer with its casing off and one arm
+in the vice*, its eye still lit — with a glow drawn over it in `game.js` and a
+`USABLE.workbench` line that describes it. Bo's three lines are about it too
+("Don't touch that. Its cell is still hot."). All of that goes.
+
+In its place: **a gunsmith's bench.** A rifle lying in a cradle with its
+handguard off, a vice with a barrel in it, a parts tray, a hooded lamp over the
+work. Same footprint (`foot: [1,5,2,1]`), same place in the room, so nothing in
+the cover audit or the walkability audit moves. The lamp keeps the west wall
+lit now that the amber eye is gone.
+
+Interacting with the bench (`E — work the bench`) opens the gunsmith. **Bo
+stays**: he stands beside it, and his straighten-the-rifle job stays on his own
+counter exactly as it is — that path is built and verified and there is no
+reason to disturb it. His lines get rewritten to point at the bench instead of
+at a droid. He never learns your name; he is a man who fixes things and says so.
+
+## 3. What the rifle has, slot by slot
+
+Base rifle, for reference: 18 damage, 0.78s between shots, 12 rounds, 1.6s
+reload, bullet speed 18, life 0.75, shake 2.2.
+
+Every slot ships with a **standard** part fitted, which is free, always owned,
+and is the gun as it is today. Nothing below changes the rifle until you fit
+something.
+
+### BARREL — one shot, or three
+
+| Part | Does | Costs |
+|---|---|---|
+| Standard barrel | the rifle as it comes | — |
+| **Burst regulator** | LMB fires a **3-round burst**, 0.08s apart, then 0.95s before the next. ~2.7 rounds/s against 1.28 — but the *whole burst leaves the gun*, whether or not the first round was enough, and the second and third wander a couple of degrees. | 2 tech + 12 scrap |
+| **Long barrel** | 18 → **22 damage**, bullet flies faster and further (speed 23, life 1.05), and slower between shots (0.78 → 0.95s). | 3 tech + 10 scrap |
+
+The burst is Laurens' ask and it is the most interesting part in the list,
+because its downside is not a stat — it is that **you no longer choose how many
+rounds to spend.** In a ring where rifle rounds only come off machines and off
+Tam's counter, that is a real decision, and it is why the burst is worth
+buying rather than obviously correct.
+
+### MAGAZINE — how often you have to stop
+
+| Part | Does | Costs |
+|---|---|---|
+| 12-round box | as it comes | — |
+| **Drum, 24** | double the rounds in the gun; reload 1.6 → **2.9s** | 2 tech + 14 scrap |
+| **Stripped 8-round box** | 8 rounds, reload 1.6 → **1.15s** | 6 scrap |
+
+Laurens' second ask, and its opposite. The drum is for the burst build (four
+bursts became eight); the light box is for anyone who would rather top up
+constantly than ever be caught in a three-second reload.
+
+### MUZZLE — being heard
+
+| Part | Does | Costs |
+|---|---|---|
+| Flash hider | as it comes | — |
+| **Compensator** | screen shake 2.2 → **1.1**. The picture stops jumping, so the second shot goes where you meant it. | 1 tech + 8 scrap |
+| **Suppressor** † | gunfire alerts unaware enemies within **3 tiles instead of 9**, and costs 2 damage | 3 tech + 12 scrap |
+
+† **The suppressor needs a mechanic the game does not have yet.** Detection is
+purely visual right now — `canSpot` is line of sight and a facing arc, and a
+gunshot is silent to everything that cannot see you. The suppressor is only
+worth fitting if firing *raises the alert of things that did not see it*, which
+is one small addition: on every shot, every unaware enemy within 9 tiles gains
+alert. That would be a good change on its own — shooting a Marshal in a street
+should bring the next junction over — but it changes stealth everywhere, so it
+is **flagged as a decision, not slipped in.** If the answer is no, the muzzle
+slot ships with the compensator alone and the suppressor waits.
+
+### OPTIC — knowing where the shot goes
+
+| Part | Does | Costs |
+|---|---|---|
+| Iron sights | as it comes | — |
+| **Laser box** | draws a thin line from the muzzle to the first thing the shot would hit, and lights that target | 2 tech + 6 scrap |
+
+There is no aiming down sights in a top-down isometric game, so a scope has
+nothing to do. What an optic *can* fix here is the one genuine ambiguity in the
+view: at 2:1 iso the mouse angle and the world direction are not the same
+thing, and at range you are guessing. The laser removes the guess. It is also
+the most visible part on the sprite — a red dot and a thin line — which is
+exactly what a cosmetic-feeling slot needs.
+
+### STOCK — the pause, shortened
+
+| Part | Does | Costs |
+|---|---|---|
+| Fixed stock | as it comes | — |
+| **Padded stock** | reload −0.35s, shake −0.4 | 1 tech + 9 scrap |
+
+Five slots, seven buyable parts. That is deliberately smaller than the
+reference screen's eight: every slot here has to *do* something the game can
+show, and a slot that exists to be full is the kind of bookkeeping this project
+has thrown out twice already.
+
+### Later, not now
+
+- **Armour-piercing rounds** in an AMMUNITION slot — the honest answer to the
+  Magistrate's frontal shield, which currently reads *come back later* with
+  nothing to come back with. Held because it lands on boss and squad balance
+  at the same time, and both want a playtest first.
+- **Underbarrel** — nothing earns it yet.
+- **Parts as loot** — a drum off a Marshal that carried one. Good, and it can
+  come after the bench works.
+
+## 4. What the player sees
+
+A full-screen panel in the game's own hand: parchment and amber on near-black,
+the 5×7 bitmap font, never a browser font. The reference screen's *layout* is
+what is being borrowed, not its colours.
+
+```
+ GUNSMITH — SERVICE RIFLE                       MODIFICATIONS 2/5
+
+  [ MUZZLE ]──┐                        ┌──[ OPTIC ]
+              │      ▄▄▟█████▙▄▄       │
+  [ BARREL ]──┴───▟███████████████▛────┴──[ STOCK ]
+                     ██     ▜██
+                  [ MAGAZINE ]
+
+  ┌─ MAGAZINE ────────────────────────────────────────┐
+  │  12-round box      as it comes            FITTED  │
+  │  Drum, 24          +12 rounds · reload 1.6→2.9s   │
+  │  Stripped box      −4 rounds · reload 1.6→1.15s   │
+  └───────────────────────────────────────────────────┘
+                                              E — close
+```
+
+- The rifle is drawn **big (×4) and with its fitted parts actually on it** — a
+  drum hanging under the receiver, a longer barrel, a red dot on the handle.
+  If fitting a part does not change the picture, the part is not real.
+- Each slot is a chip with a **leader line to the point on the gun it
+  changes**. That line is the whole reason the reference screen reads at a
+  glance, and it is cheap to draw.
+- Selecting a slot lists its parts with **what they do in plain numbers**, not
+  in adjectives: `reload 1.6 → 2.9s`. Owned parts say FITTED or FIT; unowned
+  ones show their price and grey out when you cannot afford them.
+- Mouse-driven like the map and the trade board, keys as a backup, `E`/`Esc`
+  out.
+
+**Buying happens inside the gunsmith**, not on Bo's trade board, so there is
+exactly one place in the world where gun work happens. Once a part is bought it
+is **yours forever and swaps free** — the decision worth charging for is
+*acquiring* the part, and charging again to change your mind would only teach
+players not to experiment.
+
+## 5. How it is built
+
+The engineering core is one function, and everything else follows from it:
+
+```js
+gunStats('rifle')  // base GUNS.rifle, with every fitted part's deltas folded in
+```
+
+Firing, reloading, the HUD, the tutorial and the gunsmith panel all read
+**that**, never `GUNS[gun]` directly. Today the rifle's numbers are read in
+four places; if mods are added without this the four will disagree within a
+week. Recomputed when a part is fitted, and cached.
+
+State:
+
+```js
+player.mods = {
+  owned:  { drum: true, burst: true },          // bought, forever
+  fitted: { rifle: { barrel:'burst', mag:'drum', muzzle:'std', optic:'std', stock:'std' } },
+}
+```
+
+Save: merged onto live defaults like every other field, and **a part id the
+build no longer ships is dropped back to standard rather than breaking the
+gun** — that is rule 6, and it is what lets this list change later. No
+milestone grant is owed (rule 7 is about things you *earn* and these are
+things you *buy*), and a save that has already straightened the rifle simply
+arrives with every slot standard.
+
+Build order, each step playable and verifiable on its own:
+
+1. **The bench.** New sprite, the eye glow out of `game.js`, `USABLE.workbench`
+   opens an empty gunsmith, Bo's lines rewritten. *(No mechanics yet.)*
+2. **`gunStats()` + `player.mods` + save.** A pure refactor: the game plays
+   exactly as it does today, with every consumer reading merged stats.
+3. **The parametric rifle sprite** — `Sprites.rifleBuild(parts)`, cached per
+   combination, used by the panel, the pack, the HUD and the held sprite.
+4. **The panel** — slots, leader lines, part list, buy and fit.
+5. **The parts**, cheapest code first: magazine → stock → muzzle
+   (compensator) → optic → **barrel**, since the burst needs a firing queue in
+   `updatePlayer` that reload and death both have to cancel.
+6. **HUD** — the pip row is capacity-aware: over 12 rounds it becomes a
+   segmented bar, because 24 pips do not fit in a 70px slot.
+7. Docs, `CONVERSATION_LOG.md`, push.
+
+## 6. What this deliberately does not do
+
+- **No mods on the pipe, the knife or the pistol.** Laurens' rule, and it is
+  the right one: those three are what you have, not what you build.
+- **No cosmetics tab.** The reference screen has one. This game has one rifle
+  and it is tan because issued kit is not painted the colour of junk.
+- **No weapon levels, no unlock ladder.** Parts cost scrap and tech, which the
+  ring already runs on. A level gate would make the bench a chore.
+- **No stat bars.** Numbers, in the units the game already speaks: seconds,
+  rounds, damage.
+
+## 7. Open, and waiting on Laurens
+
+1. **The suppressor, and with it "gunfire is heard"** (§3). It is a genuinely
+   good mechanic and a real change to stealth everywhere. Yes, no, or later?
+2. **Should any part drop as loot** — a drum off a Marshal — or is the bench
+   the only source in this phase? *(My lean: bench only now, loot after it
+   works.)*
+3. **Ammunition economy.** Burst and drum both burn rifle rounds much faster,
+   and rifle rounds are deliberately scarce: Tam's 12-for-7-scrap may need to
+   become 12-for-5, or the droids may need to drop more. *(My lean: ship the
+   parts, then playtest before touching the price — the scarcity is the point
+   of the burst's downside.)*

@@ -1753,3 +1753,39 @@ Compactor at ~18 rounds), and the two jobs that need no decision at all — long
 props as volumes, and the rest of Candlelight.
 
 Nothing is half-built and nothing lives only on this machine.
+
+---
+
+## The gunsmith — planned, 2026-08-21
+
+**Laurens:** *"plan first. remove the robot on the table, and the dialogue
+attached to it instead make it a weapon mod station make it like the immage a
+bit. what is changable about weapons is different of every one. THe pipe, scrap
+pistol and knife cant be modded but the rifle can. For the rife i want it to be
+possible to change a part prbably the barrle to make it shoot bursts. the mag so
+you can go for drum mag to not have to reload so often but realoading takes
+longer. think of any other stuff that would be cool to mod for the rifle"*
+(with the MW3 gunsmith screen as reference).
+
+Wrote `design/gunsmith.md` — **planned, not built**, per rule 1. In short: the
+Hunter-Killer comes off the bench sprite (and its glow, and the `USABLE` line,
+and Bo's three lines about it), the bench becomes a gunsmith's bench that opens
+a full-screen panel laid out like the reference — the rifle drawn big with its
+fitted parts really on it, slot chips around it on leader lines.
+
+Five slots on the rifle and nothing on the pipe, knife or pistol: **barrel**
+(burst regulator — three rounds a click, and you no longer choose how many to
+spend / long barrel — 22 damage, slower), **magazine** (drum 24 at a 2.9s
+reload / stripped 8 at 1.15s), **muzzle** (compensator, and a suppressor that is
+flagged because it needs "gunfire is heard", which the game has no notion of),
+**optic** (laser line — the one real ambiguity in an iso view), **stock**
+(padded, −0.35s reload). Parts are bought at the bench with scrap and tech, and
+once bought they swap free.
+
+Engineering core is `gunStats(gun)` — one merge of base plus fitted deltas that
+firing, reload, the HUD and the panel all read, because the rifle's numbers are
+already read in four places and mods would make those four disagree.
+
+Three things want an answer before building: the suppressor / heard-gunfire
+mechanic, whether any part should drop as loot, and whether the rifle ammunition
+price needs to move once burst and drum exist.
