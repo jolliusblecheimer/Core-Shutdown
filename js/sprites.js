@@ -1469,6 +1469,73 @@ function outlined(src) {
     };
     Sprites.rifleHeld = Sprites.rifleHeldBuild({});
 
+    // ---- RIFLE PARTS, as things you carry. Each one is the piece as it looks
+    // OFF the gun, not a picture of the gun with it on: what you found is a
+    // drum, a barrel, a box with a diode in it. They have to tell each other
+    // apart in a 26px pack tile, so each is a different silhouette entirely.
+    {
+      const TAN = '#a8977b', TAN_D = '#8a7a61', FURN = '#5f5343', DEEP = '#443a2d';
+      const STEEL = '#6a665e', STEEL_L = '#8a8a92', STEEL_D = '#3f3b35';
+      const icons = {};
+
+      // burst regulator — a small clamped block with its selector rib
+      { const c = makeCanvas(12, 10), g = c.getContext('2d');
+        px(g, 1, 3, 10, 5, STEEL); px(g, 1, 3, 10, 1, STEEL_L);
+        px(g, 2, 8, 8, 1, STEEL_D);
+        px(g, 3, 1, 5, 2, FURN); px(g, 3, 1, 5, 1, '#6f6250');   // the rib on top
+        px(g, 4, 5, 1, 2, DEEP); px(g, 6, 5, 1, 2, DEEP); px(g, 8, 5, 1, 2, DEEP);
+        icons.barBurst = outlined(c); }
+
+      // long barrel — a tube, and the point of it is that it is LONG
+      { const c = makeCanvas(24, 8), g = c.getContext('2d');
+        px(g, 0, 3, 3, 3, FURN);                                  // flash hider
+        px(g, 3, 3, 18, 3, TAN_D); px(g, 3, 3, 18, 1, TAN);
+        px(g, 3, 5, 18, 1, DEEP);
+        px(g, 21, 2, 3, 5, STEEL); px(g, 21, 2, 3, 1, STEEL_L);   // the threaded end
+        icons.barLong = outlined(c); }
+
+      // drum — round, fat, with the wind-up slot across it
+      { const c = makeCanvas(14, 14), g = c.getContext('2d');
+        px(g, 3, 1, 8, 12, FURN); px(g, 1, 3, 12, 8, FURN);
+        px(g, 3, 1, 8, 1, '#6f6250'); px(g, 1, 3, 1, 8, '#6f6250');
+        px(g, 4, 4, 6, 6, DEEP);
+        px(g, 6, 6, 2, 2, TAN_D);                                 // the hub
+        px(g, 5, 12, 5, 1, DEEP);
+        px(g, 5, 0, 4, 1, STEEL);                                 // the feed lip
+        icons.magDrum = outlined(c); }
+
+      // stripped box — the same magazine cut down to nothing
+      { const c = makeCanvas(10, 10), g = c.getContext('2d');
+        px(g, 2, 1, 6, 2, STEEL); px(g, 2, 1, 6, 1, STEEL_L);     // feed lips
+        px(g, 2, 3, 6, 6, FURN); px(g, 2, 3, 1, 6, '#6f6250');
+        px(g, 4, 4, 2, 4, DEEP);                                  // the witness slot
+        px(g, 2, 9, 6, 1, DEEP);
+        icons.magLight = outlined(c); }
+
+      // laser box — black, clamped, one red eye
+      { const c = makeCanvas(14, 9), g = c.getContext('2d');
+        px(g, 2, 2, 11, 5, '#2a2a31'); px(g, 2, 2, 11, 1, '#4a4a52');
+        px(g, 3, 7, 9, 1, '#17171c');
+        px(g, 0, 3, 2, 3, '#3f3b35');                             // the clamp
+        px(g, 1, 3, 1, 3, STEEL);
+        px(g, 2, 4, 1, 1, '#ff4a3c');                             // the diode
+        px(g, 9, 3, 3, 1, '#5a5a64');
+        icons.optLaser = outlined(c); }
+
+      // padded stock — the plate with a folded blanket stitched over the butt
+      { const c = makeCanvas(16, 10), g = c.getContext('2d');
+        px(g, 0, 4, 5, 3, STEEL); px(g, 0, 4, 5, 1, STEEL_L);     // the buffer tube
+        px(g, 5, 1, 8, 8, FURN); px(g, 5, 1, 8, 1, '#6f6250');
+        px(g, 6, 3, 5, 1, DEEP);
+        px(g, 13, 1, 3, 8, '#4a3a24');                            // the blanket
+        px(g, 13, 1, 1, 8, '#5c4830');
+        for (let s = 2; s < 9; s += 2) px(g, 14, s, 1, 1, '#6e5a3a');   // stitches
+        icons.stkPadded = outlined(c); }
+
+      Sprites.partIcons = icons;
+      Sprites.partIcon = (id) => Sprites.partIcons[id] || Sprites.techIcon;
+    }
+
     // metal pipe (ground item + icon)
     const pi = makeCanvas(20, 7), pig = pi.getContext('2d');
     px(pig, 1, 2, 18, 3, '#6a6a72');

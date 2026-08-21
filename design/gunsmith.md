@@ -1,13 +1,19 @@
 # THE GUNSMITH — Bo's bench, and what a rifle can become
 
 **Status: BUILT, 2026-08-21.** Laurens: *"i like all except muzzle. start
-building"* — so the muzzle slot is cut (§3) and the rifle has four. The other
-two open questions are settled the way §7 leaned: the bench is the only source
-of parts for now, and the price of rifle rounds does not move until somebody
-has played it.
+building"* — so the muzzle slot is cut (§3) and the rifle has four.
+
+**Revised the same day, and it is the better design.** Laurens: *"no you cant
+buy them at the table you need to find them or purchase them from npcs"* — so
+**THE BENCH IS NOT A SHOP.** It fits what is already in your kit and sells
+nothing; parts come off machines you put down, or off a trader's counter. §4a
+is the new section, and it replaced the paragraph that had the gunsmith taking
+your scrap. He is right: a bench that sells you the part it then bolts on is a
+menu with a table drawn behind it, and a part you had to go and get is a thing
+rather than a purchase.
 
 Everything below is in the game and was verified in a browser: every part
-bought through the panel and fired, a burst counted round by round, a reload
+acquired the way it is meant to be and fired, a burst counted round by round, a reload
 timed at its modified length, the save round-tripped through a page reload, a
 part id the build does not ship falling back to standard, and a save written
 before any of this existed loading with every slot standard and not one round
@@ -75,25 +81,25 @@ something.
 
 ### BARREL — one shot, or three
 
-| Part | Does | Costs |
+| Part | Does | Where |
 |---|---|---|
 | Standard barrel | the rifle as it comes | — |
-| **Burst regulator** | LMB fires a **3-round burst**, 0.08s apart, then 0.95s before the next. ~2.7 rounds/s against 1.28 — but the *whole burst leaves the gun*, whether or not the first round was enough, and the second and third wander a couple of degrees. | 2 tech + 12 scrap |
-| **Long barrel** | 18 → **22 damage**, bullet flies faster and further (speed 23, life 1.05), and slower between shots (0.78 → 0.95s). | 3 tech + 10 scrap |
+| **Burst regulator** | LMB fires a **3-round burst**, 0.08s apart, then 0.95s before the next. ~2.7 rounds/s against 1.28 — but the *whole burst leaves the gun*, whether or not the first round was enough, and the second and third wander a couple of degrees. | off a **Marshal** |
+| **Long barrel** | 18 → **22 damage**, bullet flies faster and further (speed 23, life 1.05), and slower between shots (0.78 → 0.95s). | off a **Magistrate** |
 
 The burst is Laurens' ask and it is the most interesting part in the list,
 because its downside is not a stat — it is that **you no longer choose how many
 rounds to spend.** In a ring where rifle rounds only come off machines and off
 Tam's counter, that is a real decision, and it is why the burst is worth
-buying rather than obviously correct.
+going after rather than obviously correct.
 
 ### MAGAZINE — how often you have to stop
 
-| Part | Does | Costs |
+| Part | Does | Where |
 |---|---|---|
 | 12-round box | as it comes | — |
-| **Drum, 24** | double the rounds in the gun; reload 1.6 → **2.9s** | 2 tech + 14 scrap |
-| **Stripped 8-round box** | 8 rounds, reload 1.6 → **1.15s** | 6 scrap |
+| **Drum, 24** | double the rounds in the gun; reload 1.6 → **2.9s** | **Tam**, 2 tech + 14 scrap |
+| **Stripped 8-round box** | 8 rounds, reload 1.6 → **1.15s** | **Bo**, 6 scrap |
 
 Laurens' second ask, and its opposite. The drum is for the burst build (four
 bursts became eight); the light box is for anyone who would rather top up
@@ -115,10 +121,10 @@ look at.
 
 ### OPTIC — knowing where the shot goes
 
-| Part | Does | Costs |
+| Part | Does | Where |
 |---|---|---|
 | Iron sights | as it comes | — |
-| **Laser box** | draws a thin line from the muzzle to the first thing the shot would hit, and lights that target | 2 tech + 6 scrap |
+| **Laser box** | draws a thin line from the muzzle to the first thing the shot would hit, and lights that target | **Tam**, 2 tech + 6 scrap |
 
 There is no aiming down sights in a top-down isometric game, so a scope has
 nothing to do. What an optic *can* fix here is the one genuine ambiguity in the
@@ -129,12 +135,12 @@ exactly what a cosmetic-feeling slot needs.
 
 ### STOCK — the pause, shortened
 
-| Part | Does | Costs |
+| Part | Does | Where |
 |---|---|---|
 | Fixed stock | as it comes | — |
-| **Padded stock** | reload −0.35s, shake −0.4 | 1 tech + 9 scrap |
+| **Padded stock** | reload −0.35s, shake −0.4 | **Bo**, 1 tech + 9 scrap |
 
-**Four slots, five buyable parts.** Deliberately smaller than the reference
+**Four slots, six parts: two taken off machines, four bought from people.** Deliberately smaller than the reference
 screen's eight: every slot here has to *do* something the game can show, and a
 slot that exists to be full is the kind of bookkeeping this project has thrown
 out twice already.
@@ -179,8 +185,9 @@ what is being borrowed, not its colours.
   changes**. That line is the whole reason the reference screen reads at a
   glance, and it is cheap to draw.
 - Selecting a slot lists its parts with **what they do in plain numbers**, not
-  in adjectives: `reload 1.6 → 2.9s`. Owned parts say FITTED or FIT; unowned
-  ones show their price and grey out when you cannot afford them.
+  in adjectives: `reload 1.6 → 2.9s`. Owned parts say FITTED or FIT; a part you
+  do not have says **NOT FOUND** — never a price, because this table does not
+  sell anything — and hovering one says where a thing like that comes from.
 - Mouse-driven like the map and the trade board, `E`/`Esc` out.
 
 **[as built]** Two things the mock did not know:
@@ -196,11 +203,46 @@ what is being borrowed, not its colours.
   one was enough."* — which lands as you walk away rather than stopping the
   game to explain a thing you just chose.
 
-**Buying happens inside the gunsmith**, not on Bo's trade board, so there is
-exactly one place in the world where gun work happens. Once a part is bought it
-is **yours forever and swaps free** — the decision worth charging for is
-*acquiring* the part, and charging again to change your mind would only teach
-players not to experiment.
+Once a part is yours it is **yours forever and swaps free** — the cost of a
+part is in *getting* it, and charging again to change your mind would only
+teach players not to experiment.
+
+## 4a. Where parts come from — the bench sells nothing
+
+Two of them are **taken off the machines that use them**, and they are the two
+worth wanting:
+
+| Part | Off |
+|---|---|
+| **Burst regulator** | a stripped **Marshal** — it fires in threes, and the thing making it do that unbolts |
+| **Long barrel** | a stripped **Magistrate** — its cannon is a long heavy barrel, and killing one is a real achievement that had no reward |
+
+You only take either if you know what it is: they drop once you own the rifle
+or are carrying the bent one, once, and never twice — a second is no use to
+anybody. Squads respawn, so **no part can become unobtainable by having played
+early**, and rule 7 needs no ledger entry for them.
+
+The other four are **bought from people**, at the price written on the part:
+
+| Part | From | Price |
+|---|---|---|
+| Padded stock | **Bo** | 1 tech + 9 scrap |
+| Stripped 8-round box | **Bo** | 6 scrap |
+| Laser box | **Tam** | 2 tech + 6 scrap |
+| Drum, 24 | **Tam** | 2 tech + 14 scrap |
+
+The split is the fiction, not a spreadsheet: **Bo has a vice and an awl**, so
+he sells the two things a man can make — a cut-down magazine and a stitched
+cheek pad. He cannot make a diode, a drum or a regulator, and does not pretend
+to. **Tam buys from people who go further out than he does**, so salvage turns
+up on his counter. Neither row appears until you own the rifle: a stock list
+should not advertise fittings for a gun the traveller has never held, and each
+row disappears once you have the part, because a part is a thing and you cannot
+want a second.
+
+A part you own but have not fitted is in the pack, under **PARTS** — generated
+from the same registry, so a part's name is written once — with a green bar on
+the tile of whichever one is on the gun.
 
 ## 5. How it is built
 
@@ -239,7 +281,8 @@ Build order, each step playable and verifiable on its own:
    exactly as it does today, with every consumer reading merged stats.
 3. **The parametric rifle sprite** — `Sprites.rifleBuild(parts)`, cached per
    combination, used by the panel, the pack, the HUD and the held sprite.
-4. **The panel** — slots, leader lines, part list, buy and fit.
+4. **The panel** — slots, leader lines, part list, fit. *(It could buy, for
+   half a day. See the revision at the top: it cannot now.)*
 5. **The parts**, cheapest code first: magazine → stock → optic → **barrel**,
    since the burst needs a firing queue in `updatePlayer` that reload and death
    both have to cancel.
@@ -264,8 +307,10 @@ your mind either.
   the right one: those three are what you have, not what you build.
 - **No cosmetics tab.** The reference screen has one. This game has one rifle
   and it is tan because issued kit is not painted the colour of junk.
-- **No weapon levels, no unlock ladder.** Parts cost scrap and tech, which the
-  ring already runs on. A level gate would make the bench a chore.
+- **No weapon levels, no unlock ladder.** Parts are found, or cost scrap and
+  tech, which the ring already runs on. A level gate would make the bench a
+  chore.
+- **No buying at the bench.** See the top. The bench fits; it does not sell.
 - **No stat bars.** Numbers, in the units the game already speaks: seconds,
   rounds, damage.
 
@@ -274,8 +319,9 @@ your mind either.
 1. **The suppressor and "gunfire is heard" — cut**, with the whole muzzle slot.
    Detection stays visual. If the ring ever needs to hear you, that is its own
    change, argued on its own merits, not smuggled in behind a part.
-2. **The bench is the only source of parts** this phase. A drum off a Marshal
-   that carried one is a good idea and can come once the bench works.
+2. ~~The bench is the only source of parts this phase.~~ **Overruled the same
+   day, and rightly** — parts are found on machines or bought from traders, and
+   the bench only fits them. See §4a.
 3. **The ammunition price does not move yet.** Burst and drum both burn rifle
    rounds much faster and rifle rounds are deliberately scarce — that scarcity
    *is* the burst's downside, so it gets played before it gets tuned. If it

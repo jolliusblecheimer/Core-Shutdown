@@ -103,6 +103,15 @@ const PARTS = {
   },
 };
 
+// WHAT COMES OFF WHAT. The two parts no camp can make are carried by the
+// machines that use them, so the only way to own one is to put that machine
+// down and strip it — once; a second is no use to anybody. Squads respawn, so
+// nothing here can become unobtainable by having played early.
+const DROID_PARTS = {
+  marshal: 'barBurst',      // it fires in threes; the thing that makes it unbolts
+  magistrate: 'barLong',    // the cannon's barrel, long and heavy and threaded
+};
+
 // the part a slot came with — used at the start of a run, and as the fallback
 // for any saved id this build no longer ships
 function stdPartOf(gun, slot) {
@@ -177,14 +186,24 @@ function statsWith(gun, id) {
   return statsFor(gun, trial);
 }
 
-// ---------- fitting, and buying ----------
-function affordable(cost) {
-  if (!cost) return true;
-  for (const k in cost) if ((player.inv[k] || 0) < cost[k]) return false;
-  return true;
-}
-function spend(cost) {
-  for (const k in (cost || {})) player.inv[k] -= cost[k];
+// ---------- getting a part, and fitting one ----------
+// THE BENCH IS NOT A SHOP. Laurens, 2026-08-21: *"you cant buy them at the
+// table you need to find them or purchase them from npcs"* — and he is right,
+// because a bench that sells you the part it then bolts on is a menu with a
+// table drawn behind it. A part is a THING: you take it off a machine you put
+// down, or you buy it from somebody who has one. The bench only fits what is
+// already in your kit, which is also what makes carrying an unfitted part feel
+// like carrying something.
+//
+// `cost` stays on the part rather than on the trader's row, so a price is
+// written once no matter whose counter it turns up on.
+function givePart(id) {
+  const p = PARTS[id];
+  if (!p || p.std) return false;
+  const isNew = !player.mods.owned[id];
+  player.mods.owned[id] = true;
+  if (typeof saveGame === 'function') saveGame();
+  return isNew;                        // false = you already had one
 }
 
 // Fitting a smaller magazine must not eat what is in the gun. RELOADING NEVER
@@ -201,12 +220,22 @@ function fitPart(gun, id) {
   return true;
 }
 
-function buyPart(gun, id) {
+// ---------- the parts you are carrying, in the pack ----------
+// Generated rather than typed out in js/items.js, because a part is already
+// declared once up there and a second copy of its name would drift. They are
+// carried, not used: the pack shows what you have and which one is on the gun,
+// and fitting stays a bench job.
+for (const id of Object.keys(PARTS)) {
+  if (PARTS[id].std) continue;
   const p = PARTS[id];
-  if (!p || ownsPart(id) || !affordable(p.cost)) return false;
-  spend(p.cost);
-  player.mods.owned[id] = true;
-  return fitPart(gun, id);          // you bought it to put it on
+  ITEMS['part_' + id] = {
+    name: p.name,
+    tab: 'parts',
+    icon: () => Sprites.partIcon(id),
+    desc: p.desc + '  Fitted at a workbench — Bo keeps the one in Candlelight.',
+    have: () => !!player.mods.owned[id],
+    equipped: () => fittedId(p.gun, p.slot) === id,
+  };
 }
 
 // ---------- what a part does, in the game's own units ----------

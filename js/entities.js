@@ -804,6 +804,18 @@ function updateItems(dt) {
         const n = giveRounds('rifle', 4 + ((Math.random() * 8) | 0));
         extra += '  · +' + n + ' RIFLE rounds';
       }
+      // THE PART OFF THE MACHINE. The two factory fittings nobody in this ring
+      // can make are carried by the machines that use them: a Marshal fires in
+      // threes and the thing making it do that unbolts, and a Magistrate's
+      // cannon is a long heavy barrel that will thread onto a service rifle.
+      // You only take it if you know what it is — which means owning the gun,
+      // or carrying the bent one you are on your way to have straightened.
+      const partId = DROID_PARTS[dr.type];
+      if (partId && (player.owned.rifle || (player.inv.rifleBroken || 0) > 0) &&
+          givePart(partId)) {
+        extra += '  · ' + PARTS[partId].name.toUpperCase();
+        think('gunpart', 'This comes off. Bo has a bench for exactly this.');
+      }
       if (Math.random() < 0.35) { player.inv.tech++; extra += '  · +1 tech component'; }
       showMsg('Stripped ' + n + ' scrap' + extra, 2.6);
       spawnSparks(dr.x, dr.y, 6, ['#c9c9d2', '#ffd27a']);
@@ -917,6 +929,23 @@ function talkToNpc() {
 // A row is: what it is called, what it costs, whether it is gone, and what
 // happens when you buy it. Nothing about it is drawn here — the panel reads
 // this list, so a new trader is a new list and no UI work at all.
+// A RIFLE PART ON A COUNTER. The price lives on the part (js/mods.js), so it
+// is written once wherever it is sold; the row disappears once you own one,
+// because a part is a thing and you cannot want a second. It never appears at
+// all until you are carrying the rifle — a stock list should not advertise
+// fittings for a gun the traveller has never held.
+const partRow = (id) => ({
+  label: PARTS[id].name.toLowerCase(),
+  icon: () => Sprites.partIcon(id),
+  cost: PARTS[id].cost,
+  sold: () => ownsPart(id),
+  buy: () => {
+    givePart(id);
+    showMsg(PARTS[id].name.toUpperCase() + ' — fit it at the bench', 2.6);
+  },
+});
+const partRows = (...ids) => (player.owned.rifle ? ids.map(partRow) : []);
+
 const STOCK = {
   marek: [
     { label: 'snack bar', icon: () => Sprites.snackIcon, cost: { scrap: 4 },
@@ -930,26 +959,32 @@ const STOCK = {
         showMsg('PIERCING KNIFE acquired');
       } },
   ],
-  // BO'S BENCH. Not a shop — one job, and only while you are carrying the job.
-  // He is the one taking a Hunter-Killer apart at the workbench, so he is the
-  // only person in the ring who could straighten a service rifle, and the
-  // price is in the parts it takes rather than in what it is worth.
-  bo: () => (((player.inv.rifleBroken || 0) > 0 && !player.owned.rifle) ? [
-    { label: 'straighten it', icon: () => Sprites.rifleIcon,
-      cost: { tech: 3, scrap: 10 },
-      buy: () => {
-        player.inv.rifleBroken--;
-        player.owned.rifle = true;
-        player.gun = 'rifle';
-        player.hasGun = true;
-        player.active = 'gun';
-        chamber('rifle');        // he hands it back loaded, if you have rounds
-        showMsg('SERVICE RIFLE — straightened, and it works');
-      } },
-  ] : []),
-  // Tam's counter. Rations and rounds, and one tech part at a price that says
-  // he knows exactly what it is worth to somebody carrying a scrap pistol.
-  tam: [
+  // BO. He is the camp's gunsmith, so his counter is the one job nobody else
+  // in the ring can do — and, once you have a rifle, the two fittings a man
+  // with a vice and a sewing awl can actually make himself. What he cannot
+  // make is anything that came out of a factory: no drum, no diode, no
+  // regulator. Those come off machines, or off Tam, who buys from people who
+  // go further out than he does.
+  bo: () => [
+    ...(((player.inv.rifleBroken || 0) > 0 && !player.owned.rifle) ? [
+      { label: 'straighten it', icon: () => Sprites.rifleIcon,
+        cost: { tech: 3, scrap: 10 },
+        buy: () => {
+          player.inv.rifleBroken--;
+          player.owned.rifle = true;
+          player.gun = 'rifle';
+          player.hasGun = true;
+          player.active = 'gun';
+          chamber('rifle');      // he hands it back loaded, if you have rounds
+          showMsg('SERVICE RIFLE — straightened, and it works');
+        } },
+    ] : []),
+    ...partRows('stkPadded', 'magLight'),
+  ],
+  // Tam's counter. Rations and rounds, one tech part at a price that says he
+  // knows exactly what it is worth to somebody carrying a scrap pistol — and
+  // salvage, when he has any, for the same reason.
+  tam: () => [
     { label: '12 rifle rounds', icon: () => Sprites.ammoRifle, cost: { scrap: 7 },
       buy: () => { giveRounds('rifle', 12); showMsg('Bought 12 rifle rounds'); } },
     { label: 'beef MRE', icon: () => Sprites.mreBeef, cost: { scrap: 6 },
@@ -958,6 +993,7 @@ const STOCK = {
       buy: () => { player.inv.mreChicken++; showMsg('Bought a chicken MRE  (H to eat)'); } },
     { label: 'low-q tech part', icon: () => Sprites.techIcon, cost: { scrap: 9 },
       buy: () => { player.inv.tech++; showMsg('Bought a low-quality tech component'); } },
+    ...partRows('optLaser', 'magDrum'),
   ],
 };
 // short, because these sit in a price at the right-hand edge of a panel —

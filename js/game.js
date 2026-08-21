@@ -1154,13 +1154,14 @@ function gsGunOrigin(img) {
 function gsRowRect(i) {
   return { x: GS.LIST_X, y: GS.LIST_Y + i * GS.ROW_H, w: GS.LIST_W, h: GS.ROW_H - 1 };
 }
-// what the right-hand end of a row says, and in what colour
+// what the right-hand end of a row says, and in what colour. THE BENCH SELLS
+// NOTHING: a part you do not have is not a price, it is a thing you have not
+// found yet, and the row says so.
 function gsRowStatus(gun, id) {
   const p = PARTS[id];
   if (fittedId(gun, p.slot) === id) return { text: 'FITTED', col: '#7ad27a' };
   if (ownsPart(id)) return { text: 'FIT', col: '#ffd27a' };
-  const bits = Object.keys(p.cost || {}).map(k => p.cost[k] + ' ' + (COST_NAME[k] || k));
-  return { text: bits.join(' · '), col: affordable(p.cost) ? '#e8d9c0' : '#8d959b' };
+  return { text: 'NOT FOUND', col: '#6c6a66' };
 }
 
 // The one thing a row of numbers cannot say. A freeze-frame lesson would be
@@ -1198,11 +1199,8 @@ function updateGunsmith(dt) {
       } else if (ownsPart(id)) {
         fitPart(gun, id); SFX.switchW(); showMsg(p.name.toUpperCase() + ' FITTED', 1.6);
         gsTaught(id);
-      } else if (affordable(p.cost)) {
-        buyPart(gun, id); SFX.buy(); showMsg(p.name.toUpperCase() + ' — FITTED', 1.8);
-        gsTaught(id);
       } else {
-        SFX.deny(); showMsg('Not enough — ' + gsRowStatus(gun, id).text, 1.6);
+        SFX.deny(); showMsg('You do not have that part', 1.6);
       }
     }
   }
@@ -1286,11 +1284,22 @@ function drawGunsmith() {
   // effect it has, then the sentence that says what the thing IS
   const tell = hoverId || fittedId(gun, slots[GunUI.slot].id);
   if (PARTS[tell]) {
-    let y = GS.LIST_Y + rows.length * GS.ROW_H + 5;
+    // What it does, then — if it is not yours — where a thing like that comes
+    // from, never a price, because this table does not sell anything. Then as
+    // much of what it IS as still fits above the footer: the lines are counted
+    // against the room left rather than assumed, because a fourth line used to
+    // print straight through 'E — close'.
+    const lines = [];
     const eff = effectLines(gun, tell).join('  ·  ');
-    if (eff) { ptext(ptClip(eff, VIEW_W - 28, 7), 14, y, 7, '#ffd27a'); y += 10; }
-    for (const line of ptFit(PARTS[tell].desc, VIEW_W - 28, 7).slice(0, 2)) {
-      ptext(line, 14, y, 7, 'rgba(232,217,192,0.45)');
+    if (eff) lines.push([ptClip(eff, VIEW_W - 28, 7), '#ffd27a']);
+    if (!ownsPart(tell))
+      lines.push(['NOT IN YOUR KIT — off a machine, or traded for at a counter.', '#8d959b']);
+    for (const line of ptFit(PARTS[tell].desc, VIEW_W - 28, 7))
+      lines.push([line, 'rgba(232,217,192,0.45)']);
+    let y = GS.LIST_Y + rows.length * GS.ROW_H + 5;
+    for (const [text, col] of lines) {
+      if (y + 8 > VIEW_H - 14) break;
+      ptext(text, 14, y, 7, col);
       y += 9;
     }
   }

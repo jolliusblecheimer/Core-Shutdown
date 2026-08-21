@@ -1835,3 +1835,42 @@ Built in six commits, each one playable on its own:
    the drum used to clamp the loaded count and quietly eat twelve rounds).
 
 Left for a human: whether burst + drum makes rifle rounds miserable.
+
+---
+
+## The bench stops selling — 2026-08-21
+
+**Laurens:** *"ok no you cant buy them at the table you need to find them or
+purchase them from npcs"*
+
+Right, and the better design: a bench that sells you the part it then bolts on
+is a menu with a table drawn behind it. The gunsmith now **fits only what is
+already in your kit** — a part you do not have reads `NOT FOUND` and says, when
+you hover it, that a thing like that is taken off a machine or traded for at a
+counter. `buyPart` is gone; `givePart` replaces it, and prices stay on the part
+so they are written once wherever it turns up.
+
+**Off machines** — the two worth wanting. The **burst regulator** comes off a
+stripped **Marshal**, which is the droid that fires in threes, and the **long
+barrel** off a **Magistrate**, which finally gives the "come back later" wall a
+reason to come back. Once each, never twice, and only if you own the rifle or
+are carrying the bent one — you do not pocket a fitting for a gun you have
+never held. Squads respawn, so nothing can be missed by having played early and
+rule 7 needs no ledger entry.
+
+**From people** — **Bo** sells the two things a man with a vice and an awl can
+make (padded stock, stripped 8-round box); he cannot make a diode, a drum or a
+regulator and does not pretend to. **Tam** buys from people who go further out
+than he does, so the **laser box** and the **drum** turn up on his counter.
+Neither lists them until you own the rifle.
+
+Also: a **PARTS tab** in the pack, generated from the same registry so a part's
+name is written once, with a green bar on whichever one is on the gun; six new
+part icons, each a different silhouette so they tell each other apart in a 26px
+tile; and the panel's bottom text is now counted against the room left, after
+the fourth line printed through `E — close`.
+
+Verified in a browser: both droid drops (and no duplicate from a second
+Marshal, and nothing at all before you own a rifle), both counters listing and
+then dropping their rows, fitting an owned part, refusing an unowned one, and
+the pack tab.

@@ -93,8 +93,14 @@ earn, so it is the one gun you can argue with.
 | Optic | **Laser box** — draws the line the shot will take, and stops where the round would |
 | Stock | **Padded** — reload −0.35s, less shake |
 
-Parts are bought at the bench with scrap and tech; once bought they are yours
-and swap free. The burst's real cost is not a stat — **a burst in the air
+**The bench is not a shop** — it fits what is in your kit and sells nothing.
+The **burst regulator comes off a stripped Marshal** (it fires in threes) and
+the **long barrel off a Magistrate** (which finally gives that wall a reward),
+once each and never twice; squads respawn, so neither can be missed. **Bo**
+sells what a man with a vice can make — the padded stock and the stripped box —
+and **Tam** sells salvage: the laser box and the drum. Neither counter lists
+them until you own the rifle. Parts you carry live in the pack under **PARTS**,
+with a green bar on whichever is on the gun. Once yours, they swap free. The burst's real cost is not a stat — **a burst in the air
 finishes itself**, so you stop choosing how many rounds to spend, and rifle
 rounds are the scarcest thing in the ring. `R` pressed mid-burst is remembered
 and honoured the moment it ends.
@@ -251,6 +257,9 @@ laser and a padded stock. Laurens cut the muzzle slot — *"i like all except
 muzzle"* — and with it the suppressor, so **gunfire is still silent to anything
 that cannot see you**; detection stays purely visual. Bench-only parts and no
 ammunition price change this phase, both by the plan's own lean.
+
+**Parts are found or traded for, never bought at the table** (Laurens, same
+day) — the bench fits, it does not sell.
 
 **Wants a real playtest, not a browser check:** whether burst + drum makes rifle
 rounds miserable. Everything else about it is verified — every part bought and

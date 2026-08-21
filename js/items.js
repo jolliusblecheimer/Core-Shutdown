@@ -16,6 +16,7 @@
 
 const ITEM_TABS = [
   { id: 'weapons', label: 'WEAPONS' },
+  { id: 'parts', label: 'PARTS' },     // filled in by js/mods.js, from PARTS
   { id: 'food', label: 'FOOD' },
   { id: 'materials', label: 'MATERIALS' },
   { id: 'key', label: 'KEY ITEMS' },
