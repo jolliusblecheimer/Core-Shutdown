@@ -65,8 +65,9 @@ The weapon slot shows `loaded/capacity`, **one pip per round in the gun** so
 the row empties as you fire, and the pocket total as a small `×n` that goes red
 at zero. The row is sized to the magazine, so a drum's twenty-four pips fit the
 same 70px slot as twelve. Reloading replaces the pips with a filling bar; an
-empty gun with rounds to put in pulses an `R`. The first dry click teaches it — and the `R`
-that dismisses that lesson performs the reload, via `tutShow(..., onDo)`.
+empty gun with rounds to put in pulses an `R`. The first dry click teaches it —
+and the `R` that dismisses that lesson performs the reload, via
+`tutShow(..., onDo)`.
 You buy, find and strip loose **rounds**; only a handed-over weapon arrives
 loaded (Marek's pistol, Bo's straightened rifle), via `chamber()`. Saves from
 all three eras — plain `ammo` numbers, the one-day magazine pouch, and loose
@@ -79,8 +80,8 @@ The bench in Candlelight opens a full-screen **gunsmith** (`E — work the
 bench`), laid out like the reference Laurens sent: the rifle drawn big **with
 its fitted parts actually on it**, four slot chips two to a side, and a stepped
 leader line from each chip to the point on the gun it changes. Hovering a part
-you have not bought **draws it on the gun** — you see the change before you pay
-for it. `MODIFICATIONS n/4` top right.
+you have not fitted **draws it on the gun** — you see the change before you
+commit to it. `MODIFICATIONS n/4` top right.
 
 **What can be changed is a property of the weapon.** The pipe, the knife and
 the scrap pistol have no slots and never will; the rifle is the one gun you
@@ -100,10 +101,12 @@ once each and never twice; squads respawn, so neither can be missed. **Bo**
 sells what a man with a vice can make — the padded stock and the stripped box —
 and **Tam** sells salvage: the laser box and the drum. Neither counter lists
 them until you own the rifle. Parts you carry live in the pack under **PARTS**,
-with a green bar on whichever is on the gun. Once yours, they swap free. The burst's real cost is not a stat — **a burst in the air
-finishes itself**, so you stop choosing how many rounds to spend, and rifle
-rounds are the scarcest thing in the ring. `R` pressed mid-burst is remembered
-and honoured the moment it ends.
+with a green bar on whichever is on the gun. Once yours, they swap free.
+
+The burst's real cost is not a stat — **a burst in the air finishes itself**,
+so you stop choosing how many rounds to spend, and rifle rounds are the
+scarcest thing in the ring. `R` pressed mid-burst is remembered and honoured
+the moment it ends.
 
 `js/mods.js` holds the registry and **`gunStats(gun)` is the only place the
 rifle's numbers come from** — firing, reloading, the HUD and the panel all read
