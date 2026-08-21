@@ -1,6 +1,10 @@
 # THE GUNSMITH — Bo's bench, and what a rifle can become
 
-**Status: PLANNED, 2026-08-21. Not built. Needs Laurens' yes.**
+**Status: APPROVED 2026-08-21, building.** Laurens: *"i like all except muzzle.
+start building"* — so the muzzle slot is cut (§3) and the rifle has four slots.
+The other two open questions are settled the way §7 leaned: the bench is the
+only source of parts for now, and the price of rifle rounds does not move until
+somebody has played it.
 
 Laurens, 2026-08-21: *"remove the robot on the table, and the dialogue attached
 to it — instead make it a weapon mod station, make it like the image a bit.
@@ -26,7 +30,7 @@ property of the weapon, not a rule of the game.**
 The point of the system is not numbers going up. It is that two people who
 both own the rifle should be carrying visibly different guns:
 
-- **burst barrel + drum + compensator** — a room-clearer that almost never
+- **burst barrel + drum + padded stock** — a room-clearer that almost never
   stops to reload, and burns the ring's scarcest ammunition doing it.
 - **long barrel + light box + laser** — a marksman that kills at a distance
   and tops up between every fight.
@@ -87,23 +91,19 @@ Laurens' second ask, and its opposite. The drum is for the burst build (four
 bursts became eight); the light box is for anyone who would rather top up
 constantly than ever be caught in a three-second reload.
 
-### MUZZLE — being heard
+### ~~MUZZLE~~ — cut
 
-| Part | Does | Costs |
-|---|---|---|
-| Flash hider | as it comes | — |
-| **Compensator** | screen shake 2.2 → **1.1**. The picture stops jumping, so the second shot goes where you meant it. | 1 tech + 8 scrap |
-| **Suppressor** † | gunfire alerts unaware enemies within **3 tiles instead of 9**, and costs 2 damage | 3 tech + 12 scrap |
+**Laurens, 2026-08-21: *"i like all except muzzle"*.** The compensator and the
+suppressor are both out, and with them the mechanic the suppressor needed:
+gunfire is still silent to anything that cannot see you. Detection stays
+purely visual, `canSpot` is untouched, and nothing in stealth moves.
 
-† **The suppressor needs a mechanic the game does not have yet.** Detection is
-purely visual right now — `canSpot` is line of sight and a facing arc, and a
-gunshot is silent to everything that cannot see you. The suppressor is only
-worth fitting if firing *raises the alert of things that did not see it*, which
-is one small addition: on every shot, every unaware enemy within 9 tiles gains
-alert. That would be a good change on its own — shooting a Marshal in a street
-should bring the next junction over — but it changes stealth everywhere, so it
-is **flagged as a decision, not slipped in.** If the answer is no, the muzzle
-slot ships with the compensator alone and the suppressor waits.
+He is right, and for the reason the rest of this document keeps insisting on:
+the compensator only ever adjusted how much the *camera* moved, which is a
+setting pretending to be a part, and the suppressor was a slot asking the game
+to grow a whole new sense so that one purchase could exist. Four slots that
+each change what the gun does beats five where one changes how it feels to
+look at.
 
 ### OPTIC — knowing where the shot goes
 
@@ -126,10 +126,10 @@ exactly what a cosmetic-feeling slot needs.
 | Fixed stock | as it comes | — |
 | **Padded stock** | reload −0.35s, shake −0.4 | 1 tech + 9 scrap |
 
-Five slots, seven buyable parts. That is deliberately smaller than the
-reference screen's eight: every slot here has to *do* something the game can
-show, and a slot that exists to be full is the kind of bookkeeping this project
-has thrown out twice already.
+**Four slots, five buyable parts.** Deliberately smaller than the reference
+screen's eight: every slot here has to *do* something the game can show, and a
+slot that exists to be full is the kind of bookkeeping this project has thrown
+out twice already.
 
 ### Later, not now
 
@@ -148,11 +148,11 @@ the 5×7 bitmap font, never a browser font. The reference screen's *layout* is
 what is being borrowed, not its colours.
 
 ```
- GUNSMITH — SERVICE RIFLE                       MODIFICATIONS 2/5
+ GUNSMITH — SERVICE RIFLE                       MODIFICATIONS 2/4
 
-  [ MUZZLE ]──┐                        ┌──[ OPTIC ]
-              │      ▄▄▟█████▙▄▄       │
-  [ BARREL ]──┴───▟███████████████▛────┴──[ STOCK ]
+                                       ┌──[ OPTIC ]
+                     ▄▄▟█████▙▄▄       │
+  [ BARREL ]──────▟███████████████▛────┴──[ STOCK ]
                      ██     ▜██
                   [ MAGAZINE ]
 
@@ -220,9 +220,9 @@ Build order, each step playable and verifiable on its own:
 3. **The parametric rifle sprite** — `Sprites.rifleBuild(parts)`, cached per
    combination, used by the panel, the pack, the HUD and the held sprite.
 4. **The panel** — slots, leader lines, part list, buy and fit.
-5. **The parts**, cheapest code first: magazine → stock → muzzle
-   (compensator) → optic → **barrel**, since the burst needs a firing queue in
-   `updatePlayer` that reload and death both have to cancel.
+5. **The parts**, cheapest code first: magazine → stock → optic → **barrel**,
+   since the burst needs a firing queue in `updatePlayer` that reload and death
+   both have to cancel.
 6. **HUD** — the pip row is capacity-aware: over 12 rounds it becomes a
    segmented bar, because 24 pips do not fit in a 70px slot.
 7. Docs, `CONVERSATION_LOG.md`, push.
@@ -238,15 +238,14 @@ Build order, each step playable and verifiable on its own:
 - **No stat bars.** Numbers, in the units the game already speaks: seconds,
   rounds, damage.
 
-## 7. Open, and waiting on Laurens
+## 7. Settled, 2026-08-21
 
-1. **The suppressor, and with it "gunfire is heard"** (§3). It is a genuinely
-   good mechanic and a real change to stealth everywhere. Yes, no, or later?
-2. **Should any part drop as loot** — a drum off a Marshal — or is the bench
-   the only source in this phase? *(My lean: bench only now, loot after it
-   works.)*
-3. **Ammunition economy.** Burst and drum both burn rifle rounds much faster,
-   and rifle rounds are deliberately scarce: Tam's 12-for-7-scrap may need to
-   become 12-for-5, or the droids may need to drop more. *(My lean: ship the
-   parts, then playtest before touching the price — the scarcity is the point
-   of the burst's downside.)*
+1. **The suppressor and "gunfire is heard" — cut**, with the whole muzzle slot.
+   Detection stays visual. If the ring ever needs to hear you, that is its own
+   change, argued on its own merits, not smuggled in behind a part.
+2. **The bench is the only source of parts** this phase. A drum off a Marshal
+   that carried one is a good idea and can come once the bench works.
+3. **The ammunition price does not move yet.** Burst and drum both burn rifle
+   rounds much faster and rifle rounds are deliberately scarce — that scarcity
+   *is* the burst's downside, so it gets played before it gets tuned. If it
+   proves miserable, Tam's 12-for-7 becomes 12-for-5 and the droids drop more.

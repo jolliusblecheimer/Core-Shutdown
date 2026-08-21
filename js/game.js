@@ -1702,10 +1702,12 @@ function drawProp(p, x, y) {
   else if (T === 'pew') { img = Sprites.pew[p.dir === 'y' ? 'y' : 'x']; oyOff = -12; drawShadow(x, y, 13); }
   else if (T === 'pewBroken') { img = Sprites.pewBroken[p.dir === 'y' ? 'y' : 'x']; oyOff = -12; drawShadow(x, y, 10); }
   else if (T === 'workbench') {
-    img = Sprites.workbench; oyOff = -22; drawShadow(x, y, 15);
-    // the drone's eye, still live. What glows amber can be hurt — here it is
-    // with its lid off, which is the point of the whole vignette.
-    addLight(x + 4, y - 16, 0, 9 + Math.sin(gameTime * 3) * 2, '255,176,46', 0.30);
+    img = Sprites.workbench; oyOff = -24; drawShadow(x, y, 15);
+    // the hooded lamp over the work. It replaces the drone eye that used to lie
+    // here — steady where that pulsed, because a work light is not a machine
+    // with charge left in it, and amber that pulses means something else in
+    // this game.
+    addLight(x + 6, y - 17, 0, 17, '255,210,140', 0.32);
   }
   else if (T === 'mapTable') {
     img = Sprites.mapTable; oyOff = -18; drawShadow(x, y, 14);

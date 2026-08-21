@@ -1655,24 +1655,53 @@ function outlined(src) {
       px(g, 8, 3, 2, 2, '#7c7870');
       Sprites.hearth = outlined(c); }
 
-    // ---- the bench, and the Hunter-Killer being taken apart on it.
-    // Its eye is still lit because the last cell has not come out yet: the
-    // thing you shoot at in the street, sitting on a table with its lid off.
-    { const c = makeCanvas(34, 24), g = c.getContext('2d');
-      px(g, 1, 10, 32, 5, '#5c4a2e');                                    // bench top
-      px(g, 1, 10, 32, 1, '#6e5a3a');
-      px(g, 2, 15, 3, 9, '#453722'); px(g, 29, 15, 3, 9, '#453722');     // legs
-      px(g, 3, 16, 28, 3, '#3d3222');                                    // tool shelf
-      px(g, 6, 3, 16, 7, '#575761');                                     // the hull, on its side
-      px(g, 6, 3, 16, 2, '#676773');
-      px(g, 8, 5, 5, 4, '#2a2a31');                                      // opened panel
-      px(g, 9, 6, 3, 2, '#8a8a92');                                      // ribs inside
-      px(g, 19, 5, 3, 3, '#1d1d22');                                     // the eye socket
-      px(g, 20, 6, 2, 2, '#ffb02e');                                     // and the eye
-      px(g, 23, 8, 7, 2, '#4a4a52');                                     // an arm in the vice
-      px(g, 26, 6, 4, 4, '#3a3a42');
-      px(g, 2, 6, 3, 4, '#6a6a72');                                      // pulled parts in a tray
-      px(g, 2, 6, 3, 1, '#8a8a92');
+    // ---- THE GUNSMITH'S BENCH. It had a Hunter-Killer on it with its lid off
+    // and one eye still lit, which was a good vignette and the wrong one: this
+    // is the table you MODIFY A RIFLE at, and it has to say so from across the
+    // nave. So: a stripped rifle lying in its cradle, a barrel clamped in the
+    // vice, a tray of parts, and a hooded lamp over the work — which is also
+    // what keeps this wall lit now the amber eye is gone.
+    // Everything on it is spaced so no two masses touch: lamp far left, gun in
+    // the middle, vice far right. The first attempt stacked the lamp over the
+    // vice and the whole right-hand end read as one grey lump.
+    { const c = makeCanvas(34, 26), g = c.getContext('2d');
+      px(g, 1, 12, 32, 5, '#5c4a2e');                                    // bench top
+      px(g, 1, 12, 32, 1, '#6e5a3a');
+      px(g, 2, 17, 3, 9, '#453722'); px(g, 29, 17, 3, 9, '#453722');     // legs
+      px(g, 3, 18, 28, 3, '#3d3222');                                    // tool shelf
+
+      // ---- the hooded lamp, on an arm off the near-left corner
+      px(g, 2, 2, 1, 10, '#4a4640');                                     // upright
+      px(g, 2, 1, 6, 1, '#4a4640');                                      // the arm out
+      px(g, 5, 2, 5, 3, '#57534b');                                      // hood
+      px(g, 5, 2, 5, 1, '#6a665e');
+      px(g, 6, 5, 3, 1, '#ffd27a');                                      // the bulb, lit
+      px(g, 7, 5, 1, 1, '#ffb02e');
+
+      // ---- the rifle in its cradle, handguard off and no barrel on it: the
+      // barrel is the thing in the vice. Two cradle blocks under it so it
+      // reads as laid down for work rather than dropped on a table.
+      px(g, 12, 11, 2, 1, '#4a4438'); px(g, 21, 11, 2, 1, '#4a4438');
+      px(g, 11, 8, 8, 3, '#a8977b');                                     // receiver
+      px(g, 11, 8, 8, 1, '#c6b291');
+      px(g, 11, 10, 8, 1, '#8a7a61');                                    // its shaded underside
+      px(g, 14, 9, 3, 1, '#443a2d');                                     // ejection port
+      px(g, 15, 11, 3, 1, '#443a2d');                                    // the empty mag well
+      px(g, 20, 9, 4, 3, '#5f5343');                                     // stock, stepped down
+      px(g, 20, 9, 4, 1, '#6f6250');                                     // and clear of the
+      px(g, 20, 11, 3, 1, '#4a4438');                                    // receiver by a pixel
+
+      // ---- the barrel stood upright in the vice at the far end
+      px(g, 26, 9, 5, 3, '#57534b');                                     // vice body
+      px(g, 26, 9, 5, 1, '#6a665e');
+      px(g, 25, 10, 1, 2, '#3f3b35');                                    // vice handle
+      px(g, 28, 3, 2, 6, '#8a7a61');                                     // the barrel
+      px(g, 28, 3, 1, 6, '#a8977b');
+
+      // ---- a tray of pulled springs and pins, under the lamp where it is lit
+      px(g, 4, 9, 4, 3, '#4a4640');
+      px(g, 4, 9, 4, 1, '#5c5850');
+      px(g, 5, 10, 1, 1, '#a8977b'); px(g, 6, 11, 1, 1, '#8a7a61');
       Sprites.workbench = outlined(c); }
 
     // ---- the map table: the altar, with the ring pinned out over it.

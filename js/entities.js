@@ -208,10 +208,11 @@ const FOLK = {
       "Nothing personal, stranger. I'd say it to my own brother.",
       "Ask Halden. He's the one allowed to give things away." ] },
     { key: 'bo', name: 'BO', x: 3.5, y: 6.5, stock: 'bo', verb: 'REPAIRS', lines: [
-      ["Don't touch that. Its cell is still hot.",
+      ["Bench is yours if you brought something that shoots.",
+       "I can change what a gun does. Not what it is.",
        "That thing you're carrying, though. Let me see it."],
-      "They come apart easier than they look. Everything does.",
-      "I keep the eye lit while I work. Tells me there's still charge in it." ] },
+      "A rifle is parts, stranger. Change the parts, change the argument.",
+      "Everything in that tray came off something that stopped working." ] },
     { key: 'ade', name: 'SISTER ADE', x: 9.5, y: 5.5, lines: [
       "You're not bleeding. Come back when you are.",
       "The name stuck because of the building. I was a vet's assistant.",
@@ -290,8 +291,8 @@ const USABLE = {
     "Bales carried down a hatch one at a time, by somebody who is not young.",
     "Bedding, and feed for animals this camp does not have yet." ]),
   workbench: (p, ask) => ask ? 'E — look' : startDialog([
-    "A Hunter-Killer with its casing off and one arm in the vice.",
-    "The eye is still lit. Whatever is in there has charge left." ]),
+    "A rifle in a cradle with its handguard off, a barrel in the vice,",
+    "and a tray of springs and pins under a lamp somebody keeps lit." ]),
   hearth: (p, ask) => ask ? 'E — look' : startDialog([
     "A drum with a fire in it and a flue punched through a boarded window.",
     "The first warm thing you have stood next to since the yard." ]),
