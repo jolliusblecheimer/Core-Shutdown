@@ -2180,8 +2180,42 @@ function drawItem(it, x, y) {
   addLight(x, y - 6, 0, 14, '255,210,120', 0.22 + Math.sin(gameTime * 3 + it.bob) * 0.06);
 }
 
+// THE LASER, and only if one is clamped to the gun. The bandits' aim lines are
+// DASHED because nobody on that road has a laser sight — this is solid and thin
+// for exactly that reason: it is the one beam in the game that comes off a
+// machine's own optic, and it should not be mistaken for somebody aiming at you.
+// It stops where the round would stop, which is what makes it worth the scrap:
+// in a 2:1 iso view the mouse angle and the world direction are not the same
+// thing, and at distance you are otherwise guessing.
+function drawAimLaser(px2, py2) {
+  if (player.dead > 0 || !player.hasGun || player.active !== 'gun') return;
+  const G = gunStats(player.gun);
+  if (!G.laser) return;
+  const dirW = screenToIso(Math.cos(player.angle), Math.sin(player.angle));
+  const dl = Math.hypot(dirW.x, dirW.y) || 1;
+  const ux = dirW.x / dl, uy = dirW.y / dl;
+  const max = G.speed * G.life;
+  let d = 0.35;
+  while (d < max && !isSolid(player.x + ux * (d + 0.25), player.y + uy * (d + 0.25))) d += 0.25;
+  const from = isoToScreen(player.x + ux * 0.35, player.y + uy * 0.35);
+  const to = isoToScreen(player.x + ux * d, player.y + uy * d);
+  const fx = Math.round(from.x - lastOx), fy = Math.round(from.y - lastOy - 9);
+  const tx = Math.round(to.x - lastOx), ty = Math.round(to.y - lastOy - 9);
+  ctx.strokeStyle = 'rgba(255,74,60,0.34)';
+  ctx.beginPath();
+  ctx.moveTo(fx, fy); ctx.lineTo(tx, ty);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(255,120,90,0.85)';   // the dot on whatever it lands on
+  ctx.fillRect(tx - 1, ty - 1, 2, 2);
+  addLight(tx, ty, 0, 6, '255,74,60', 0.22);
+  // and the diode itself, lit on the gun
+  ctx.fillStyle = '#ff4a3c';
+  ctx.fillRect(Math.round(px2 + Math.cos(player.angle) * 5), Math.round(py2 - 9), 1, 1);
+}
+
 function drawPlayer(x, y) {
   if (player.dead > 0) return;
+  drawAimLaser(x, y);
   drawShadow(x, y, player.crouch ? 4 : 5);
   const blink = player.iframes > 0 && ((performance.now() / 70) | 0) % 2 === 0;
   if (blink) ctx.globalAlpha = 0.5;

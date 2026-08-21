@@ -18,6 +18,8 @@ const player = {
     rifle:  { loaded: 0, reserve: 0 },
   },
   reloadT: 0, reloadOf: null,
+  burst: 0, burstT: 0,          // rounds still owed by a burst, and when the next one goes
+  reloadWanted: false,          // R pressed mid-burst: honoured the moment it ends
   gun: 'pistol',               // WHICH gun, the same way `melee` picks the melee
   active: 'melee',             // which equipped weapon LMB uses (scroll to switch)
   scrollHintT: 0,              // "scroll" HUD hint: 30s after getting the gun, then gone
@@ -74,6 +76,9 @@ function roundsOf(gun) { const A = magsOf(gun); return A.loaded + A.reserve; }
 
 function startReload() {
   if (!player.hasGun || player.reloadT > 0 || player.dead > 0) return;
+  // a burst in the air finishes first — but the press is REMEMBERED, because
+  // swallowing it would teach players that R does nothing in a firefight
+  if (player.burst > 0) { player.reloadWanted = true; return; }
   const gun = player.gun, A = magsOf(gun);
   if (A.loaded >= capOf(gun)) { showMsg('ALREADY LOADED', 1.2); return; }
   if (A.reserve <= 0) { showMsg('NO ROUNDS LEFT', 1.4); SFX.dry(); return; }
@@ -88,6 +93,32 @@ function finishReload() {
   chamber(gun);
   SFX.buy();
   saveGame();
+}
+
+// ONE ROUND LEAVING THE GUN. Pulled out of the trigger block because the burst
+// regulator fires the same round three times over a fifth of a second, and two
+// copies of this would be two guns that drifted apart. `spread` is in radians
+// off the aim line and is zero for everything except the second and third
+// rounds of a burst — the first one always goes exactly where you pointed it.
+function fireRound(G, spread) {
+  const A = magsOf(player.gun);
+  if (A.loaded <= 0) return false;
+  A.loaded--;
+  player.combatT = 0;
+  player.muzzle = 0.06;
+  const ang = player.angle + (spread ? (Math.random() * 2 - 1) * spread : 0);
+  const dirW = screenToIso(Math.cos(ang), Math.sin(ang));
+  const dl = Math.hypot(dirW.x, dirW.y) || 1;
+  // the bullet carries its own damage — it used to be the number 10 written
+  // into four separate hit sites, which made a second gun impossible
+  bullets.push({
+    x: player.x + (dirW.x / dl) * 0.35, y: player.y + (dirW.y / dl) * 0.35,
+    vx: (dirW.x / dl) * G.speed, vy: (dirW.y / dl) * G.speed, life: G.life,
+    dmg: G.dmg,
+  });
+  addShake(G.shake);
+  SFX.shot();
+  return true;
 }
 
 const MELEE = {
@@ -477,25 +508,34 @@ function updatePlayer(dt) {
   }
   if (Input.pressed['KeyR']) { Input.pressed['KeyR'] = false; startReload(); }
 
-  if (Input.mouseDown && player.fireCd <= 0 && player.hasGun &&
+  // ---- A BURST ALREADY IN THE AIR FINISHES ITSELF. Letting go of the trigger
+  // does not call the second and third rounds back, and that is the burst
+  // regulator's entire cost: you stop choosing how many rounds to spend.
+  if (player.burst > 0) {
+    player.burstT -= dt;
+    const G = activeGun();
+    while (player.burst > 0 && player.burstT <= 0) {
+      if (player.dead > 0 || player.reloadT > 0 || !fireRound(G, G.spread)) {
+        player.burst = 0;                     // dead, reloading, or simply empty
+        break;
+      }
+      player.burst--;
+      player.burstT += G.burstGap || 0.08;
+    }
+    if (player.burst <= 0 && player.reloadWanted) {
+      player.reloadWanted = false;
+      startReload();
+    }
+  }
+
+  if (Input.mouseDown && player.fireCd <= 0 && player.hasGun && player.burst <= 0 &&
       player.active === 'gun' && player.reloadT <= 0) {
     const G = activeGun();
     const A = player.arms[player.gun];
     if (A.loaded > 0) {
-      A.loaded--;
-      player.combatT = 0;
-      player.fireCd = G.cd; player.muzzle = 0.06;
-      const dirW = screenToIso(Math.cos(player.angle), Math.sin(player.angle));
-      const dl = Math.hypot(dirW.x, dirW.y);
-      // the bullet carries its own damage — it used to be the number 10
-      // written into four separate hit sites, which made a second gun impossible
-      bullets.push({
-        x: player.x + (dirW.x / dl) * 0.35, y: player.y + (dirW.y / dl) * 0.35,
-        vx: (dirW.x / dl) * G.speed, vy: (dirW.y / dl) * G.speed, life: G.life,
-        dmg: G.dmg,
-      });
-      addShake(G.shake);
-      SFX.shot();
+      player.fireCd = G.cd;
+      fireRound(G, 0);                        // the first round always goes true
+      if (G.burst > 1) { player.burst = G.burst - 1; player.burstT = G.burstGap || 0.08; }
     } else {
       // an empty chamber is a moment, not an error message. The lesson fires
       // once, the first time it ever happens.
