@@ -27,6 +27,7 @@ function saveGame() {
       player: {
         x: player.x, y: player.y, hp: player.hp,
         arms: JSON.parse(JSON.stringify(player.arms)),
+        mods: JSON.parse(JSON.stringify(player.mods)),
         melee: player.melee, hasGun: player.hasGun, active: player.active, gun: player.gun,
         owned: { ...player.owned }, inv: { ...player.inv },
         respawnX: player.respawnX, respawnY: player.respawnY, homeSet: player.homeSet,
@@ -116,6 +117,9 @@ function wipeSave() {
   // a new run owes nothing — otherwise starting over in the same page session
   // would carry the last run's ledger and quietly skip its back-payments
   granted = {};
+  // and it certainly does not start with the last run's parts on its rifle
+  player.mods = freshMods();
+  modsChanged();
 }
 
 const num = (v, fallback) => (typeof v === 'number' && isFinite(v)) ? v : fallback;
@@ -134,6 +138,30 @@ function bagRounds(gun, total) {
   A.loaded = Math.min(cap, left);
   A.reserve = left - A.loaded;
 }
+// WEAPON PARTS. A run that predates the bench simply arrives with every slot
+// standard — there is nothing to convert, because a gun with no parts on it is
+// what the standard parts describe. What this DOES have to survive is the part
+// list changing: an id this build no longer ships falls back to standard
+// rather than leaving a slot holding nothing, and an owned id we do not
+// recognise is dropped. Rule 6 — a save is upgraded, never refused.
+function loadMods(p) {
+  player.mods = freshMods();
+  const src = p.mods;
+  if (!src) return;
+  for (const id of Object.keys(src.owned || {}))
+    if (PARTS[id] && !PARTS[id].std && src.owned[id]) player.mods.owned[id] = true;
+  for (const gun of Object.keys(player.mods.fitted)) {
+    const want = (src.fitted || {})[gun] || {};
+    for (const s of slotsOf(gun)) {
+      const id = want[s.id], part = PARTS[id];
+      // and a part you no longer own cannot stay bolted on
+      if (part && part.gun === gun && part.slot === s.id && ownsPart(id))
+        player.mods.fitted[gun][s.id] = id;
+    }
+  }
+  modsChanged();
+}
+
 function loadArms(p) {
   for (const gun of ['pistol', 'rifle']) {
     const A = magsOf(gun);
@@ -166,6 +194,9 @@ function applySave(d) {
   player.x = num(p.x, player.x);
   player.y = num(p.y, player.y);
   player.hp = Math.min(player.maxHp, Math.max(1, num(p.hp, player.maxHp)));
+  // parts BEFORE rounds: a drum makes the gun hold 24, and loadArms clamps
+  // what is in it to the capacity the parts decide
+  loadMods(p);
   loadArms(p);
   player.respawnX = num(p.respawnX, player.respawnX);
   player.respawnY = num(p.respawnY, player.respawnY);

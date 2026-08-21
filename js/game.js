@@ -2359,7 +2359,7 @@ function drawHUD() {
   uiRect(slotX, slotY, SLOT_W, SLOT_H, 'rgba(0,0,0,0.55)');
   const showGun = player.active === 'gun' && player.hasGun;
   if (showGun) {
-    const G = GUNS[player.gun] || GUNS.pistol;
+    const G = gunStats(player.gun);       // as MODIFIED — see js/mods.js
     const A = player.arms[player.gun] || player.arms.pistol;
     uiIcon(player.gun === 'rifle' ? Sprites.rifleIconS : Sprites.pistolIconS, slotX + 4, slotY + 3);
     // loaded / capacity — amber on the last third, red on empty

@@ -41,7 +41,10 @@ const GUNS = {
   pistol: { dmg: 10, cd: 0.5,  speed: 13, life: 0.5,  shake: 1.2, label: 'Scrap pistol',  cap: 6,  reload: 1.1 },
   rifle:  { dmg: 18, cd: 0.78, speed: 18, life: 0.75, shake: 2.2, label: 'Service rifle', cap: 12, reload: 1.6 },
 };
-const activeGun = () => GUNS[player.gun] || GUNS.pistol;
+// GUNS holds the rifle as it LEAVES BO'S BENCH. What it is once you have been
+// back to that bench comes from gunStats() in js/mods.js, which folds in every
+// part fitted to it — and which every reader here uses instead of GUNS.
+const activeGun = () => gunStats(player.gun);
 
 // ---------- RELOADING ----------
 // A gun holds six or twelve, and then you have to stop and fill it. That pause
@@ -52,7 +55,7 @@ const activeGun = () => GUNS[player.gun] || GUNS.pistol;
 // lose: a part-full gun just takes fewer rounds to fill.
 function magsOf(gun) { return player.arms[gun] || player.arms.pistol; }
 const reserveOf = (gun) => magsOf(gun).reserve;
-const capOf = (gun) => (GUNS[gun] || GUNS.pistol).cap;
+const capOf = (gun) => gunStats(gun).cap;
 
 // rounds arriving from anywhere: a shop, a body, the ground. They go in the
 // pocket, never straight into the gun — putting them in is what R is for.
@@ -74,7 +77,7 @@ function startReload() {
   const gun = player.gun, A = magsOf(gun);
   if (A.loaded >= capOf(gun)) { showMsg('ALREADY LOADED', 1.2); return; }
   if (A.reserve <= 0) { showMsg('NO ROUNDS LEFT', 1.4); SFX.dry(); return; }
-  player.reloadT = (GUNS[gun] || GUNS.pistol).reload;
+  player.reloadT = gunStats(gun).reload;
   player.reloadOf = gun;
   SFX.reload ? SFX.reload() : SFX.switchW();
 }
