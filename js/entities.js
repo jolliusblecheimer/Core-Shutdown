@@ -367,6 +367,15 @@ function openChest(p) {
     if (player.inv.snack !== undefined) player.inv.snack++;
     showMsg('+2 scrap  ·  +1 snack bar');
   }
+  // A CHEST CAN HOLD A WEAPON PART, and one of them does. It is announced
+  // LAST, over the top of the scrap line, because a drum magazine is not "+2
+  // tech" — it is the reason you came down here, even if you did not know that
+  // yet — and the last message printed is the one left on the screen.
+  if (p.part && givePart(p.part)) {
+    showMsg(PARTS[p.part].name.toUpperCase() + '  ·  fit it at Bo\'s bench', 3.4);
+    think('gunpart', 'They had no use for it. Nobody down here owns a rifle.');
+    SFX.tech();
+  }
 }
 
 const Dialog = { active: false, lines: [], idx: 0 };
@@ -983,7 +992,8 @@ const STOCK = {
   ],
   // Tam's counter. Rations and rounds, one tech part at a price that says he
   // knows exactly what it is worth to somebody carrying a scrap pistol — and
-  // salvage, when he has any, for the same reason.
+  // the one piece of machine salvage he has been unable to sell to anybody
+  // else in this camp, because nobody else here owns a rifle.
   tam: () => [
     { label: '12 rifle rounds', icon: () => Sprites.ammoRifle, cost: { scrap: 7 },
       buy: () => { giveRounds('rifle', 12); showMsg('Bought 12 rifle rounds'); } },
@@ -993,7 +1003,7 @@ const STOCK = {
       buy: () => { player.inv.mreChicken++; showMsg('Bought a chicken MRE  (H to eat)'); } },
     { label: 'low-q tech part', icon: () => Sprites.techIcon, cost: { scrap: 9 },
       buy: () => { player.inv.tech++; showMsg('Bought a low-quality tech component'); } },
-    ...partRows('optLaser', 'magDrum'),
+    ...partRows('optLaser'),
   ],
 };
 // short, because these sit in a price at the right-hand edge of a panel —

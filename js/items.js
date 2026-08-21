@@ -238,6 +238,17 @@ const MILESTONE_GRANTS = [
     has: () => (player.inv.rifleBroken || 0) > 0 || player.owned.rifle,
     give: () => { player.inv.rifleBroken = 1; },
   },
+  {
+    // The drum went into the crypt chest after people had already emptied it,
+    // and an emptied chest never opens again — so a run that had been down
+    // there would have been locked out of the biggest change the rifle can
+    // have. `when` reads the same open-chest record the world restores from.
+    id: 'crypt-drum',
+    name: 'DRUM, 24',
+    when: () => ((areaState.crypt || {}).openChests || []).includes('1,6'),
+    has: () => ownsPart('magDrum'),
+    give: () => { givePart('magDrum'); },
+  },
 ];
 
 // Everything on a tab that the player actually has. This one filter IS the

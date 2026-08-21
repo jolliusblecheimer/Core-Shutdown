@@ -3,17 +3,19 @@
 **Status: BUILT, 2026-08-21.** Laurens: *"i like all except muzzle. start
 building"* — so the muzzle slot is cut (§3) and the rifle has four.
 
-**Revised the same day, and it is the better design.** Laurens: *"no you cant
-buy them at the table you need to find them or purchase them from npcs"* — so
-**THE BENCH IS NOT A SHOP.** It fits what is already in your kit and sells
-nothing; parts come off machines you put down, or off a trader's counter. §4a
-is the new section, and it replaced the paragraph that had the gunsmith taking
-your scrap. He is right: a bench that sells you the part it then bolts on is a
+**Revised twice the same day, and both are the better design.** Laurens: *"no
+you cant buy them at the table you need to find them or purchase them from
+npcs"*, then *"one of the chests in the basement should give the drum mag"* —
+so **THE BENCH IS NOT A SHOP.** It fits what is already in your kit and sells
+nothing; parts are found in the dark, taken off machines you put down, or
+bought at a trader's counter. §4a is the new section, and it replaced the
+paragraph that had the gunsmith taking your scrap. He is right: a bench that sells you the part it then bolts on is a
 menu with a table drawn behind it, and a part you had to go and get is a thing
 rather than a purchase.
 
 Everything below is in the game and was verified in a browser: every part
-acquired the way it is meant to be and fired, a burst counted round by round, a reload
+acquired the way it is meant to be and fired, a burst counted round by round, a
+reload
 timed at its modified length, the save round-tripped through a page reload, a
 part id the build does not ship falling back to standard, and a save written
 before any of this existed loading with every slot standard and not one round
@@ -98,7 +100,7 @@ going after rather than obviously correct.
 | Part | Does | Where |
 |---|---|---|
 | 12-round box | as it comes | — |
-| **Drum, 24** | double the rounds in the gun; reload 1.6 → **2.9s** | **Tam**, 2 tech + 14 scrap |
+| **Drum, 24** | double the rounds in the gun; reload 1.6 → **2.9s** | a **chest in the crypt** |
 | **Stripped 8-round box** | 8 rounds, reload 1.6 → **1.15s** | **Bo**, 6 scrap |
 
 Laurens' second ask, and its opposite. The drum is for the burst build (four
@@ -140,8 +142,8 @@ exactly what a cosmetic-feeling slot needs.
 | Fixed stock | as it comes | — |
 | **Padded stock** | reload −0.35s, shake −0.4 | **Bo**, 1 tech + 9 scrap |
 
-**Four slots, six parts: two taken off machines, four bought from people.** Deliberately smaller than the reference
-screen's eight: every slot here has to *do* something the game can show, and a
+**Four slots, six parts: one found in the dark, two off machines, three bought
+from people.** Deliberately smaller than the reference screen's eight: every slot here has to *do* something the game can show, and a
 slot that exists to be full is the kind of bookkeeping this project has thrown
 out twice already.
 
@@ -209,8 +211,24 @@ teach players not to experiment.
 
 ## 4a. Where parts come from — the bench sells nothing
 
-Two of them are **taken off the machines that use them**, and they are the two
-worth wanting:
+One is **found**, two are **taken off the machines that use them**, and three
+are **bought from people**.
+
+**The drum is in a chest in the crypt.** Laurens, 2026-08-21: *"one of the
+chests in the basement should give the drum mag"* — and it is the right home
+for it. The camp keeps what it cannot use down there next to what it cannot
+open, and a magazine for a rifle nobody owns is exactly that; it also means the
+single biggest change you can make to the gun is something you find in the dark
+under a church rather than something on a counter. The chest is the one at
+(1,6), beside the strongbox.
+
+A chest empties once and never refills, so a run that had already been down
+there is handed the drum on load — `crypt-drum` in `MILESTONE_GRANTS`, reading
+the same open-chest record the world restores from. That is rule 7 doing
+exactly what it was written for.
+
+Two more are taken off the machines that use them, and they are the two worth
+wanting:
 
 | Part | Off |
 |---|---|
@@ -222,14 +240,13 @@ or are carrying the bent one, once, and never twice — a second is no use to
 anybody. Squads respawn, so **no part can become unobtainable by having played
 early**, and rule 7 needs no ledger entry for them.
 
-The other four are **bought from people**, at the price written on the part:
+The rest are **bought from people**, at the price written on the part:
 
 | Part | From | Price |
 |---|---|---|
 | Padded stock | **Bo** | 1 tech + 9 scrap |
 | Stripped 8-round box | **Bo** | 6 scrap |
 | Laser box | **Tam** | 2 tech + 6 scrap |
-| Drum, 24 | **Tam** | 2 tech + 14 scrap |
 
 The split is the fiction, not a spreadsheet: **Bo has a vice and an awl**, so
 he sells the two things a man can make — a cut-down magazine and a stitched

@@ -552,7 +552,17 @@ function stashArea() {
   // area you have walked would be missing from the world map until you went
   // back and opened M inside it.
   if (explored) buildMapThumb(currentArea);
-  areaState[currentArea] = {
+  areaState[currentArea] = snapshotArea();
+}
+
+// WHAT THE LIVE AREA LOOKS LIKE RIGHT NOW, in one place. It was written twice
+// — once here for walking out of a door, once in js/save.js for writing a save
+// — and the two had drifted: the save's copy had never learned about chests,
+// so opening a chest and then reloading a save made in the same area handed
+// the chest straight back, unopened. It matters more now that one of them has
+// a weapon part in it.
+function snapshotArea() {
+  return {
     deadBarrels: boomBarrels.filter(b => !b.alive).map(b => b.gx + ',' + b.gy),
     takenItems: (START_ITEMS_BY_AREA[currentArea] || []).filter(
       k => !items.some(it => itemKey(it) === k)),

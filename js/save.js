@@ -62,12 +62,9 @@ function collectFog() {
 function collectAreaState() {
   const all = {};
   for (const id of Object.keys(areaState)) all[id] = areaState[id];
-  all[currentArea] = {
-    deadBarrels: boomBarrels.filter(b => !b.alive).map(b => b.gx + ',' + b.gy),
-    takenItems: (START_ITEMS_BY_AREA[currentArea] || []).filter(
-      k => !items.some(it => itemKey(it) === k)),
-    deadBandits: collectDeadBandits(),
-  };
+  // the live area, from the SAME snapshot walking out of a door uses — this
+  // used to be a second hand-written copy that had never heard of chests
+  all[currentArea] = snapshotArea();
   return all;
 }
 

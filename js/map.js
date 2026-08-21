@@ -1071,7 +1071,11 @@ function buildCrypt() {
   put(4, 6, 'hayStack'); put(6, 6, 'hayStack');   // not (7,6): it sealed the east corner
   put(8, 3, 'preserves'); put(8, 5, 'preserves');
   put(1, 5, 'strongbox');
-  put(1, 6, 'chest', { open: false, loot: 'crypt' });
+  // THE DRUM IS IN THIS ONE. The camp keeps what it cannot use down here next
+  // to what it cannot open, and a magazine for a rifle nobody owns is exactly
+  // that — so the biggest change you can make to the rifle is something you
+  // find in the dark under a church, not something on a counter.
+  put(1, 6, 'chest', { open: false, loot: 'crypt', part: 'magDrum' });
   // The rations sit with the rest of the food, by the cistern and the preserve
   // racks. NOT the east corner it was in: hay, preserves and two walls boxed
   // it so it could only be approached diagonally — and a diagonal is 1.41

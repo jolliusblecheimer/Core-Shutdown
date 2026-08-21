@@ -1874,3 +1874,32 @@ Verified in a browser: both droid drops (and no duplicate from a second
 Marshal, and nothing at all before you own a rifle), both counters listing and
 then dropping their rows, fitting an owned part, refusing an unowned one, and
 the pack tab.
+
+---
+
+## The drum goes in the crypt — 2026-08-21
+
+**Laurens:** *"so one of the chests in the basement should give the drum mag.
+the other 2 sure they can be purchased for the npc and dropped from the finge
+patrols."*
+
+Tam stops selling the drum; the chest at (1,6) in the crypt carries it, beside
+the strongbox. The right home for it: the camp keeps what it cannot use next to
+what it cannot open, and a magazine for a rifle nobody owns is exactly that —
+which also means the single biggest change the rifle can have is something you
+find in the dark under a church rather than something on a counter. Everything
+else stays as it was: burst regulator off a Marshal, long barrel off a
+Magistrate, laser box from Tam, padded stock and stripped box from Bo.
+
+A chest empties once and never refills, so a run that had already been down
+there is handed the drum on load — `crypt-drum` in `MILESTONE_GRANTS`, keyed on
+the same open-chest record the world restores from. Rule 7, doing what it was
+written for.
+
+**And it turned up a real bug on the way.** `collectAreaState()` in `save.js`
+was a second hand-written copy of the snapshot `stashArea()` takes when you walk
+out of a door — and it had never learned about chests. So opening a chest and
+then reloading a save made in that same area handed the chest back unopened:
+infinite loot, and, from today, an infinite supply of a unique weapon part. Both
+now call one `snapshotArea()`. Verified: open the chest, save in the crypt,
+reload the page — the chest is still empty and the drum is still yours.
