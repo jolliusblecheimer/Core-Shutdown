@@ -65,7 +65,9 @@ const ITEMS = {
   rifle: {
     name: 'Service rifle',
     tab: 'weapons',
-    icon: () => Sprites.rifleBuild(rifleFit()),
+    // the miniature, not the big one: the gunsmith's rifle is 36px wide and
+    // overflows a 26px pack tile by five pixels each side
+    icon: () => Sprites.rifleMini(rifleFit()),
     desc: 'Straightened, re-crowned and given back its optic. It was issued ' +
           'to something that hunted people, and it hits like it — near twice ' +
           'the pistol, and it carries. Slower between shots; make them count. ' +
@@ -248,6 +250,14 @@ const MILESTONE_GRANTS = [
     when: () => ((areaState.crypt || {}).openChests || []).includes('1,6'),
     has: () => ownsPart('magDrum'),
     give: () => { givePart('magDrum'); },
+  },
+  {
+    // and the same for the laser box, in the camp's chest upstairs
+    id: 'candlelight-laser',
+    name: 'LASER BOX',
+    when: () => ((areaState.candlelight || {}).openChests || []).includes('9,13'),
+    has: () => ownsPart('optLaser'),
+    give: () => { givePart('optLaser'); },
   },
 ];
 

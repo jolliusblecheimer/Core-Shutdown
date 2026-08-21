@@ -95,15 +95,16 @@ earn, so it is the one gun you can argue with.
 | Stock | **Padded** — reload −0.35s, less shake |
 
 **The bench is not a shop** — it fits what is in your kit and sells nothing.
-The **drum is in a chest in the crypt**, beside the strongbox: the camp keeps
-what it cannot use next to what it cannot open, so the biggest change the rifle
-can have is found in the dark rather than bought. The **burst regulator comes
-off a stripped Marshal** (it fires in threes) and the **long barrel off a
-Magistrate** (which finally gives that wall a reward), once each and never
-twice; squads respawn, so neither can be missed. **Bo** sells what a man with a
-vice can make — the padded stock and the stripped box — and **Tam** has the one
-piece of salvage nobody else in camp can use, the laser box. Neither counter
-lists them until you own the rifle. Parts you carry live in the pack under
+**Two are in chests** — the **drum** in the crypt beside the strongbox, the
+**laser box** in the camp's own chest upstairs: this camp keeps what it cannot
+use next to what it cannot open, so the two parts that change the rifle most
+are found rather than bought. **Two come off machines**: the **burst regulator**
+off a stripped Marshal (it fires in threes) and the **long barrel** off a
+Magistrate, which finally gives that wall a reward — once each and never twice,
+and squads respawn so neither can be missed. **Bo sells the other two**, being
+what a man with a vice and an awl can make: the padded stock and the stripped
+box. His rows do not appear until you own the rifle, and a chest that was
+emptied before its part existed pays out on load (`MILESTONE_GRANTS`). Parts you carry live in the pack under
 **PARTS**, with a green bar on whichever is on the gun. Once yours, they swap
 free.
 

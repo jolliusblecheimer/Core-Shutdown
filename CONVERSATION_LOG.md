@@ -1903,3 +1903,31 @@ then reloading a save made in that same area handed the chest back unopened:
 infinite loot, and, from today, an infinite supply of a unique weapon part. Both
 now call one `snapshotArea()`. Verified: open the chest, save in the crypt,
 reload the page — the chest is still empty and the drum is still yours.
+
+---
+
+## The laser box upstairs, and one rifle drawn three sizes — 2026-08-21
+
+**Laurens:** *"the laser box should be in one of the top chests should give it.
+Also the icon for rifle in the table looks so much better than the inventory and
+the side ui make it look the same"*
+
+**The laser box** comes out of Tam's stock and goes into the camp's own chest at
+(9,13), on the warm side of the nave — so both of the parts that change the
+rifle most are now things you find in a box rather than things you buy. Tam
+sells no parts at all any more; Bo still sells the two a man with a vice and an
+awl can make. `candlelight-laser` joins `crypt-drum` in `MILESTONE_GRANTS`, so a
+run that emptied that chest before the part existed is handed it on load.
+
+**And the rifle is one drawing at three sizes now.** It was three different
+guns: the gunsmith's big 34×12 build, the pack scaling that same sprite into a
+26px tile it overflowed by five pixels each side, and the weapon slot drawing a
+cruder 18×8 gun from back when there was only one rifle to draw. The pack and
+the slot now share a faithful **miniature** — the same palette and the same
+masses in the same order, hider through notched stock, with the same parts on
+it — mirrored for the slot, because there it is the gun the way you are holding
+it. A drum, a laser diode, a long barrel and a padded butt all read at 24px.
+
+Verified: the chest hands over the laser once, an old save that had emptied it
+gets it on load and not twice, Tam's board is rations and rounds again, and the
+pack tile and weapon slot were screenshotted beside the bench for comparison.

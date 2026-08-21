@@ -1029,7 +1029,10 @@ function buildCandlelight() {
   put(10, 8, 'hearth');
   put(9, 10, 'table'); put(9, 12, 'stool');
   put(10, 11, 'crate');
-  put(9, 13, 'chest', { open: false, loot: 'scrap' });
+  // THE LASER BOX IS IN THIS ONE. The camp's own chest, on the warm side of
+  // the nave: somebody brought a machine's optic back off the road, nobody
+  // upstairs had a use for it, and it went in the box with the rest.
+  put(9, 13, 'chest', { open: false, loot: 'scrap', part: 'optLaser' });
 
   // ---- THE NAVE: floor, and that is the point.
   // It had two pews and two fire barrels in it and read as cluttered rather

@@ -5,8 +5,8 @@ building"* — so the muzzle slot is cut (§3) and the rifle has four.
 
 **Revised twice the same day, and both are the better design.** Laurens: *"no
 you cant buy them at the table you need to find them or purchase them from
-npcs"*, then *"one of the chests in the basement should give the drum mag"* —
-so **THE BENCH IS NOT A SHOP.** It fits what is already in your kit and sells
+npcs"*, then *"one of the chests in the basement should give the drum mag"*,
+then the laser box into the chest upstairs — so **THE BENCH IS NOT A SHOP.** It fits what is already in your kit and sells
 nothing; parts are found in the dark, taken off machines you put down, or
 bought at a trader's counter. §4a is the new section, and it replaced the
 paragraph that had the gunsmith taking your scrap. He is right: a bench that sells you the part it then bolts on is a
@@ -126,7 +126,7 @@ look at.
 | Part | Does | Where |
 |---|---|---|
 | Iron sights | as it comes | — |
-| **Laser box** | draws a thin line from the muzzle to the first thing the shot would hit, and lights that target | **Tam**, 2 tech + 6 scrap |
+| **Laser box** | draws a thin line from the muzzle to the first thing the shot would hit, and lights that target | a **chest in Candlelight** |
 
 There is no aiming down sights in a top-down isometric game, so a scope has
 nothing to do. What an optic *can* fix here is the one genuine ambiguity in the
@@ -142,8 +142,8 @@ exactly what a cosmetic-feeling slot needs.
 | Fixed stock | as it comes | — |
 | **Padded stock** | reload −0.35s, shake −0.4 | **Bo**, 1 tech + 9 scrap |
 
-**Four slots, six parts: one found in the dark, two off machines, three bought
-from people.** Deliberately smaller than the reference screen's eight: every slot here has to *do* something the game can show, and a
+**Four slots, six parts: two in chests, two off machines, two off Bo's
+counter.** Deliberately smaller than the reference screen's eight: every slot here has to *do* something the game can show, and a
 slot that exists to be full is the kind of bookkeeping this project has thrown
 out twice already.
 
@@ -194,6 +194,12 @@ what is being borrowed, not its colours.
 
 **[as built]** Two things the mock did not know:
 
+- **The pack and the weapon slot draw the same gun the bench does.** They did
+  not at first: the pack was scaling the big 36px-wide sprite into a 26px tile
+  it overflowed by five pixels each side, and the weapon slot had a cruder gun
+  drawn for it back when there was only one rifle to draw. Both take a faithful
+  miniature now — same palette, same masses in the same order, same parts on it
+  — mirrored in the slot, because there it is the gun the way you hold it.
 - **The rows only have room for the headline effect.** The price column is
   measured, not guessed — the first attempt hard-coded the middle column's
   width and the prices printed straight through the effects — so a row shows
@@ -211,21 +217,23 @@ teach players not to experiment.
 
 ## 4a. Where parts come from — the bench sells nothing
 
-One is **found**, two are **taken off the machines that use them**, and three
-are **bought from people**.
+**Two are in chests**, two are **taken off the machines that use them**, and
+two are **bought from Bo**.
 
-**The drum is in a chest in the crypt.** Laurens, 2026-08-21: *"one of the
+**The drum is in a chest in the crypt, and the laser box in the camp's chest
+upstairs.** Laurens, 2026-08-21: *"one of the
 chests in the basement should give the drum mag"* — and it is the right home
-for it. The camp keeps what it cannot use down there next to what it cannot
-open, and a magazine for a rifle nobody owns is exactly that; it also means the
-single biggest change you can make to the gun is something you find in the dark
-under a church rather than something on a counter. The chest is the one at
-(1,6), beside the strongbox.
+for it, and the laser box followed it out of Tam's stock the same day. The camp
+keeps what it cannot use next to what it cannot open, and a magazine and an
+optic for a rifle nobody there owns are exactly that; it also means the two
+parts that change the gun most are things you find rather than things you buy.
+The drum is in the chest at **(1,6)** in the crypt beside the strongbox, the
+laser box in the camp's own chest at **(9,13)** on the warm side of the nave.
 
-A chest empties once and never refills, so a run that had already been down
-there is handed the drum on load — `crypt-drum` in `MILESTONE_GRANTS`, reading
-the same open-chest record the world restores from. That is rule 7 doing
-exactly what it was written for.
+A chest empties once and never refills, so a run that had already opened either
+is handed its part on load — `crypt-drum` and `candlelight-laser` in
+`MILESTONE_GRANTS`, reading the same open-chest record the world restores from.
+That is rule 7 doing exactly what it was written for.
 
 Two more are taken off the machines that use them, and they are the two worth
 wanting:
@@ -240,19 +248,20 @@ or are carrying the bent one, once, and never twice — a second is no use to
 anybody. Squads respawn, so **no part can become unobtainable by having played
 early**, and rule 7 needs no ledger entry for them.
 
-The rest are **bought from people**, at the price written on the part:
+The last two are **bought from Bo**, at the price written on the part:
 
 | Part | From | Price |
 |---|---|---|
 | Padded stock | **Bo** | 1 tech + 9 scrap |
 | Stripped 8-round box | **Bo** | 6 scrap |
-| Laser box | **Tam** | 2 tech + 6 scrap |
 
 The split is the fiction, not a spreadsheet: **Bo has a vice and an awl**, so
 he sells the two things a man can make — a cut-down magazine and a stitched
 cheek pad. He cannot make a diode, a drum or a regulator, and does not pretend
-to. **Tam buys from people who go further out than he does**, so salvage turns
-up on his counter. Neither row appears until you own the rifle: a stock list
+to; those came out of a factory and the only ones in this ring are on the
+machines still using them, or in the boxes this camp keeps what it cannot use
+in. **Tam sells no parts at all** — rations, rounds and a tech component.
+His rows do not appear until you own the rifle: a stock list
 should not advertise fittings for a gun the traveller has never held, and each
 row disappears once you have the part, because a part is a thing and you cannot
 want a second.

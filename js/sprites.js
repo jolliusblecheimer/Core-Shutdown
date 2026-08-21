@@ -1411,39 +1411,98 @@ function outlined(src) {
     Sprites.rifleBrokenIcon = Sprites.rifleBuild({ broken: true });
     Sprites.rifleIcon = Sprites.rifleBuild({});
 
-    // HUD slot version — smaller, and only the working one is ever equipped
-    // A long gun has to read as LONG in a 54px slot, so the barrel runs the
-    // full width and everything else is kept low and back — centring the optic
-    // and the grip made a plus sign instead of a rifle.
-    // Muzzle-RIGHT here, because this is the gun the way you are holding it.
-    // It takes the fitted parts too: the slot is the thing you actually look at
-    // while playing, so a drum has to be visible there or the player only ever
-    // learns about it from a number.
-    const rifleS = (o) => {
+    // THE SAME RIFLE, SMALL. Laurens, 2026-08-21: *"the icon for rifle in the
+    // table looks so much better than the inventory and the side ui, make it
+    // look the same"* — and it did not, for two different reasons. The pack was
+    // drawing the BIG gun at 1x in a 26px tile it overflows by five pixels each
+    // side, and the weapon slot had a different, cruder gun drawn for it back
+    // when there was only one rifle to draw.
+    //
+    // So this is a faithful miniature of the big one at about two thirds: the
+    // same palette, the same masses in the same order — hider, barrel, front
+    // post, ribbed handguard, receiver under a raised carry handle, magazine
+    // hanging clear of a raked grip, notched stock — and the same parts on it.
+    // Drawn muzzle-LEFT like its big brother; the weapon slot mirrors it,
+    // because there it is the gun the way you are holding it.
+    const MX0 = 3;                                    // standard muzzle start
+    const rifleMini = (o) => {
       o = o || {};
-      const rs = makeCanvas(18, 8), rsg = rs.getContext('2d');
-      px(rsg, 3, 2, 13, 2, '#8a7a61'); px(rsg, 3, 2, 13, 1, '#a8977b');   // barrel
-      px(rsg, 16, 2, 2, 2, '#5f5343');                                    // muzzle
-      px(rsg, 6, 1, 5, 1, '#5f5343');                                     // carry handle
-      px(rsg, 0, 2, 3, 3, '#5f5343');                                     // stock
-      px(rsg, 4, 4, 2, 3, '#5f5343');                                     // grip
-      if (o.mag === 'magDrum') {
-        px(rsg, 6, 4, 5, 4, '#6f6250');
-        px(rsg, 7, 5, 3, 2, '#443a2d');
-      } else if (o.mag === 'magLight') {
-        px(rsg, 7, 4, 3, 1, '#6f6250');
+      const bar = o.barrel || 'barStd', mag = o.mag || 'magStd';
+      const opt = o.optic || 'optStd', stk = o.stock || 'stkStd';
+      const c = makeCanvas(24, 11), g = c.getContext('2d');
+      const HI = '#c6b291', BODY = '#a8977b', MID = '#8a7a61',
+            FURN = '#5f5343', DEEP = '#443a2d';
+      // barrel
+      if (bar === 'barLong') {
+        px(g, 0, 3, 1, 2, FURN);
+        px(g, 1, 3, 7, 2, MID); px(g, 1, 3, 7, 1, BODY);
+        px(g, 1, 5, 7, 1, DEEP);
       } else {
-        px(rsg, 7, 4, 3, 2, '#6f6250');
+        px(g, MX0, 3, 1, 2, FURN);
+        px(g, MX0 + 1, 3, 4, 2, MID); px(g, MX0 + 1, 3, 4, 1, BODY);
+        px(g, MX0 + 5, 2, 1, 1, FURN);                // front sight post
+        if (bar === 'barBurst') px(g, MX0 + 3, 2, 2, 1, FURN);   // the regulator
       }
-      if (o.optic === 'optLaser') px(rsg, 12, 4, 1, 1, '#ff4a3c');
-      if (o.barrel === 'barBurst') px(rsg, 9, 0, 3, 1, '#5f5343');
-      return outlined(rs);
+      // ribbed handguard
+      px(g, MX0 + 6, 2, 4, 4, BODY); px(g, MX0 + 6, 2, 4, 1, HI);
+      px(g, MX0 + 7, 3, 1, 2, DEEP); px(g, MX0 + 9, 3, 1, 2, DEEP);
+      px(g, MX0 + 6, 5, 4, 1, MID);
+      if (opt === 'optLaser') {                       // the diode, under it
+        px(g, MX0 + 6, 6, 3, 1, '#2a2a31');
+        px(g, MX0 + 5, 6, 1, 1, '#ff4a3c');
+      }
+      // receiver under a raised carry handle
+      px(g, MX0 + 10, 2, 6, 4, BODY); px(g, MX0 + 10, 2, 6, 1, HI);
+      px(g, MX0 + 13, 3, 2, 1, DEEP);                 // ejection port
+      px(g, MX0 + 10, 1, 6, 1, FURN);
+      px(g, MX0 + 12, 1, 2, 1, '#6f6250');
+      // magazine
+      if (mag === 'magDrum') {
+        px(g, MX0 + 7, 6, 5, 3, FURN);
+        px(g, MX0 + 8, 6, 3, 1, MID);
+        px(g, MX0 + 8, 9, 3, 1, DEEP);
+        px(g, MX0 + 8, 7, 3, 1, DEEP);
+      } else if (mag === 'magLight') {
+        px(g, MX0 + 8, 6, 3, 2, FURN); px(g, MX0 + 8, 7, 3, 1, DEEP);
+      } else {
+        px(g, MX0 + 8, 6, 3, 2, FURN);
+        px(g, MX0 + 7, 8, 3, 1, FURN); px(g, MX0 + 7, 8, 3, 1, DEEP);
+        px(g, MX0 + 7, 8, 1, 1, FURN);
+      }
+      // grip, raked back
+      px(g, MX0 + 14, 6, 2, 2, FURN);
+      px(g, MX0 + 15, 8, 2, 1, FURN);
+      // buffer tube into the stock
+      px(g, MX0 + 16, 3, 1, 2, MID);
+      if (stk === 'stkPadded') {
+        px(g, MX0 + 17, 1, 3, 5, FURN); px(g, MX0 + 17, 1, 3, 1, '#6f6250');
+        px(g, MX0 + 19, 1, 1, 5, '#4a3a24');
+      } else {
+        px(g, MX0 + 17, 2, 3, 3, FURN); px(g, MX0 + 17, 2, 3, 1, '#6f6250');
+        px(g, MX0 + 17, 5, 2, 1, FURN);               // the toe
+      }
+      px(g, MX0 + 15, 4, 1, 1, '#ffb02e');            // charge light, live
+      return outlined(c);
     };
-    const rsCache = {};
+    // mirrored, for the weapon slot: same gun, pointing the way you hold it
+    const mirrored = (img) => {
+      const c = makeCanvas(img.width, img.height), g = c.getContext('2d');
+      g.imageSmoothingEnabled = false;
+      g.translate(img.width, 0); g.scale(-1, 1);
+      g.drawImage(img, 0, 0);
+      return c;
+    };
+    const miniCache = {}, miniRCache = {};
+    const miniKey = (o) => [o.barrel, o.mag, o.optic, o.stock].join('|');
+    Sprites.rifleMini = (o) => {
+      o = o || {};
+      const k = miniKey(o);
+      return (miniCache[k] || (miniCache[k] = rifleMini(o)));
+    };
     Sprites.rifleIconSBuild = (o) => {
       o = o || {};
-      const key = [o.barrel, o.mag, o.optic, o.stock].join('|');
-      return (rsCache[key] || (rsCache[key] = rifleS(o)));
+      const k = miniKey(o);
+      return (miniRCache[k] || (miniRCache[k] = mirrored(Sprites.rifleMini(o))));
     };
     Sprites.rifleIconS = Sprites.rifleIconSBuild({});
 

@@ -990,11 +990,11 @@ const STOCK = {
     ] : []),
     ...partRows('stkPadded', 'magLight'),
   ],
-  // Tam's counter. Rations and rounds, one tech part at a price that says he
-  // knows exactly what it is worth to somebody carrying a scrap pistol — and
-  // the one piece of machine salvage he has been unable to sell to anybody
-  // else in this camp, because nobody else here owns a rifle.
-  tam: () => [
+  // Tam's counter. Rations and rounds, and one tech part at a price that says
+  // he knows exactly what it is worth to somebody carrying a scrap pistol. No
+  // weapon parts: what this camp has of those is in its chests, not on its
+  // counter.
+  tam: [
     { label: '12 rifle rounds', icon: () => Sprites.ammoRifle, cost: { scrap: 7 },
       buy: () => { giveRounds('rifle', 12); showMsg('Bought 12 rifle rounds'); } },
     { label: 'beef MRE', icon: () => Sprites.mreBeef, cost: { scrap: 6 },
@@ -1003,7 +1003,6 @@ const STOCK = {
       buy: () => { player.inv.mreChicken++; showMsg('Bought a chicken MRE  (H to eat)'); } },
     { label: 'low-q tech part', icon: () => Sprites.techIcon, cost: { scrap: 9 },
       buy: () => { player.inv.tech++; showMsg('Bought a low-quality tech component'); } },
-    ...partRows('optLaser'),
   ],
 };
 // short, because these sit in a price at the right-hand edge of a panel —
