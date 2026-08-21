@@ -64,7 +64,7 @@ const ITEMS = {
   rifle: {
     name: 'Service rifle',
     tab: 'weapons',
-    icon: () => Sprites.rifleIcon,
+    icon: () => Sprites.rifleBuild(rifleFit()),
     desc: 'Straightened, re-crowned and given back its optic. It was issued ' +
           'to something that hunted people, and it hits like it — near twice ' +
           'the pistol, and it carries. Slower between shots; make them count.',

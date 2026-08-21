@@ -121,6 +121,9 @@ function freshMods() {
 }
 player.mods = freshMods();
 
+// what is bolted to the rifle right now, for whoever is drawing it
+const rifleFit = () => player.mods.fitted.rifle || {};
+
 const partsForSlot = (gun, slot) =>
   Object.keys(PARTS).filter(id => PARTS[id].gun === gun && PARTS[id].slot === slot);
 const fittedId = (gun, slot) => (player.mods.fitted[gun] || {})[slot];

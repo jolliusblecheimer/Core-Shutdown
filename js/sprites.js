@@ -1277,8 +1277,21 @@ function outlined(src) {
     // painted the colour of junk.
     // Drawn muzzle-LEFT, the way a gun is drawn on a page. The held version is
     // mirrored, because the traveller aims to the right.
-    const rifle = (broken) => {
-      const c = makeCanvas(30, 12), g = c.getContext('2d');
+    // IT IS DRAWN FROM ITS PARTS. Every slot in the gunsmith has to change this
+    // picture or the part is not real — a drum that is only a number on a panel
+    // is bookkeeping, and this project has thrown bookkeeping out twice. So the
+    // gun takes a fitted-parts map and each option draws its own mass. The
+    // standard build is the rifle exactly as it always looked, sitting 4px in
+    // from the left, and that margin is where the long barrel goes.
+    const X0 = 4;                                     // where the standard muzzle starts
+    const rifle = (o) => {
+      o = o || {};
+      const broken = !!o.broken;
+      const bar = broken ? 'barStd' : (o.barrel || 'barStd');
+      const mag = broken ? null : (o.mag || 'magStd');
+      const opt = broken ? null : (o.optic || 'optStd');
+      const stk = broken ? 'stkStd' : (o.stock || 'stkStd');
+      const c = makeCanvas(34, 12), g = c.getContext('2d');
       const HI    = broken ? '#6d6656' : '#c6b291';   // top highlight
       const BODY  = broken ? '#585245' : '#a8977b';   // main body
       const MID   = broken ? '#474236' : '#8a7a61';   // shaded body
@@ -1286,87 +1299,175 @@ function outlined(src) {
       const DEEP  = broken ? '#272319' : '#443a2d';   // shadow, port, ribs
       // ---- barrel. Straight, or kinked two clear pixels down past the crush:
       // one pixel of droop is a rendering artefact, two is a bent gun.
-      px(g, 0, 3, 2, 3, FURN);                        // flash hider
       if (broken) {
-        px(g, 2, 4, 3, 2, MID); px(g, 2, 4, 3, 1, BODY);
-        px(g, 5, 6, 4, 2, MID); px(g, 5, 6, 4, 1, BODY);
-        px(g, 4, 5, 2, 1, DEEP);                      // the crush itself
+        px(g, X0, 3, 2, 3, FURN);                     // flash hider
+        px(g, X0 + 2, 4, 3, 2, MID); px(g, X0 + 2, 4, 3, 1, BODY);
+        px(g, X0 + 5, 6, 4, 2, MID); px(g, X0 + 5, 6, 4, 1, BODY);
+        px(g, X0 + 4, 5, 2, 1, DEEP);                 // the crush itself
+      } else if (bar === 'barLong') {
+        // four more pixels of barrel and a heavier underline: the whole point
+        // of it is that the silhouette reaches further than the standard gun
+        px(g, 0, 3, 2, 3, FURN);
+        px(g, 2, 4, 11, 2, MID); px(g, 2, 4, 11, 1, BODY);
+        px(g, 2, 6, 11, 1, DEEP);
+        px(g, X0 + 8, 2, 1, 2, FURN);                 // front sight post
       } else {
-        px(g, 2, 4, 7, 2, MID); px(g, 2, 4, 7, 1, BODY);
-        px(g, 8, 2, 1, 2, FURN);                      // front sight post
+        px(g, X0, 3, 2, 3, FURN);
+        px(g, X0 + 2, 4, 7, 2, MID); px(g, X0 + 2, 4, 7, 1, BODY);
+        px(g, X0 + 8, 2, 1, 2, FURN);
+        if (bar === 'barBurst') {
+          // the regulator: a block clamped over the gas port, forward of the
+          // handguard where nothing else lives, with its selector rib on top
+          px(g, X0 + 5, 2, 4, 2, FURN);
+          px(g, X0 + 5, 2, 4, 1, '#6f6250');
+          px(g, X0 + 6, 1, 2, 1, DEEP);
+        }
       }
 
       // ---- ribbed handguard
-      px(g, 9, 3, 7, 4, BODY);
-      px(g, 9, 3, 7, 1, HI);
-      for (const rx of [10, 12, 14]) px(g, rx, 4, 1, 2, DEEP);
-      px(g, 9, 6, 7, 1, MID);
+      px(g, X0 + 9, 3, 7, 4, BODY);
+      px(g, X0 + 9, 3, 7, 1, HI);
+      for (const rx of [10, 12, 14]) px(g, X0 + rx, 4, 1, 2, DEEP);
+      px(g, X0 + 9, 6, 7, 1, MID);
+
+      // ---- the laser box, clamped under the handguard where a hand is not.
+      // Red, because nothing else in this game's palette is.
+      if (opt === 'optLaser') {
+        px(g, X0 + 9, 7, 5, 2, '#2a2a31');
+        px(g, X0 + 9, 7, 5, 1, '#4a4a52');
+        px(g, X0 + 8, 7, 1, 1, '#ff4a3c');
+        px(g, X0 + 6, 7, 2, 1, 'rgba(255,74,60,0.45)');
+      }
 
       // ---- receiver
-      px(g, 16, 3, 8, 4, BODY);
-      px(g, 16, 3, 8, 1, HI);
-      px(g, 20, 4, 3, 1, DEEP);                       // ejection port
+      px(g, X0 + 16, 3, 8, 4, BODY);
+      px(g, X0 + 16, 3, 8, 1, HI);
+      px(g, X0 + 20, 4, 3, 1, DEEP);                  // ejection port
 
       // ---- carry handle: a full-width block sitting ON the receiver, which is
       // what makes the top line step and the whole thing read as a carbine
       if (broken) {
-        px(g, 16, 2, 2, 1, DEEP);                     // torn-off stubs
-        px(g, 22, 2, 2, 1, DEEP);
-        px(g, 18, 5, 4, 1, DEEP);                     // and the receiver stoved in
+        px(g, X0 + 16, 2, 2, 1, DEEP);                // torn-off stubs
+        px(g, X0 + 22, 2, 2, 1, DEEP);
+        px(g, X0 + 18, 5, 4, 1, DEEP);                // and the receiver stoved in
       } else {
-        px(g, 16, 1, 8, 2, FURN);
-        px(g, 16, 1, 8, 1, '#6f6250');
-        px(g, 19, 2, 2, 1, DEEP);                     // the sighting notch
+        px(g, X0 + 16, 1, 8, 2, FURN);
+        px(g, X0 + 16, 1, 8, 1, '#6f6250');
+        px(g, X0 + 19, 2, 2, 1, DEEP);                // the sighting notch
       }
 
       // ---- magazine, hanging clear of the grip with a gap between them.
       // On the broken one it is simply gone, and that hole in the silhouette
       // says "wrecked" faster than any amount of shading.
-      if (!broken) {
-        px(g, 14, 7, 4, 2, FURN); px(g, 14, 7, 4, 1, MID);
-        px(g, 13, 9, 4, 2, FURN);
-        px(g, 13, 10, 4, 1, DEEP);
+      if (mag === 'magDrum') {
+        // a fat drum: it has to be wider than the gun is deep or it will read
+        // as a longer box, which is the one thing it must not read as
+        px(g, X0 + 12, 8, 7, 3, FURN);                // body, full width
+        px(g, X0 + 13, 7, 5, 1, MID);                 // top and bottom inset a
+        px(g, X0 + 13, 11, 5, 1, DEEP);               // pixel, so it reads round
+        px(g, X0 + 13, 9, 5, 1, DEEP);                // the wind-up slot
+        px(g, X0 + 15, 9, 1, 1, MID);                 // and its hub
+      } else if (mag === 'magLight') {
+        px(g, X0 + 14, 7, 4, 2, FURN);                // cut down to a stub
+        px(g, X0 + 14, 7, 4, 1, MID);
+        px(g, X0 + 14, 9, 4, 1, DEEP);
+      } else if (mag) {
+        px(g, X0 + 14, 7, 4, 2, FURN); px(g, X0 + 14, 7, 4, 1, MID);
+        px(g, X0 + 13, 9, 4, 2, FURN);
+        px(g, X0 + 13, 10, 4, 1, DEEP);
       }
 
       // ---- trigger guard and grip, raked back
-      px(g, 19, 7, 2, 1, DEEP);
-      px(g, 20, 7, 3, 2, FURN);
-      px(g, 21, 9, 3, 2, FURN);
-      px(g, 21, 10, 3, 1, DEEP);
+      px(g, X0 + 19, 7, 2, 1, DEEP);
+      px(g, X0 + 20, 7, 3, 2, FURN);
+      px(g, X0 + 21, 9, 3, 2, FURN);
+      px(g, X0 + 21, 10, 3, 1, DEEP);
 
-      // ---- buffer tube into a notched stock
-      px(g, 24, 4, 2, 2, MID);
-      px(g, 26, 3, 4, 4, FURN);
-      px(g, 26, 3, 4, 1, broken ? '#4a4438' : '#6f6250');
-      px(g, 26, 7, 3, 1, FURN);                       // the toe, under the notch
-      if (!broken) px(g, 23, 5, 1, 1, '#ffb02e');     // charge light, live
+      // ---- buffer tube into a notched stock. The padded one is deeper, with
+      // the stitched blanket edge showing as a band of brown at the butt.
+      px(g, X0 + 24, 4, 2, 2, MID);
+      if (stk === 'stkPadded') {
+        px(g, X0 + 26, 2, 4, 6, FURN);
+        px(g, X0 + 26, 2, 4, 1, '#6f6250');
+        px(g, X0 + 29, 2, 1, 6, '#4a3a24');
+        px(g, X0 + 26, 7, 4, 1, DEEP);
+      } else {
+        px(g, X0 + 26, 3, 4, 4, FURN);
+        px(g, X0 + 26, 3, 4, 1, broken ? '#4a4438' : '#6f6250');
+        px(g, X0 + 26, 7, 3, 1, FURN);                // the toe, under the notch
+      }
+      if (!broken) px(g, X0 + 23, 5, 1, 1, '#ffb02e');  // charge light, live
       return outlined(c);
     };
-    Sprites.rifleBrokenIcon = rifle(true);
-    Sprites.rifleIcon = rifle(false);
+
+    // Built on demand and kept: there are only a dozen combinations, and the
+    // panel would otherwise redraw the gun every frame.
+    const rifleCache = {};
+    Sprites.rifleBuild = (o) => {
+      o = o || {};
+      const key = (o.broken ? 'B' : '') + [o.barrel, o.mag, o.optic, o.stock].join('|');
+      return (rifleCache[key] || (rifleCache[key] = rifle(o)));
+    };
+    Sprites.rifleBrokenIcon = Sprites.rifleBuild({ broken: true });
+    Sprites.rifleIcon = Sprites.rifleBuild({});
 
     // HUD slot version — smaller, and only the working one is ever equipped
     // A long gun has to read as LONG in a 54px slot, so the barrel runs the
     // full width and everything else is kept low and back — centring the optic
     // and the grip made a plus sign instead of a rifle.
-    const rs = makeCanvas(18, 8), rsg = rs.getContext('2d');
-    px(rsg, 3, 2, 13, 2, '#8a7a61'); px(rsg, 3, 2, 13, 1, '#a8977b');    // barrel, full width
-    px(rsg, 16, 2, 2, 2, '#5f5343');                                     // muzzle
-    px(rsg, 6, 1, 5, 1, '#5f5343');                                      // carry handle
-    px(rsg, 0, 2, 3, 3, '#5f5343');                                      // stock
-    px(rsg, 4, 4, 2, 3, '#5f5343');                                      // grip
-    px(rsg, 7, 4, 3, 2, '#6f6250');                                      // magazine
-    Sprites.rifleIconS = outlined(rs);
+    // Muzzle-RIGHT here, because this is the gun the way you are holding it.
+    // It takes the fitted parts too: the slot is the thing you actually look at
+    // while playing, so a drum has to be visible there or the player only ever
+    // learns about it from a number.
+    const rifleS = (o) => {
+      o = o || {};
+      const rs = makeCanvas(18, 8), rsg = rs.getContext('2d');
+      px(rsg, 3, 2, 13, 2, '#8a7a61'); px(rsg, 3, 2, 13, 1, '#a8977b');   // barrel
+      px(rsg, 16, 2, 2, 2, '#5f5343');                                    // muzzle
+      px(rsg, 6, 1, 5, 1, '#5f5343');                                     // carry handle
+      px(rsg, 0, 2, 3, 3, '#5f5343');                                     // stock
+      px(rsg, 4, 4, 2, 3, '#5f5343');                                     // grip
+      if (o.mag === 'magDrum') {
+        px(rsg, 6, 4, 5, 4, '#6f6250');
+        px(rsg, 7, 5, 3, 2, '#443a2d');
+      } else if (o.mag === 'magLight') {
+        px(rsg, 7, 4, 3, 1, '#6f6250');
+      } else {
+        px(rsg, 7, 4, 3, 2, '#6f6250');
+      }
+      if (o.optic === 'optLaser') px(rsg, 12, 4, 1, 1, '#ff4a3c');
+      if (o.barrel === 'barBurst') px(rsg, 9, 0, 3, 1, '#5f5343');
+      return outlined(rs);
+    };
+    const rsCache = {};
+    Sprites.rifleIconSBuild = (o) => {
+      o = o || {};
+      const key = [o.barrel, o.mag, o.optic, o.stock].join('|');
+      return (rsCache[key] || (rsCache[key] = rifleS(o)));
+    };
+    Sprites.rifleIconS = Sprites.rifleIconSBuild({});
 
     // held, for the aiming pose — longer than the pistol, which is the point
-    const rh = makeCanvas(16, 7), rhg = rh.getContext('2d');
-    px(rhg, 3, 2, 11, 2, '#8a7a61'); px(rhg, 3, 2, 11, 1, '#a8977b');
-    px(rhg, 14, 2, 2, 1, '#5f5343');                   // muzzle, forward
-    px(rhg, 5, 1, 4, 1, '#5f5343');                    // carry handle
-    px(rhg, 0, 2, 3, 3, '#5f5343');                    // stock into the shoulder
-    px(rhg, 5, 4, 2, 2, '#5f5343');                    // grip
-    px(rhg, 7, 4, 2, 2, '#6f6250');                    // magazine
-    Sprites.rifleHeld = outlined(rh);
+    const rifleH = (o) => {
+      o = o || {};
+      const rh = makeCanvas(16, 7), rhg = rh.getContext('2d');
+      px(rhg, 3, 2, 11, 2, '#8a7a61'); px(rhg, 3, 2, 11, 1, '#a8977b');
+      px(rhg, 14, 2, 2, 1, '#5f5343');                 // muzzle, forward
+      px(rhg, 5, 1, 4, 1, '#5f5343');                  // carry handle
+      px(rhg, 0, 2, 3, 3, '#5f5343');                  // stock into the shoulder
+      px(rhg, 5, 4, 2, 2, '#5f5343');                  // grip
+      if (o.mag === 'magDrum') px(rhg, 6, 4, 4, 3, '#6f6250');
+      else if (o.mag === 'magLight') px(rhg, 7, 4, 2, 1, '#6f6250');
+      else px(rhg, 7, 4, 2, 2, '#6f6250');
+      return outlined(rh);
+    };
+    const rhCache = {};
+    Sprites.rifleHeldBuild = (o) => {
+      o = o || {};
+      const key = [o.barrel, o.mag, o.optic, o.stock].join('|');
+      return (rhCache[key] || (rhCache[key] = rifleH(o)));
+    };
+    Sprites.rifleHeld = Sprites.rifleHeldBuild({});
 
     // metal pipe (ground item + icon)
     const pi = makeCanvas(20, 7), pig = pi.getContext('2d');

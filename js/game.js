@@ -2057,7 +2057,7 @@ function drawPlayer(x, y) {
     if (Math.cos(player.angle) < 0) ctx.scale(1, -1);
     ctx.fillStyle = '#26262c';           // coat sleeve
     ctx.fillRect(1, -1, 4, 2);
-    ctx.drawImage(player.gun === 'rifle' ? Sprites.rifleHeld : Sprites.pistolHeld, 5, -5);
+    ctx.drawImage(player.gun === 'rifle' ? Sprites.rifleHeldBuild(rifleFit()) : Sprites.pistolHeld, 5, -5);
     ctx.fillStyle = '#0e0e12';           // gloved hand wrapping the grip
     ctx.fillRect(7, -1, 3, 2);
     ctx.restore();
@@ -2361,7 +2361,8 @@ function drawHUD() {
   if (showGun) {
     const G = gunStats(player.gun);       // as MODIFIED — see js/mods.js
     const A = player.arms[player.gun] || player.arms.pistol;
-    uiIcon(player.gun === 'rifle' ? Sprites.rifleIconS : Sprites.pistolIconS, slotX + 4, slotY + 3);
+    uiIcon(player.gun === 'rifle' ? Sprites.rifleIconSBuild(rifleFit()) : Sprites.pistolIconS,
+            slotX + 4, slotY + 3);
     // loaded / capacity — amber on the last third, red on empty
     const col = A.loaded === 0 ? '#ff5a3c'
               : A.loaded <= G.cap / 3 ? '#ffd27a' : '#e8d9c0';
