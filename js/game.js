@@ -1163,6 +1163,19 @@ function gsRowStatus(gun, id) {
   return { text: bits.join(' · '), col: affordable(p.cost) ? '#e8d9c0' : '#8d959b' };
 }
 
+// The one thing a row of numbers cannot say. A freeze-frame lesson would be
+// wrong here — the world is already standing still at a bench, and the parts
+// that change HOW YOU FIRE deserve a sentence in the player's own head the
+// first time they go on, once, and never again.
+function gsTaught(id) {
+  if (id === 'barBurst')
+    think('burst', 'Three rounds a pull now. Whether or not the first one was enough.');
+  else if (id === 'magDrum')
+    think('drum', 'Twice as long between reloads. Twice as long reloading.');
+  else if (id === 'optLaser')
+    think('laser', 'It draws the shot before I take it.');
+}
+
 function updateGunsmith(dt) {
   const gun = GunUI.gun, slots = slotsOf(gun);
   GunUI.slot = Math.max(0, Math.min(GunUI.slot, slots.length - 1));
@@ -1184,8 +1197,10 @@ function updateGunsmith(dt) {
         SFX.blip();                                     // already on the gun
       } else if (ownsPart(id)) {
         fitPart(gun, id); SFX.switchW(); showMsg(p.name.toUpperCase() + ' FITTED', 1.6);
+        gsTaught(id);
       } else if (affordable(p.cost)) {
         buyPart(gun, id); SFX.buy(); showMsg(p.name.toUpperCase() + ' — FITTED', 1.8);
+        gsTaught(id);
       } else {
         SFX.deny(); showMsg('Not enough — ' + gsRowStatus(gun, id).text, 1.6);
       }
@@ -2594,10 +2609,24 @@ function drawHUD() {
     } else {
       // ONE PIP PER ROUND IN THE GUN — the row empties as you fire, so the
       // moment you have to stop is visible before it arrives, not after.
-      for (let i = 0; i < G.cap; i++) {
-        const lit = i < A.loaded;
-        uiRect(slotX + 4 + i * 4, py2, 3, 6,
-          lit ? (A.loaded <= G.cap / 3 ? '#ffd27a' : '#c9c9d2') : '#2a2c31');
+      // THE ROW IS SIZED TO THE MAGAZINE. Twelve pips fit in this slot; a
+      // drum's twenty-four do not, so the pitch is measured against the room
+      // the pocket total leaves, and below two pixels a pip stops being a pip
+      // and the row becomes the bar it was turning into anyway — with a tick
+      // every six rounds, so it can still be counted.
+      const resTxt = '×' + (A.reserve > 99 ? '99+' : A.reserve);
+      const room = SLOT_W - 8 - ptWidth(resTxt, 7) - 2;
+      const pitch = Math.max(1, Math.min(4, Math.floor(room / G.cap)));
+      const lowCol = A.loaded <= G.cap / 3 ? '#ffd27a' : '#c9c9d2';
+      if (pitch >= 2) {
+        for (let i = 0; i < G.cap; i++)
+          uiRect(slotX + 4 + i * pitch, py2, pitch - 1, 6, i < A.loaded ? lowCol : '#2a2c31');
+      } else {
+        const w = Math.min(room, G.cap);
+        uiRect(slotX + 4, py2, w, 5, '#2a2c31');
+        uiRect(slotX + 4, py2, Math.round(w * A.loaded / G.cap), 5, lowCol);
+        for (let r = 6; r < G.cap; r += 6)
+          uiRect(slotX + 4 + Math.round(w * r / G.cap), py2, 1, 5, 'rgba(10,8,6,0.85)');
       }
       // and behind it, what is left in your pocket. Empty with rounds to put
       // in says R instead, and keeps saying it.
@@ -2607,7 +2636,7 @@ function drawHUD() {
       } else {
         // clamped: the rifle's twelve pips run to within a few pixels of this,
         // and a four-digit pocket would print over them
-        ptext('×' + (A.reserve > 99 ? '99+' : A.reserve), slotX + SLOT_W - 4, py2 - 1, 7,
+        ptext(resTxt, slotX + SLOT_W - 4, py2 - 1, 7,
           A.reserve === 0 ? '#ff5a3c' : '#8d959b', 'right');
       }
     }

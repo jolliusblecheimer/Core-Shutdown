@@ -1789,3 +1789,49 @@ already read in four places and mods would make those four disagree.
 Three things want an answer before building: the suppressor / heard-gunfire
 mechanic, whether any part should drop as loot, and whether the rifle ammunition
 price needs to move once burst and drum exist.
+
+---
+
+## The gunsmith, built — 2026-08-21
+
+**Laurens:** *"i like all except muzzle. start building"*
+
+The muzzle slot is cut, and with it the suppressor and the "gunfire is heard"
+mechanic it would have needed — detection stays visual, `canSpot` untouched.
+Four slots on the rifle, five buyable parts. The other two open questions were
+settled the way the plan leaned: bench-only parts, no ammunition price change
+until somebody plays it.
+
+Built in six commits, each one playable on its own:
+
+1. **The bench** — the Hunter-Killer with its lid off is gone from the sprite,
+   and with it the amber eye-glow, the look text and Bo's three lines about it.
+   In its place a rifle in a cradle with its handguard off, a barrel in the
+   vice, a tray of springs and a hooded lamp that now lights that wall. The
+   first arrangement stacked the lamp over the vice and the right-hand end read
+   as one grey lump; lamp went left, gun centre, vice far right.
+2. **`gunStats()`** in a new `js/mods.js` — the only place the rifle's numbers
+   come from, because mods on top of four separate readers of GUNS would have
+   disagreed within a week. Parts declare deltas, so the panel prints what a
+   part does by asking what the gun would become.
+3. **The rifle drawn from its parts** — long barrel reaches further, drum hangs
+   round and fat, stripped box is a stub, laser is a red diode under the
+   handguard, burst regulator clamps over the gas port, padded stock is deeper.
+   The HUD slot icon and the held pose take the same map.
+4. **The panel** — gun big in the middle, four chips two to a side on stepped
+   leader lines to the exact point each changes, and hovering a part you have
+   not bought draws it on the gun.
+5. **The burst and the laser** — the two parts that needed code. A burst in the
+   air finishes itself whether or not you are still holding the trigger, which
+   is the whole cost of the part; `R` pressed mid-burst is remembered and
+   honoured the moment it ends.
+6. **HUD and verification** — the pip row is sized to the magazine now, so 24
+   pips fit the same 70px slot as 12. Verified in a browser: every part bought
+   through the panel and fired, the burst counted round by round, the reload
+   timed at its modified length, the save round-tripped through a page reload,
+   an unknown part id falling back to standard, and a save written before the
+   bench existed loading with every slot standard and not one round lost —
+   which turned up a real bug on the way (a drum save read by a build without
+   the drum used to clamp the loaded count and quietly eat twelve rounds).
+
+Left for a human: whether burst + drum makes rifle rounds miserable.

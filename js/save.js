@@ -172,8 +172,12 @@ function loadArms(p) {
       const src = p.arms[gun];
       if (!src) continue;
       const A = magsOf(gun), cap = capOf(gun);
-      A.loaded = Math.max(0, Math.min(cap, num(src.loaded, 0)));
-      A.reserve = Math.max(0, num(src.reserve, 0));
+      // more in the gun than it now holds — a drum save read by a build that
+      // no longer has the drum. The overflow goes in the pocket; NOTHING is
+      // lost by a part list changing under a run.
+      const want = Math.max(0, num(src.loaded, 0));
+      A.loaded = Math.min(cap, want);
+      A.reserve = Math.max(0, num(src.reserve, 0)) + (want - A.loaded);
       // the magazine pouch, emptied into the pocket round for round
       if (Array.isArray(src.spares))
         for (const n of src.spares) A.reserve += Math.max(0, num(n, 0));

@@ -67,7 +67,9 @@ const ITEMS = {
     icon: () => Sprites.rifleBuild(rifleFit()),
     desc: 'Straightened, re-crowned and given back its optic. It was issued ' +
           'to something that hunted people, and it hits like it — near twice ' +
-          'the pistol, and it carries. Slower between shots; make them count.',
+          'the pistol, and it carries. Slower between shots; make them count. ' +
+          'It is also the one gun that comes apart: Bo\'s bench will change ' +
+          'its barrel, its magazine, its stock and what sits on top of it.',
     have: () => player.owned.rifle,
     equipped: () => player.hasGun && player.gun === 'rifle',
     action: 'equip',

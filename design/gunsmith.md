@@ -1,10 +1,18 @@
 # THE GUNSMITH — Bo's bench, and what a rifle can become
 
-**Status: APPROVED 2026-08-21, building.** Laurens: *"i like all except muzzle.
-start building"* — so the muzzle slot is cut (§3) and the rifle has four slots.
-The other two open questions are settled the way §7 leaned: the bench is the
-only source of parts for now, and the price of rifle rounds does not move until
-somebody has played it.
+**Status: BUILT, 2026-08-21.** Laurens: *"i like all except muzzle. start
+building"* — so the muzzle slot is cut (§3) and the rifle has four. The other
+two open questions are settled the way §7 leaned: the bench is the only source
+of parts for now, and the price of rifle rounds does not move until somebody
+has played it.
+
+Everything below is in the game and was verified in a browser: every part
+bought through the panel and fired, a burst counted round by round, a reload
+timed at its modified length, the save round-tripped through a page reload, a
+part id the build does not ship falling back to standard, and a save written
+before any of this existed loading with every slot standard and not one round
+lost. Three things came out differently from the plan and are marked **[as
+built]** where they appear.
 
 Laurens, 2026-08-21: *"remove the robot on the table, and the dialogue attached
 to it — instead make it a weapon mod station, make it like the image a bit.
@@ -173,8 +181,20 @@ what is being borrowed, not its colours.
 - Selecting a slot lists its parts with **what they do in plain numbers**, not
   in adjectives: `reload 1.6 → 2.9s`. Owned parts say FITTED or FIT; unowned
   ones show their price and grey out when you cannot afford them.
-- Mouse-driven like the map and the trade board, keys as a backup, `E`/`Esc`
-  out.
+- Mouse-driven like the map and the trade board, `E`/`Esc` out.
+
+**[as built]** Two things the mock did not know:
+
+- **The rows only have room for the headline effect.** The price column is
+  measured, not guessed — the first attempt hard-coded the middle column's
+  width and the prices printed straight through the effects — so a row shows
+  its first effect, and the part under the pointer gets *every* effect spelled
+  out in amber under the list, above its description.
+- **No freeze-frame lesson for the burst.** The world is already standing still
+  at a bench, so the parts that change how you fire get a THOUGHT the first
+  time they go on instead — *"Three rounds a pull now. Whether or not the first
+  one was enough."* — which lands as you walk away rather than stopping the
+  game to explain a thing you just chose.
 
 **Buying happens inside the gunsmith**, not on Bo's trade board, so there is
 exactly one place in the world where gun work happens. Once a part is bought it
@@ -223,9 +243,20 @@ Build order, each step playable and verifiable on its own:
 5. **The parts**, cheapest code first: magazine → stock → optic → **barrel**,
    since the burst needs a firing queue in `updatePlayer` that reload and death
    both have to cancel.
-6. **HUD** — the pip row is capacity-aware: over 12 rounds it becomes a
-   segmented bar, because 24 pips do not fit in a 70px slot.
+6. **HUD** — the pip row is capacity-aware. **[as built]** it does not need the
+   segmented bar the plan expected: the pitch is measured against the room the
+   pocket total leaves, so twelve rounds keep their 3px pips and a drum's
+   twenty-four fit as 1px pips at a 2px pitch. Below a 2px pitch it *would*
+   fall back to a bar with a tick every six rounds, and that code is there for
+   whatever the next magazine is.
 7. Docs, `CONVERSATION_LOG.md`, push.
+
+**[as built] one more rule the swap had to keep.** Fitting a smaller magazine
+puts the overflow back in your pocket — but so must LOADING a save whose gun
+holds more than this build's parts allow (a drum run read by a build without
+the drum). Both paths now spill into the reserve instead of clamping, because
+"nothing is lost by reloading early" has to mean nothing is lost by changing
+your mind either.
 
 ## 6. What this deliberately does not do
 

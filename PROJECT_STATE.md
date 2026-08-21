@@ -1,6 +1,6 @@
 # CORE SHUTDOWN — project state
 
-**Updated:** 2026-08-20 · **Live:** https://jolliusblecheimer.github.io/Core-Shutdown/
+**Updated:** 2026-08-21 · **Live:** https://jolliusblecheimer.github.io/Core-Shutdown/
 **Repo:** https://github.com/jolliusblecheimer/Core-Shutdown (public)
 **Boss arena:** https://jolliusblecheimer.github.io/Core-Shutdown/arena.html
 
@@ -63,8 +63,9 @@ refuses out loud when the gun is full (`ALREADY LOADED`) or the pocket is empty
 (`NO ROUNDS LEFT`).
 The weapon slot shows `loaded/capacity`, **one pip per round in the gun** so
 the row empties as you fire, and the pocket total as a small `×n` that goes red
-at zero. Reloading replaces the pips with a filling bar; an empty gun with
-rounds to put in pulses an `R`. The first dry click teaches it — and the `R`
+at zero. The row is sized to the magazine, so a drum's twenty-four pips fit the
+same 70px slot as twelve. Reloading replaces the pips with a filling bar; an
+empty gun with rounds to put in pulses an `R`. The first dry click teaches it — and the `R`
 that dismisses that lesson performs the reload, via `tutShow(..., onDo)`.
 You buy, find and strip loose **rounds**; only a handed-over weapon arrives
 loaded (Marek's pistol, Bo's straightened rifle), via `chamber()`. Saves from
@@ -73,14 +74,49 @@ rounds — load without losing a round.
 Design and the decisions behind it, including why the magazine version was
 cut: `design/reloading.md`.
 
+### THE GUNSMITH — Bo's bench, and four slots on the rifle
+The bench in Candlelight opens a full-screen **gunsmith** (`E — work the
+bench`), laid out like the reference Laurens sent: the rifle drawn big **with
+its fitted parts actually on it**, four slot chips two to a side, and a stepped
+leader line from each chip to the point on the gun it changes. Hovering a part
+you have not bought **draws it on the gun** — you see the change before you pay
+for it. `MODIFICATIONS n/4` top right.
+
+**What can be changed is a property of the weapon.** The pipe, the knife and
+the scrap pistol have no slots and never will; the rifle is the one gun you
+earn, so it is the one gun you can argue with.
+
+| Slot | Parts |
+|---|---|
+| Barrel | **Burst regulator** — 3 rounds a pull, 0.08s apart, 0.95s between bursts · **Long barrel** — 22 damage, further and flatter, slower |
+| Magazine | **Drum, 24** — reload 1.6 → 2.9s · **Stripped 8** — reload 1.6 → 1.15s |
+| Optic | **Laser box** — draws the line the shot will take, and stops where the round would |
+| Stock | **Padded** — reload −0.35s, less shake |
+
+Parts are bought at the bench with scrap and tech; once bought they are yours
+and swap free. The burst's real cost is not a stat — **a burst in the air
+finishes itself**, so you stop choosing how many rounds to spend, and rifle
+rounds are the scarcest thing in the ring. `R` pressed mid-burst is remembered
+and honoured the moment it ends.
+
+`js/mods.js` holds the registry and **`gunStats(gun)` is the only place the
+rifle's numbers come from** — firing, reloading, the HUD and the panel all read
+it, and the panel's preview is literally the same sum over a different parts
+list. Parts declare deltas, so every effect line in the UI is this build's
+arithmetic on this build's numbers. Saves merge onto defaults; an id this build
+no longer ships falls back to standard, and a gun holding more than the new
+parts allow spills into the pocket rather than losing rounds.
+Design and the decisions behind it: `design/gunsmith.md`.
+
 ### THE SERVICE RIFLE — the ring's weapon upgrade
 The Compactor's drop, and the first thing the milestone-grant rule was written
 for. It comes out of the **wreck**, not the machine: the Compactor spent a year
 swallowing this yard and one of the things it swallowed was carrying a rifle.
-Bent double and no use to anyone — until **Bo** at Candlelight, the one who
-takes a Hunter-Killer apart for a living, straightens it for **3 tech + 10
-scrap**. His counter is the trade panel with a different verb on it (`REPAIRS`)
-and a stock that only has a row while you are carrying something bent.
+Bent double and no use to anyone — until **Bo** at Candlelight, the camp's
+gunsmith, straightens it for **3 tech + 10 scrap**. His counter is the trade
+panel with a different verb on it (`REPAIRS`) and a stock that only has a row
+while you are carrying something bent. Once it works, his BENCH is where it
+gets changed — see the gunsmith above.
 Repaired it does **18 damage against the pistol's 10**, flies further and
 flatter, and pays for it at 0.78s between shots against 0.5s. `player.gun`
 picks which gun is in the slot, exactly the way `player.melee` picks the melee.
@@ -205,6 +241,21 @@ to be nearly impossible — every interaction reach in the game was silently
 clamped to 1.1 tiles and measured to a prop's anchor corner. Fixed.
 
 ---
+
+## Where we left off — 2026-08-21
+
+**The gunsmith is built** (see its section above and `design/gunsmith.md`): the
+Hunter-Killer is off Bo's bench, the bench opens a four-slot gunsmith, and the
+rifle can be given a burst regulator, a long barrel, a drum, a stripped box, a
+laser and a padded stock. Laurens cut the muzzle slot — *"i like all except
+muzzle"* — and with it the suppressor, so **gunfire is still silent to anything
+that cannot see you**; detection stays purely visual. Bench-only parts and no
+ammunition price change this phase, both by the plan's own lean.
+
+**Wants a real playtest, not a browser check:** whether burst + drum makes rifle
+rounds miserable. Everything else about it is verified — every part bought and
+fired, the burst counted round by round, the save round-tripped, and a save from
+before the bench existed loading with nothing lost.
 
 ## Where we left off — 2026-08-20, end of day
 
