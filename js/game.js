@@ -818,6 +818,15 @@ function update(dt) {
     return;
   }
 
+  // the bench. It opens from the world and closes on itself, and while it is
+  // open the room outside it is not running — you are standing at a table
+  if (GunUI.open) {
+    updateGunsmith(dt);
+    updateParticles(dt);
+    Msg.t -= dt;
+    return;
+  }
+
   if (Input.pressed['KeyI'] || Input.pressed['Tab'] || (InvUI.open && !InvUI.ask && Input.pressed['Escape'])) {
     Input.pressed['KeyI'] = Input.pressed['Tab'] = false;
     InvUI.open = !InvUI.open;
@@ -1099,6 +1108,178 @@ function invAction(it) {
     eatFood(FOOD.find(f => f.id === it.id));
   } else return;            // materials and key items are carried, not used
   saveGame();
+}
+
+// ---------- THE GUNSMITH: Bo's bench, laid out like a gun on a bench ----------
+// The gun is drawn big in the middle WITH ITS FITTED PARTS ON IT, and the four
+// slots stand around it on leader lines to the point each one changes. That
+// line is the whole reason a gunsmith screen reads at a glance — without it
+// this is a list, and a list would not tell you that the drum is the fat thing
+// hanging under the receiver.
+//
+// Hovering a part you have not fitted DRAWS IT ON THE GUN. You see the change
+// before you pay for it, which is the one thing a shop of numbers cannot do.
+const GunUI = { open: false, gun: 'rifle', slot: 0, hoverSlot: -1, hoverRow: -1 };
+const GS = {
+  GUNY: 44,                       // centre of the drawn weapon
+  CHIP_W: 58, CHIP_H: 11,
+  LIST_Y: 92, ROW_H: 14, LIST_X: 10, LIST_W: 300,
+  SCALE: 4,
+};
+function openGunsmith(gun) {
+  GunUI.open = true;
+  GunUI.gun = gun || 'rifle';
+  GunUI.slot = 0;
+  GunUI.hoverSlot = GunUI.hoverRow = -1;
+  SFX.uiOpen();
+}
+// Two chips down each side, so no leader line has to cross another: the barrel
+// and the laser are on the left of the gun, the stock and the magazine on the
+// right of it.
+const GS_CHIP = {
+  barrel: { x: 10,  y: 26 },
+  optic:  { x: 10,  y: 62 },
+  stock:  { x: 252, y: 26 },
+  mag:    { x: 252, y: 62 },
+};
+function gsChipRect(slot) {
+  const c = GS_CHIP[slot.id] || { x: 10, y: 26 };
+  return { x: c.x, y: c.y, w: GS.CHIP_W, h: GS.CHIP_H };
+}
+// where the drawn gun sits, and where a slot's leader line touches it
+function gsGunOrigin(img) {
+  return { x: Math.round(VIEW_W / 2 - (img.width * GS.SCALE) / 2),
+           y: Math.round(GS.GUNY - (img.height * GS.SCALE) / 2) };
+}
+function gsRowRect(i) {
+  return { x: GS.LIST_X, y: GS.LIST_Y + i * GS.ROW_H, w: GS.LIST_W, h: GS.ROW_H - 1 };
+}
+// what the right-hand end of a row says, and in what colour
+function gsRowStatus(gun, id) {
+  const p = PARTS[id];
+  if (fittedId(gun, p.slot) === id) return { text: 'FITTED', col: '#7ad27a' };
+  if (ownsPart(id)) return { text: 'FIT', col: '#ffd27a' };
+  const bits = Object.keys(p.cost || {}).map(k => p.cost[k] + ' ' + (COST_NAME[k] || k));
+  return { text: bits.join(' · '), col: affordable(p.cost) ? '#e8d9c0' : '#8d959b' };
+}
+
+function updateGunsmith(dt) {
+  const gun = GunUI.gun, slots = slotsOf(gun);
+  GunUI.slot = Math.max(0, Math.min(GunUI.slot, slots.length - 1));
+  const rows = partsForSlot(gun, slots[GunUI.slot].id);
+
+  GunUI.hoverSlot = -1;
+  for (let i = 0; i < slots.length; i++)
+    if (packHit(gsChipRect(slots[i]), Input.mouseX, Input.mouseY)) GunUI.hoverSlot = i;
+  GunUI.hoverRow = -1;
+  for (let i = 0; i < rows.length; i++)
+    if (packHit(gsRowRect(i), Input.mouseX, Input.mouseY)) GunUI.hoverRow = i;
+
+  if (Input.pressed['LMB']) {
+    if (GunUI.hoverSlot >= 0 && GunUI.hoverSlot !== GunUI.slot) {
+      GunUI.slot = GunUI.hoverSlot; GunUI.hoverRow = -1; SFX.blip();
+    } else if (GunUI.hoverRow >= 0) {
+      const id = rows[GunUI.hoverRow], p = PARTS[id];
+      if (fittedId(gun, p.slot) === id) {
+        SFX.blip();                                     // already on the gun
+      } else if (ownsPart(id)) {
+        fitPart(gun, id); SFX.switchW(); showMsg(p.name.toUpperCase() + ' FITTED', 1.6);
+      } else if (affordable(p.cost)) {
+        buyPart(gun, id); SFX.buy(); showMsg(p.name.toUpperCase() + ' — FITTED', 1.8);
+      } else {
+        SFX.deny(); showMsg('Not enough — ' + gsRowStatus(gun, id).text, 1.6);
+      }
+    }
+  }
+  if (Input.pressed['KeyE'] || Input.pressed['Escape'] || Input.pressed['KeyI']) {
+    GunUI.open = false; SFX.uiClose();
+  }
+  for (const k of ['LMB', 'KeyE', 'Escape', 'KeyI', 'KeyR', 'Tab'])
+    Input.pressed[k] = false;
+}
+
+function drawGunsmith() {
+  const gun = GunUI.gun, slots = slotsOf(gun);
+  const rows = partsForSlot(gun, slots[GunUI.slot].id);
+  const hoverId = GunUI.hoverRow >= 0 ? rows[GunUI.hoverRow] : null;
+
+  uiRect(0, 0, VIEW_W, VIEW_H, 'rgba(0,0,0,0.93)');
+
+  // ---- header: what this is, what it is, and how much of it is yours
+  ptext('GUNSMITH', 10, 6, 8, '#ffd27a');
+  ptext((gunStats(gun).label || '').toUpperCase(), 10 + ptWidth('GUNSMITH', 8) + 8, 6, 8,
+        'rgba(232,217,192,0.55)');
+  ptext('MODIFICATIONS ' + modCount(gun) + '/' + slots.length, VIEW_W - 10, 6, 7,
+        'rgba(232,217,192,0.55)', 'right');
+  uiRect(8, 17, VIEW_W - 16, 1, '#5a4a38');
+
+  // ---- the gun, as it is now — or as it WOULD be with the part under the
+  // pointer, which is the only honest way to sell a part
+  const trial = Object.assign({}, rifleFit());
+  if (hoverId) trial[PARTS[hoverId].slot] = hoverId;
+  const img = Sprites.rifleBuild(trial);
+  const o = gsGunOrigin(img);
+  uiIcon(img, o.x, o.y, GS.SCALE);
+
+  // ---- the slots, each on a line to the part of the gun it changes
+  for (let i = 0; i < slots.length; i++) {
+    const s = slots[i], r = gsChipRect(s);
+    const on = i === GunUI.slot, hov = i === GunUI.hoverSlot;
+    const ax = o.x + (s.ax + 1) * GS.SCALE, ay = o.y + (s.ay + 1) * GS.SCALE;
+    const fromX = r.x < VIEW_W / 2 ? r.x + r.w : r.x;
+    const fromY = r.y + r.h / 2;
+    // an elbow, not a diagonal: a stepped line is what a callout looks like
+    // when it is drawn in a grid of pixels
+    const midX = Math.round((fromX + ax) / 2);
+    const lineCol = on ? 'rgba(255,210,122,0.75)' : 'rgba(232,217,192,0.22)';
+    uiRect(Math.min(fromX, midX), fromY, Math.abs(midX - fromX), 1, lineCol);
+    uiRect(midX, Math.min(fromY, ay), 1, Math.abs(ay - fromY), lineCol);
+    uiRect(Math.min(midX, ax), ay, Math.abs(ax - midX), 1, lineCol);
+
+    uiRect(r.x, r.y, r.w, r.h, on ? 'rgba(255,210,122,0.20)'
+                                  : hov ? 'rgba(255,255,255,0.10)' : 'rgba(20,17,14,0.85)');
+    uictx.strokeStyle = on ? '#ffd27a' : '#5a4a38';
+    uictx.lineWidth = U;
+    uictx.strokeRect(r.x * U, r.y * U, r.w * U, r.h * U);
+    // a filled pip means something other than the issued part is on the gun
+    const p = PARTS[fittedId(gun, s.id)];
+    uiRect(r.x + 4, r.y + 4, 3, 3, p && !p.std ? '#ffd27a' : 'rgba(232,217,192,0.25)');
+    ptext(s.label, r.x + 11, r.y + 2, 7, on ? '#ffd27a' : 'rgba(232,217,192,0.7)');
+  }
+
+  // ---- the parts for the chosen slot, and what each one does in seconds,
+  // rounds and damage — never in adjectives
+  uiRect(8, GS.LIST_Y - 9, VIEW_W - 16, 1, '#5a4a38');
+  for (let i = 0; i < rows.length; i++) {
+    const id = rows[i], p = PARTS[id], r = gsRowRect(i);
+    const hov = i === GunUI.hoverRow;
+    if (hov) uiRect(r.x, r.y, r.w, r.h, 'rgba(255,210,122,0.13)');
+    const st = gsRowStatus(gun, id);
+    const nameCol = st.text === 'FITTED' ? '#7ad27a' : (hov ? '#ffd27a' : '#e8d9c0');
+    ptext(ptClip(p.name, 100, 8), r.x + 6, r.y + 3, 8, nameCol);
+    // the middle column takes whatever the price leaves it, measured rather
+    // than guessed — the first attempt hard-coded 108px and the prices ran
+    // straight through the effects
+    const EFF_X = 112;
+    const room = r.w - 12 - EFF_X + r.x - (r.x + ptWidth(st.text, 8));
+    ptext(ptClip(effectLines(gun, id)[0] || '', Math.max(20, room), 7),
+          r.x + EFF_X, r.y + 4, 7, 'rgba(232,217,192,0.55)');
+    ptext(st.text, r.x + r.w - 6, r.y + 3, 8, st.col, 'right');
+  }
+
+  // ---- and under them, what the part under the pointer actually is: every
+  // effect it has, then the sentence that says what the thing IS
+  const tell = hoverId || fittedId(gun, slots[GunUI.slot].id);
+  if (PARTS[tell]) {
+    let y = GS.LIST_Y + rows.length * GS.ROW_H + 5;
+    const eff = effectLines(gun, tell).join('  ·  ');
+    if (eff) { ptext(ptClip(eff, VIEW_W - 28, 7), 14, y, 7, '#ffd27a'); y += 10; }
+    for (const line of ptFit(PARTS[tell].desc, VIEW_W - 28, 7).slice(0, 2)) {
+      ptext(line, 14, y, 7, 'rgba(232,217,192,0.45)');
+      y += 9;
+    }
+  }
+  ptext('E — close', VIEW_W / 2, VIEW_H - 10, 7, 'rgba(232,217,192,0.38)', 'center');
 }
 
 // ---------- render ----------
@@ -2340,10 +2521,12 @@ function drawHUD() {
     return;
   }
 
+  if (GunUI.open) drawGunsmith();
+
   // The pack covers the whole screen, so the world HUD would print straight
   // through it — health bar under the footer hint, minimap over the tiles.
   // Everything from here to the floating message belongs to the world.
-  if (!InvUI.open) {
+  if (!InvUI.open && !GunUI.open) {
 
   // health bar — colour slides green → yellow → orange → red with amount
   const hpFrac = Math.max(0, player.hp / player.maxHp);

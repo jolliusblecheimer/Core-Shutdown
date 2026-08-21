@@ -293,9 +293,18 @@ const USABLE = {
   hayStack: (p, ask) => ask ? 'E — look' : startDialog([
     "Bales carried down a hatch one at a time, by somebody who is not young.",
     "Bedding, and feed for animals this camp does not have yet." ]),
-  workbench: (p, ask) => ask ? 'E — look' : startDialog([
-    "A rifle in a cradle with its handguard off, a barrel in the vice,",
-    "and a tray of springs and pins under a lamp somebody keeps lit." ]),
+  // Bo's bench is the one place in the ring where a gun can be changed. It only
+  // opens for somebody carrying something worth changing — otherwise it is a
+  // table with a stranger's work on it, and says so.
+  workbench: (p, ask) => {
+    const mine = player.owned.rifle;
+    if (ask) return mine ? 'E — work the bench' : 'E — look';
+    if (mine) { openGunsmith('rifle'); return; }
+    startDialog([
+      "A rifle in a cradle with its handguard off, a barrel in the vice,",
+      "and a tray of springs and pins under a lamp somebody keeps lit.",
+      "Nothing you are carrying belongs on a bench like this." ]);
+  },
   hearth: (p, ask) => ask ? 'E — look' : startDialog([
     "A drum with a fire in it and a flue punched through a boarded window.",
     "The first warm thing you have stood next to since the yard." ]),

@@ -12,13 +12,14 @@
 // See design/gunsmith.md.
 
 // Slot order here is the order the panel lays them out, and each slot names the
-// point on the drawn rifle its leader line touches (sprite pixels, 30x12).
+// point on the drawn rifle its leader line touches — sprite pixels in the 34x12
+// build (js/sprites.js), where the standard gun starts 4px in.
 const MOD_SLOTS = {
   rifle: [
-    { id: 'barrel', label: 'BARREL',   ax: 5,  ay: 4 },
-    { id: 'mag',    label: 'MAGAZINE', ax: 15, ay: 10 },
-    { id: 'optic',  label: 'OPTIC',    ax: 20, ay: 2 },
-    { id: 'stock',  label: 'STOCK',    ax: 27, ay: 5 },
+    { id: 'barrel', label: 'BARREL',   ax: 8,  ay: 4 },   // mid barrel
+    { id: 'optic',  label: 'OPTIC',    ax: 15, ay: 8 },   // where the laser clamps
+    { id: 'mag',    label: 'MAGAZINE', ax: 19, ay: 10 },  // the magazine well
+    { id: 'stock',  label: 'STOCK',    ax: 30, ay: 5 },   // the butt
   ],
 };
 const isModdable = (gun) => !!MOD_SLOTS[gun];
@@ -221,8 +222,8 @@ function effectLines(gun, id) {
   if (next.laser && !now.laser) out.push('aim line');
   if (next.cap !== now.cap) out.push((next.cap > now.cap ? '+' : '') + (next.cap - now.cap) + ' rounds');
   if (next.dmg !== now.dmg) out.push((next.dmg > now.dmg ? '+' : '') + (next.dmg - now.dmg) + ' damage');
-  if (n1(next.reload) !== n1(now.reload)) out.push('reload ' + n1(now.reload) + '→' + n1(next.reload) + 's');
-  if (n1(next.cd) !== n1(now.cd)) out.push('rate ' + n1(now.cd) + '→' + n1(next.cd) + 's');
+  if (n1(next.reload) !== n1(now.reload)) out.push('reload ' + n1(now.reload) + '>' + n1(next.reload) + 's');
+  if (n1(next.cd) !== n1(now.cd)) out.push('fire ' + n1(now.cd) + '>' + n1(next.cd) + 's');
   if (next.life !== now.life) out.push(next.life > now.life ? 'longer reach' : 'shorter reach');
   if (p.note) out.push(p.note);
   return out;
