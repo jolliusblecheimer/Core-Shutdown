@@ -537,14 +537,20 @@ function updatePlayer(dt) {
     }
   }
 
-  if (Input.mouseDown && player.fireCd <= 0 && player.hasGun && player.burst <= 0 &&
-      player.active === 'gun' && player.reloadT <= 0) {
-    const G = activeGun();
+  // ---- THE TRIGGER. Left is always one round. The burst regulator does not
+  // take that away from you — it puts a second trigger under your right finger,
+  // and you decide, shot by shot, which one this moment is worth. Holding
+  // either repeats it; the burst still finishes whatever it started.
+  const G0 = activeGun();
+  const wantBurst = Input.rDown && G0.burst > 1;
+  if ((Input.mouseDown || wantBurst) && player.fireCd <= 0 && player.hasGun &&
+      player.burst <= 0 && player.active === 'gun' && player.reloadT <= 0) {
+    const G = G0;
     const A = player.arms[player.gun];
     if (A.loaded > 0) {
       player.fireCd = G.cd;
       fireRound(G, 0);                        // the first round always goes true
-      if (G.burst > 1) { player.burst = G.burst - 1; player.burstT = G.burstGap || 0.08; }
+      if (wantBurst) { player.burst = G.burst - 1; player.burstT = G.burstGap || 0.08; }
     } else {
       // an empty chamber is a moment, not an error message. The lesson fires
       // once, the first time it ever happens.

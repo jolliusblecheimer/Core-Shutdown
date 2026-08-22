@@ -2025,3 +2025,32 @@ sixteen pixels.
 
 Checked at all eight aim angles, firing and not, plus every pack tab, the
 equip dialog, both counters and the layout audits.
+
+---
+
+## Two triggers — 2026-08-21
+
+**Laurens:** *"change the 3 bullet burst thing so when you left click it shoots
+normal but rightlick shoots at 3 bullet burst"*
+
+Done, and it is the better shape for the part. The regulator used to *take away*
+single fire — every left click became a burst — which made it a decision you had
+to commit to at a bench, before the fight. Now it adds a second trigger under
+your right finger and the choice is per shot: left is one round, right is three,
+and holding either repeats it.
+
+The cost stays honest twice over: the heavier trigger group still slows every
+shot (0.78 → 0.95s), so single fire with the regulator fitted is worse than a
+standard barrel's — and once a burst starts **it finishes**, which is still the
+part's real price in a ring where rifle rounds are the scarcest thing going.
+
+`Input.rDown` is new (the right button HELD; `rPressed` was only ever an edge for
+the any-key tutorial). Right-click does nothing at all with any other barrel, or
+with the pistol — no new mode, no message, nothing to unlearn.
+
+Verified in a browser: a left tap spends one, a right tap spends exactly three
+even when released instantly, holding right fires two bursts in 1.1s, `R` during
+a burst is still remembered and honoured when it ends, an empty gun still gives
+the dry click and the reload lesson on either button, and the pistol and the
+standard barrel ignore the right button entirely. The gunsmith row reads
+`right click: 3-round burst`, and the part's description leads with the rule.

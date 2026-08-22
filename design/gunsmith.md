@@ -86,14 +86,19 @@ something.
 | Part | Does | Where |
 |---|---|---|
 | Standard barrel | the rifle as it comes | — |
-| **Burst regulator** | LMB fires a **3-round burst**, 0.08s apart, then 0.95s before the next. ~2.7 rounds/s against 1.28 — but the *whole burst leaves the gun*, whether or not the first round was enough, and the second and third wander a couple of degrees. | off a **Marshal** |
+| **Burst regulator** | A SECOND TRIGGER: left click still sends one round, **right click sends three**, 0.08s apart, and the second and third wander a couple of degrees. The *whole burst leaves the gun* whether or not the first round was enough. The heavier trigger group slows every shot (0.78 → 0.95s), and that is what it costs. | off a **Marshal** |
 | **Long barrel** | 18 → **22 damage**, bullet flies faster and further (speed 23, life 1.05), and slower between shots (0.78 → 0.95s). | off a **Magistrate** |
 
-The burst is Laurens' ask and it is the most interesting part in the list,
-because its downside is not a stat — it is that **you no longer choose how many
-rounds to spend.** In a ring where rifle rounds only come off machines and off
-Tam's counter, that is a real decision, and it is why the burst is worth
-going after rather than obviously correct.
+The burst is Laurens' ask and it is the most interesting part in the list.
+**It began by taking single fire away** — the regulator made every left click a
+burst — and that was wrong, because it made the part something you had to think
+about *before* the fight rather than during it. Laurens, 2026-08-21: *"change
+the 3 bullet burst thing so when you left click it shoots normal but right click
+shoots at 3 bullet burst"*. Now the choice is per shot, with your two fingers on
+two triggers, and the cost is honest twice over: every left click is slower than
+a standard barrel's, and once a burst starts **you have stopped choosing how
+many rounds to spend**. In a ring where rifle rounds only come off machines and
+off Tam's counter, that second one still bites.
 
 ### MAGAZINE — how often you have to stop
 

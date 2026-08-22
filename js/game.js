@@ -128,7 +128,7 @@ canvas.addEventListener('mousemove', e => {
 });
 canvas.addEventListener('mousedown', e => {
   if (e.button === 0) { Input.mouseDown = true; Input.pressed['LMB'] = true; }
-  if (e.button === 2) Input.rPressed = true;
+  if (e.button === 2) { Input.rDown = true; Input.rPressed = true; }
 });
 // scroll wheel switches the active weapon
 canvas.addEventListener('wheel', e => {
@@ -147,7 +147,10 @@ canvas.addEventListener('wheel', e => {
       : MELEE[player.melee].label.toUpperCase() + ' selected', 1);
   }
 }, { passive: false });
-window.addEventListener('mouseup', e => { if (e.button === 0) Input.mouseDown = false; });
+window.addEventListener('mouseup', e => {
+  if (e.button === 0) Input.mouseDown = false;
+  if (e.button === 2) Input.rDown = false;
+});
 
 // ---------- real 5x7 bitmap pixel font: chunky, crisp, always readable ----------
 const FONT = {
@@ -1186,7 +1189,7 @@ function gsRowStatus(gun, id) {
 // first time they go on, once, and never again.
 function gsTaught(id) {
   if (id === 'barBurst')
-    think('burst', 'Three rounds a pull now. Whether or not the first one was enough.');
+    think('burst', 'Left for one. Right for three, and three is what it takes.');
   else if (id === 'magDrum')
     think('drum', 'Twice as long between reloads. Twice as long reloading.');
   else if (id === 'optLaser')
@@ -1213,7 +1216,9 @@ function updateGunsmith(dt) {
       if (fittedId(gun, p.slot) === id) {
         SFX.blip();                                     // already on the gun
       } else if (ownsPart(id)) {
-        fitPart(gun, id); SFX.switchW(); showMsg(p.name.toUpperCase() + ' FITTED', 1.6);
+        fitPart(gun, id); SFX.switchW();
+        showMsg(p.name.toUpperCase() + (id === 'barBurst'
+          ? ' — RIGHT CLICK FOR THREE' : ' FITTED'), id === 'barBurst' ? 3 : 1.6);
         gsTaught(id);
       } else {
         SFX.deny(); showMsg('You do not have that part', 1.6);

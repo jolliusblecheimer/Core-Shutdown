@@ -6,7 +6,8 @@ const Input = {
   mouseX: VIEW_W / 2, mouseY: VIEW_H / 2,
   worldX: 0, worldY: 0,
   mouseDown: false,     // left button held
-  rPressed: false,      // right button edge (melee swing)
+  rDown: false,         // right button HELD — the burst trigger, see updatePlayer
+  rPressed: false,      // right button edge
 };
 
 window.addEventListener('keydown', e => {
@@ -15,5 +16,5 @@ window.addEventListener('keydown', e => {
   if (['Space', 'Tab', 'Backspace', 'KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
 });
 window.addEventListener('keyup', e => { Input.keys[e.code] = false; });
-window.addEventListener('blur', () => { Input.keys = {}; Input.mouseDown = false; });
+window.addEventListener('blur', () => { Input.keys = {}; Input.mouseDown = false; Input.rDown = false; });
 window.addEventListener('contextmenu', e => e.preventDefault());

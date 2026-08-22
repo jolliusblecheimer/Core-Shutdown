@@ -89,7 +89,7 @@ earn, so it is the one gun you can argue with.
 
 | Slot | Parts |
 |---|---|
-| Barrel | **Burst regulator** — 3 rounds a pull, 0.08s apart, 0.95s between bursts · **Long barrel** — 22 damage, further and flatter, slower |
+| Barrel | **Burst regulator** — left click one round, **right click three** · **Long barrel** — 22 damage, further and flatter, slower |
 | Magazine | **Drum, 24** — reload 1.6 → 2.9s · **Stripped 8** — reload 1.6 → 1.15s |
 | Optic | **Laser box** — draws the line the shot will take, and stops where the round would |
 | Stock | **Padded** — reload −0.35s, less shake |
@@ -116,10 +116,12 @@ emptied before its part existed pays out on load (`MILESTONE_GRANTS`). Parts you
 **PARTS**, with a green bar on whichever is on the gun. Once yours, they swap
 free.
 
-The burst's real cost is not a stat — **a burst in the air finishes itself**,
-so you stop choosing how many rounds to spend, and rifle rounds are the
-scarcest thing in the ring. `R` pressed mid-burst is remembered and honoured
-the moment it ends.
+The burst regulator is a **second trigger, not a replacement**: left click is
+always one round, right click is three, and you pick shot by shot. Its cost is
+that every shot is a little slower with it fitted, and that **a burst in the
+air finishes itself** — you stop choosing how many rounds to spend, and rifle
+rounds are the scarcest thing in the ring. `R` pressed mid-burst is remembered
+and honoured the moment it ends.
 
 `js/mods.js` holds the registry and **`gunStats(gun)` is the only place the
 rifle's numbers come from** — firing, reloading, the HUD and the panel all read
