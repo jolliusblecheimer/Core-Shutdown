@@ -25,6 +25,15 @@
 - Sound: fully synthesized SFX (`js/audio.js`) + procedural ambient drone,
   wind and machine accents. `O` toggles ambience.
 - HD-2D post pass: colour grade + tilt-shift bands, god rays, dust, AO.
+- **Nothing hostile is ever invisible.** The player has always shown through
+  walls as a washed-out silhouette; every living enemy does now too, but only
+  when it is genuinely COVERED and within eight tiles. Tall props record the
+  screen rectangle they painted (`blocks()`), and the ghost pass asks whether
+  this sprite's head *and* middle are behind one of them — a tile test would
+  have ghosted enemies standing behind a building's far side, who are drawn
+  clear above its roof and perfectly visible. Half-covered is not covered.
+  The distance rule is what keeps it from being x-ray vision: an enemy two
+  streets away behind a building is still an enemy you have not found.
 
 ### Content — Area 1: THE JUNKYARD (32×32, complete)
 The tutorial. Wake with nothing → find the metal pipe → fight Scrappers →

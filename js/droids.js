@@ -729,6 +729,14 @@ function droidMeleeHit(m, ps) {
 // =====================================================================
 // DRAWING
 // =====================================================================
+// the frame this one is showing — shared with the ghost pass in js/game.js
+function droidFrame(d) {
+  const set = Sprites.droids[d.type];
+  const acting = d.state === 'windup' || d.state === 'swing' ||
+                 d.state === 'aim' || d.state === 'fire';
+  return acting ? set.act : set.walk[d.frame];
+}
+
 function drawDroid(d, x, y) {
   const set = Sprites.droids[d.type];
   const t = DROID_TYPES[d.type];
@@ -743,9 +751,7 @@ function drawDroid(d, x, y) {
   }
 
   drawShadow(x, y, t.r * 20);
-  const acting = d.state === 'windup' || d.state === 'swing' ||
-                 d.state === 'aim' || d.state === 'fire';
-  const fr = acting ? set.act : set.walk[d.frame];
+  const fr = droidFrame(d);
   const dx = Math.round(x - fr.ox), dy = Math.round(y - fr.oy);
 
   if (d.hitFlash > 0) {

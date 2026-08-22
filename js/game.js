@@ -1335,6 +1335,12 @@ function render() {
   const ox = Math.round(camX + sx), oy = Math.round(camY + sy);
   lastOx = ox; lastOy = oy;
 
+  // the ghost pass needs to know what painted over what, but only while
+  // something hostile is close enough to be worth drawing through a wall
+  blockers.length = 0;
+  wantBlockers = player.dead <= 0 && GHOSTED.some(([list, , alive]) =>
+    list.some(e => alive(e) && Math.hypot(e.x - player.x, e.y - player.y) <= GHOST_NEAR));
+
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = '#141110';
   ctx.fillRect(0, 0, VIEW_W, VIEW_H);
@@ -1498,6 +1504,35 @@ function render() {
     ctx.globalAlpha = 1;
   }
 
+  // ---- AND THE SAME COURTESY FOR THE OTHER SIDE ----
+  // Laurens: *"you still show the character transparently [...] do the same
+  // with any opponent otherwise they just become invisible and unkillable"*.
+  // A machine standing behind a pier used to be a machine that hit you from
+  // nowhere. Now anything hostile that is HIDDEN and CLOSE shows through, in
+  // the same washed-out silhouette the player gets.
+  //
+  // Two conditions, and both matter. HIDDEN, because an enemy in the open
+  // needs no help. CLOSE, because drawing every occluded enemy on the map
+  // through its wall would hand the player x-ray vision and take the stealth
+  // game apart — a droid two streets away behind a building is supposed to be
+  // a droid you have not found yet.
+  if (wantBlockers) {
+    for (const [list, frameOf, alive] of GHOSTED) {
+      for (const e of list) {
+        if (!alive(e)) continue;
+        if (Math.hypot(e.x - player.x, e.y - player.y) > GHOST_NEAR) continue;
+        const fr = frameOf(e);
+        if (!fr || !fr.img) continue;
+        const s = isoToScreen(e.x, e.y);
+        const dx = Math.round(s.x - ox - fr.ox), dy = Math.round(s.y - oy - fr.oy);
+        if (!spriteCovered(dx, dy, dx + fr.img.width, dy + fr.img.height)) continue;
+        ctx.globalAlpha = 0.4;
+        ctx.drawImage(fr.img, dx, dy);
+        ctx.globalAlpha = 1;
+      }
+    }
+  }
+
   for (const p of Particles) {
     const s = isoToScreen(p.x, p.y);
     ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
@@ -1600,6 +1635,49 @@ function render() {
 // A tall prop standing between the camera and the player hides them. Fade any
 // wall/gate the player is standing directly behind, so they never look like
 // they are inside it.
+// WHAT ACTUALLY PAINTED OVER WHAT. A tile test is not good enough here: a
+// building's footprint is `heavy` for every tile it stands on, so an enemy
+// standing behind its FAR side — drawn clear above the roof, plainly visible —
+// would count as hidden and get a ghost drawn over a sprite you can already
+// see. So the tall props record the RECTANGLE they painted, in screen pixels,
+// and the ghost pass asks the only question that matters: was this sprite
+// covered? Rebuilt every frame, a couple of dozen rects, only while something
+// hostile is near enough to be worth the arithmetic.
+let blockers = [], wantBlockers = false;
+function blocks(x0, y0, w, h) {
+  if (wantBlockers && h >= 14) blockers.push({ x0, y0, x1: x0 + w, y1: y0 + h, bottom: y0 + h });
+}
+// covered = both the head and the middle of this sprite are behind something
+// nearer the camera. Half-covered is not covered: you can still see them.
+function spriteCovered(x0, y0, x1, y1) {
+  const hx = Math.round((x0 + x1) / 2);
+  const head = y0 + 3, mid = Math.round((y0 + y1) / 2);
+  let gotHead = false, gotMid = false;
+  for (const b of blockers) {
+    if (b.bottom <= y1 - 1) continue;             // behind this sprite, not in front
+    if (hx < b.x0 || hx >= b.x1) continue;
+    if (head >= b.y0 && head < b.y1) gotHead = true;
+    if (mid >= b.y0 && mid < b.y1) gotMid = true;
+    if (gotHead && gotMid) return true;
+  }
+  return false;
+}
+// close enough to be in the fight, in tiles. The view is about ten tiles wide.
+const GHOST_NEAR = 8;
+// every hostile list, how to ask it for its current frame, and what counts as
+// worth drawing. Resolved late (as an array of triples) because these lists
+// live in three different files.
+// Every one of these is a `const` array the world mutates in place, so holding
+// the reference here is safe across area changes.
+const GHOSTED = [
+  [scrappers, (e) => ({ img: scrapperFrame(e), ox: 9, oy: 16 }),
+              (e) => e.state !== 'off' && e.state !== 'dead'],
+  [bandits,   (e) => { const img = banditFrame(e); return { img, ox: img.width / 2, oy: img.height - 1 }; },
+              (e) => !e.dead],
+  [droids,    (e) => droidFrame(e),
+              (e) => e.state !== 'dead'],
+];
+
 function occlusionAlpha(p) {
   if (player.dead > 0) return 1;
   const dx = player.x - p.gx, dy = player.y - p.gy;
@@ -1753,7 +1831,9 @@ function drawProp(p, x, y) {
     // one pre-rendered volume: faces and roof already share their corners
     const bs = Sprites.makeBuilding(p.foot[2], p.foot[3], p.kind, p.seed);
     const a = isoToScreen(p.foot[0], p.foot[1]);
-    ctx.drawImage(bs.img, Math.round(a.x - lastOx - bs.ax), Math.round(a.y - lastOy - bs.ay));
+    const bx = Math.round(a.x - lastOx - bs.ax), by = Math.round(a.y - lastOy - bs.ay);
+    ctx.drawImage(bs.img, bx, by);
+    blocks(bx, by, bs.img.width, bs.img.height);
     return;
   }
   if (T === 'canopy') { drawRoof(p); return; }
@@ -1772,6 +1852,9 @@ function drawProp(p, x, y) {
     else if (a < 1) ctx.globalAlpha = a;
     ctx.drawImage(p.img, Math.round(x + p.dx), Math.round(y - p.lift + p.dy));
     ctx.globalAlpha = 1;
+    // the strip image is mostly empty (the shear lives in it), so record the
+    // band the wall actually stands in rather than the image's bounding box
+    if (!p.front) blocks(Math.round(x + p.dx), Math.round(y - p.lift), p.img.width, p.lift + 5);
     return;
   }
   if (T === 'gate') {
@@ -1813,6 +1896,8 @@ function drawProp(p, x, y) {
     ctx.ellipse(x, frontY - fh * 3, fw * 9, fh * 5, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.drawImage(img, Math.round(x - img.width / 2), Math.round(frontY - img.height + 2));
+    blocks(Math.round(x - img.width / 2), Math.round(frontY - img.height + 2),
+           img.width, img.height);
     return;
   }
   let img = null, oyOff = 0;
@@ -1908,6 +1993,8 @@ function drawProp(p, x, y) {
     if (a < 1) ctx.globalAlpha = a;
     ctx.drawImage(Sprites.pier, Math.round(x - Sprites.pier.width / 2), Math.round(y - 52));
     ctx.globalAlpha = 1;
+    if (a > 0.8) blocks(Math.round(x - Sprites.pier.width / 2), Math.round(y - 52),
+                        Sprites.pier.width, 56);
     return;
   }
   else if (T === 'brazier') {
@@ -1959,7 +2046,10 @@ function drawProp(p, x, y) {
   else if (T === 'waterVat') { img = Sprites.waterVat; oyOff = -28; drawShadow(x, y, 9); }
   else if (T === 'preserves') { img = Sprites.preserves; oyOff = -14; drawShadow(x, y, 8); }
   else if (T === 'strongbox') { img = Sprites.strongbox; oyOff = -14; drawShadow(x, y, 8); }
-  if (img) ctx.drawImage(img, Math.round(x - img.width / 2), Math.round(y + oyOff));
+  if (img) {
+    ctx.drawImage(img, Math.round(x - img.width / 2), Math.round(y + oyOff));
+    blocks(Math.round(x - img.width / 2), Math.round(y + oyOff), img.width, img.height);
+  }
 }
 
 function drawBoss(x, y) {
@@ -2361,6 +2451,23 @@ function drawNpc(x, y) {
 // A raider. Deliberately NOT drawn like a machine: no eye glow, no amber
 // hurt-light, and the hit flash is a pale wash rather than a shower of sparks.
 // The only thing that lights up on this street is the rifle's aim line.
+// WHICH PICTURE OF THIS ONE IS ON SCREEN RIGHT NOW. Pulled out of the draw so
+// the ghost pass can ask the same question and get the same answer — two copies
+// of a frame table drift, and a ghost in the wrong pose is worse than none.
+function banditFrame(b) {
+  const attacking = b.state === 'windup' || b.state === 'swing';
+  if (b.role === 'knife') {
+    const set = Sprites.banditKnife[b.v % Sprites.banditKnife.length];
+    return attacking ? set[2] : set[b.frame];
+  }
+  if (b.role === 'pistol')
+    return b.state === 'aim' ? Sprites.banditPistol[2] : Sprites.banditPistol[b.frame];
+  return b.state === 'aim' ? Sprites.banditRifle[2] : Sprites.banditRifle[b.frame];
+}
+function scrapperFrame(s) {
+  return Sprites.scrapper[(s.state === 'windup' || s.state === 'swing') ? 2 : s.frame];
+}
+
 function drawBandit(b, x, y) {
   if (b.dead) {
     // they lie there the same forty-five seconds a machine does, then go
@@ -2373,16 +2480,7 @@ function drawBandit(b, x, y) {
     return;
   }
   drawShadow(x, y, 6);
-  const attacking = b.state === 'windup' || b.state === 'swing';
-  let img;
-  if (b.role === 'knife') {
-    const set = Sprites.banditKnife[b.v % Sprites.banditKnife.length];
-    img = attacking ? set[2] : set[b.frame];
-  } else if (b.role === 'pistol') {
-    img = b.state === 'aim' ? Sprites.banditPistol[2] : Sprites.banditPistol[b.frame];
-  } else {
-    img = b.state === 'aim' ? Sprites.banditRifle[2] : Sprites.banditRifle[b.frame];
-  }
+  const img = banditFrame(b);
   const dx = Math.round(x - img.width / 2), dy = Math.round(y - img.height + 1);
   ctx.drawImage(img, dx, dy);
   if (b.hitFlash > 0) {
@@ -2458,8 +2556,7 @@ function drawScrapper(s, x, y) {
     return;
   }
   drawShadow(x, y, 6);
-  const fr = (s.state === 'windup' || s.state === 'swing') ? 2 : s.frame;
-  const img = Sprites.scrapper[fr];
+  const img = scrapperFrame(s);
   if (s.hitFlash > 0) {
     ctx.drawImage(img, Math.round(x - 9), Math.round(y - 16));
     ctx.globalCompositeOperation = 'lighter';

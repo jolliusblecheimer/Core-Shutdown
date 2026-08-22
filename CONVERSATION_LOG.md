@@ -2092,3 +2092,44 @@ reloading, pistol, melee), a real right-click spending exactly three rounds and
 starting the bar, holding the right button through a cooldown firing nothing
 until it recharged, left click unaffected by it, and the cooldown starting clean
 on load.
+
+---
+
+## Enemies stop disappearing — 2026-08-21
+
+**Laurens:** *"you know how when i walk next to a building and you still show
+the charcter transparently do the same with any opponen otherwise they just
+become invisible and unkillable for me"*
+
+Done for every living hostile — scrappers, bandits and droids — in the same
+washed-out silhouette the player has always had.
+
+Two conditions, and both matter. **Covered**, because an enemy in the open needs
+no help. **Within eight tiles**, because drawing every occluded enemy on the map
+through its wall is x-ray vision, and this game's stealth depends on a droid two
+streets away being a droid you have not found yet.
+
+The interesting part was "covered". The cheap test — is any tile between it and
+the camera `heavy`? — is wrong in a way that shows: a building's footprint is
+heavy on every tile it stands on, so an enemy behind its FAR side counts as
+hidden while being drawn clear above the roof, plainly visible, and would get a
+40%-alpha copy of itself painted on top. So the tall props (buildings, wall
+runs, piers, trash mountains, and everything that goes through the common prop
+draw) now record the **rectangle they actually painted**, and the ghost pass
+asks whether this sprite's head *and* middle are inside one of them, from
+something nearer the camera. Half-covered is not covered: you can see them.
+
+The rect list is rebuilt per frame and only while something hostile is near —
+with nobody around, `wantBlockers` is false and not a single rect is recorded.
+Measured: 8.16ms a frame in the headless canvas either way, which is to say the
+difference is noise.
+
+Also pulled the frame-picking for each enemy into `banditFrame`, `scrapperFrame`
+and `droidFrame`, shared by the real draw and the ghost — two copies of a frame
+table drift, and a ghost in the wrong pose is worse than no ghost.
+
+Verified by walking a droid out from behind a building step by step: covered for
+exactly the four steps the building paints over it, not before (above the roof),
+not after (clear of the corner). A scrapper behind a trash mountain ghosts; the
+same scrapper in the open does not; a bandit behind a car does not, because a
+car hides your legs and not your head.
