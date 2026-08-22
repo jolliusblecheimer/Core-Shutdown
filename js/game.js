@@ -1026,10 +1026,16 @@ function update(dt) {
 //
 // The screen is 320x180 logical pixels, about the size of one BotW item tile,
 // so this is the grammar of that screen and not a copy of it.
+// THE TILE IS SIZED TO THE WEAPON. It was 26px in a 5x4 grid, which meant the
+// rifle — 36px of drawn gun — could not go in it, and the pack showed a
+// shrunken redraw instead: a different gun from the one on Bo's bench, and a
+// worse one. A weapon is the thing you most want to look at in a pack, so the
+// grid gives way to it: 36px tiles, four across and three down. Twelve slots a
+// tab is still more than any tab holds.
 const PACK = {
-  CELL: 26, GAP: 3, COLS: 5, ROWS: 4,   // 20 slots — far more than we can fill
-  GX0: 12, GY0: 44,                     // grid origin
-  PX0: 162, PW: 146,                    // description panel
+  CELL: 36, GAP: 3, COLS: 4, ROWS: 3,
+  GX0: 10, GY0: 44,                     // grid origin
+  PX0: 172, PW: 138,                    // description panel
   PY0: 44, PH: 113,
 };
 function packCell(i) {
@@ -2306,14 +2312,22 @@ function drawPlayer(x, y) {
     if (Math.cos(player.angle) < 0) ctx.scale(1, -1);
     ctx.fillStyle = '#26262c';           // coat sleeve
     ctx.fillRect(1, -1, 4, 2);
-    ctx.drawImage(player.gun === 'rifle' ? Sprites.rifleHeldBuild(rifleFit()) : Sprites.pistolHeld, 5, -5);
+    // The gun in the hands is the same drawing as the bench's, at the size a
+    // person carries: stock behind the fist, receiver along the arm, and a
+    // barrel that reaches far enough in front to read as a long gun.
+    const heldRifle = player.gun === 'rifle';
+    ctx.drawImage(heldRifle ? Sprites.rifleHeldBuild(rifleFit()) : Sprites.pistolHeld,
+                  heldRifle ? 1 : 5, heldRifle ? -6 : -5);
     ctx.fillStyle = '#0e0e12';           // gloved hand wrapping the grip
     ctx.fillRect(7, -1, 3, 2);
     ctx.restore();
 
     if (player.muzzle > 0) {
-      const mx = x + Math.cos(player.angle) * 16;
-      const my = y - 9 + Math.sin(player.angle) * 9;
+      // and the flash comes off the end of THIS barrel, not a fixed distance
+      const reach = player.gun !== 'rifle' ? 16
+        : (fittedId('rifle', 'barrel') === 'barLong' ? 25 : 22);
+      const mx = x + Math.cos(player.angle) * reach;
+      const my = y - 9 + Math.sin(player.angle) * (reach * 0.56);
       ctx.fillStyle = '#fff2c0';
       ctx.fillRect(Math.round(mx - 2), Math.round(my - 2), 4, 4);
       addLight(mx, my, 0, 22, '255,210,120', 0.5);
@@ -2605,21 +2619,23 @@ function drawHUD() {
   // WEAPON SLOT (bottom-right): the active weapon, and for a gun the state
   // that actually matters in the next four seconds — what is IN it, with the
   // pocket total behind it. A wallet total alone told you none of that.
-  const SLOT_W = 70, SLOT_H = 23;
+  // SIZED TO THE WEAPON, like the pack tile: the slot carries the gun Bo's
+  // bench draws, parts and all, rather than a smaller redraw of it.
+  const SLOT_W = 84, SLOT_H = 28;
   const slotX = VIEW_W - SLOT_W - 6, slotY = VIEW_H - SLOT_H - 5;
   uiRect(slotX, slotY, SLOT_W, SLOT_H, 'rgba(0,0,0,0.55)');
   const showGun = player.active === 'gun' && player.hasGun;
   if (showGun) {
     const G = gunStats(player.gun);       // as MODIFIED — see js/mods.js
     const A = player.arms[player.gun] || player.arms.pistol;
-    uiIcon(player.gun === 'rifle' ? Sprites.rifleIconSBuild(rifleFit()) : Sprites.pistolIconS,
+    uiIcon(player.gun === 'rifle' ? Sprites.rifleIconSBuild(rifleFit()) : Sprites.pistolIcon,
             slotX + 4, slotY + 3);
     // loaded / capacity — amber on the last third, red on empty
     const col = A.loaded === 0 ? '#ff5a3c'
               : A.loaded <= G.cap / 3 ? '#ffd27a' : '#e8d9c0';
     ptext(A.loaded + '/' + G.cap, slotX + SLOT_W - 4, slotY + 3, 8, col, 'right');
 
-    const py2 = slotY + 14;
+    const py2 = slotY + 19;
     if (player.reloadT > 0) {
       // the pause made visible: the pips give way to a filling bar
       const f = 1 - Math.max(0, player.reloadT) / G.reload;
@@ -2661,12 +2677,12 @@ function drawHUD() {
     }
   } else if (player.melee) {
     const mi = player.melee === 'pipe' ? Sprites.pipeIcon : Sprites.knifeIcon;
-    uiIcon(mi, slotX + 6, slotY + 5);
+    uiIcon(mi, slotX + 6, slotY + 9);
   } else {
-    ptext('UNARMED', slotX + 6, slotY + 8, 7, 'rgba(232,217,192,0.45)');
+    ptext('UNARMED', slotX + 6, slotY + 11, 7, 'rgba(232,217,192,0.45)');
   }
   if (player.melee && player.hasGun && player.scrollHintT > 0) {
-    ptext('scroll', VIEW_W - 33, VIEW_H - 27, 7, 'rgba(232,217,192,0.35)', 'center');
+    ptext('scroll', VIEW_W - 40, VIEW_H - 38, 7, 'rgba(232,217,192,0.35)', 'center');
   }
 
   // What now, and where. Read ONCE per frame and shared by the HUD line below

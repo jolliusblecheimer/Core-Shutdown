@@ -46,7 +46,7 @@ be read. Patrols path heap-to-heap through a hub near the shack, 12s memory,
 explosive barrels, melee/gun with scroll-wheel switching, **the pack** (I),
 thought bubbles, staged freeze-frame tutorials, passive regen.
 
-**THE PACK** is a BotW-style grid, not a list: 26px tiles in a 5x4 grid, one
+**THE PACK** is a BotW-style grid, not a list: 36px tiles in a 4x3 grid, one
 description panel that explains whatever the cursor is on, counts badged on the
 tile, and **nothing you have none of** — an item spent to zero disappears, and
 a tab with nothing left in it disappears with it. One cursor, driven by the
@@ -64,7 +64,7 @@ refuses out loud when the gun is full (`ALREADY LOADED`) or the pocket is empty
 The weapon slot shows `loaded/capacity`, **one pip per round in the gun** so
 the row empties as you fire, and the pocket total as a small `×n` that goes red
 at zero. The row is sized to the magazine, so a drum's twenty-four pips fit the
-same 70px slot as twelve. Reloading replaces the pips with a filling bar; an
+slot as neatly as twelve. Reloading replaces the pips with a filling bar; an
 empty gun with rounds to put in pulses an `R`. The first dry click teaches it —
 and the `R` that dismisses that lesson performs the reload, via
 `tutShow(..., onDo)`.
@@ -93,6 +93,14 @@ earn, so it is the one gun you can argue with.
 | Magazine | **Drum, 24** — reload 1.6 → 2.9s · **Stripped 8** — reload 1.6 → 1.15s |
 | Optic | **Laser box** — draws the line the shot will take, and stops where the round would |
 | Stock | **Padded** — reload −0.35s, less shake |
+
+**One drawing of the gun, everywhere.** The bench, the pack tile and the weapon
+slot all draw `Sprites.rifleBuild` with the fitted parts on it — the slot and
+the hands mirror it, because there it is the gun the way you hold it. The pack
+tile and the weapon slot were both *sized around the weapon* to make that
+possible. Only the hands take a smaller cut: the traveller is sixteen pixels
+across, so a thirty-six pixel rifle drawn in their fists buries them; the held
+version is the same gun, mass for mass, at two thirds.
 
 **The bench is not a shop** — it fits what is in your kit and sells nothing.
 **Two are in chests** — the **drum** in the crypt beside the strongbox, the

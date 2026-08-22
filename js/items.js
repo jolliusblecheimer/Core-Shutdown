@@ -65,9 +65,8 @@ const ITEMS = {
   rifle: {
     name: 'Service rifle',
     tab: 'weapons',
-    // the miniature, not the big one: the gunsmith's rifle is 36px wide and
-    // overflows a 26px pack tile by five pixels each side
-    icon: () => Sprites.rifleMini(rifleFit()),
+    // THE SAME GUN THE BENCH DRAWS. The pack tile is sized around it.
+    icon: () => Sprites.rifleBuild(rifleFit()),
     desc: 'Straightened, re-crowned and given back its optic. It was issued ' +
           'to something that hunted people, and it hits like it — near twice ' +
           'the pistol, and it carries. Slower between shots; make them count. ' +

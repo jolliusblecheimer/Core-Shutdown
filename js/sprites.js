@@ -1422,21 +1422,33 @@ function outlined(src) {
     Sprites.rifleBrokenIcon = Sprites.rifleBuild({ broken: true });
     Sprites.rifleIcon = Sprites.rifleBuild({});
 
-    // THE SAME RIFLE, SMALL. Laurens, 2026-08-21: *"the icon for rifle in the
-    // table looks so much better than the inventory and the side ui, make it
-    // look the same"* — and it did not, for two different reasons. The pack was
-    // drawing the BIG gun at 1x in a 26px tile it overflows by five pixels each
-    // side, and the weapon slot had a different, cruder gun drawn for it back
-    // when there was only one rifle to draw.
+    // ONE RIFLE, EVERYWHERE. Laurens, 2026-08-21: *"the rifle in weapon and
+    // inventory ui looks different than on the weapons table [...] take the one
+    // from the weapon table"*.
     //
-    // So this is a faithful miniature of the big one at about two thirds: the
-    // same palette, the same masses in the same order — hider, barrel, front
-    // post, ribbed handguard, receiver under a raised carry handle, magazine
-    // hanging clear of a raked grip, notched stock — and the same parts on it.
-    // Drawn muzzle-LEFT like its big brother; the weapon slot mirrors it,
-    // because there it is the gun the way you are holding it.
+    // It used to be three guns: this one, a two-thirds miniature for the pack
+    // and the weapon slot, and a cruder still-smaller one for the hands. The
+    // miniature existed because a 26px pack tile could not hold 36px of gun —
+    // so the TILE grew instead, and the slot with it. There is now exactly one
+    // drawing of this weapon in the game, and the only thing that ever changes
+    // is which way it points.
+    const mirrored = (img) => {
+      const c = makeCanvas(img.width, img.height), g = c.getContext('2d');
+      g.imageSmoothingEnabled = false;
+      g.translate(img.width, 0); g.scale(-1, 1);
+      g.drawImage(img, 0, 0);
+      return c;
+    };
+    // IN THE HANDS, THOUGH, IT HAS TO BE THE SIZE OF A GUN A PERSON CARRIES.
+    // The traveller is sixteen pixels across; the bench's rifle is thirty-six
+    // long and fourteen deep, and drawn in their hands it buries them — the
+    // receiver covers the chest and a drum hangs past the elbow. The pistol
+    // they hold is twelve pixels, so a rifle is about twenty-four: this is the
+    // same gun at two thirds, mass for mass — hider, barrel, front post, ribbed
+    // handguard, receiver under a raised carry handle, magazine clear of a
+    // raked grip, notched stock — with the same parts showing on it.
     const MX0 = 3;                                    // standard muzzle start
-    const rifleMini = (o) => {
+    const rifleHeld = (o) => {
       o = o || {};
       const bar = o.barrel || 'barStd', mag = o.mag || 'magStd';
       const opt = o.optic || 'optStd', stk = o.stock || 'stkStd';
@@ -1495,47 +1507,22 @@ function outlined(src) {
       px(g, MX0 + 15, 4, 1, 1, '#ffb02e');            // charge light, live
       return outlined(c);
     };
-    // mirrored, for the weapon slot: same gun, pointing the way you hold it
-    const mirrored = (img) => {
-      const c = makeCanvas(img.width, img.height), g = c.getContext('2d');
-      g.imageSmoothingEnabled = false;
-      g.translate(img.width, 0); g.scale(-1, 1);
-      g.drawImage(img, 0, 0);
-      return c;
-    };
-    const miniCache = {}, miniRCache = {};
-    const miniKey = (o) => [o.barrel, o.mag, o.optic, o.stock].join('|');
-    Sprites.rifleMini = (o) => {
-      o = o || {};
-      const k = miniKey(o);
-      return (miniCache[k] || (miniCache[k] = rifleMini(o)));
-    };
-    Sprites.rifleIconSBuild = (o) => {
-      o = o || {};
-      const k = miniKey(o);
-      return (miniRCache[k] || (miniRCache[k] = mirrored(Sprites.rifleMini(o))));
-    };
-    Sprites.rifleIconS = Sprites.rifleIconSBuild({});
 
-    // held, for the aiming pose — longer than the pistol, which is the point
-    const rifleH = (o) => {
+    const facingCache = {};
+    // muzzle-RIGHT: the weapon slot, where it is the gun the way you are
+    // holding it rather than the way it lies on a bench
+    Sprites.rifleFacing = (o) => {
       o = o || {};
-      const rh = makeCanvas(16, 7), rhg = rh.getContext('2d');
-      px(rhg, 3, 2, 11, 2, '#8a7a61'); px(rhg, 3, 2, 11, 1, '#a8977b');
-      px(rhg, 14, 2, 2, 1, '#5f5343');                 // muzzle, forward
-      px(rhg, 5, 1, 4, 1, '#5f5343');                  // carry handle
-      px(rhg, 0, 2, 3, 3, '#5f5343');                  // stock into the shoulder
-      px(rhg, 5, 4, 2, 2, '#5f5343');                  // grip
-      if (o.mag === 'magDrum') px(rhg, 6, 4, 4, 3, '#6f6250');
-      else if (o.mag === 'magLight') px(rhg, 7, 4, 2, 1, '#6f6250');
-      else px(rhg, 7, 4, 2, 2, '#6f6250');
-      return outlined(rh);
+      const k = (o.broken ? 'B' : '') + [o.barrel, o.mag, o.optic, o.stock].join('|');
+      return (facingCache[k] || (facingCache[k] = mirrored(Sprites.rifleBuild(o))));
     };
-    const rhCache = {};
+    Sprites.rifleIconSBuild = Sprites.rifleFacing;
+    Sprites.rifleIconS = Sprites.rifleFacing({});
+    const heldCache = {};
     Sprites.rifleHeldBuild = (o) => {
       o = o || {};
-      const key = [o.barrel, o.mag, o.optic, o.stock].join('|');
-      return (rhCache[key] || (rhCache[key] = rifleH(o)));
+      const k = [o.barrel, o.mag, o.optic, o.stock].join('|');
+      return (heldCache[k] || (heldCache[k] = mirrored(rifleHeld(o))));
     };
     Sprites.rifleHeld = Sprites.rifleHeldBuild({});
 

@@ -1994,3 +1994,34 @@ layout audit and the cover audit are all unchanged.
 
 `design/candlelight.md` carries the real cause now, replacing the half-story I
 wrote in the last entry.
+
+---
+
+## One drawing of the rifle — 2026-08-21
+
+**Laurens:** *"now the rifle in weapon and inventory ui, looks different than on
+the weapons table, on the table it looks really cool but the others look cooked
+so take the one from the weapon table. Than make sure it also looks the same
+when the hero is holding it and shooting"*
+
+There were three rifles in the game: the bench's 36×14 build, a two-thirds
+miniature for the pack and the weapon slot, and a cruder still-smaller one for
+the hands. The miniature only existed because a 26px pack tile could not hold
+36px of gun — so **the tile grew instead**. The pack is 36px cells in a 4×3 grid
+now (twelve slots is still more than any tab holds, and every other icon got
+bigger with it), and the weapon slot went 70×23 → 84×28 so the same drawing fits
+beside its numbers. Both draw `Sprites.rifleBuild` with the fitted parts on it;
+the slot mirrors it, because there it is the gun the way you hold it. The pistol
+takes its full-size icon in the slot now too.
+
+**The hands are the one place that cannot take it.** The traveller is sixteen
+pixels across and the bench's rifle is thirty-six long: drawn in their fists it
+buries them — receiver over the chest, drum past the elbow. I tried it, and it
+looked like a person wearing a gun. The pistol they carry is twelve pixels, so a
+rifle is about twenty-four: the held version is the same gun at two thirds, mass
+for mass, with the same parts showing. The muzzle flash now comes off the end of
+*this* barrel — further out with a long barrel fitted — instead of a fixed
+sixteen pixels.
+
+Checked at all eight aim angles, firing and not, plus every pack tab, the
+equip dialog, both counters and the layout audits.

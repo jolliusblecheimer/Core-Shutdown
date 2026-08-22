@@ -208,7 +208,7 @@ In the browser with `window.TEST_MODE = true`, per the standing rule:
 
 | planned | built |
 |---|---|
-| 22px cell, 6x4 grid | **26px cell, 5x4** — `pistolIcon` is 24px wide and would not fit a 22px cell |
+| 22px cell, 6x4 grid | **36px cell, 4x3** — the tile is sized to the WEAPON. It went 22 → 26 because `pistolIcon` is 24px wide; it went 26 → 36 because the service rifle is 36px of drawn gun and the pack was showing a shrunken redraw of it instead. Twelve slots a tab is still more than any tab holds. |
 | description panel 145px | 146px, x 162–308 |
 | `Q`/`R` for tabs | as planned, **plus** clicking a tab and **plus** the scroll wheel |
 | auto-fit icons | as planned, integer scale capped at x3; only Scrap overrides it (a 5x5 speck) |
