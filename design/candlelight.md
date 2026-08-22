@@ -34,9 +34,19 @@ like.
 trims about seven pixels off the end that meets a corner, so that two runs
 interlock there rather than overlapping. The east run used to stop one tile
 short of (W-1, H-1), which left that corner carrying the south run's trimmed
-slice alone — two trims, nothing to meet, and a tile of bare floor edge at the
-bottom of the room. Fixed 2026-08-21, in the crypt as well, which had it too.
-The other three corners had always closed, which is what made it hard to see.
+slice alone. Fixed 2026-08-21, in the crypt as well, which had it too.
+
+**But that was only half of it, and the smaller half.** Putting the missing
+slice back showed the two halves landing eight pixels apart — because
+`_makeWallRun` had the wrong offset for runs built along **y**: it undid the
+shear at `8*(n-si)` where the shear puts the block at `8*(n-si-1)`, so *every
+wall in the game built along y sat one tile-height above the floor edge it
+belongs to.* Along a wall's length that reads as nothing; where two walls MEET
+it is a step, and at the one place in the game two knee-high kerbs meet — this
+corner — it read as the corner not lining up, with floor showing through the
+join. Fixed in `js/sprites.js`, and with it the apex of every wall corner in
+the yard, the shack, the crypt and this room, which had all been half a tile
+out and were all being read as "that is just how the pixels fall".
 
 **3. One thing per tile, and the room proves it.** The builder's `put()`
 refuses to stack anything and warns if the layout tries. The first pass had a

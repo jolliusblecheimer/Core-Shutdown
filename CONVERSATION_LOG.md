@@ -1959,3 +1959,38 @@ are clean.
 `design/candlelight.md` gains the rule under "only the far walls are walls",
 because CLAUDE.md already said corner tiles belong to both runs and this was a
 violation of it that nobody had written down anywhere the builder would look.
+
+---
+
+## The corner, actually fixed — 2026-08-21
+
+**Laurens:** *"fix it"*
+
+He was right to send it back: the previous commit had put the missing slice
+back into the corner tile, but the gap was still there, because **the missing
+slice was the smaller half of the bug.**
+
+With both halves present it was obvious that they were landing eight pixels
+apart. `Sprites._makeWallRun` undoes the shear per tile so a run's whole strip
+can be drawn at one anchor — and the y branch was one tile out: `8*(n-si)`
+where the shear puts that block at `8*(n-si-1)`. So **every wall in the game
+built along y has been sitting one tile-height above the floor edge it belongs
+to** — the west walls, the east kerbs, the shack's sides, the junkyard's side
+fences.
+
+Along a wall's length that reads as nothing: the wall is tall, the edge beyond
+it is dark. Where two walls MEET it is a step — and at the one place in the
+game where two knee-high kerbs meet, Candlelight's and the crypt's south-east
+corner, it read as exactly what Laurens said it was: the walls not lining up,
+with a gap.
+
+One character of arithmetic. Checked every wall run in the game before and
+after, at ten camera positions with the evening grade turned off so the
+geometry is visible: both rooms' south-east corners now close, and so do the
+apexes of the north-west corners, the junkyard's fence corners, the shack's
+walls and the gate posts — all of which had been half a tile out and had been
+read, by me included, as "that is how the pixels fall". Walkable counts, the
+layout audit and the cover audit are all unchanged.
+
+`design/candlelight.md` carries the real cause now, replacing the half-story I
+wrote in the last entry.

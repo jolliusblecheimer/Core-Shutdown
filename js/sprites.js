@@ -1059,7 +1059,18 @@ function outlined(src) {
       }
       const img = makeCanvas(Math.max(1, b - a), F.height);
       img.getContext('2d').drawImage(F, a, 0, b - a, F.height, 0, 0, b - a, F.height);
-      const off = dir > 0 ? 8 * si + 1 : 8 * (n - si);
+      // WHERE THIS TILE'S SEGMENT SITS ON SCREEN. A run's whole strip is drawn
+      // at one anchor and the staircase is baked into the shear, so `off` has
+      // to undo the shear for this tile's block exactly.
+      //
+      // The y branch was one tile out — 8*(n-si) where the shear puts the
+      // block at 8*(n-si-1) — so every wall built along y sat EIGHT PIXELS
+      // ABOVE the floor edge it belongs to. Along a wall's length that reads as
+      // nothing (the wall is tall, the edge is dark); where two walls MEET it
+      // is a step, and at Candlelight's and the crypt's south-east corner —
+      // the one place in the game two knee-high kerbs meet — it read as the
+      // corner not lining up, with the floor showing through the join.
+      const off = dir > 0 ? 8 * si + 1 : 8 * (n - si - 1);
       const dx = (a - 1 - 16 * si) - 8;
       slices.push({ img, dx, dy: -off, lift: isLow ? 16 : (isCity ? 46 : (isWall ? 30 : 24)) });
     }
