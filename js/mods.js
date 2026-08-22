@@ -39,12 +39,14 @@ const PARTS = {
     slot: 'barrel', gun: 'rifle', name: 'Burst regulator',
     cost: { tech: 2, scrap: 12 },
     stats: { cd: 0.17 },
-    flags: { burst: 3, burstGap: 0.08, spread: 0.045 },
+    flags: { burst: 3, burstGap: 0.08, spread: 0.045, burstCool: 2.0 },
     note: 'the whole burst leaves the gun',
-    desc: 'LEFT CLICK sends one round; RIGHT CLICK sends three. A stop and a ' +
-          'spring off a machine that fired in threes — and like that machine, ' +
-          'once a burst starts it finishes, whether or not the first round ' +
-          'was enough. The heavier trigger group slows every shot.',
+    // the burst is an ability, not a fire mode: it recharges, and the weapon
+    // slot draws that bar. Holding the right button cannot spray with it.
+    desc: 'LEFT CLICK sends one round; RIGHT CLICK sends three, then needs ' +
+          'two seconds to come back. A stop and a spring off a machine that ' +
+          'fired in threes — and like that machine, once a burst starts it ' +
+          'finishes, whether or not the first round was enough.',
   },
   barLong: {
     slot: 'barrel', gun: 'rifle', name: 'Long barrel',
@@ -247,7 +249,8 @@ function effectLines(gun, id) {
   if (!p) return [];
   const now = gunStats(gun), next = statsWith(gun, id), out = [];
   const n1 = (v) => (Math.round(v * 100) / 100).toString();
-  if (next.burst && !now.burst) out.push('right click: ' + next.burst + '-round burst');
+  if (next.burst && !now.burst)
+    out.push('right click: ' + next.burst + '-round burst, ' + (next.burstCool || 2) + 's');
   if (!next.burst && now.burst) out.push('left click only');
   if (next.laser && !now.laser) out.push('aim line');
   if (next.cap !== now.cap) out.push((next.cap > now.cap ? '+' : '') + (next.cap - now.cap) + ' rounds');

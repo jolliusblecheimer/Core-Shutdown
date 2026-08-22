@@ -61,11 +61,13 @@ gun has what is in it and what you carry for it — `player.arms[gun] =
 early can never waste anything: a part-full gun just takes fewer rounds. It
 refuses out loud when the gun is full (`ALREADY LOADED`) or the pocket is empty
 (`NO ROUNDS LEFT`).
-The weapon slot shows `loaded/capacity`, **one pip per round in the gun** so
-the row empties as you fire, and the pocket total as a small `×n` that goes red
-at zero. The row is sized to the magazine, so a drum's twenty-four pips fit the
-slot as neatly as twelve. Reloading replaces the pips with a filling bar; an
-empty gun with rounds to put in pulses an `R`. The first dry click teaches it —
+The weapon panel is **three rows, one question each**: the gun and a big loaded
+count with its capacity small beside it; **one pip per round** on its own line,
+sized so a drum's twenty-four fit as neatly as twelve; then, under a rule, a
+LABELLED `POCKET n` and — with the burst regulator fitted — the `RMB` recharge
+bar. Three quantities crammed into one row was three quantities you had to read.
+Reloading replaces the pip row with a filling bar; an empty gun with rounds to
+put in prints a pulsing `PRESS R` across it. The first dry click teaches it —
 and the `R` that dismisses that lesson performs the reload, via
 `tutShow(..., onDo)`.
 You buy, find and strip loose **rounds**; only a handed-over weapon arrives
@@ -89,13 +91,13 @@ earn, so it is the one gun you can argue with.
 
 | Slot | Parts |
 |---|---|
-| Barrel | **Burst regulator** — left click one round, **right click three** · **Long barrel** — 22 damage, further and flatter, slower |
+| Barrel | **Burst regulator** — left click one round, **right click three**, 2s recharge · **Long barrel** — 22 damage, further and flatter, slower |
 | Magazine | **Drum, 24** — reload 1.6 → 2.9s · **Stripped 8** — reload 1.6 → 1.15s |
 | Optic | **Laser box** — draws the line the shot will take, and stops where the round would |
 | Stock | **Padded** — reload −0.35s, less shake |
 
 **One drawing of the gun, everywhere.** The bench, the pack tile and the weapon
-slot all draw `Sprites.rifleBuild` with the fitted parts on it — the slot and
+panel all draw `Sprites.rifleBuild` with the fitted parts on it — the slot and
 the hands mirror it, because there it is the gun the way you hold it. The pack
 tile and the weapon slot were both *sized around the weapon* to make that
 possible. Only the hands take a smaller cut: the traveller is sixteen pixels
@@ -117,11 +119,12 @@ emptied before its part existed pays out on load (`MILESTONE_GRANTS`). Parts you
 free.
 
 The burst regulator is a **second trigger, not a replacement**: left click is
-always one round, right click is three, and you pick shot by shot. Its cost is
-that every shot is a little slower with it fitted, and that **a burst in the
-air finishes itself** — you stop choosing how many rounds to spend, and rifle
-rounds are the scarcest thing in the ring. `R` pressed mid-burst is remembered
-and honoured the moment it ends.
+always one round, right click is three, and you pick shot by shot. It costs
+three ways — every shot is a little slower with it fitted, **a burst in the air
+finishes itself** (you stop choosing how many rounds to spend, and rifle rounds
+are the scarcest thing in the ring), and it **recharges for 2s**, so the right
+button cannot spray. The weapon panel draws that recharge as the `RMB` bar.
+`R` pressed mid-burst is remembered and honoured the moment it ends.
 
 `js/mods.js` holds the registry and **`gunStats(gun)` is the only place the
 rifle's numbers come from** — firing, reloading, the HUD and the panel all read

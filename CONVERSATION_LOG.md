@@ -2054,3 +2054,41 @@ a burst is still remembered and honoured when it ends, an empty gun still gives
 the dry click and the reload lesson on either button, and the pistol and the
 standard barrel ignore the right button entirely. The gunsmith row reads
 `right click: 3-round burst`, and the part's description leads with the rule.
+
+---
+
+## The weapon panel, and a bar for the right hand — 2026-08-21
+
+**Laurens:** *"rework the wapon ui when just playing having the numbre and the
+visualisation of the bullets and the amount leaft all together makes it
+confusion + i need a coolown timer or bar for the rightclick ability"*
+
+The old slot crammed `17/24`, a strip of pips and a bare `×30` into eighty-four
+pixels — three different quantities in one glance with nothing telling them
+apart. It is three ROWS now, each answering one question, in the order you need
+them:
+
+1. **What am I holding, and how many rounds are in it** — the gun, then the
+   loaded count BIG with the capacity small beside it.
+2. **How many is that** — the pip strip on its own line, sized to the magazine
+   so a drum's twenty-four fit as neatly as twelve.
+3. **What is left, and can I burst** — under a rule, a *labelled* `POCKET n`
+   (the label is the whole fix for "which number is which") and the `RMB` bar.
+
+Reloading still replaces the strip with a filling bar; an empty gun with rounds
+to put in now says `PRESS R` across the empty strip instead of a lone `R`.
+
+**And the burst became an ability, because it needed to be one to have a bar.**
+It recharges for two seconds after it fires, so holding the right button can no
+longer spray — sustained that is 1.5 rounds/s against single fire's 1.05, better
+but front-loaded, which is what a burst should be. The bar is amber and full
+when the right button will do something and grey and filling when it will not;
+nothing else in the panel is amber while it recharges, so the eye finds it
+without reading it. It is labelled `RMB` rather than `BURST` because the bar's
+job is to say *which button*, and because `BURST` collided with the pocket total.
+
+Verified in a browser: every panel state (ready, cooling, drum, empty,
+reloading, pistol, melee), a real right-click spending exactly three rounds and
+starting the bar, holding the right button through a cooldown firing nothing
+until it recharged, left click unaffected by it, and the cooldown starting clean
+on load.

@@ -86,7 +86,7 @@ something.
 | Part | Does | Where |
 |---|---|---|
 | Standard barrel | the rifle as it comes | — |
-| **Burst regulator** | A SECOND TRIGGER: left click still sends one round, **right click sends three**, 0.08s apart, and the second and third wander a couple of degrees. The *whole burst leaves the gun* whether or not the first round was enough. The heavier trigger group slows every shot (0.78 → 0.95s), and that is what it costs. | off a **Marshal** |
+| **Burst regulator** | A SECOND TRIGGER: left click still sends one round, **right click sends three**, 0.08s apart, and the second and third wander a couple of degrees. It then **recharges for 2s** — it is an ability, not a fire mode, and the weapon panel draws its bar. The *whole burst leaves the gun* whether or not the first round was enough, and the heavier trigger group slows every shot (0.78 → 0.95s). | off a **Marshal** |
 | **Long barrel** | 18 → **22 damage**, bullet flies faster and further (speed 23, life 1.05), and slower between shots (0.78 → 0.95s). | off a **Magistrate** |
 
 The burst is Laurens' ask and it is the most interesting part in the list.
@@ -95,10 +95,13 @@ burst — and that was wrong, because it made the part something you had to thin
 about *before* the fight rather than during it. Laurens, 2026-08-21: *"change
 the 3 bullet burst thing so when you left click it shoots normal but right click
 shoots at 3 bullet burst"*. Now the choice is per shot, with your two fingers on
-two triggers, and the cost is honest twice over: every left click is slower than
-a standard barrel's, and once a burst starts **you have stopped choosing how
-many rounds to spend**. In a ring where rifle rounds only come off machines and
-off Tam's counter, that second one still bites.
+two triggers, and the cost is honest three ways over: every left click is
+slower than a standard barrel's, once a burst starts **you have stopped
+choosing how many rounds to spend**, and the burst then **recharges for two
+seconds**, so holding the right button cannot spray. Sustained, that is 1.5
+rounds a second against single fire's 1.05 — better, but front-loaded, which is
+what a burst should be. In a ring where rifle rounds only come off machines and
+off Tam's counter, the second cost still bites hardest.
 
 ### MAGAZINE — how often you have to stop
 

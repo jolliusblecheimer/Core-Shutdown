@@ -218,7 +218,7 @@ function applySave(d) {
   player.dead = 0; player.iframes = 1; player.flash = 0;
   player.swing = 0; player.swingCd = 0; player.fireCd = 0; player.combatT = 99;
   player.reloadT = 0; player.reloadOf = null;
-  player.burst = 0; player.burstT = 0; player.reloadWanted = false;
+  player.burst = 0; player.burstT = 0; player.burstCd = 0; player.reloadWanted = false;
 
   mission.state = ['none', 'active', 'complete', 'turned'].includes(d.mission) ? d.mission : 'none';
   ScrapperStats.kills = Math.max(0, num(d.kills, 0));

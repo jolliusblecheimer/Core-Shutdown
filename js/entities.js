@@ -19,6 +19,7 @@ const player = {
   },
   reloadT: 0, reloadOf: null,
   burst: 0, burstT: 0,          // rounds still owed by a burst, and when the next one goes
+  burstCd: 0,                   // and how long until the right hand can ask again
   reloadWanted: false,          // R pressed mid-burst: honoured the moment it ends
   gun: 'pistol',               // WHICH gun, the same way `melee` picks the melee
   active: 'melee',             // which equipped weapon LMB uses (scroll to switch)
@@ -509,6 +510,7 @@ function updatePlayer(dt) {
 
   player.fireCd -= dt; player.muzzle -= dt;
   player.swing -= dt; player.swingCd -= dt;
+  if (player.burstCd > 0) player.burstCd -= dt;
 
   // ---- reloading. The pause IS the mechanic, so it blocks the trigger.
   if (player.reloadT > 0) {
@@ -542,7 +544,9 @@ function updatePlayer(dt) {
   // and you decide, shot by shot, which one this moment is worth. Holding
   // either repeats it; the burst still finishes whatever it started.
   const G0 = activeGun();
-  const wantBurst = Input.rDown && G0.burst > 1;
+  // the burst RECHARGES — it is an ability, not a fire mode, so holding the
+  // right button cannot spray with it and the slot draws the wait
+  const wantBurst = Input.rDown && G0.burst > 1 && player.burstCd <= 0;
   if ((Input.mouseDown || wantBurst) && player.fireCd <= 0 && player.hasGun &&
       player.burst <= 0 && player.active === 'gun' && player.reloadT <= 0) {
     const G = G0;
@@ -550,7 +554,11 @@ function updatePlayer(dt) {
     if (A.loaded > 0) {
       player.fireCd = G.cd;
       fireRound(G, 0);                        // the first round always goes true
-      if (wantBurst) { player.burst = G.burst - 1; player.burstT = G.burstGap || 0.08; }
+      if (wantBurst) {
+        player.burst = G.burst - 1;
+        player.burstT = G.burstGap || 0.08;
+        player.burstCd = G.burstCool || 2;
+      }
     } else {
       // an empty chamber is a moment, not an error message. The lesson fires
       // once, the first time it ever happens.

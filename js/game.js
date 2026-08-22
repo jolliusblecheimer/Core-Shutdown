@@ -2621,73 +2621,97 @@ function drawHUD() {
   uiRect(8, VIEW_H - 10, 42, 3, '#2a1410');
   uiRect(8, VIEW_H - 10, Math.round(42 * hpFrac), 3, `hsl(${Math.round(112 * hpFrac)}, 62%, 46%)`);
 
-  // WEAPON SLOT (bottom-right): the active weapon, and for a gun the state
-  // that actually matters in the next four seconds — what is IN it, with the
-  // pocket total behind it. A wallet total alone told you none of that.
-  // SIZED TO THE WEAPON, like the pack tile: the slot carries the gun Bo's
-  // bench draws, parts and all, rather than a smaller redraw of it.
-  const SLOT_W = 84, SLOT_H = 28;
-  const slotX = VIEW_W - SLOT_W - 6, slotY = VIEW_H - SLOT_H - 5;
-  uiRect(slotX, slotY, SLOT_W, SLOT_H, 'rgba(0,0,0,0.55)');
+  // ---------- THE WEAPON PANEL (bottom-right) ----------
+  // Laurens, 2026-08-21: *"having the number and the visualisation of the
+  // bullets and the amount left all together makes it confusion"*. It was one
+  // huddle: `17/24`, a strip of pips and a bare `×30` all inside 84 pixels,
+  // three different quantities in one glance with nothing telling them apart.
+  //
+  // So they are three ROWS now, each answering one question, top to bottom in
+  // the order you need them:
+  //   1. WHAT AM I HOLDING, and how many rounds are in it — the gun, and one
+  //      big number with the capacity small beside it.
+  //   2. HOW MANY IS THAT — the strip, one pip a round, its own line.
+  //   3. WHAT IS LEFT, and can I burst — a labelled pocket total, and the
+  //      recharge bar for the right-hand trigger.
+  // A rule between 2 and 3 keeps the gun's rounds and your pocket's apart.
   const showGun = player.active === 'gun' && player.hasGun;
+  const SLOT_W = 88, SLOT_H = showGun ? 42 : 22;
+  const slotX = VIEW_W - SLOT_W - 6, slotY = VIEW_H - SLOT_H - 5;
+  uiRect(slotX, slotY, SLOT_W, SLOT_H, 'rgba(0,0,0,0.62)');
   if (showGun) {
     const G = gunStats(player.gun);       // as MODIFIED — see js/mods.js
     const A = player.arms[player.gun] || player.arms.pistol;
-    uiIcon(player.gun === 'rifle' ? Sprites.rifleIconSBuild(rifleFit()) : Sprites.pistolIcon,
-            slotX + 4, slotY + 3);
-    // loaded / capacity — amber on the last third, red on empty
-    const col = A.loaded === 0 ? '#ff5a3c'
-              : A.loaded <= G.cap / 3 ? '#ffd27a' : '#e8d9c0';
-    ptext(A.loaded + '/' + G.cap, slotX + SLOT_W - 4, slotY + 3, 8, col, 'right');
+    const isRifle = player.gun === 'rifle';
+    const low = A.loaded <= G.cap / 3;
+    const col = A.loaded === 0 ? '#ff5a3c' : low ? '#ffd27a' : '#e8d9c0';
 
-    const py2 = slotY + 19;
+    // ---- 1. the gun, and what is in it
+    uiIcon(isRifle ? Sprites.rifleIconSBuild(rifleFit()) : Sprites.pistolIcon,
+           slotX + 4, slotY + (isRifle ? 4 : 1));
+    const capTxt = '/' + G.cap;
+    ptext(capTxt, slotX + SLOT_W - 4, slotY + 10, 7, 'rgba(232,217,192,0.45)', 'right');
+    ptext(String(A.loaded), slotX + SLOT_W - 5 - ptWidth(capTxt, 7), slotY + 3, 14, col, 'right');
+
+    // ---- 2. the same number as a magazine you can read without counting
+    const sy = slotY + 21, sw = SLOT_W - 8;
     if (player.reloadT > 0) {
-      // the pause made visible: the pips give way to a filling bar
+      // the pause made visible: the strip gives way to a filling bar
       const f = 1 - Math.max(0, player.reloadT) / G.reload;
-      uiRect(slotX + 4, py2 + 1, SLOT_W - 8, 4, 'rgba(255,255,255,0.14)');
-      uiRect(slotX + 4, py2 + 1, (SLOT_W - 8) * f, 4, '#7ad27a');
+      uiRect(slotX + 4, sy, sw, 6, 'rgba(255,255,255,0.12)');
+      uiRect(slotX + 4, sy, Math.round(sw * f), 6, '#7ad27a');
     } else {
-      // ONE PIP PER ROUND IN THE GUN — the row empties as you fire, so the
-      // moment you have to stop is visible before it arrives, not after.
-      // THE ROW IS SIZED TO THE MAGAZINE. Twelve pips fit in this slot; a
-      // drum's twenty-four do not, so the pitch is measured against the room
-      // the pocket total leaves, and below two pixels a pip stops being a pip
-      // and the row becomes the bar it was turning into anyway — with a tick
-      // every six rounds, so it can still be counted.
-      const resTxt = '×' + (A.reserve > 99 ? '99+' : A.reserve);
-      const room = SLOT_W - 8 - ptWidth(resTxt, 7) - 2;
-      const pitch = Math.max(1, Math.min(4, Math.floor(room / G.cap)));
-      const lowCol = A.loaded <= G.cap / 3 ? '#ffd27a' : '#c9c9d2';
+      // ONE PIP PER ROUND, sized to the magazine: twelve fit easily, a drum's
+      // twenty-four fit thinner, and below a 2px pitch it becomes the bar it
+      // was turning into anyway, ticked every six rounds so it can be counted.
+      const pitch = Math.max(1, Math.min(5, Math.floor(sw / G.cap)));
+      const pipCol = low ? '#ffd27a' : '#c9c9d2';
       if (pitch >= 2) {
         for (let i = 0; i < G.cap; i++)
-          uiRect(slotX + 4 + i * pitch, py2, pitch - 1, 6, i < A.loaded ? lowCol : '#2a2c31');
+          uiRect(slotX + 4 + i * pitch, sy, pitch - 1, 6, i < A.loaded ? pipCol : '#2a2c31');
       } else {
-        const w = Math.min(room, G.cap);
-        uiRect(slotX + 4, py2, w, 5, '#2a2c31');
-        uiRect(slotX + 4, py2, Math.round(w * A.loaded / G.cap), 5, lowCol);
+        const w = Math.min(sw, G.cap);
+        uiRect(slotX + 4, sy, w, 6, '#2a2c31');
+        uiRect(slotX + 4, sy, Math.round(w * A.loaded / G.cap), 6, pipCol);
         for (let r = 6; r < G.cap; r += 6)
-          uiRect(slotX + 4 + Math.round(w * r / G.cap), py2, 1, 5, 'rgba(10,8,6,0.85)');
+          uiRect(slotX + 4 + Math.round(w * r / G.cap), sy, 1, 6, 'rgba(10,8,6,0.85)');
       }
-      // and behind it, what is left in your pocket. Empty with rounds to put
-      // in says R instead, and keeps saying it.
+      // an empty gun with rounds to put in says so over the empty strip
       if (A.loaded === 0 && A.reserve > 0) {
         const pulse = 0.55 + 0.45 * Math.sin(gameTime * 6);
-        ptext('R', slotX + SLOT_W - 5, py2 - 1, 8, `rgba(255,210,122,${pulse})`, 'right');
-      } else {
-        // clamped: the rifle's twelve pips run to within a few pixels of this,
-        // and a four-digit pocket would print over them
-        ptext(resTxt, slotX + SLOT_W - 4, py2 - 1, 7,
-          A.reserve === 0 ? '#ff5a3c' : '#8d959b', 'right');
+        ptext('PRESS R', slotX + SLOT_W - 5, sy, 7, `rgba(255,210,122,${pulse})`, 'right');
       }
+    }
+
+    // ---- 3. what is left, and the right-hand trigger
+    uiRect(slotX + 4, slotY + 30, sw, 1, 'rgba(232,217,192,0.14)');
+    const by = slotY + 33;
+    ptext('POCKET', slotX + 4, by, 7, 'rgba(232,217,192,0.35)');
+    ptext(A.reserve > 999 ? '999' : String(A.reserve), slotX + 4 + ptWidth('POCKET ', 7), by, 7,
+          A.reserve === 0 ? '#ff5a3c' : '#e8d9c0');
+    if (G.burst > 1) {
+      // THE BURST IS AN ABILITY, so it gets an ability's bar: full and amber
+      // when the right button will do something, filling back up when it will
+      // not. Nothing else in this panel is amber while it is recharging, so
+      // the eye can find it without reading it.
+      // labelled RMB, not BURST: the bar's job is to say WHICH BUTTON is ready,
+      // and the word has to fit beside the pocket total without touching it
+      const bw = 20, bx = slotX + SLOT_W - 4 - bw;
+      const cool = G.burstCool || 2;
+      const f = Math.max(0, Math.min(1, 1 - player.burstCd / cool));
+      const ready = player.burstCd <= 0;
+      ptext('RMB', bx - 3, by, 7, ready ? '#ffd27a' : 'rgba(232,217,192,0.35)', 'right');
+      uiRect(bx, by, bw, 6, '#2a2c31');
+      uiRect(bx, by, Math.round(bw * f), 6, ready ? '#ffd27a' : '#6a6a72');
     }
   } else if (player.melee) {
     const mi = player.melee === 'pipe' ? Sprites.pipeIcon : Sprites.knifeIcon;
-    uiIcon(mi, slotX + 6, slotY + 9);
+    uiIcon(mi, slotX + 6, slotY + 6);
   } else {
-    ptext('UNARMED', slotX + 6, slotY + 11, 7, 'rgba(232,217,192,0.45)');
+    ptext('UNARMED', slotX + 6, slotY + 8, 7, 'rgba(232,217,192,0.45)');
   }
   if (player.melee && player.hasGun && player.scrollHintT > 0) {
-    ptext('scroll', VIEW_W - 40, VIEW_H - 38, 7, 'rgba(232,217,192,0.35)', 'center');
+    ptext('scroll', VIEW_W - 40, VIEW_H - 52, 7, 'rgba(232,217,192,0.35)', 'center');
   }
 
   // What now, and where. Read ONCE per frame and shared by the HUD line below

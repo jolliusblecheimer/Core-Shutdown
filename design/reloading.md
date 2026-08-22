@@ -67,22 +67,34 @@ empty.
 
 ## 3. What the player sees
 
-The weapon slot, bottom right:
+The weapon panel, bottom right. **Three rows, one question each** — it was one
+huddle of `8/12`, a pip strip and a bare `×23` inside eighty-four pixels, and
+Laurens was right that three quantities crammed into one glance is three
+quantities you have to *read*:
 
 ```
- ┌──────────────────────┐
- │ [rifle]      8/12    │   loaded / capacity — amber low, red at zero
- │ ▮▮▮▮▮▮▮▮▯▯▯▯   ×23   │   one pip per ROUND in the gun, then the pocket
- └──────────────────────┘
+ ┌────────────────────────────┐
+ │ [rifle]              8 /12 │   1. what I hold, and what is in it
+ │ ▮▮▮▮▮▮▮▮▯▯▯▯               │   2. the same number, countable at a glance
+ │ ────────────────────────── │
+ │ POCKET 23        RMB ▬▬▬▬  │   3. what is left · the right-hand trigger
+ └────────────────────────────┘
 ```
 
-- **One pip per round loaded.** The row empties as you fire, so the moment you
-  have to stop is visible before it arrives rather than after.
-- **`×n` is the pocket** — grey, small, and red at zero, because a pocket at
-  zero is the thing worth noticing.
-- **Reloading** replaces the pips with a filling bar, so the pause is visible
+- **The loaded count is big**, with the capacity small beside it: amber on the
+  last third, red at zero.
+- **One pip per round loaded**, on its own line. The row empties as you fire,
+  so the moment you have to stop is visible before it arrives rather than after.
+  The pitch is sized to the magazine, so a drum's twenty-four fit the same row.
+- **A rule separates the gun's rounds from your pocket's**, and the pocket is
+  LABELLED — that is the whole fix for "which number is which". Red at zero,
+  because a pocket at zero is the thing worth noticing.
+- **Reloading** replaces the pip row with a filling bar, so the pause is visible
   and its length legible.
-- **Empty with rounds to put in** pulses an `R` where the pocket total was.
+- **Empty with rounds to put in** prints a pulsing `PRESS R` across the empty row.
+- **`RMB` and its bar** appear only with the burst regulator fitted — see
+  `design/gunsmith.md`. Amber and full when the right button will fire a burst,
+  grey and filling when it will not.
 
 **The tutorial** fires the first time a gun runs dry — the freeze-frame lesson
 the game already uses for every other mechanic. It says *press R*, and the `R`
