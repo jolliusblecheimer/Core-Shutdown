@@ -2133,3 +2133,29 @@ exactly the four steps the building paints over it, not before (above the roof),
 not after (clear of the corner). A scrapper behind a trash mountain ghosts; the
 same scrapper in the open does not; a bandit behind a car does not, because a
 car hides your legs and not your head.
+
+---
+
+## Four pins come off the map — 2026-08-21
+
+**Laurens:** *"ok now remove the pins for those other buildings on the map they
+dont jet have a purpose"*
+
+Gone: THE FORECOURT, ALDERGROVE PRIMARY, THE REGENT HOTEL and CITY & COUNTY
+BANK. A pin is a promise — four of them spread across the ring, each saying
+*there is something here*, and there is not; they are silhouettes you walk past.
+A map that marks things you cannot use teaches the player to stop reading the
+map, which costs more than four icons are worth.
+
+What the map shows now is only places you can go and do something: **the two
+camps, the yard gate from both sides, and the sign trail** (which earns its
+keep — the signs are how you find Candlelight the first time).
+
+The `landmark` kind stays wired up end to end — icon, declutter rule, panel —
+so putting a pin back is one line the day that building has a door, a trader or
+a fight in it. Their names and blurbs are parked in `design/map-ui.md` §3.2a so
+they are not lost with the code.
+
+Verified: the table is down to four entries and zero landmarks, the open map
+draws 2 camps + 2 gates, zoomed in it adds the 14 signs and nothing else, and
+the map's own test pass reports no errors.

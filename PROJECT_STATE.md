@@ -204,8 +204,13 @@ space and drawn at true relative size, so the yard is 32×32 against the city's
 200×150 and looks it. No view modes: framing an area and framing the world is
 the same draw call with a smaller number. Areas render from cached fog
 thumbnails taken as you leave them. **Places** come off one `POIS` table —
-camps, gates, landmarks and the sign trail, each a fixed-size 7px icon that
-never scales, with what is drawn thinning out as you pull back. Click one for a
+each a fixed-size 7px icon that never scales, with what is drawn thinning out
+as you pull back. It holds **the two camps, the yard gate from both sides and
+the sign trail**, and nothing else: the forecourt, school, hotel and bank had
+`landmark` pins and lost them on 2026-08-21, because a pin is a promise and
+those four are silhouettes you walk past. The `landmark` kind stays wired up
+for the day one of them has a door in it; the writing is parked in
+`design/map-ui.md`. Click one for a
 panel; on a camp you have found, `E` **fast travels** there from anywhere,
 free, blocked only while something is hunting you. **One objective source**
 (`currentObjective()`) feeds the HUD line, the minimap dot and the map dot, and

@@ -106,6 +106,29 @@ At launch the table holds: Marek's shack (`camp`, junkyard), the yard gate
 Q2 builds Candlelight), the gas station, the school, the hotel, the bank
 (`landmark`), and the existing sign trail (`sign`, replacing the green pixels).
 
+### 3.2a The four landmark pins came back off, 2026-08-21
+
+Laurens: *"remove the pins for those other buildings on the map they dont jet
+have a purpose"*. **A pin is a promise.** Four of them spread across the ring,
+each saying *there is something here*, and there is not — they are silhouettes
+you walk past. A map that marks things you cannot use teaches the player to
+stop reading the map, which costs more than four icons are worth.
+
+The `landmark` kind stays wired up — icon, declutter rule, panel — so putting
+one back is one line the day that place has a door, a trader or a fight in it.
+The writing is parked here so it is not lost with the code:
+
+| id | where | name | blurb |
+|---|---|---|---|
+| `gas` | fringe 143,131 | THE FORECOURT | Six pillars, a canopy and four pumps still holding whatever was in them. Nothing here is safe to shoot. |
+| `school` | fringe 119,61 | ALDERGROVE PRIMARY | A long pale block with a playground behind it. Somebody painted over the name and then gave up. |
+| `hotel` | fringe 121,102 | THE REGENT HOTEL | Nine floors of grey. The lobby doors are still revolving in the wind if you stand close enough to hear it. |
+| `bank` | fringe 68,102 | CITY & COUNTY BANK | Stone, columns, and a vault nobody has got into. The Correction did not care about money and neither does anyone left. |
+
+What the map shows now: **the two camps, the yard gate from both sides, and the
+sign trail.** Every one of those is somewhere you can go and do something —
+trade, travel, or read the way on.
+
 ### 3.3 Icons
 
 Six 7×7 pixel glyphs in `sprites.js`, integer-filled per the rule from log

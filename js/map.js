@@ -1199,14 +1199,18 @@ const POIS = [
   { id: 'stmartins', area: 'fringe', x: 56, y: 60, kind: 'camp',
     name: 'CANDLELIGHT', travel: { x: 56.5, y: 69.5 },
     blurb: "St Martin's, and people living in it. Fires, a medbay, a map of the ring drawn by the people who walked it." },
-  { id: 'gas', area: 'fringe', x: 143, y: 131, kind: 'landmark',
-    name: 'THE FORECOURT', blurb: 'Six pillars, a canopy and four pumps still holding whatever was in them. Nothing here is safe to shoot.' },
-  { id: 'school', area: 'fringe', x: 119, y: 61, kind: 'landmark',
-    name: 'ALDERGROVE PRIMARY', blurb: 'A long pale block with a playground behind it. Somebody painted over the name and then gave up.' },
-  { id: 'hotel', area: 'fringe', x: 121, y: 102, kind: 'landmark',
-    name: 'THE REGENT HOTEL', blurb: 'Nine floors of grey. The lobby doors are still revolving in the wind if you stand close enough to hear it.' },
-  { id: 'bank', area: 'fringe', x: 68, y: 102, kind: 'landmark',
-    name: 'CITY & COUNTY BANK', blurb: 'Stone, columns, and a vault nobody has got into. The Correction did not care about money and neither does anyone left.' },
+  // ---- NO PINS FOR PLACES THAT DO NOTHING YET ----
+  // The forecourt, the school, the hotel and the bank had `landmark` pins here.
+  // Laurens, 2026-08-21: *"remove the pins for those other buildings on the map
+  // they dont jet have a purpose"* — and a pin is a promise. Four of them
+  // spread across the ring, every one of them saying "there is something here",
+  // and there is not: they are silhouettes you walk past. A map that marks
+  // things you cannot use teaches the player to stop reading the map.
+  //
+  // The `landmark` kind stays wired up — icon, declutter rule and all — so the
+  // day one of those places has a door, a trader or a fight in it, it is one
+  // line to put its pin back. The names and the blurbs are kept in
+  // design/map-ui.md so they are not lost with the code.
 ];
 
 // The sign trail is not written into the table — it is generated off the signs
