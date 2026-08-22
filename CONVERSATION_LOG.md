@@ -1931,3 +1931,31 @@ it. A drum, a laser diode, a long barrel and a padded butt all read at 24px.
 Verified: the chest hands over the laser once, an old save that had emptied it
 gets it on load and not twice, Tam's board is rations and rounds again, and the
 pack tile and weapon slot were screenshotted beside the bench for comparison.
+
+---
+
+## The corner that never closed — 2026-08-21
+
+**Laurens:** *"so in the cathedral the bottom right on the top floor and the
+crypt the walls dont line up there is a gap"*
+
+Real, and in both rooms for the same reason. `shellWalls()` built its east run
+one tile short — `length: H - 1` — so the south-east corner tile carried only
+the south run's slice. Every wall run trims about seven pixels off the end that
+meets a corner so that two runs interlock there; with only one run present those
+seven pixels met nothing, and the kerb simply stopped a tile early, leaving bare
+floor edge at the bottom of the room. The crypt's own east run had the same
+off-by-one. The other three corners of both rooms have always had two slices,
+which is exactly why this was easy to miss.
+
+Both east runs are full height now. Verified by counting wall slices per corner
+tile — all four corners in Candlelight, the crypt and the junkyard now carry two,
+and the only bare edge tiles left anywhere are the doorway at (5,15)/(6,15) and
+the junkyard gate at (31,11..13), which is correct. Also verified by pixel-diffing
+a before/after screenshot of each room: exactly one kerb-shaped patch changed in
+each, at the corner. Walkable counts are unchanged (114 and 34) and both audits
+are clean.
+
+`design/candlelight.md` gains the rule under "only the far walls are walls",
+because CLAUDE.md already said corner tiles belong to both runs and this was a
+violation of it that nobody had written down anywhere the builder would look.

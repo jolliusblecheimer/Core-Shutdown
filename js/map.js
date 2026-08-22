@@ -932,8 +932,15 @@ function shellWalls(doorX0, doorX1) {
   const lk = n => Array.from({ length: n }, () => 'L');
   wallRun(Array.from({ length: W }, (_, i) => [i, 0]), ik(W), 'x', false, true, true);
   wallRun(Array.from({ length: H }, (_, i) => [0, i]), ik(H), 'y', false, true, true);
-  // near sides: kerb only, and never `front` — nothing here needs fading
-  wallRun(Array.from({ length: H - 1 }, (_, i) => [W - 1, i]), lk(H - 1), 'y', false, true, true);
+  // Near sides: kerb only, and never `front` — nothing here needs fading.
+  // THE EAST RUN GOES ALL THE WAY DOWN. It used to stop one tile short of
+  // (W-1, H-1), which left that corner carrying the south run's slice alone —
+  // and since both runs trim ~7px off the end that meets a corner, the two
+  // trims met nothing and the kerb simply stopped, one tile of bare floor edge
+  // at the bottom of the room. A CORNER TILE BELONGS TO BOTH RUNS: that is
+  // what the half-tile trims are for, and it is why the other three corners
+  // have always closed.
+  wallRun(Array.from({ length: H }, (_, i) => [W - 1, i]), lk(H), 'y', false, true, true);
   const sL = [], sR = [];
   for (let x = 0; x < W; x++) {
     if (x < doorX0) sL.push([x, H - 1]);
@@ -1060,7 +1067,9 @@ function buildCrypt() {
   const lk = n => Array.from({ length: n }, () => 'L');
   wallRun(Array.from({ length: W }, (_, i) => [i, 0]), jk(W), 'x', false, true, true);
   wallRun(Array.from({ length: H }, (_, i) => [0, i]), jk(H), 'y', false, true, true);
-  wallRun(Array.from({ length: H - 1 }, (_, i) => [W - 1, i]), lk(H - 1), 'y', false, true, true);
+  // full height, so the south-east corner tile gets both runs' slices — see
+  // the note in shellWalls(); the crypt had the same one-tile gap
+  wallRun(Array.from({ length: H }, (_, i) => [W - 1, i]), lk(H), 'y', false, true, true);
   wallRun(Array.from({ length: W }, (_, i) => [i, H - 1]), lk(W), 'x', false, true, true);
 
   // The crypt is the store, not a farm: nothing grows under a church. What is
