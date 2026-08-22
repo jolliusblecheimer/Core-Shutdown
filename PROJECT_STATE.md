@@ -283,6 +283,33 @@ clamped to 1.1 tiles and measured to a prop's anchor corner. Fixed.
 
 ---
 
+## Where we left off — 2026-08-22
+
+**THE ROAD NORTH is planned and nothing of it is built** — see
+`design/the-road-north.md`. Laurens asked what area is next, for it to be
+mapped, and for the whole route and the quest camps explained.
+
+The answer: **the empty north band of the Fringe** (above the north cross at
+y 36, never built) holding **Field 12** — the dead airfield, the crashed news
+drone, **Q3** and *AUTH: E.VANN* — and **the Underpass** under the collapsed
+viaduct, which is the door to **Ring 4, THE SPRAWL** and its camp **Station 9**
+(Ada, Q4/Q5). It is next because `design/fringe-buildout.md` set that order
+five phases ago, because Act 2 has nothing to decode without Q3, and because
+north is the only direction the map is open in.
+
+**Q2 has to come first and it is small.** Ivar has the mission slot and no
+mission, so nothing sends the player north. The plan proposes *THE LONG AERIAL*
+— the school's mast, the church tower, and a loop still broadcasting from the
+airfield — which buys the tower stair and the school's map pin on the way.
+
+Four camps on the road, two of them new: Marek's shack ✔ · Candlelight (part) ·
+**the Lamp** under the viaduct (a counter, not a camp) · **Station 9** (the
+full stack, Ring 4). Build order N1–N7; **N1→N4 is the honest next chunk**,
+N5→N7 is a second project the size of the whole Fringe.
+
+**Awaiting approval — no code touched.** Seven open questions at the end of the
+doc, the first being whether Q2 is the aerial at all.
+
 ## Where we left off — 2026-08-21
 
 **The gunsmith is built** (see its section above and `design/gunsmith.md`): the
@@ -362,6 +389,9 @@ props as volumes) or item 3 (the rest of Candlelight).
    somebody does live there.
 4. Interiors (enterable shops/houses, roof fade).
 5. Field 12 + the drone crash (Q3) and the Underpass to Ring 4.
+   **PLANNED 2026-08-22 — `design/the-road-north.md`.** The whole chain is
+   mapped: Q2 at Candlelight → Field 12 and Q3 → the Underpass and the Lamp →
+   the Sprawl and Station 9 (Q4/Q5). Build order N1–N7. Waiting on Laurens.
 6. Open questions never answered: day/night.
    *(Answered 2026-08-19: the Compactor drops a **badly damaged rifle**, repaired
    by a droid-dismantler at Candlelight — HHDs do NOT drop rifles. See

@@ -2159,3 +2159,64 @@ they are not lost with the code.
 Verified: the table is down to four entries and zero landmarks, the open map
 draws 2 camps + 2 gates, zoomed in it adds the 14 signs and nothing else, and
 the map's own test pass reports no errors.
+
+---
+
+## The road north — 2026-08-22
+
+**Laurens:** *"what area is next plan it map it and eplain how to get there the
+whole map and quest camps"*
+
+Planned, not built: `design/the-road-north.md`.
+
+**What is next: the empty north of the Fringe.** Everything ever built sits
+between y 36 (the north cross) and y 126 (the gate road); above it is a
+forty-tile band of dead lots that has been there since the ring was drawn. That
+band holds the two things `design/fringe-buildout.md` listed as phases 4 and 5
+of 5 — **Field 12**, the dead airfield with the crashed news drone in the middle
+of the runway, and **the Underpass** under the collapsed viaduct, which is the
+door to **Ring 4**.
+
+Three reasons agree on it, which is why it did not need arguing: the build order
+said so five phases ago; Act 2 cannot start without Q3, because Q4 exists to
+decode what Q3 finds; and north is the only direction the map is open in — the
+gate road dead-ends at the yard, the spine dead-ends into blocks.
+
+**One thing has to come first and it is small.** Ivar has a mission slot and no
+mission, so nothing in the game currently sends the player north at all. Q2 is
+that sentence. Proposed: *THE LONG AERIAL* — Candlelight's radio receives and
+cannot transmit, the aerial is on the school's mast, it goes up the church
+tower, and what it catches is a loop still repeating from the night of the
+Correction, coming from the airfield. That pays for the tower stair (already
+outstanding) and gives the school back the map pin we took off it last session,
+because now it has a purpose.
+
+**Field 12 is the first sightline space in the game.** Every fight so far has
+been a corridor, a yard or a street, and the whole occlusion stack — the player
+fade, `spriteCovered`, the enemy ghosts built two days ago — is about things
+standing in the way. On a runway nothing does. That is the point of it and it is
+also written down as a risk, along with the fact that ninety tiles of centreline
+paint is the biggest sheared surface this project has ever attempted and gets
+prototyped twenty tiles at a time.
+
+**The seam goes in the dark.** `design/world-map.md` promises no loading
+screens and the engine loads areas, so the viaduct becomes the Fringe's north
+wall — five storeys of pancaked deck, visible from the north cross, with exactly
+one hole in it — and the exit trigger sits *inside* the tunnel. You walk into
+the dark and the transition happens on a black screen. It also retires the
+Fringe's invisible north boundary, which is currently a hard edge with nothing
+drawn on it.
+
+**Four camps on the road, two new.** Marek's shack, Candlelight, then **the
+Lamp** — two people and a drum fire in the underpass mouth, one stock list, no
+beds, and the doc says out loud that it must never get beds because the whole
+shape of it is *this is as far as anybody sane goes* — and then **Station 9**,
+the Ring-4 camp in a dead metro station, with the full stack and Ada in it.
+
+Build order N1–N7. **N1→N4 is the honest next chunk of work**; N5→N7 (the
+Sprawl shell, Station 9, the turrets and the Shepherd) is a second project about
+the size of the entire Fringe and is marked as needing its own plan rather than
+being committed to now.
+
+Seven questions back to Laurens, the first being whether Q2 is the aerial at
+all. Nothing built, no code touched — approval first, per rule 1.
