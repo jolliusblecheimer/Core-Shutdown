@@ -2220,3 +2220,35 @@ being committed to now.
 
 Seven questions back to Laurens, the first being whether Q2 is the aerial at
 all. Nothing built, no code touched — approval first, per rule 1.
+
+### Brainstorm — what the Fringe still needs to be finished
+**Laurens:** *"Brainstorm a list of things this area needs to be compleated, i
+added everything i find nessecary now come the detailles."*
+**Claude:** First re-synced: this session's branch was 58 commits behind and its
+own map-UI plan had already been built on `main` (`cfb7200`), so the branch was
+restarted from `main` and the two stale commits dropped rather than rebased —
+rebasing them would have clobbered the built `design/map-ui.md` with the older
+plan and appended duplicate log entries.
+Then wrote `design/fringe-completion.md` — not a plan, no code. Everything
+between the Fringe as it stands and a ring with no construction sites in it,
+sized S/M/L and marked for whether it needs a call from Laurens. Seven groups:
+the half-built debt (Halden and Bo's stock, Ade healing, respawn re-anchoring,
+the strongbox, the tower stair, the churchyard, lit windows, the held-back
+Scout, long props); the ring's missing economy; the 200×150 of city with no
+reason to enter it; the detail pass that makes a street feel lived-through;
+combat nobody has playtested; and Q2.
+Three things the sweep turned up that were not on anyone's list:
+- **There is no armour in the game at all.** `items.js` says outright that the
+  ARMOUR tab was removed rather than stand empty promising the city would
+  provide. It never did. That is a whole progression axis missing, and
+  `progression-gear.md` never settled whether armour is one value or several.
+- **Scrap has no sink.** Four traders in the ring and, once the knife and rifle
+  are bought, nothing to want. Finishing the camp services fixes it as a side
+  effect, which is an argument for doing the debt first.
+- **The gas station is the best arena in the ring and nothing has ever been
+  staged around it** — six pillars and four detonating pumps used as scenery.
+Recommended order: the debt first (it needs no decisions and pays off the
+economy), then Q2, then the detail pass, then interiors, then a balance pass —
+that last one being Laurens' to do, since no browser check can tell you whether
+a fight is miserable. Flagged armour and day/night as the two decisions that
+block more than they appear to, both getting harder the later they are taken.
