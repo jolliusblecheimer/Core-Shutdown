@@ -26,7 +26,13 @@ const player = {
   scrollHintT: 0,              // "scroll" HUD hint: 30s after getting the gun, then gone
   owned: { pipe: false, knife: false, pistol: false, rifle: false },
   inv: { scrap: 0, tech: 0, snack: 0, mreBeef: 0, mreChicken: 0, gateKey: false, rifleBroken: 0 },
-  respawnX: 6.5, respawnY: 26.5, homeSet: false,
+  // WHERE YOU WAKE UP, and which map that is. The area matters as much as the
+  // coordinates: before this existed, dying anywhere in the ring put you back
+  // in the junkyard, because the respawn point was two numbers with no map
+  // attached and the only map it could have meant was the one it was written
+  // for. A save with no `respawnArea` in it is from before that and is a
+  // junkyard save by definition.
+  respawnX: 6.5, respawnY: 26.5, respawnArea: 'junkyard', homeSet: false,
 };
 
 // melee outranges the Scrapper's reach (1.15) — spacing is the skill.
@@ -248,11 +254,22 @@ const FOLK = {
        "That thing you're carrying, though. Let me see it."],
       "A rifle is parts, stranger. Change the parts, change the argument.",
       "Everything in that tray came off something that stopped working." ] },
-    { key: 'ade', name: 'SISTER ADE', x: 9.5, y: 5.5, lines: [
-      "You're not bleeding. Come back when you are.",
-      "The name stuck because of the building. I was a vet's assistant.",
-      "Two cots. One of them has been the same man for eleven days." ] },
-    { key: 'halden', name: 'HALDEN', x: 9.5, y: 8.5, lines: [
+    // ADE. Her counter is the medbay and it only has a row on it while there
+    // is something to treat — the same shape as Bo's bench, which is empty
+    // until you are carrying something bent. So her greeting is conditional
+    // too: the line Laurens wrote is the one she says to somebody who is
+    // whole, and it stays exactly as written for that.
+    { key: 'ade', name: 'SISTER ADE', x: 9.5, y: 5.5, stock: 'ade', verb: 'MEDBAY',
+      lines: () => (player.hp < player.maxHp ? [
+        ["Sit down and let me see it.",
+         "I have thread, I have spirit, and I have a lamp. Not much else.",
+         "It costs you scrap. Not because of me — because of what it uses up."],
+        "Hold still. This is the part everybody talks through.",
+        "You keep coming back in pieces. One day you won't." ] : [
+        "You're not bleeding. Come back when you are.",
+        "The name stuck because of the building. I was a vet's assistant.",
+        "Two cots. One of them has been the same man for eleven days." ]) },
+    { key: 'halden', name: 'HALDEN', x: 9.5, y: 8.5, stock: 'halden', lines: [
       "Stand by the drum a while. Nobody gets asked anything until they're warm.",
       "This place was cold for a year before we got the stove in.",
       "I'll trade you fair. I'm too old to be clever about it." ] },
@@ -279,8 +296,13 @@ function buildFolk(kind) {
 // one line at a time, in order, then round again — so talking to somebody
 // twice is worth doing and talking to them nine times is not. An entry may be
 // several lines: a trader needs room to say what he is before he sells it.
+// `lines` may be a function, for somebody whose opening line depends on the
+// state of the person they are opening it to. Ade is the reason: "you're not
+// bleeding, come back when you are" is exactly right when you are whole and
+// exactly wrong when you have walked in at nine health.
 function talkToFolk(f) {
-  const said = f.lines[f.said % f.lines.length];
+  const list = typeof f.lines === 'function' ? f.lines() : f.lines;
+  const said = list[f.said % list.length];
   const lines = Array.isArray(said) ? said.slice() : [said];
   lines[0] = f.name + ': ' + lines[0];
   startDialog(lines);
@@ -337,10 +359,45 @@ const USABLE = {
       "and a tray of springs and pins under a lamp somebody keeps lit.",
       "Nothing you are carrying belongs on a bench like this." ]);
   },
+  // A BAY YOU CAN CLAIM. Taking one re-anchors where you wake up, which until
+  // now was the junkyard shack no matter how far into the ring you had walked
+  // — die at the roadblocks and you woke a whole area away, behind a boss.
+  // Every bay is solid (everything placed in this room is), so the point you
+  // wake at is the aisle beside it, and the aisle is checked rather than
+  // assumed: only the middle bay actually has a free tile at its shoulder.
+  bedding: (p, ask) => {
+    const mine = player.respawnArea === 'candlelight' &&
+                 Math.abs(player.respawnY - (p.gy + 0.5)) < 0.01;
+    if (ask) return mine ? 'yours' : 'E — take this bay';
+    if (mine) { startDialog(["Your bay. The straw still has your shape in it."]); return; }
+    claimBay(p);
+  },
   hearth: (p, ask) => ask ? 'E — look' : startDialog([
     "A drum with a fire in it and a flue punched through a boarded window.",
     "The first warm thing you have stood next to since the yard." ]),
 };
+
+// Claiming a bay: it re-anchors respawn AND it heals, because a bed that
+// leaves you at nine health is a save point wearing a blanket. There is no
+// clock in this game yet, so it moves no time on; if one ever arrives this is
+// where it advances.
+function claimBay(p) {
+  let sx = p.gx + 1.5, sy = p.gy + 0.5;               // the aisle at its shoulder
+  if (!canStand(sx, sy, player.r)) {
+    const safe = findSafeSpot(p.gx + 1.5, p.gy + 0.5);
+    if (safe) { sx = safe.x; sy = safe.y; }
+  }
+  player.respawnArea = 'candlelight';
+  player.respawnX = sx; player.respawnY = sy;
+  player.homeSet = true;
+  player.hp = player.maxHp;
+  SFX.chime();
+  startDialog([
+    "You clear the straw with your boot and sit down on it.",
+    "Warm, out of the wind, and behind a door that shuts.",
+    "This is where you wake up now." ]);
+  saveGame();
+}
 
 function drinkFromCistern() {
   const before = player.hp;
@@ -450,8 +507,15 @@ function updatePlayer(dt) {
     if (player.dead <= 0) {
       // a boss fight resets itself — you retry it, you don't redo the run
       if (typeof resetBossFight === 'function' && resetBossFight()) return;
-      player.x = player.respawnX; player.y = player.respawnY;
       player.hp = player.maxHp; player.iframes = 1.2;
+      // Waking up somewhere else is an area change like any other, so it goes
+      // through the same fade that walking through a door does — otherwise the
+      // world would cut, and a cut here reads as a crash.
+      if (player.respawnArea && player.respawnArea !== currentArea) {
+        startTransition(player.respawnArea, { x: player.respawnX, y: player.respawnY });
+      } else {
+        player.x = player.respawnX; player.y = player.respawnY;
+      }
     }
     return;
   }
@@ -460,6 +524,7 @@ function updatePlayer(dt) {
   if (!player.homeSet && insideShack(player.x, player.y)) {
     player.homeSet = true;
     player.respawnX = 21.5; player.respawnY = 7.5;
+    player.respawnArea = 'junkyard';
     showMsg('Respawn point set — the shack', 2.5);
     SFX.chime();
     saveGame();
@@ -1004,6 +1069,39 @@ const STOCK = {
     ] : []),
     ...partRows('stkPadded', 'magLight'),
   ],
+  // HALDEN keeps the camp's dry stores, and the gap he fills is a real one:
+  // Tam sells RIFLE rounds and nobody in this camp sold pistol rounds at all,
+  // so a traveller who has not paid Bo to straighten the rifle yet could walk
+  // into the only camp in the ring and find nothing that fits his gun. He is
+  // also cheaper than Marek on both rows, which is what "I'll trade you fair,
+  // I'm too old to be clever about it" is supposed to mean.
+  halden: [
+    { label: '6 pistol rounds', icon: () => Sprites.ammo, cost: { scrap: 5 },
+      buy: () => { giveRounds('pistol', 6); showMsg('Bought 6 pistol rounds'); } },
+    { label: 'snack bar', icon: () => Sprites.snackIcon, cost: { scrap: 3 },
+      buy: () => { player.inv.snack++; showMsg('Bought a snack bar  (H to eat)'); } },
+  ],
+  // ADE'S MEDBAY. The first repeatable scrap sink in the game — everything
+  // else the ring sells is a thing you buy once. The price is what you are
+  // asking her to spend, so it scales with the damage rather than sitting at
+  // a flat rate that robs you for a scratch and gives away a near-death.
+  // Resolved once when the counter opens, so the number cannot move under the
+  // cursor while you decide.
+  ade: () => {
+    const missing = player.maxHp - player.hp;
+    if (missing <= 0) return [];
+    return [
+      { label: 'patch you up', icon: () => Sprites.medIcon,
+        cost: { scrap: Math.max(2, Math.round(missing / 10)) },
+        sold: () => player.hp >= player.maxHp,
+        soldText: 'Nothing left to treat',
+        buy: () => {
+          player.hp = player.maxHp;
+          SFX.eat();
+          showMsg('Patched up — back on your feet', 2.2);
+        } },
+    ];
+  },
   // Tam's counter. Rations and rounds, and one tech part at a price that says
   // he knows exactly what it is worth to somebody carrying a scrap pistol. No
   // weapon parts: what this camp has of those is in its chests, not on its
@@ -1039,7 +1137,11 @@ function openTrade(who, stock, verb) {
 function tradeBuy(n) {
   const row = Trade.stock[n - 1];
   if (!row) return;
-  if (row.sold && row.sold()) { showMsg('Already sold', 1.5); SFX.deny(); return; }
+  // A row that is spent says so in its own words where it has them — "already
+  // sold" is right for a knife and wrong for a bandage.
+  if (row.sold && row.sold()) {
+    showMsg(row.soldText || 'Already sold', 1.5); SFX.deny(); return;
+  }
   if (!canAfford(row)) { showMsg('Not enough — ' + costText(row), 1.6); SFX.deny(); return; }
   for (const k of Object.keys(row.cost)) player.inv[k] -= row.cost[k];
   row.buy();

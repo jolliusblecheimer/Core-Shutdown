@@ -1631,6 +1631,21 @@ function outlined(src) {
     px(sng, 1, 5, 10, 1, '#6a4326');
     Sprites.snackIcon = outlined(sn);
 
+    // A ROLL OF LINEN WITH A CROSS ON IT — Sister Ade's counter. Not a red
+    // cross out of a first-aid box: this camp has no such thing. Somebody
+    // tore a sheet into strips and painted the mark on so it could be found
+    // in the dark. Integer fills only; the whole thing is nine pixels tall.
+    {
+      const md = makeCanvas(12, 9), mg = md.getContext('2d');
+      px(mg, 1, 2, 10, 6, '#d8d2c0');      // linen
+      px(mg, 1, 2, 10, 1, '#eae5d6');      // lit top edge
+      px(mg, 1, 7, 10, 1, '#b3ac98');      // shadowed underside
+      px(mg, 3, 2, 1, 6, '#c4bda9');       // the cut edge of the roll
+      px(mg, 7, 3, 2, 4, '#c8503f');       // the cross, upright
+      px(mg, 6, 4, 4, 2, '#c8503f');       // the cross, arms
+      Sprites.medIcon = outlined(md);
+    }
+
     // MRE pouches — army ration foil, stencilled band. The band is the only
     // thing that tells beef from chicken at twelve pixels, so it does the work.
     const mre = (band, mark) => {

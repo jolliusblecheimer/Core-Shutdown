@@ -30,7 +30,8 @@ function saveGame() {
         mods: JSON.parse(JSON.stringify(player.mods)),
         melee: player.melee, hasGun: player.hasGun, active: player.active, gun: player.gun,
         owned: { ...player.owned }, inv: { ...player.inv },
-        respawnX: player.respawnX, respawnY: player.respawnY, homeSet: player.homeSet,
+        respawnX: player.respawnX, respawnY: player.respawnY,
+        respawnArea: player.respawnArea, homeSet: player.homeSet,
         scrollHintT: Math.max(0, player.scrollHintT),
       },
       mission: mission.state,
@@ -201,6 +202,10 @@ function applySave(d) {
   loadArms(p);
   player.respawnX = num(p.respawnX, player.respawnX);
   player.respawnY = num(p.respawnY, player.respawnY);
+  // A save written before bays could be claimed has no respawn area in it, and
+  // there was only one place it could have meant: the shack. Migration is the
+  // default, not a conversion step.
+  player.respawnArea = p.respawnArea || 'junkyard';
   player.scrollHintT = num(p.scrollHintT, 0);
   player.homeSet = !!p.homeSet;
   player.melee = (p.melee === 'pipe' || p.melee === 'knife') ? p.melee : null;
@@ -254,8 +259,12 @@ function applySave(d) {
   // the position check must run against the AREA WE LOADED
   const inBounds2 = player.x > 1 && player.y > 1 && player.x < MAP_W - 1 && player.y < MAP_H - 1;
   if (!inBounds2 || !canStand(player.x, player.y, player.r)) {
+    // The respawn point is only a safe fallback in the area it belongs to —
+    // it used to be tested against 'junkyard' by name, which was the same
+    // thing back when the shack was the only bed in the world.
     const safe = findSafeSpot(player.x, player.y) ||
-      (currentArea === 'junkyard' ? { x: player.respawnX, y: player.respawnY } : { x: MAP_W / 2, y: MAP_H / 2 });
+      (currentArea === player.respawnArea
+        ? { x: player.respawnX, y: player.respawnY } : { x: MAP_W / 2, y: MAP_H / 2 });
     player.x = safe.x; player.y = safe.y;
   }
 

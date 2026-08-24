@@ -24,9 +24,9 @@ Nothing on this list is a new idea. Every one of them is a doc saying
 
 | | What | Size | |
 |---|---|---|---|
-| 1.1 | **Halden and Bo's stock lists.** Per-trader stock is done and Tam proved it — these two are a list each and zero UI work. Bo already has a repair counter; he has no *shop*. | S | ○ |
-| 1.2 | **Ade heals for a price.** The med station is the one camp service in `GAME_PLAN` §6 the ring has never had. Trivial now trade is per-NPC. | S | ○ |
-| 1.3 | **The sleeping bay re-anchors respawn.** Respawn still assumes the junkyard. Dying in the Fringe and waking in the yard is the single worst-feeling thing left in the ring. | M | ◆ does sleeping also heal and move time on? |
+| 1.1 | ~~Halden and Bo's stock lists.~~ **DONE 2026-08-22.** Halden sells 6 pistol rounds (5 scrap) and a snack bar (3). *Bo's counter already existed* — it shipped with the gunsmith; this row was stale. | S | ✔ |
+| 1.2 | ~~Ade heals for a price.~~ **DONE 2026-08-22.** Heals to full, priced off the damage (2 scrap for a scratch, 9 for near-death). The ring's first repeatable scrap sink. | S | ✔ |
+| 1.3 | ~~The sleeping bay re-anchors respawn.~~ **DONE 2026-08-22.** `player.respawnArea` beside the coordinates; dying in the ring routes through the same fade a door does. Sleeping **heals to full** and moves no time on, there being no clock — flagged then, taken as the default. | M | ✔ |
 | 1.4 | **The crypt strongbox.** Locked, "later". Quest lock or a tool you find? | S | ◆ |
 | 1.5 | **The tower stair.** Outstanding since Candlelight was built, and the road-north plan wants it for Q2. | M | ○ |
 | 1.6 | **The churchyard.** `cathedral.md` phase 2: railings, headstones, trees, a lych gate. The cathedral currently stands on bare street. | M | ○ |
@@ -39,16 +39,21 @@ Nothing on this list is a new idea. Every one of them is a doc saying
 This is the gap I did not expect to find. The Fringe has *four* traders now and
 almost nothing to want.
 
-- **2.1 ○ M — Scrap has no sink.** Once you own the knife, the rifle and a
-  pocket of rounds, scrap accumulates forever. Every camp service that could
-  drink it — healing, repairs, sleeping, the strongbox — is unbuilt. Finishing
-  §1 largely fixes this by itself, which is an argument for doing §1 first.
-- **2.2 ◆ M — There is no armour, at all.** `items.js` says outright that the
-  ARMOUR tab was removed rather than stand empty saying *the city will provide*.
-  The city has still not provided. The Fringe is where the first armour belongs
-  — scavenged plate, a padded coat off a bandit — and it is the obvious second
-  thing Bo's vice is for. **Decision: does armour exist as a slot in this game,
-  and is it one value or several?** `progression-gear.md` never settled it.
+- **2.1 ~~○ M~~ LARGELY FIXED 2026-08-22 — scrap has no sink.** Ade's medbay is
+  a recurring cost that scales with how badly the ring is treating you, which
+  is exactly the shape this was missing.
+  *As originally written:* once you own the knife, the rifle and a pocket of
+  rounds, scrap accumulates forever, because every camp service that could
+  drink it — healing, repairs, sleeping, the strongbox — was unbuilt. That was
+  the argument for doing §1 first, and doing §1 is what closed it.
+- **2.2 ✔ DECIDED 2026-08-22 — armour is Ring 4's, not this ring's.** Laurens:
+  *"there are already many upgrades in the first part outside of the tutorial,
+  maybe save new armour for the next part of the quest."* Leaving the tutorial
+  the Fringe already hands over the knife, the service rifle and a four-slot
+  bench with six parts for it; a fourth progression axis would compete for the
+  same scrap, and armour is the one that would quietly undo the pressure
+  gradient. Ring 5's answer to danger stays cover, the crouch, and knowing when
+  not to fight. Written up in `progression-gear.md`.
 - **2.3 ◆ S — The rifle-as-pickup question.** The bandit rifleman drops rounds,
   not his rifle. `bandits.md` says on purpose that this is a progression call
   nobody has made. It is still not made.

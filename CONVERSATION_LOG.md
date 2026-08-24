@@ -2252,3 +2252,64 @@ economy), then Q2, then the detail pass, then interiors, then a balance pass —
 that last one being Laurens' to do, since no browser check can tell you whether
 a fight is miserable. Flagged armour and day/night as the two decisions that
 block more than they appear to, both getting harder the later they are taken.
+
+### The camp's services, and armour put off until Ring 4
+**Laurens:** *"Ok do the depth first that think about the armour, since there
+are already many upgrades in the fist part outisde of the toutorial, maybe save
+new armour for next part of the quest."*
+
+**The armour call, first.** Ring 5 is not getting armour, and that is now a
+decision rather than an omission. Leaving the tutorial the Fringe already hands
+over the piercing knife, the service rifle, and a bench with four slots and six
+parts for it — a fourth progression axis would be a fourth thing competing for
+the same scrap in the same ring, and armour is specifically the one that would
+undo the pressure gradient, because armour is what makes walking deeper
+survivable. It arrives with the Sprawl instead, where the player needs a reason
+to keep going. Written into `design/progression-gear.md` above the Decided list,
+with the two questions that still have to be answered when it is built (one
+value or several slots; looted, traded or made).
+
+**Then the debt — §1.1 to §1.3, the camp's services.**
+- **Halden's counter.** 6 pistol rounds for 5 scrap, a snack bar for 3. The gap
+  was real and nobody had noticed it: Tam sells *rifle* rounds, so a traveller
+  who had not yet paid Bo to straighten the rifle could reach the only camp in
+  the ring and find nothing on any counter that fitted his gun. He undercuts
+  Marek on both rows, which is what "I'll trade you fair, I'm too old to be
+  clever about it" ought to mean.
+- **Ade's medbay.** Heals to full, and the row only exists while there is
+  something to treat — the same shape as Bo's bench being empty until you carry
+  something bent. **The price scales with the damage**, 2 scrap for a scratch
+  and 9 for near-death, rather than a flat rate that robs you for a graze. She
+  is the ring's first *repeatable* scrap sink; everything else it sells is
+  bought once, which is why scrap had been piling up with nowhere to go.
+  Her greeting had to become conditional: "you're not bleeding, come back when
+  you are" is exactly right to somebody whole and exactly wrong to somebody who
+  walked in at nine health, so `lines` may now be a function and hers is — the
+  line Laurens wrote is kept, for the person it was written for.
+- **The bays re-anchor respawn.** The highest-value item on the list. Respawn
+  was two numbers with no map attached, and the only map they could have meant
+  was the junkyard — so dying at the roadblocks put you a whole area away,
+  behind a boss. Now `player.respawnArea` sits beside the coordinates, taking a
+  bay claims it, and dying somewhere else routes through the **same fade a door
+  does**, because a cut here reads as a crash. Bays are solid (everything in
+  that room is), so you wake in the aisle at the bay's shoulder — and the aisle
+  is *checked* rather than assumed, since only the middle bay actually has a
+  free tile there. Sleeping heals; a bed that leaves you at nine health is a
+  save point wearing a blanket. It moves no time on, there being no clock.
+- **Saves migrate by default, not by conversion.** A save with no `respawnArea`
+  predates bays and is a junkyard save by definition, so the absent field
+  *is* the right answer. Also fixed a latent version of the same bug in
+  `applySave`, which tested the out-of-bounds fallback against the literal
+  string 'junkyard'.
+
+**Verified in the browser** (`TEST_MODE`, scratch save key, screenshots taken):
+Halden's two rows and Ade's one render correctly; Ade shows nothing at full
+health and 1 row when hurt; her price moves 2 → 9 as damage rises; buying heals
+30 → 100 and charges 7, and a second press charges nothing. A bay claimed in
+Candlelight, then death in the Fringe, wakes the traveller **in Candlelight at
+the bay's aisle**, full health. Save round-trips `candlelight`; the same save
+with the field stripped loads as `junkyard`. No console errors.
+One thing worth writing down about the harness rather than the game: jumping
+straight to `GameState='playing'` leaves the first freeze-frame lesson up, and a
+lesson freezes the world — so nothing ticks and a test can look like a failure
+when the sim simply never ran.

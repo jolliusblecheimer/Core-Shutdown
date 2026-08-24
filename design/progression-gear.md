@@ -1,5 +1,29 @@
 # Progression & Gear
 
+## ARMOUR IS RING 4's, NOT RING 5's (Laurens, 2026-08-22)
+
+The Fringe has no armour and **that is now on purpose, not an oversight.**
+
+The question came up because `js/items.js` says out loud that the ARMOUR tab was
+pulled rather than stand empty promising *the city will provide* — and it never
+did. Laurens' call: *"there are already many upgrades in the first part outside
+of the tutorial, maybe save new armour for the next part of the quest."*
+
+He is right and the count says so. Leaving the tutorial, Ring 5 already hands
+the player **the piercing knife, the service rifle, and a bench with four slots
+and six parts for it**. A fourth progression axis on top of that is not more
+depth, it is a fourth thing competing for the same scrap in the same ring —
+and armour is the one that would quietly undo the pressure gradient, because
+armour is what makes walking deeper survivable.
+
+**So armour arrives with the Sprawl**, where the player needs a reason to keep
+going and where `world-map.md`'s gradient wants a new answer to "why can I
+survive here now". Ring 5's answer to danger stays what it already is: cover,
+the crouch, and knowing when not to fight.
+
+When it is built, the open questions below still have to be answered first —
+one value or several slots, and whether it is looted, traded or made.
+
 ## Decided
 - Gear is found, looted, and crafted — not bought from abstract menus. Scrap is the universal resource, looted from robot wrecks (1–2 each).
 - **Resource tiers:** scrap (common) → **tech components** (uncommon, from wreck loot ~20%) → **machine parts** (future, rare/deep-city). Higher tiers gate better gear.
