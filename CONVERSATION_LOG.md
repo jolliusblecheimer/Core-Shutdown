@@ -2313,3 +2313,49 @@ One thing worth writing down about the harness rather than the game: jumping
 straight to `GameState='playing'` leaves the first freeze-frame lesson up, and a
 lesson freezes the world — so nothing ticks and a test can look like a failure
 when the sim simply never ran.
+
+### Making the questline clear — the plan
+**Laurens:** *"first we have to make the questline clear, so after you reach the
+shelter change it to talk to the survivors in the camp (formulate it better).
+One of the npcs needs to somehow say something that gives you the quest to go to
+the next ring or quest area, make a plan for this."*
+**Claude:** Read the chain before planning, and it is worse than "thin". The
+last line of `currentObjective()` is `return null` — so reaching the shelter does
+not weaken the game's voice, it **ends it permanently**: HUD line gone, green
+dot off both maps, seven people in a lit church and nothing anywhere saying
+another thing exists.
+Three more faults underneath it, all of which the fix has to carry:
+- **"Reach the shelter" is completed by reading the map table**, not by
+  arriving. You can walk in, meet everybody, sleep, buy a rifle part, and the
+  HUD still says reach the shelter, because you never touched the altar.
+- **There is no quest system.** `mission = {state}` is one object with one state
+  belonging to the yard's five-scrap errand. Q2 has nowhere to live.
+- **Who you have spoken to is not saved.** `buildFolk()` rebuilds the camp with
+  `said: 0` on every entry, so "I talked to Tam" is forgotten the moment you
+  step outside. A "talk to the survivors" objective needs its own memory.
+Plan is `design/questline.md`. The chain becomes: reach the shelter → **"Ask
+around Candlelight" (n/3)** → **"Hear Ivar out"** → Q2 → Q3. The wording Laurens
+asked to be improved is an instruction rather than a description and names the
+place so it still reads from the yard. Three of seven, any three: enough to walk
+the room and trip over Bo's bench, Tam's counter or Ade's cots — which is the
+camp teaching its own services — without becoming a hunt for whoever you missed.
+Ivar is excluded from the count so he is always still there to be the
+conversation that changes something.
+**Ivar gives it** because he was built for it — the docs say outright he has the
+mission slot and no mission, and his existing lines are about knowledge, not
+goods. His dialogue gets the same conditional treatment Ade's just got.
+The mechanism is two saved fields and one rule, not an engine: `Quests` and
+`campMet`, merged onto defaults, with **a live run that has already arrived
+credited on load** the way `MILESTONE_GRANTS` credits items — and the rule that
+`currentObjective()` never returns null again while there is a next thing.
+**And the trap the plan exists to avoid:** Q2 ends by saying something is
+transmitting from the airfield, and the north band of the Fringe **is not
+built** — the edge there is an invisible wall with nothing drawn on it. An
+objective that walks the player into that is worse than the silence being fixed,
+because silence promises nothing. So Q2 ships with **N1, the viaduct as the
+ring's north wall** — the cheapest thing in the road-north plan, and it turns
+the worst edge in the ring into a way north that is visibly not open yet.
+Recommended Q2 is THE LONG AERIAL, because it does not assert that you should go
+north, it produces the reason — and what it finds is the same broadcast Q3
+exists to recover, so Act 1 and Act 2 join up. Four open questions; the first is
+still whether Q2 is the aerial at all.
