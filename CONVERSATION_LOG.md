@@ -2359,3 +2359,62 @@ Recommended Q2 is THE LONG AERIAL, because it does not assert that you should go
 north, it produces the reason — and what it finds is the same broadcast Q3
 exists to recover, so Act 1 and Act 2 join up. Four open questions; the first is
 still whether Q2 is the aerial at all.
+
+### The prologue: harmony, the turn, the graveyard, and the mechanic
+**Laurens:** Cutscenes at the start plus slight tutorial changes — show the world
+in harmony with robots helping, then all at once turning on people; the hero
+fleeing and getting hit at the last second **at the graveyard**; a **mechanic**
+who carries him to a second small shack where the hero spawns now, heals him and
+**rebuilds some of his body parts with mechanical parts**, and then one day
+leaves — and the hero wakes up. Plan first, in detail.
+**Claude:** Wrote `design/prologue.md`. Nothing built. The largest single content
+addition since the Fringe, and it rewrites lore that is already written down.
+**Why it is worth it beyond the spectacle.** The current opening is three
+typewriter lines, every one of them a summary: the player is *told* there was a
+world and *told* it ended. Showing the machines being good first also fixes the
+twist's weakest joint — the Correction stops being "robots go evil" and becomes
+a man deciding people are the problem and being right about the machines and
+wrong about himself. On a second playthrough the harmony scene is the most
+damning thing in the game, because the player was the one who ended it.
+**The graveyard should be St Martin's churchyard.** Not one invented for the
+cutscene — the one the sign trail leads to, that the camp lives inside, already
+owed as `cathedral.md` phase 2. It is geographically clean (he fled the Core
+outward, went down at the edge of the ring, and a man carrying a body walks east
+away from the city, which is where the yard is) and it buys the cheapest big
+payoff in the project: **Q2 walks the player back to the exact place they died
+and they do not know it.** The survivors have built their camp on top of it.
+**The mechanic should NOT be Marek** (recommended). Making him Marek means Marek
+has known all along that the traveller is half machine and never said so, which
+makes him a liar for the whole tutorial and wastes the disappearance. A separate
+man leaves the shack full of his tools and a diagram board, keeps Marek's
+function untouched with a better line, and keeps the amnesia intact because the
+one person who could explain anything is not there to ask.
+**And the reason he left, which is the hook:** he is the only man alive who has
+had this skull open, and **he recognised him** — not from the face, which was
+ruined, but from something in the body. He finished the work anyway, then packed
+his tools and went, telling nobody. The whole moral question of the game, asked
+once, quietly, before the player knows there is a question.
+**Two parts only**, because sixteen pixels: the left forearm (the arm that holds
+the pipe, and the sprite already draws an extended arm) and a plate over the left
+temple (the lore already had his head split open; it is the amnesia's physical
+cause and what the mechanic had to open). **They must not glow amber at rest** —
+amber means *this can be hurt* and that grammar is load-bearing — so instead they
+glow when he is badly hurt, which is a health cue with no HUD.
+**It also solves Ring 4.** Armour was deferred to the Sprawl on 08-22 with the
+question of what it even is left open. If the traveller is already part machine
+then the answer is **better parts, not scavenged plate**, fitted by a mechanic —
+native rather than bolted on, and planted in the first three minutes.
+**Tutorial changes are two:** movement moves into the playable flee, where it is
+taught because you are being chased rather than by a freeze-frame in a quiet
+yard; and a new first beat inside the shack teaches `E` on the diagrams.
+Everything after is untouched. **Naming moves to waking in the shack** — the
+moment the character genuinely has no name — which makes the final card land on
+something the player did as he lost the first one. Returning players skip all of
+it.
+**The technical finding:** there is no cutscene system. `GateCine` and the boss
+phases are bespoke timelines, one hand-written `t += dt` each. Fine for two, not
+for six beats with camera moves, typed text and sound — so the plan's first piece
+of code is a ~150-line beat runner, proved by re-expressing the existing gate
+cutscene in it, after which every cutscene is data.
+Seven open questions; the first three are the mechanic's identity, his name, and
+whether the graveyard is the churchyard.
