@@ -2600,3 +2600,18 @@ again be broken by something changing on the map.
 The street beats after it are untouched and still play in the real world.
 Verified end to end at 2000x1300 as well as 1280x720: the full prologue runs to
 the naming prompt in 52s with no console errors.
+
+### A man standing on the roof of a car
+**Laurens** (circled it on the screenshot): *"Die person steht auf dem auto."*
+**Claude:** He was at (21.5, 13.5) and the parked car is on tile (21, 13) — the
+same tile. Moved him to (20.5, 14.5), out in the road crossing it, which is what
+"late for something that is still going to happen" should look like anyway.
+**The cause was a missing check, not a typo.** People are placed by hand in
+`FOLK` and props are placed by hand in `map.js`, and **nothing compared the two
+lists.** Candlelight's builder has refused to stack two things on one tile since
+the day it was written; folk were the one kind of object exempt from that rule,
+in every area. `buildFolk` now walks its own list against `solid`, warns with
+the key and the tile so it shows up in the console during development, and
+nudges the person to the nearest free spot so a missed one can never ship as a
+man standing on a car roof. Verified: no one in the prologue cast is on a solid
+tile, and no warnings fire.

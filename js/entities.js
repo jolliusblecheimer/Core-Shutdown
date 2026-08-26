@@ -305,7 +305,9 @@ const FOLK = {
       lines: ["She steps around it without looking at it."] },
     { key: 'botSweeperWarm', bot: true, name: 'STREET UNIT', x: 19.5, y: 12.5, glow: '255,176,46',
       lines: ["Mending the kerb. Nobody has watched one of these in years."] },
-    { key: 'civGreen', name: 'A MAN', x: 21.5, y: 13.5,
+    // On the road, crossing — NOT at (21.5, 13.5), which is the tile the
+    // parked car sits on. He was standing on its roof.
+    { key: 'civGreen', name: 'A MAN', x: 20.5, y: 14.5,
       lines: ["He is late for something that is still going to happen."] },
     { key: 'botMedicWarm', bot: true, name: 'MEDICAL UNIT', x: 15.5, y: 12.5, glow: '255,176,46',
       lines: ["Its hands are on somebody."] },
@@ -321,6 +323,19 @@ const FOLK = {
 };
 function buildFolk(kind) {
   folk = (FOLK[kind] || []).map(f => Object.assign({ animT: 0, frame: 0, said: 0 }, f));
+  // NOBODY STANDS ON A PROP. People are placed by hand in the list above and
+  // props are placed by hand in map.js, and nothing was checking the two
+  // against each other — which is how a man ended up standing on the roof of a
+  // parked car in the prologue. Candlelight's builder has refused to stack two
+  // things on one tile since it was written; this is the same rule for the one
+  // kind of object that was exempt from it.
+  for (const f of folk) {
+    const tx = Math.floor(f.x), ty = Math.floor(f.y);
+    if (tx < 0 || ty < 0 || tx >= MAP_W || ty >= MAP_H || !solid[ty][tx]) continue;
+    console.warn('FOLK: ' + f.key + ' stands on a solid tile at ' + tx + ',' + ty);
+    const spot = typeof findSafeSpot === 'function' ? findSafeSpot(f.x, f.y) : null;
+    if (spot) { f.x = spot.x; f.y = spot.y; }
+  }
 }
 // one line at a time, in order, then round again — so talking to somebody
 // twice is worth doing and talking to them nine times is not. An entry may be
