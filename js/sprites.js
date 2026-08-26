@@ -2245,6 +2245,26 @@ function outlined(src) {
       ['civGrey',  '#6a6c78', 'kerchief', '#5a4636', 'satchel'],
     ]) Sprites.folk[key] = [person(0, coat, head, hair, extra), person(1, coat, head, hair, extra)];
 
+    // DOWN. Drawn into the same 15x20 frame the standing people use, so it is
+    // a KEY SWAP and nothing in the draw path has to know about it — the same
+    // trick the Correction uses to change a machine's light.
+    // No glow and no blood: this one was a person, and the shot is staged so
+    // the machine is standing over them when it happens. What is left is a
+    // shape on the pavement.
+    const downed = (coat) => {
+      const c = makeCanvas(15, 20), g = c.getContext('2d');
+      const D = shadeHex(coat, 0.70), L = shadeHex(coat, 1.10);
+      px(g, 3, 14, 9, 4, D);                             // body, on its side
+      px(g, 3, 14, 9, 1, L);
+      px(g, 2, 13, 4, 3, coat);                          // shoulder
+      px(g, 10, 15, 4, 3, '#3c2f22');                    // legs folded under
+      px(g, 12, 17, 3, 1, '#241d16');
+      px(g, 0, 14, 3, 3, '#8a7462');                     // head, turned away
+      px(g, 0, 14, 3, 1, '#a08872');
+      return outlined(c);
+    };
+    Sprites.folk.civDown = [downed('#6a6c78'), downed('#6a6c78')];
+
     // A CHILD — the one in beat 2 watching a machine with no fear at all,
     // which is the whole point of the shot. Same construction, two thirds up.
     const child = (step, coat) => {

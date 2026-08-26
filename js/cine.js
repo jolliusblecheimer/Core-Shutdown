@@ -322,19 +322,56 @@ function startPrologue(onDone) {
       exit: () => { Cine._turned = false; } },
 
     // ---- 4. THE CORRECTION -------------------------------------------------
-    { dur: 5.0, cam: [18, 13.5], zoom: 1.08,
+    // ONE PERSON IS CAUGHT, and it is the one the medical unit had its hands on
+    // two beats ago. That machine is the whole argument of the scene: it is not
+    // a soldier that turned, it is the thing that was treating you.
+    //
+    // Staged so it is never explicit. The machine gets there first and stands
+    // OVER them — its sprite is nearer the camera, so it covers the moment —
+    // and what is left when it walks on is a shape on the pavement. Amber, once,
+    // because amber is what damage looks like in this game.
+    // Framed on the pair, not on the street — the shot is about one thing
+    // happening to one person, and at 320x180 an event you have to hunt for
+    // has not happened.
+    { dur: 6.5, cam: [17, 13.2], zoom: 1.32,
       text: 'It took one night. They called it the Correction.',
       tick: (t, dt) => {
-        addShake(0.5);
-        // the machines start walking at people, and the people go
+        addShake(0.4);
+        const victim = folk.find(f => f.key === 'civGrey' || f.down);
+        const medic = folk.find(f => f.bot && f.key.indexOf('Medic') >= 0);
+
+        if (victim && medic && !victim.down) {
+          // they run for it, and it is faster than they are. The margin is
+          // deliberately thin — 3.0 against 2.6 — so it takes a couple of
+          // seconds and reads as being run down rather than teleported to.
+          proStep(victim, victim.x + 2.6, victim.y + 1.0, 2.6, dt);
+          proStep(medic, victim.x, victim.y + 0.35, 3.0, dt);
+          if (t > 1.5 && Math.hypot(medic.x - victim.x, medic.y - victim.y) < 0.8) {
+            victim.down = true;
+            victim.key = 'civDown';
+            addShake(3.0);
+            spawnSparks(victim.x, victim.y, 7, ['#ffb02e', '#c8503f']);
+            SFX.banditDie && SFX.banditDie();
+          }
+        } else if (medic) {
+          // it does not stay to look at what it did. It goes and finds another.
+          proStep(medic, medic.x + 3.5, medic.y - 1.2, 1.6, dt);
+        }
+
+        // everything else on the street, and nobody chases a body
+        const standing = () => proFolk().filter(p => !p.down);
         for (const f of proBots()) {
-          const near = proFolk().reduce((best, p) => {
+          if (f === medic) continue;
+          const near = standing().reduce((best, p) => {
             const d = Math.hypot(p.x - f.x, p.y - f.y);
             return (!best || d < best.d) ? { p, d } : best;
           }, null);
           if (near) proStep(f, near.p.x, near.p.y, 1.5, dt);
         }
-        for (const p of proFolk()) proStep(p, p.x + 3, p.y, 2.4, dt);
+        // NOT the victim: they already have their own flight above, and being
+        // moved twice a frame made them faster than the thing chasing them —
+        // the gap grew instead of closing and nobody was ever caught.
+        for (const p of standing()) { if (p !== victim) proStep(p, p.x + 3, p.y, 2.4, dt); }
       } },
 
     // ---- 5. THE RUN — watched, not played ---------------------------------
@@ -354,7 +391,7 @@ function startPrologue(onDone) {
           if (d > 4.5) proStep(f, player.x, player.y, 3.4, dt);
           else proStep(f, player.x, player.y, 1.2, dt);
         }
-        for (const p of proFolk()) proStep(p, p.x - 2, p.y, 2.0, dt);
+        for (const p of proFolk()) if (!p.down) proStep(p, p.x - 2, p.y, 2.0, dt);
         if (((t * 2) | 0) % 6 === 0) addShake(0.35);
       } },
 

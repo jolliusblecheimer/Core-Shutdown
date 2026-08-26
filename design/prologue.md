@@ -110,12 +110,20 @@ The medical unit's hands are still on the patient.
 
 *No text over this beat. It does not need any and text would soften it.*
 
-### Beat 4 — THE CORRECTION *(tableau, ~5s)*
+### Beat 4 — THE CORRECTION *(tableau, ~6.5s)*
 
-Wide enough to see it happen but never clear enough to be gratuitous — the
-screen is smoke, shapes and light. Running silhouettes, the shadows of machines
-between the buildings, one shopfront going in. The city's own alert tone,
-looping.
+**One person is caught, and it is the one the medical unit had its hands on two
+beats ago** (added 2026-08-26 at Laurens' request). That machine is the whole
+argument of the scene: it is not a soldier that turned, it is the thing that was
+treating you.
+
+Staged so it is never explicit. There is barely a chase — its hands were
+already on them — they pull away, it closes, and it is **standing over them**
+when it happens, its sprite nearer the camera so it covers the moment. One amber
+flash, because amber is what damage looks like in this game. What is left when
+it walks on is a shape on the pavement, and **it does not stay to look at it.**
+
+Around that: the other machines walk at the other people, and the people go.
 
 > *It took one night. They called it the Correction.*
 
@@ -567,3 +575,30 @@ separate image, not a thing you can see from the pavement. It also means the
 Core shot can never again be broken by something changing on the map.
 
 The street beats that follow are unchanged and still play in the real world.
+
+
+---
+
+## 15. The one who is caught, 2026-08-26
+
+Laurens: *"Add one person beeing caugth and killed to the cutsceen."*
+
+**Who:** `civGrey`, the patient the medical unit was treating in beat 2. Nothing
+else in the scene says as much in as little time.
+
+**How it is drawn:** a `civDown` sprite in the same 15×20 frame the standing
+people use, so it is a **key swap** and no drawing code had to learn about it —
+the same trick the Correction uses to change a machine's light. It follows
+`Sprites.banditDead`'s idiom, which carries the note *"No glow — this one was a
+person."* No blood: the machine is standing over them when it happens.
+
+**Two bugs worth remembering:**
+
+1. **The victim was being moved twice a frame** — once by their own flight and
+   again by the generic "everybody scatters" loop — so they ran at 4.6 tiles a
+   second against the machine's 3.0 and **the gap grew**. Nobody was ever
+   caught. Anything with its own movement has to be excluded from the crowd
+   loop.
+2. **The moment was not framed.** It happened at the edge of a shot pointed at
+   the street. At 320×180 an event you have to hunt for has not happened, so the
+   beat now frames the pair at 1.32× and the body lands near the middle of it.

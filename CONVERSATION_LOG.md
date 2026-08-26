@@ -2615,3 +2615,31 @@ the key and the tile so it shows up in the console during development, and
 nudges the person to the nearest free spot so a missed one can never ship as a
 man standing on a car roof. Verified: no one in the prologue cast is on a solid
 tile, and no warnings fire.
+
+### One person is caught
+**Laurens:** *"Add one person beeing caugth and killed to the cutsceen."*
+**Claude:** Added to the Correction beat, and the victim is **the patient the
+medical unit had its hands on two beats earlier**. Nothing else available says
+as much in as little time: it is not a soldier that turned, it is the thing that
+was treating you.
+Staged so it is never explicit. There is barely a chase — its hands were already
+on them — they pull away, it closes, and it is **standing over them** when it
+happens, its sprite nearer the camera so it covers the moment. One amber flash,
+because amber is what damage looks like in this game, and `SFX.banditDie`, which
+was written for people rather than machines. What is left when it walks on is a
+shape on the pavement, and **it does not stay to look at it.**
+Drawn as `civDown`, a slumped figure in the same 15x20 frame the standing people
+use — so it is a **key swap** and no drawing code had to learn about it, the same
+trick the Correction uses for the machines' light. It follows the idiom of
+`Sprites.banditDead`, which already carries the note *"No glow — this one was a
+person."*
+Two bugs worth writing down:
+- **The victim was moved twice a frame** — once by their own flight and again by
+  the generic "everybody scatters" loop — so they ran at 4.6 tiles a second
+  against the machine's 3.0 and **the gap grew**. Nobody was ever caught.
+  Anything with its own movement has to be excluded from the crowd loop.
+- **The moment was not framed.** It happened at the edge of a shot pointed at
+  the street. At 320x180 an event you have to hunt for has not happened, so the
+  beat frames the pair at 1.32x now and the body lands near the middle of it.
+Verified: the catch fires at t~1.9, the body stays put while everyone else runs,
+and the full prologue still reaches the naming prompt in 54s with no errors.
