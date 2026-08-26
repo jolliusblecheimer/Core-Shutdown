@@ -730,20 +730,36 @@ function updateMeta(dt) {
         GameState = 'confirmwipe';
       }
     } else if (anyKey) {
-      GameState = 'intro';
-      introIdx = 0; introT = 0;
+      // WAS: GameState = 'intro'; introIdx = 0; introT = 0;
+      // — the three typewriter lines. Kept live below and in js/cine.js; put
+      // those two lines back here to return to it.
+      startPrologueState();
     }
   } else if (GameState === 'confirmwipe') {
     if (Input.pressed['KeyE']) {
       wipeSave();
       pendingSave = null;
       playerName = '';
-      GameState = 'intro';
-      introIdx = 0; introT = 0;
+      // WAS: GameState = 'intro'; introIdx = 0; introT = 0;
+      startPrologueState();
     } else if (Input.pressed['KeyQ'] || Input.pressed['Escape']) {
       GameState = 'title';
     }
+  } else if (GameState === 'prologue') {
+    // ESC leaves the memory early. Whether it runs to the end or is skipped,
+    // it lands in exactly the same place: the naming prompt, with the yard
+    // built and waiting behind it.
+    if (Input.pressed['Escape']) { Input.pressed['Escape'] = false; skipCine(); }
+    updateCine(dt);
+    if (Cine.control) {
+      updatePlayer(dt);
+      markExplored(player.x, player.y, 9);
+    }
+    updateNpc(dt);          // the cast's walk cycles, already staggered
+    updateCamera(dt);       // and the cutscene drives the camera itself
   } else if (GameState === 'intro') {
+    // THE OLD OPENING, still wired and still working — nothing was deleted.
+    // It is simply no longer entered from the title. See js/cine.js.
     introT += dt;
     if (Input.pressed['KeyE'] || Input.pressed['LMB']) {
       const fullyTyped = introT * 24 > INTRO_LINES[introIdx].length;
@@ -770,6 +786,24 @@ function updateMeta(dt) {
     }
   }
   Input.pressed = {};
+}
+
+// ---------- the prologue, and the way back out of it ----------
+// Whether it plays to the end or is skipped on the first key, it lands in the
+// same place: the yard built, the player standing where the game has always
+// started them, and the naming prompt over the top. The memory is a detour
+// through another area and nothing downstream of it knows that happened.
+function startPrologueState() {
+  GameState = 'prologue';
+  startPrologue(() => {
+    enterArea('junkyard', { x: 6.5, y: 26.5 });
+    player.iframes = 1.2;
+    player.hp = player.maxHp;
+    camInit = false;
+    // He has no name until the moment he has no memory either.
+    GameState = 'naming';
+    nameBuf = '';
+  });
 }
 
 // ---------- update ----------
@@ -993,6 +1027,14 @@ function update(dt) {
     if (m.y > VIEW_H) m.y -= VIEW_H;
   }
 
+  updateCamera(dt);
+}
+
+// The camera, pulled out of update() so that the prologue can drive it too —
+// it used to be twenty lines sitting inline in the middle of the main loop,
+// which meant a cutscene running in any state other than 'playing' had no
+// camera at all.
+function updateCamera(dt) {
   // camera: the player normally; the boss during its cutscenes; during the
   // gate cutscene, first the gate lock — then whatever rises behind you.
   //
@@ -1004,7 +1046,13 @@ function update(dt) {
   // off the gate itself now, so moving the gate again cannot break it.
   const cineOn = boss.active && (boss.state === 'cine2' || boss.state === 'cine3');
   let focus;
-  if (GateCine.active) {
+  // A scripted beat takes the camera off the player entirely — and hands it
+  // back the moment a beat says `follow`, which is how the playable run inside
+  // the prologue works without being a special case.
+  const cc = typeof cineCamera === 'function' ? cineCamera() : null;
+  if (cc) {
+    focus = isoToScreen(cc.x, cc.y);
+  } else if (GateCine.active) {
     const lockX = gateProp ? gateProp.gx - 0.4 : player.x;
     const lockY = gateProp ? gateProp.gy + 0.5 : player.y;
     focus = GateCine.spawned ? isoToScreen(boss.x, boss.y) : isoToScreen(lockX, lockY);
@@ -1017,7 +1065,8 @@ function update(dt) {
   if (!camInit) { camX = targetX; camY = targetY; camInit = true; }
   camX += (targetX - camX) * Math.min(1, 8 * dt);
   camY += (targetY - camY) * Math.min(1, 8 * dt);
-  const zoomTarget = GateCine.active ? 1.35 : (cineOn ? 1.55 : 1);
+  const zoomTarget = Cine.active ? Cine.zoom
+    : GateCine.active ? 1.35 : (cineOn ? 1.55 : 1);
   cineZoom += (zoomTarget - cineZoom) * Math.min(1, 5 * dt);
 }
 
@@ -1878,6 +1927,24 @@ function drawProp(p, x, y) {
     ctx.globalAlpha = 1;
     return;
   }
+  // ---- THE CHURCHYARD ----
+  if (T === 'railing') {
+    const img = p.dir === 'y' ? Sprites.railing.y : Sprites.railing.x;
+    ctx.drawImage(img, Math.round(x - img.width / 2), Math.round(y - img.height + 8));
+    return;
+  }
+  if (T === 'headstone') {
+    const img = Sprites.headstones[p.v % Sprites.headstones.length];
+    drawShadow(x, y, 5);
+    ctx.drawImage(img, Math.round(x - img.width / 2), Math.round(y - img.height + 3));
+    return;
+  }
+  if (T === 'lychGate') {
+    drawShadow(x, y, 11);
+    ctx.drawImage(Sprites.lychGate, Math.round(x - Sprites.lychGate.width / 2),
+                  Math.round(y - Sprites.lychGate.height + 6));
+    return;
+  }
   if (T === 'post') {
     const img = p.big ? Sprites.postL : Sprites.postS;
     const a = occlusionAlpha(p);
@@ -2434,6 +2501,9 @@ function drawFolk(f, x, y) {
   drawShadow(x, y, 5);
   const set = Sprites.folk[f.key] || Sprites.folk.vesna;
   ctx.drawImage(set[f.frame], Math.round(x - 8), Math.round(y - 21));
+  // A machine puts its own light on the street. Blue while it is still the
+  // city's, amber once it is not — and that swap is the Correction.
+  if (f.glow) addLight(x, y - 13, 0, 15, f.glow, 0.30);
 }
 
 function drawNpc(x, y) {
@@ -2630,6 +2700,11 @@ function drawHUD() {
   g.clearRect(0, 0, ui.width, ui.height);
 
   // ---- title / intro / naming screens (world frozen & dimmed behind) ----
+  // THE PROLOGUE draws the world and nothing else. No health bar, no minimap,
+  // no weapon slots — there is no run yet to have a HUD about, and a letterbox
+  // with a health bar in the corner of it stops being a letterbox.
+  if (GameState === 'prologue') { drawCineOverlay(); return; }
+
   if (GameState !== 'playing') {
     const blink = ((gameTime * 1.6) | 0) % 2 === 0;
 

@@ -2220,3 +2220,255 @@ being committed to now.
 
 Seven questions back to Laurens, the first being whether Q2 is the aerial at
 all. Nothing built, no code touched — approval first, per rule 1.
+
+### Brainstorm — what the Fringe still needs to be finished
+**Laurens:** *"Brainstorm a list of things this area needs to be compleated, i
+added everything i find nessecary now come the detailles."*
+**Claude:** First re-synced: this session's branch was 58 commits behind and its
+own map-UI plan had already been built on `main` (`cfb7200`), so the branch was
+restarted from `main` and the two stale commits dropped rather than rebased —
+rebasing them would have clobbered the built `design/map-ui.md` with the older
+plan and appended duplicate log entries.
+Then wrote `design/fringe-completion.md` — not a plan, no code. Everything
+between the Fringe as it stands and a ring with no construction sites in it,
+sized S/M/L and marked for whether it needs a call from Laurens. Seven groups:
+the half-built debt (Halden and Bo's stock, Ade healing, respawn re-anchoring,
+the strongbox, the tower stair, the churchyard, lit windows, the held-back
+Scout, long props); the ring's missing economy; the 200×150 of city with no
+reason to enter it; the detail pass that makes a street feel lived-through;
+combat nobody has playtested; and Q2.
+Three things the sweep turned up that were not on anyone's list:
+- **There is no armour in the game at all.** `items.js` says outright that the
+  ARMOUR tab was removed rather than stand empty promising the city would
+  provide. It never did. That is a whole progression axis missing, and
+  `progression-gear.md` never settled whether armour is one value or several.
+- **Scrap has no sink.** Four traders in the ring and, once the knife and rifle
+  are bought, nothing to want. Finishing the camp services fixes it as a side
+  effect, which is an argument for doing the debt first.
+- **The gas station is the best arena in the ring and nothing has ever been
+  staged around it** — six pillars and four detonating pumps used as scenery.
+Recommended order: the debt first (it needs no decisions and pays off the
+economy), then Q2, then the detail pass, then interiors, then a balance pass —
+that last one being Laurens' to do, since no browser check can tell you whether
+a fight is miserable. Flagged armour and day/night as the two decisions that
+block more than they appear to, both getting harder the later they are taken.
+
+### The camp's services, and armour put off until Ring 4
+**Laurens:** *"Ok do the depth first that think about the armour, since there
+are already many upgrades in the fist part outisde of the toutorial, maybe save
+new armour for next part of the quest."*
+
+**The armour call, first.** Ring 5 is not getting armour, and that is now a
+decision rather than an omission. Leaving the tutorial the Fringe already hands
+over the piercing knife, the service rifle, and a bench with four slots and six
+parts for it — a fourth progression axis would be a fourth thing competing for
+the same scrap in the same ring, and armour is specifically the one that would
+undo the pressure gradient, because armour is what makes walking deeper
+survivable. It arrives with the Sprawl instead, where the player needs a reason
+to keep going. Written into `design/progression-gear.md` above the Decided list,
+with the two questions that still have to be answered when it is built (one
+value or several slots; looted, traded or made).
+
+**Then the debt — §1.1 to §1.3, the camp's services.**
+- **Halden's counter.** 6 pistol rounds for 5 scrap, a snack bar for 3. The gap
+  was real and nobody had noticed it: Tam sells *rifle* rounds, so a traveller
+  who had not yet paid Bo to straighten the rifle could reach the only camp in
+  the ring and find nothing on any counter that fitted his gun. He undercuts
+  Marek on both rows, which is what "I'll trade you fair, I'm too old to be
+  clever about it" ought to mean.
+- **Ade's medbay.** Heals to full, and the row only exists while there is
+  something to treat — the same shape as Bo's bench being empty until you carry
+  something bent. **The price scales with the damage**, 2 scrap for a scratch
+  and 9 for near-death, rather than a flat rate that robs you for a graze. She
+  is the ring's first *repeatable* scrap sink; everything else it sells is
+  bought once, which is why scrap had been piling up with nowhere to go.
+  Her greeting had to become conditional: "you're not bleeding, come back when
+  you are" is exactly right to somebody whole and exactly wrong to somebody who
+  walked in at nine health, so `lines` may now be a function and hers is — the
+  line Laurens wrote is kept, for the person it was written for.
+- **The bays re-anchor respawn.** The highest-value item on the list. Respawn
+  was two numbers with no map attached, and the only map they could have meant
+  was the junkyard — so dying at the roadblocks put you a whole area away,
+  behind a boss. Now `player.respawnArea` sits beside the coordinates, taking a
+  bay claims it, and dying somewhere else routes through the **same fade a door
+  does**, because a cut here reads as a crash. Bays are solid (everything in
+  that room is), so you wake in the aisle at the bay's shoulder — and the aisle
+  is *checked* rather than assumed, since only the middle bay actually has a
+  free tile there. Sleeping heals; a bed that leaves you at nine health is a
+  save point wearing a blanket. It moves no time on, there being no clock.
+- **Saves migrate by default, not by conversion.** A save with no `respawnArea`
+  predates bays and is a junkyard save by definition, so the absent field
+  *is* the right answer. Also fixed a latent version of the same bug in
+  `applySave`, which tested the out-of-bounds fallback against the literal
+  string 'junkyard'.
+
+**Verified in the browser** (`TEST_MODE`, scratch save key, screenshots taken):
+Halden's two rows and Ade's one render correctly; Ade shows nothing at full
+health and 1 row when hurt; her price moves 2 → 9 as damage rises; buying heals
+30 → 100 and charges 7, and a second press charges nothing. A bay claimed in
+Candlelight, then death in the Fringe, wakes the traveller **in Candlelight at
+the bay's aisle**, full health. Save round-trips `candlelight`; the same save
+with the field stripped loads as `junkyard`. No console errors.
+One thing worth writing down about the harness rather than the game: jumping
+straight to `GameState='playing'` leaves the first freeze-frame lesson up, and a
+lesson freezes the world — so nothing ticks and a test can look like a failure
+when the sim simply never ran.
+
+### Making the questline clear — the plan
+**Laurens:** *"first we have to make the questline clear, so after you reach the
+shelter change it to talk to the survivors in the camp (formulate it better).
+One of the npcs needs to somehow say something that gives you the quest to go to
+the next ring or quest area, make a plan for this."*
+**Claude:** Read the chain before planning, and it is worse than "thin". The
+last line of `currentObjective()` is `return null` — so reaching the shelter does
+not weaken the game's voice, it **ends it permanently**: HUD line gone, green
+dot off both maps, seven people in a lit church and nothing anywhere saying
+another thing exists.
+Three more faults underneath it, all of which the fix has to carry:
+- **"Reach the shelter" is completed by reading the map table**, not by
+  arriving. You can walk in, meet everybody, sleep, buy a rifle part, and the
+  HUD still says reach the shelter, because you never touched the altar.
+- **There is no quest system.** `mission = {state}` is one object with one state
+  belonging to the yard's five-scrap errand. Q2 has nowhere to live.
+- **Who you have spoken to is not saved.** `buildFolk()` rebuilds the camp with
+  `said: 0` on every entry, so "I talked to Tam" is forgotten the moment you
+  step outside. A "talk to the survivors" objective needs its own memory.
+Plan is `design/questline.md`. The chain becomes: reach the shelter → **"Ask
+around Candlelight" (n/3)** → **"Hear Ivar out"** → Q2 → Q3. The wording Laurens
+asked to be improved is an instruction rather than a description and names the
+place so it still reads from the yard. Three of seven, any three: enough to walk
+the room and trip over Bo's bench, Tam's counter or Ade's cots — which is the
+camp teaching its own services — without becoming a hunt for whoever you missed.
+Ivar is excluded from the count so he is always still there to be the
+conversation that changes something.
+**Ivar gives it** because he was built for it — the docs say outright he has the
+mission slot and no mission, and his existing lines are about knowledge, not
+goods. His dialogue gets the same conditional treatment Ade's just got.
+The mechanism is two saved fields and one rule, not an engine: `Quests` and
+`campMet`, merged onto defaults, with **a live run that has already arrived
+credited on load** the way `MILESTONE_GRANTS` credits items — and the rule that
+`currentObjective()` never returns null again while there is a next thing.
+**And the trap the plan exists to avoid:** Q2 ends by saying something is
+transmitting from the airfield, and the north band of the Fringe **is not
+built** — the edge there is an invisible wall with nothing drawn on it. An
+objective that walks the player into that is worse than the silence being fixed,
+because silence promises nothing. So Q2 ships with **N1, the viaduct as the
+ring's north wall** — the cheapest thing in the road-north plan, and it turns
+the worst edge in the ring into a way north that is visibly not open yet.
+Recommended Q2 is THE LONG AERIAL, because it does not assert that you should go
+north, it produces the reason — and what it finds is the same broadcast Q3
+exists to recover, so Act 1 and Act 2 join up. Four open questions; the first is
+still whether Q2 is the aerial at all.
+
+### The prologue: harmony, the turn, the graveyard, and the mechanic
+**Laurens:** Cutscenes at the start plus slight tutorial changes — show the world
+in harmony with robots helping, then all at once turning on people; the hero
+fleeing and getting hit at the last second **at the graveyard**; a **mechanic**
+who carries him to a second small shack where the hero spawns now, heals him and
+**rebuilds some of his body parts with mechanical parts**, and then one day
+leaves — and the hero wakes up. Plan first, in detail.
+**Claude:** Wrote `design/prologue.md`. Nothing built. The largest single content
+addition since the Fringe, and it rewrites lore that is already written down.
+**Why it is worth it beyond the spectacle.** The current opening is three
+typewriter lines, every one of them a summary: the player is *told* there was a
+world and *told* it ended. Showing the machines being good first also fixes the
+twist's weakest joint — the Correction stops being "robots go evil" and becomes
+a man deciding people are the problem and being right about the machines and
+wrong about himself. On a second playthrough the harmony scene is the most
+damning thing in the game, because the player was the one who ended it.
+**The graveyard should be St Martin's churchyard.** Not one invented for the
+cutscene — the one the sign trail leads to, that the camp lives inside, already
+owed as `cathedral.md` phase 2. It is geographically clean (he fled the Core
+outward, went down at the edge of the ring, and a man carrying a body walks east
+away from the city, which is where the yard is) and it buys the cheapest big
+payoff in the project: **Q2 walks the player back to the exact place they died
+and they do not know it.** The survivors have built their camp on top of it.
+**The mechanic should NOT be Marek** (recommended). Making him Marek means Marek
+has known all along that the traveller is half machine and never said so, which
+makes him a liar for the whole tutorial and wastes the disappearance. A separate
+man leaves the shack full of his tools and a diagram board, keeps Marek's
+function untouched with a better line, and keeps the amnesia intact because the
+one person who could explain anything is not there to ask.
+**And the reason he left, which is the hook:** he is the only man alive who has
+had this skull open, and **he recognised him** — not from the face, which was
+ruined, but from something in the body. He finished the work anyway, then packed
+his tools and went, telling nobody. The whole moral question of the game, asked
+once, quietly, before the player knows there is a question.
+**Two parts only**, because sixteen pixels: the left forearm (the arm that holds
+the pipe, and the sprite already draws an extended arm) and a plate over the left
+temple (the lore already had his head split open; it is the amnesia's physical
+cause and what the mechanic had to open). **They must not glow amber at rest** —
+amber means *this can be hurt* and that grammar is load-bearing — so instead they
+glow when he is badly hurt, which is a health cue with no HUD.
+**It also solves Ring 4.** Armour was deferred to the Sprawl on 08-22 with the
+question of what it even is left open. If the traveller is already part machine
+then the answer is **better parts, not scavenged plate**, fitted by a mechanic —
+native rather than bolted on, and planted in the first three minutes.
+**Tutorial changes are two:** movement moves into the playable flee, where it is
+taught because you are being chased rather than by a freeze-frame in a quiet
+yard; and a new first beat inside the shack teaches `E` on the diagrams.
+Everything after is untouched. **Naming moves to waking in the shack** — the
+moment the character genuinely has no name — which makes the final card land on
+something the player did as he lost the first one. Returning players skip all of
+it.
+**The technical finding:** there is no cutscene system. `GateCine` and the boss
+phases are bespoke timelines, one hand-written `t += dt` each. Fine for two, not
+for six beats with camera moves, typed text and sound — so the plan's first piece
+of code is a ~150-line beat runner, proved by re-expressing the existing gate
+cutscene in it, after which every cutscene is data.
+Seven open questions; the first three are the mechanic's identity, his name, and
+whether the graveyard is the churchyard.
+
+### The prologue, built — and the old opening kept in the file
+**Laurens:** *"Ok build all cutsceens, but keep the current funktions as comments
+so we can change it back if needed."*
+**Claude:** Built. **On the branch, not merged** — it is a large visual change,
+so under the local-first rule it does not reach the live site until Laurens has
+seen it.
+**The old opening is kept, and it is more than commented out.** `INTRO_LINES` and
+the whole `intro` state — its update block and its draw block — are still live
+and still working in `game.js`; nothing was deleted. The only change is that the
+title screen no longer routes into it, and the two lines that used to do so are
+sitting right there commented above the call that replaced them. Going back is
+un-commenting two lines. The old text is also written out in full at the bottom
+of `js/cine.js` next to an explanation of what replaced it.
+**The blocker had to go first.** There was no cutscene system: `GateCine` and the
+boss's phases were one hand-written `t += dt` each. `js/cine.js` is now a **beat
+runner** — a cutscene is a list of beats, each saying how long it lasts, where
+the camera looks, what is typed, whether the player has the sticks, and what to
+run on entry and per frame. Every cutscene after this one is data.
+Making that work needed `updateCamera` pulled out of the middle of `update()`,
+where it had been sitting inline as twenty un-callable lines — which is why a
+cutscene in any state other than `playing` had no camera at all.
+**The prologue is a real area, not painted cards.** `buildPrologue` is 34×26 and
+gets the actual renderer: same tiles, same building volumes, same AO, god rays,
+colour grade and tilt-shift. A painted cutscene would have looked like a
+different game, and the entire point of the scene is that it is the *same city*
+the player is about to walk through as a ruin.
+**The whole cast rides the `folk` pipeline** — four civilians, a child and three
+helper machines are `Sprites.folk` entries, so there is no new drawing code for
+any of them. And **the Correction is a key swap**: every machine keeps its
+sprite, its frame and its place on the pavement, and only the bar it sees with
+changes, blue to amber. Verified in the browser on one frame.
+**Two bugs found by building it:**
+- **Framing.** The first pass put a south building's roof across the middle of
+  every shot. In this projection anything south of the subject draws in FRONT of
+  it, and a 46-pixel house stands about six tiles of screen height — so the
+  frontage moved three tiles back and the cast moved to the north pavement, with
+  the camera framed on the road rather than on the pavement they stand on.
+- **The movement lesson would have fired twice** — once in the run, once again
+  three minutes later in a quiet junkyard. The run now marks the yard's as
+  taught. And if you SKIP the prologue it does not, so a skipper is still taught
+  to walk; that fell out rather than being designed, and it is the right
+  behaviour.
+**Verified end to end in the browser** under `TEST_MODE`: all six beats, the
+machines turning, the playable run driven with the keyboard from the east end to
+the lych gate, the hit, the fade, and the landing in the naming prompt with the
+yard built. ESC from any beat lands in exactly the same place. No console errors.
+**Five things deliberately not built**, listed in `design/prologue.md` §11. The
+largest is that **there is no drawing of him on the ground** — the hit is a
+shake, sparks, a hard zoom and a fade, and he is still standing when it lands.
+The boots-entering-frame shot is not built either, and that is the emotional
+peak of the scene. Also unbuilt: lit windows (the "before" city is lit by
+streetlights, not by people being home), the mechanic's shack and waking up in
+it, and the dressing on the Correction beat.

@@ -4,8 +4,26 @@
 **Working:** both areas, the shell, the arcade, every fitting, seven people
 talking, the chests, the map table that hands you the ring, and **Tam's
 counter** — per-trader stock, so a new trader is a list and no UI work.
-**Not built:** Halden and Bo trading, Ade healing, the sleeping bay re-anchoring
-respawn, the strongbox, Q2. Section 5 items 6, 7.
+**Built 2026-08-22 — the camp's services.** Halden's counter, Ade's medbay, and
+the sleeping bays. Section 5 items 6 and 7 are done.
+- **Halden** keeps the dry stores: 6 pistol rounds for 5 scrap, a snack bar for
+  3. The gap he fills is real — Tam sells *rifle* rounds, so before this a
+  traveller who had not paid Bo to straighten the rifle yet could reach the only
+  camp in the ring and find nothing that fitted his gun. He undercuts Marek on
+  both rows, which is what "I'll trade you fair" is supposed to mean.
+- **Ade** heals to full, and her counter only has a row on it while there is
+  something to treat — the same shape as Bo's bench. **The price scales with
+  the damage** (2 scrap for a scratch, 9 for near-death) rather than a flat rate
+  that robs you for a graze. She is the ring's first *repeatable* scrap sink;
+  everything else it sells is a thing you buy once.
+  Her greeting is conditional too, because "you're not bleeding, come back when
+  you are" is exactly right to somebody whole and exactly wrong to somebody who
+  walked in at nine health. `lines` may now be a function, and hers is.
+- **The bays re-anchor respawn.** Take one and it is where you wake up, healed.
+
+**Not built:** the strongbox, Q2.
+*(Bo's counter was already built with the gunsmith — repair, padded stock,
+stripped box. This doc's old status line was behind.)*
 
 A cathedral is not the point. **A cathedral that people are living in** is the
 point — cold stone somebody has made warm, and it took work. You come out of a
@@ -186,9 +204,16 @@ Honest list, worst first.
 4. **Containers.** New prop type, open state, contents, save.
 5. **The map table.** One interaction that fills the Fringe fog and sets a
    one-shot flag. Cheap, and the best value in the list.
-6. **Respawn re-anchor.** Sleeping writes respawn position *and area*; the
-   respawn code currently assumes the junkyard.
-7. **Med station.** Heal to full for a cost. Trivial once trade is per-NPC.
+6. ~~**Respawn re-anchor.**~~ **Done, 2026-08-22.** `player.respawnArea` sits
+   beside the coordinates and the death path routes through the same fade a
+   door does, so waking up somewhere else is an area change like any other.
+   The bays are solid — everything placed in this room is — so the point you
+   wake at is the aisle at the bay's shoulder, and the aisle is *checked*
+   rather than assumed: only the middle bay actually has a free tile there.
+   A save with no `respawnArea` in it is from before bays could be claimed and
+   is a junkyard save by definition, so migration is the default, not a step.
+7. ~~**Med station.**~~ **Done, 2026-08-22.** Ade heals to full, priced off the
+   damage.
 8. **Save migration.** New area state, new flags, new respawn area — all of it
    has to merge onto old saves and never discard (`js/save.js`, rule 6).
 

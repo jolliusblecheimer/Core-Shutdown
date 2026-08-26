@@ -361,6 +361,19 @@ anything else:
 **The obvious next build** with no questions attached is item 1 below (long
 props as volumes) or item 3 (the rest of Candlelight).
 
+## THE PROLOGUE — built on a branch, awaiting review (2026-08-22)
+
+The opening is no longer three typewriter lines. `js/cine.js` is a **beat
+runner** — a cutscene is a list of beats, so every cutscene after this one is
+data — and the prologue is six of them: a working street, a machine with its
+hands on a patient, **the turn** (every machine stops on the same frame, then
+goes blue to amber without moving), the Correction, a **playable 40-second run**
+where WASD is taught because you are being chased, and the graveyard at the end
+of it. It plays in a real area with the real renderer, ESC skips it, and it
+lands in the naming prompt with the yard built.
+**On the branch only** — see `design/prologue.md` §11 for the five things not
+built yet, the largest being that there is no drawing of him on the ground.
+
 ## Outstanding — next session starts here
 
 1. **Long props are still flat rectangles** — bus stop, dumpster, awning don't
@@ -381,18 +394,25 @@ props as volumes) or item 3 (the rest of Candlelight).
    deployed (its flare wakes the squad — held pending your call on whether the
    alarm belongs in this phase), plus a balance pass against pipe/knife/~18
    rounds.
-3. **Candlelight — the rest of it.** The camp is IN (see below), and so is
-   per-trader stock. Still to do from `design/candlelight.md`: stock lists for
-   Halden and Bo, Ade healing for a price, the sleeping bay re-anchoring
-   respawn, the tower stair, the strongbox, and Q2 itself. Also the churchyard
-   outside (railings, gravestones, trees, a lych gate) and lit windows now that
-   somebody does live there.
+3. **Candlelight — the rest of it.** The camp is IN, and **its services went in
+   on 2026-08-22**: Halden's dry stores (6 pistol rounds / a snack bar — the
+   ring had nowhere selling PISTOL rounds at all), **Sister Ade's medbay**
+   (heals to full, priced off the damage — the ring's first repeatable scrap
+   sink), and **the sleeping bays**, which re-anchor where you wake up.
+   *Bo's counter was never missing — it shipped with the gunsmith; the doc was
+   stale.* Still to do from `design/candlelight.md`: the tower stair, the
+   strongbox, and Q2 itself. Also the churchyard outside (railings, gravestones,
+   trees, a lych gate) and lit windows now that somebody does live there.
 4. Interiors (enterable shops/houses, roof fade).
 5. Field 12 + the drone crash (Q3) and the Underpass to Ring 4.
    **PLANNED 2026-08-22 — `design/the-road-north.md`.** The whole chain is
    mapped: Q2 at Candlelight → Field 12 and Q3 → the Underpass and the Lamp →
    the Sprawl and Station 9 (Q4/Q5). Build order N1–N7. Waiting on Laurens.
 6. Open questions never answered: day/night.
+   *(Answered 2026-08-22: **ARMOUR IS RING 4's.** Laurens — the Fringe already
+   hands over the knife, the rifle and a four-slot bench, so a fourth
+   progression axis competes for the same scrap, and armour is the one that
+   would undo the pressure gradient. See `design/progression-gear.md`.)*
    *(Answered 2026-08-19: the Compactor drops a **badly damaged rifle**, repaired
    by a droid-dismantler at Candlelight — HHDs do NOT drop rifles. See
    `design/hhd-squads.md`.)*

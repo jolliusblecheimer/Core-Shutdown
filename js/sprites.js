@@ -1631,6 +1631,21 @@ function outlined(src) {
     px(sng, 1, 5, 10, 1, '#6a4326');
     Sprites.snackIcon = outlined(sn);
 
+    // A ROLL OF LINEN WITH A CROSS ON IT — Sister Ade's counter. Not a red
+    // cross out of a first-aid box: this camp has no such thing. Somebody
+    // tore a sheet into strips and painted the mark on so it could be found
+    // in the dark. Integer fills only; the whole thing is nine pixels tall.
+    {
+      const md = makeCanvas(12, 9), mg = md.getContext('2d');
+      px(mg, 1, 2, 10, 6, '#d8d2c0');      // linen
+      px(mg, 1, 2, 10, 1, '#eae5d6');      // lit top edge
+      px(mg, 1, 7, 10, 1, '#b3ac98');      // shadowed underside
+      px(mg, 3, 2, 1, 6, '#c4bda9');       // the cut edge of the roll
+      px(mg, 7, 3, 2, 4, '#c8503f');       // the cross, upright
+      px(mg, 6, 4, 4, 2, '#c8503f');       // the cross, arms
+      Sprites.medIcon = outlined(md);
+    }
+
     // MRE pouches — army ration foil, stencilled band. The band is the only
     // thing that tells beef from chicken at twelve pixels, so it does the work.
     const mre = (band, mark) => {
@@ -2199,6 +2214,164 @@ function outlined(src) {
       ['tam',    '#7a5a3a', 'hair',     '#4a3a26', null],
       ['osk',    '#4a4a42', 'cap',      '#3a3226', 'lamp'],
     ]) Sprites.folk[key] = [person(0, coat, head, hair, extra), person(1, coat, head, hair, extra)];
+
+    // ---------------------------------------------------------------------
+    // THE PROLOGUE CAST. Everything below rides the folk pipeline — same
+    // builder, same two frames, same `Sprites.folk[key]` lookup, so the
+    // prologue needs no new drawing code at all. A machine changing its light
+    // at the Correction is one line: swap the key it is drawn under.
+    // ---------------------------------------------------------------------
+
+    // CIVILIANS, before. The survivor palette is every shade of mud, because
+    // everybody left has been outdoors for a year. These people have not.
+    // They wear colours, and that alone dates the scene.
+    for (const [key, coat, head, hair, extra] of [
+      ['civBlue',  '#3d5a86', 'hair',     '#2e2418', null],
+      ['civRed',   '#8a4038', 'hair',     '#4a3a26', 'satchel'],
+      ['civGreen', '#41614a', 'cap',      '#3a3226', null],
+      ['civGrey',  '#6a6c78', 'kerchief', '#5a4636', 'satchel'],
+    ]) Sprites.folk[key] = [person(0, coat, head, hair, extra), person(1, coat, head, hair, extra)];
+
+    // A CHILD — the one in beat 2 watching a machine with no fear at all,
+    // which is the whole point of the shot. Same construction, two thirds up.
+    const child = (step, coat) => {
+      const c = makeCanvas(15, 20), g = c.getContext('2d');
+      const b = step ? 1 : 0, D = shadeHex(coat, 0.72), L = shadeHex(coat, 1.22);
+      px(g, 6, 6 + b, 4, 2, '#3a2f22');                  // hair
+      px(g, 5, 7 + b, 6, 2, '#3a2f22');
+      px(g, 5, 9 + b, 6, 3, '#a08872');                  // face
+      px(g, 6, 10 + b, 1, 1, '#2a2420'); px(g, 9, 10 + b, 1, 1, '#2a2420');
+      px(g, 5, 12 + b, 6, 1, D);
+      px(g, 4, 13 + b, 8, 4, coat);                      // coat
+      px(g, 4, 13 + b, 2, 4, L); px(g, 10, 13 + b, 2, 4, D);
+      px(g, 5, 17, 2, 3, '#3c2f22'); px(g, 8, 17, 2, 3, '#3c2f22');
+      return outlined(c);
+    };
+    Sprites.folk.child = [child(0, '#b07a3a'), child(1, '#b07a3a')];
+
+    // ---- THE HELPER MACHINES ----------------------------------------------
+    // A DELIBERATELY NEW DESIGN LANGUAGE. Every machine built for this project
+    // so far is junk, rust and improvisation, because every machine the player
+    // has met wants to kill them. These are the city's own, before: pale
+    // shells, clean panel lines, no exposed anything.
+    //
+    // The lamp is the whole trick. `droids.js` already establishes that BLUE IS
+    // WARDEN AND AMBER IS DAMAGE, so these carry a calm blue bar — and the
+    // Correction is drawn by rebuilding the identical sprite with the bar in
+    // amber. Nothing else about them changes. It should read as the same
+    // machine, still standing where it was, now looking at you differently.
+    const helper = (kind, step, lamp) => {
+      const c = makeCanvas(15, 20), g = c.getContext('2d');
+      const b = step ? 1 : 0;
+      const SHELL = '#c2c8cd', LIT = '#e0e5e9', DK = '#8f979e', SEAM = '#79828a';
+      const GLOW = shadeHex(lamp, 1.35);
+      if (kind === 'carrier') {
+        // a walking hand-truck: tall shell, a crate held out in front
+        px(g, 4, 2 + b, 7, 4, SHELL);                    // head block
+        px(g, 4, 2 + b, 7, 1, LIT);
+        px(g, 5, 4 + b, 5, 2, lamp);                     // the bar it sees with
+        px(g, 6, 4 + b, 3, 1, GLOW);
+        px(g, 3, 6 + b, 9, 7, SHELL);                    // torso
+        px(g, 3, 6 + b, 2, 7, LIT); px(g, 10, 6 + b, 2, 7, DK);
+        px(g, 3, 9 + b, 9, 1, SEAM);                     // panel line
+        px(g, 0, 8 + b, 4, 4, '#8a7a5e');                // the crate it carries
+        px(g, 0, 8 + b, 4, 1, '#9c8c6e');
+        px(g, 4, 13 + b, 3, 4, DK); px(g, 8, 13 + b, 3, 4, DK);   // legs
+        px(g, 4, 17, 3, 3, SEAM); px(g, 8, 17, 3, 3, SEAM);
+      } else if (kind === 'sweeper') {
+        // low and wide, head down, doing something dull at a kerb
+        px(g, 3, 7 + b, 9, 4, SHELL);                    // hunched shell
+        px(g, 3, 7 + b, 9, 1, LIT);
+        px(g, 4, 9 + b, 4, 2, lamp);                     // lamp, pointed down
+        px(g, 5, 9 + b, 2, 1, GLOW);
+        px(g, 2, 11 + b, 11, 4, SHELL);
+        px(g, 2, 11 + b, 2, 4, LIT); px(g, 11, 11 + b, 2, 4, DK);
+        px(g, 2, 13 + b, 11, 1, SEAM);
+        px(g, 0, 14 + b, 3, 3, '#6a5a3a');               // the brush
+        px(g, 0, 16 + b, 4, 1, '#7c6c48');
+        px(g, 4, 15 + b, 3, 3, DK); px(g, 8, 15 + b, 3, 3, DK);
+        px(g, 4, 17, 3, 3, SEAM); px(g, 8, 17, 3, 3, SEAM);
+      } else {                                            // medic
+        // slim and tall, arms forward, a cross where a chest would be
+        px(g, 5, 0 + b, 6, 5, SHELL);                    // head
+        px(g, 5, 0 + b, 6, 1, LIT);
+        px(g, 5, 3 + b, 6, 2, lamp);
+        px(g, 7, 3 + b, 3, 1, GLOW);
+        px(g, 4, 5 + b, 8, 8, SHELL);                    // torso
+        px(g, 4, 5 + b, 2, 8, LIT); px(g, 10, 5 + b, 2, 8, DK);
+        px(g, 7, 7 + b, 2, 5, '#c8503f');                // the cross
+        px(g, 6, 8 + b, 4, 2, '#c8503f');
+        px(g, 1, 8 + b, 4, 2, SHELL);                    // arms, reaching out
+        px(g, 1, 8 + b, 4, 1, LIT);
+        px(g, 4, 13 + b, 3, 4, DK); px(g, 8, 13 + b, 3, 4, DK);
+        px(g, 4, 17, 3, 3, SEAM); px(g, 8, 17, 3, 3, SEAM);
+      }
+      return outlined(c);
+    };
+    // Blue is what they were. Amber is what they became — and it is the ONLY
+    // difference between the two sets.
+    for (const kind of ['carrier', 'sweeper', 'medic']) {
+      const cap = kind[0].toUpperCase() + kind.slice(1);
+      Sprites.folk['bot' + cap + 'Blue']  = [helper(kind, 0, '#4fa8ff'), helper(kind, 1, '#4fa8ff')];
+      Sprites.folk['bot' + cap + 'Amber'] = [helper(kind, 0, '#ffb02e'), helper(kind, 1, '#ffb02e')];
+    }
+  })();
+
+  // ---- THE CHURCHYARD: where he went down, and where the camp now lives ----
+  // Built to be the canonical layout: the prologue's graveyard and St Martin's
+  // churchyard have to be the same ground seen a year apart, so these are the
+  // pieces both scenes use.
+  (function () {
+    // A HEADSTONE stands upright, so by the angle rule it is drawn straight —
+    // it is the plot it stands on that lies on the ground, and that is a decal.
+    const stone = (kind) => {
+      const c = makeCanvas(11, 16), g = c.getContext('2d');
+      const S = '#8d8c86', L = '#a3a29b', D = '#6e6d68';
+      if (kind === 0) {                                  // round-topped
+        px(g, 3, 2, 5, 2, L); px(g, 2, 3, 7, 10, S);
+        px(g, 2, 3, 1, 10, L); px(g, 8, 3, 1, 10, D);
+      } else if (kind === 1) {                           // square, leaning
+        px(g, 3, 3, 6, 10, S); px(g, 3, 3, 6, 1, L); px(g, 8, 4, 1, 9, D);
+        px(g, 4, 13, 6, 1, D);
+      } else {                                           // a cross
+        px(g, 4, 1, 3, 12, S); px(g, 4, 1, 3, 1, L);
+        px(g, 1, 4, 9, 3, S); px(g, 1, 4, 9, 1, L);
+      }
+      px(g, 2, 13, 8, 2, '#5c5b56');                     // the base in the grass
+      px(g, 2, 13, 8, 1, '#75746f');
+      return outlined(c);
+    };
+    Sprites.headstones = [stone(0), stone(1), stone(2)];
+
+    // RAILINGS RUN ALONG THE GROUND, so they get the shear and a direction —
+    // the angle rule, and the most common bug in this project.
+    const railRun = () => {
+      const c = makeCanvas(16, 18), g = c.getContext('2d');
+      px(g, 0, 6, 16, 1, '#3c4148');                     // top rail
+      px(g, 0, 12, 16, 1, '#343940');                    // bottom rail
+      for (let i = 0; i < 16; i += 3) {
+        px(g, i, 4, 1, 11, '#464c54');
+        px(g, i, 3, 1, 1, '#5a616a');                    // spear head
+      }
+      return c;
+    };
+    Sprites.railing = { x: sheared(railRun(), 1), y: sheared(railRun(), -1) };
+
+    // THE LYCH GATE — the roofed gate you carry a body through. It is the one
+    // thing in the churchyard that has to read from a distance, because it is
+    // what he is running for.
+    const lg = makeCanvas(30, 34), lgg = lg.getContext('2d');
+    px(lgg, 2, 12, 4, 21, '#4a3a28');                    // posts
+    px(lgg, 24, 12, 4, 21, '#4a3a28');
+    px(lgg, 2, 12, 4, 1, '#5e4c36'); px(lgg, 24, 12, 4, 1, '#5e4c36');
+    px(lgg, 0, 9, 30, 4, '#3e3126');                     // the beam
+    px(lgg, 0, 9, 30, 1, '#54432f');
+    for (let i = 0; i < 5; i++) {                        // pitched shingle roof
+      px(lgg, 3 + i * 2, 8 - i * 2, 24 - i * 4, 2, i % 2 ? '#43362a' : '#4c3d2e');
+      px(lgg, 3 + i * 2, 8 - i * 2, 24 - i * 4, 1, '#5a4933');
+    }
+    px(lgg, 13, 0, 4, 2, '#5a4933');                     // ridge
+    Sprites.lychGate = outlined(lg);
   })();
 
   // ---- THE COMPACTOR (boss): low crawler hull carried on four legs,
