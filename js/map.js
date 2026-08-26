@@ -1115,6 +1115,108 @@ function buildCrypt() {
 // arrives on. Interiors sit exactly on the footprint of the building they are
 // inside — the inside of the church IS at the church — but they are only drawn
 // while you are in them, or the city would have lit rooms floating on it.
+// =====================================================================
+// AREA 5 — THE PROLOGUE STREET, and the churchyard at the end of it
+// =====================================================================
+// Read from the east: a working street, then a gate, then the ground he does
+// not get up from. The player runs the length of it once and never sees it
+// again — but the CHURCHYARD is canonical. St Martin's churchyard, when it is
+// built for real, has to be this same ground a year older: same gate, same
+// railings, same stones. Two scenes, one place, a year apart, and the second
+// one is where the camp now lives.
+const PRO_W = 34, PRO_H = 26;
+const PRO_ROAD_Y = 14;              // centre lane
+const PRO_GATE_X = 8;               // the lych gate, and the end of the street
+function buildPrologue() {
+  const rng = mulberry32(1848);
+  resetMap(PRO_W, PRO_H, rng);
+  const put = placer();
+
+  // ---- the ground ----
+  for (let y = 0; y < PRO_H; y++)
+    for (let x = 0; x < PRO_W; x++) ground[y][x] = 2;              // rubble default, never seen
+  // the churchyard is grass all the way to the west edge
+  for (let y = 4; y < PRO_H - 2; y++)
+    for (let x = 1; x <= PRO_GATE_X; x++) ground[y][x] = 6;
+  // the street runs east from the gate
+  for (let x = PRO_GATE_X; x < PRO_W; x++) {
+    for (let y = PRO_ROAD_Y - 1; y <= PRO_ROAD_Y + 1; y++) ground[y][x] = 4;   // carriageway
+    ground[PRO_ROAD_Y - 2][x] = 5; ground[PRO_ROAD_Y + 2][x] = 5;              // pavement
+    ground[PRO_ROAD_Y - 3][x] = 6; ground[PRO_ROAD_Y + 3][x] = 6;              // verge
+  }
+  // the path from the gate to where he falls
+  for (let x = 2; x <= PRO_GATE_X; x++) ground[PRO_ROAD_Y][x] = 5;
+
+  // ---- the frontage, both sides. Kept back from the pavement so the street
+  // reads as a street and not a corridor. ----
+  const shell = (x0, y0, w, h, kind) => {
+    if (x0 < 1 || y0 < 1 || x0 + w >= PRO_W || y0 + h >= PRO_H) return;
+    for (let y = y0; y < y0 + h; y++)
+      for (let x = x0; x < x0 + w; x++) {
+        if (solid[y][x]) return;
+        solid[y][x] = true; heavy[y][x] = true; ground[y][x] = 2;
+      }
+    props.push({ gx: x0, gy: y0, type: 'building', foot: [x0, y0, w, h],
+                 kind, seed: (x0 * 31 + y0 * 17) % 100 });
+  };
+  // THE CHURCH, north of its own yard, so it stands behind the stones.
+  shell(1, 1, 7, 5, 'R');
+  // north side of the street
+  shell(11, 6, 6, 5, 'H'); shell(18, 6, 5, 5, 'S');
+  shell(24, 5, 6, 6, 'B'); shell(31, 6, 2, 5, 'H');
+  // SOUTH SIDE, KEPT WELL BACK. In this projection anything south of a subject
+  // draws in FRONT of it, and a 46-pixel house stands about six tiles of screen
+  // height — so frontage tight to the south pavement puts a roof across the
+  // middle of every shot. Three tiles of verge is what it costs to see the
+  // street the scene is about.
+  shell(11, 21, 5, 4, 'S'); shell(17, 21, 6, 4, 'H');
+  shell(24, 21, 5, 4, 'B'); shell(30, 21, 3, 4, 'S');
+
+  // ---- THE CHURCHYARD ----
+  // Railings run ALONG the ground, so they are sheared and take a direction.
+  // The angle rule, and the single most common visual bug in this project.
+  // The church stands on y1..5, so the yard's north rail runs under it at y6 —
+  // the wall of the building IS the boundary along that stretch.
+  const YARD_N = 6, YARD_S = PRO_H - 3;
+  for (let y = YARD_N; y <= YARD_S; y++) {
+    if (y >= PRO_ROAD_Y - 1 && y <= PRO_ROAD_Y + 1) continue;      // the gateway
+    put(PRO_GATE_X, y, 'railing', { dir: 'y' });
+  }
+  for (let x = 1; x < PRO_GATE_X; x++) {
+    if (!solid[YARD_N][x]) put(x, YARD_N, 'railing', { dir: 'x' });
+    if (!solid[YARD_S][x]) put(x, YARD_S, 'railing', { dir: 'x' });
+  }
+  // The gate is the one thing here you walk THROUGH, so it gives its tile back.
+  const gate = put(PRO_GATE_X, PRO_ROAD_Y, 'lychGate');
+  if (gate) { solid[PRO_ROAD_Y][PRO_GATE_X] = false; heavy[PRO_ROAD_Y][PRO_GATE_X] = false; }
+
+  // Headstones, kept off the path — he falls BETWEEN two of them, so the two
+  // either side of (5, 14) are placed on purpose and the rest are scattered.
+  put(5, PRO_ROAD_Y - 1, 'headstone', { v: 0 });
+  put(5, PRO_ROAD_Y + 1, 'headstone', { v: 2 });
+  for (const [hx, hy, v] of [
+    [2, 8, 1], [4, 8, 0], [6, 8, 2], [3, 10, 0], [6, 10, 1],
+    [2, 12, 2], [4, 12, 1], [7, 12, 0], [3, 17, 1], [6, 17, 2],
+    [2, 19, 0], [5, 19, 1], [7, 20, 2], [3, 22, 0], [6, 22, 1],
+  ]) if (!solid[hy][hx]) put(hx, hy, 'headstone', { v });
+
+  // ---- street furniture ----
+  // EVERY LAMP IS LIT. In the Fringe only twenty of sixty still burn, and that
+  // ratio is most of what makes that city read as abandoned. Here they all do,
+  // and it is the cheapest way to say "before".
+  for (let x = 12; x < PRO_W - 2; x += 6) {
+    put(x, PRO_ROAD_Y - 3, 'streetlight', { lit: true });
+    put(x + 3, PRO_ROAD_Y + 3, 'streetlight', { lit: true });
+  }
+  // traffic, parked and orderly — nothing in this street is on fire yet
+  put(13, PRO_ROAD_Y + 1, 'car', { v: 0, dir: 'x' });
+  put(21, PRO_ROAD_Y - 1, 'car', { v: 2, dir: 'x' });
+  put(28, PRO_ROAD_Y + 1, 'car', { v: 1, dir: 'x' });
+
+  buildAO();
+  buildSpatialIndex();
+}
+
 const Areas = {
   junkyard: {
     id: 'junkyard', name: 'THE JUNKYARD', build: buildJunkyard,
@@ -1147,6 +1249,24 @@ const Areas = {
       { x0: 196.4, y0: 117.6, x1: 201, y1: 122.4, to: 'junkyard', entry: { x: 29.6, y: 12.5 } },
       { x0: 54.8, y0: 66.3, x1: 57.2, y1: 67.95, to: 'candlelight', entry: { x: 5.5, y: 13.4 } },
     ],
+  },
+  // THE PROLOGUE. A real area, not a set of painted cards — which is the whole
+  // reason the harmony scene is worth doing at all. It gets the same renderer
+  // the game gets: the same tiles, the same building volumes, the same AO,
+  // god rays, colour grade and tilt-shift. A hand-painted cutscene would have
+  // looked like a different game, and the point of the scene is that it is the
+  // SAME city the player is about to walk through as a ruin.
+  //
+  // No exits: you cannot walk out of a memory. It is entered by the prologue
+  // script and left by it.
+  prologue: {
+    id: 'prologue', name: 'THE CITY, BEFORE', build: buildPrologue,
+    world: { x: 40, y: 44 },        // roughly where St Martin's stands, a year on
+    hasScrapper: false, hasBoss: false, hasNpc: false, folk: 'prologue',
+    indoors: false,
+    tint: '#ffe6c4',        // evening, and every window still lit
+    makeItems: () => ([]),
+    exits: [],
   },
   candlelight: {
     id: 'candlelight', name: 'CANDLELIGHT', build: buildCandlelight,

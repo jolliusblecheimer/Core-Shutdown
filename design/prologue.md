@@ -1,6 +1,10 @@
 # THE PROLOGUE — the night it turned, and the man who put him back together
 
-**PLAN — awaiting approval, nothing built.**
+**BUILT (first pass), 2026-08-22 — ON THE BRANCH, NOT MERGED.**
+The beat runner and all six beats are in and verified in the browser. This is a
+large visual change, so under the local-first rule it stays on
+`claude/saved-prompts-markdown-review-686nb9` until Laurens has seen it; it must
+not reach the live site before then. What is NOT built is listed in §11.
 
 Laurens, 2026-08-22: cutscenes at the start of the game and slight tutorial
 changes. *"show the world at harmoney robots helping and at one, turning on
@@ -378,3 +382,51 @@ pushed.
 7. **Does the player see the traveller's own face at any point?** The story
    depends on the hood and mask hiding it until Q8. Beat 5 is the one place a
    careless frame could give it away.
+
+
+---
+
+## 11. What is built, and what is not — 2026-08-22
+
+**Built and verified in the browser** (`TEST_MODE`, screenshots taken):
+
+- `js/cine.js` — the beat runner. A cutscene is a list of beats; each says how
+  long it lasts, where the camera looks, what is typed, whether the player has
+  the sticks, and what to run on entry and per frame. `updateCamera` was pulled
+  out of the middle of `update()` to make it possible at all — it was twenty
+  lines sitting inline, so a cutscene in any state other than `playing` had no
+  camera whatsoever.
+- **The prologue area** (`buildPrologue`, 34×26) — a real area, so it gets the
+  real renderer: the same tiles, building volumes, AO, god rays, colour grade
+  and tilt-shift the game uses. A hand-painted cutscene would have looked like a
+  different game, and the point of the scene is that it is the SAME city.
+- **The cast** — four civilians, a child, and three helper machines, all riding
+  the existing `folk` pipeline, so there is no new drawing code for any of them.
+- **The turn** — every machine keeps its sprite, its frame and its place, and
+  only the bar it sees with changes, blue to amber. Verified: `botMedicBlue` →
+  `botMedicAmber` on one frame.
+- **All six beats**, end to end, landing in `naming` with the yard built.
+- **ESC skips** from any beat and lands in exactly the same place.
+- **The movement lesson moved.** The run marks the yard's `move` lesson as
+  taught — and if you SKIP the prologue it does not, so a skipper still gets
+  taught to walk. That fell out correctly rather than being designed, but it is
+  the right behaviour and should stay.
+
+**Deliberately not built yet:**
+
+1. **No prone sprite.** The hit is a shake, sparks, a hard zoom and a fade. He
+   is still standing when it lands, because there is no drawing of him on the
+   ground — and the boots-in-frame shot from §2 beat 6 is not built either.
+   This is the biggest gap and it is the emotional peak of the scene.
+2. **The windows are not lit.** The "before" city is lit by streetlights, not by
+   warm windows, because building glass is a fixed dark colour in
+   `BUILD_STYLE`. It reads as dusk rather than as a city with people home in it.
+   Needs a lit variant of the building volume.
+3. **The mechanic's shack, waking up, and the `E` lesson on the diagrams** (§5,
+   §6) are not built. The prologue currently hands to the naming prompt and then
+   to the yard exactly as it always was.
+4. **Beat 4 is machines walking at people.** No shopfront going in, no smoke
+   layer — it is staged, not yet dressed.
+5. `main-story.md` and Marek's *"found you half-dead by the fence"* line are
+   **not yet rewritten** (§1). Nothing contradicts anything while the mechanic
+   does not exist yet, but both change the moment §5 is built.

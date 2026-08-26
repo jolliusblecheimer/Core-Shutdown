@@ -361,6 +361,19 @@ anything else:
 **The obvious next build** with no questions attached is item 1 below (long
 props as volumes) or item 3 (the rest of Candlelight).
 
+## THE PROLOGUE — built on a branch, awaiting review (2026-08-22)
+
+The opening is no longer three typewriter lines. `js/cine.js` is a **beat
+runner** — a cutscene is a list of beats, so every cutscene after this one is
+data — and the prologue is six of them: a working street, a machine with its
+hands on a patient, **the turn** (every machine stops on the same frame, then
+goes blue to amber without moving), the Correction, a **playable 40-second run**
+where WASD is taught because you are being chased, and the graveyard at the end
+of it. It plays in a real area with the real renderer, ESC skips it, and it
+lands in the naming prompt with the yard built.
+**On the branch only** — see `design/prologue.md` §11 for the five things not
+built yet, the largest being that there is no drawing of him on the ground.
+
 ## Outstanding — next session starts here
 
 1. **Long props are still flat rectangles** — bus stop, dumpster, awning don't

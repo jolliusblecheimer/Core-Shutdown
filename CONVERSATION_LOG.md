@@ -2418,3 +2418,57 @@ of code is a ~150-line beat runner, proved by re-expressing the existing gate
 cutscene in it, after which every cutscene is data.
 Seven open questions; the first three are the mechanic's identity, his name, and
 whether the graveyard is the churchyard.
+
+### The prologue, built — and the old opening kept in the file
+**Laurens:** *"Ok build all cutsceens, but keep the current funktions as comments
+so we can change it back if needed."*
+**Claude:** Built. **On the branch, not merged** — it is a large visual change,
+so under the local-first rule it does not reach the live site until Laurens has
+seen it.
+**The old opening is kept, and it is more than commented out.** `INTRO_LINES` and
+the whole `intro` state — its update block and its draw block — are still live
+and still working in `game.js`; nothing was deleted. The only change is that the
+title screen no longer routes into it, and the two lines that used to do so are
+sitting right there commented above the call that replaced them. Going back is
+un-commenting two lines. The old text is also written out in full at the bottom
+of `js/cine.js` next to an explanation of what replaced it.
+**The blocker had to go first.** There was no cutscene system: `GateCine` and the
+boss's phases were one hand-written `t += dt` each. `js/cine.js` is now a **beat
+runner** — a cutscene is a list of beats, each saying how long it lasts, where
+the camera looks, what is typed, whether the player has the sticks, and what to
+run on entry and per frame. Every cutscene after this one is data.
+Making that work needed `updateCamera` pulled out of the middle of `update()`,
+where it had been sitting inline as twenty un-callable lines — which is why a
+cutscene in any state other than `playing` had no camera at all.
+**The prologue is a real area, not painted cards.** `buildPrologue` is 34×26 and
+gets the actual renderer: same tiles, same building volumes, same AO, god rays,
+colour grade and tilt-shift. A painted cutscene would have looked like a
+different game, and the entire point of the scene is that it is the *same city*
+the player is about to walk through as a ruin.
+**The whole cast rides the `folk` pipeline** — four civilians, a child and three
+helper machines are `Sprites.folk` entries, so there is no new drawing code for
+any of them. And **the Correction is a key swap**: every machine keeps its
+sprite, its frame and its place on the pavement, and only the bar it sees with
+changes, blue to amber. Verified in the browser on one frame.
+**Two bugs found by building it:**
+- **Framing.** The first pass put a south building's roof across the middle of
+  every shot. In this projection anything south of the subject draws in FRONT of
+  it, and a 46-pixel house stands about six tiles of screen height — so the
+  frontage moved three tiles back and the cast moved to the north pavement, with
+  the camera framed on the road rather than on the pavement they stand on.
+- **The movement lesson would have fired twice** — once in the run, once again
+  three minutes later in a quiet junkyard. The run now marks the yard's as
+  taught. And if you SKIP the prologue it does not, so a skipper is still taught
+  to walk; that fell out rather than being designed, and it is the right
+  behaviour.
+**Verified end to end in the browser** under `TEST_MODE`: all six beats, the
+machines turning, the playable run driven with the keyboard from the east end to
+the lych gate, the hit, the fade, and the landing in the naming prompt with the
+yard built. ESC from any beat lands in exactly the same place. No console errors.
+**Five things deliberately not built**, listed in `design/prologue.md` §11. The
+largest is that **there is no drawing of him on the ground** — the hit is a
+shake, sparks, a hard zoom and a fade, and he is still standing when it lands.
+The boots-entering-frame shot is not built either, and that is the emotional
+peak of the scene. Also unbuilt: lit windows (the "before" city is lit by
+streetlights, not by people being home), the mechanic's shack and waking up in
+it, and the dressing on the Correction beat.
