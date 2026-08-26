@@ -2643,3 +2643,34 @@ Two bugs worth writing down:
   beat frames the pair at 1.32x now and the body lands near the middle of it.
 Verified: the catch fires at t~1.9, the body stays put while everyone else runs,
 and the full prologue still reaches the naming prompt in 54s with no errors.
+
+### A bug pass on the prologue
+**Laurens:** *"Fix any bugges and push to main."*
+**Claude:** Hunted rather than guessed — wrote probes for the paths most likely
+to be broken and found three, all in code added the same day.
+**1. Skipping the prologue could break the next one.** The Correction's
+blue-to-amber swap was guarded by a one-shot flag living on the runner
+(`Cine._turned`), cleared only in the beat's `exit` — and **a skip never runs
+`exit`**. So skipping during that beat left the flag set and **on the next New
+Game the machines never turned at all**. Proved it with a test before fixing it.
+The fix is general rather than a patch: beat-scoped state belongs on the beat,
+so the runner clears `b.once` on every entry and hands `tick` its own beat.
+Every future one-shot inherits it.
+**2. The prologue appeared on the traveller's world map.** It is a real area
+with a `world` offset that collects fog like any other, so it earned a
+thumbnail — a street from a year before the game, drawn at (40, 44), which is
+exactly where St Martin's stands in the present. Areas can be marked
+`memory: true` now, and a memory never gets a thumbnail: it cannot be drawn,
+framed by the zoom floor, or counted as somewhere you have been.
+**3. Its fog was written into every save** — same root cause, and dead data in
+every save file forever. `collectFog` skips memories.
+**Old saves are fixed too.** A save written before the change still carries
+`fog.prologue`; verified it loads cleanly with the prologue still off the map,
+because the guard is at the drawing end and not only at the writing end.
+Checked and unaffected: all four areas load with the right cast and prop counts,
+a returning player's CONTINUE goes straight into the world with the save intact,
+the full prologue still reaches the naming prompt in 54s, and the only console
+line anywhere is the pre-existing favicon 404.
+Two non-bugs ruled out on the way: `saveGame` already refuses to write outside
+`GameState === 'playing'`, so the prologue can never be saved as a position; and
+the player's invulnerability during it does decay properly once the yard starts.

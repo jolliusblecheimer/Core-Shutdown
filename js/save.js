@@ -55,7 +55,12 @@ function saveGame() {
 // explored ground, one packed string per area
 function collectFog() {
   const out = {};
-  for (const id of Object.keys(exploredByArea)) out[id] = fogToString(exploredByArea[id]);
+  for (const id of Object.keys(exploredByArea)) {
+    // the prologue is a memory, not ground the traveller has walked — writing
+    // its fog would put a street from a year ago in every save file forever
+    if (Areas[id] && Areas[id].memory) continue;
+    out[id] = fogToString(exploredByArea[id]);
+  }
   return out;
 }
 

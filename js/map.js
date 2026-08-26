@@ -1299,6 +1299,13 @@ const Areas = {
     id: 'prologue', name: 'THE CITY, BEFORE', build: buildPrologue,
     world: { x: 40, y: 44 },        // roughly where St Martin's stands, a year on
     skyline: true,                  // the inner rings, and the Core behind them
+    // A MEMORY, NOT A PLACE. Without this the prologue street ends up drawn on
+    // the traveller's world map — it has a `world` offset and it collects fog
+    // like any other area, so it appeared as a district sitting exactly where
+    // St Martin's stands a year later. Nothing anyone can walk to belongs on
+    // that map, and nothing that happened before the game starts belongs in
+    // their save.
+    memory: true,
     hasScrapper: false, hasBoss: false, hasNpc: false, folk: 'prologue',
     indoors: false,
     tint: '#ffe6c4',        // evening, and every window still lit

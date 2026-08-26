@@ -602,3 +602,40 @@ person."* No blood: the machine is standing over them when it happens.
 2. **The moment was not framed.** It happened at the edge of a shot pointed at
    the street. At 320×180 an event you have to hunt for has not happened, so the
    beat now frames the pair at 1.32× and the body lands near the middle of it.
+
+
+---
+
+## 16. Three bugs, 2026-08-26
+
+Found by hunting rather than by waiting for them, after Laurens asked for a
+bug pass. All three were in code added the same day.
+
+**1. Skipping the prologue could break the next one.** The Correction's
+blue-to-amber swap was guarded by a one-shot flag that lived on the runner
+(`Cine._turned`) and was only cleared in the beat's `exit`. **A skip never runs
+`exit`** — so skipping during that beat left the flag set, and on the next New
+Game **the machines never turned at all**. The fix is general rather than a
+patch: beat-scoped state belongs on the beat, so the runner clears `b.once`
+every time a beat is entered and `tick` is handed its own beat. Any future
+one-shot inherits the fix.
+
+**2. The prologue appeared on the traveller's world map.** It is a real area
+with a `world` offset and it collects fog like any other, so it got a
+thumbnail — a street from a year before the game, drawn at (40, 44), which is
+exactly where St Martin's stands in the present. Areas can now be marked
+`memory: true`, and a memory never gets a thumbnail: it cannot be drawn, framed
+by the zoom floor, or counted as somewhere you have been.
+
+**3. Its fog was written into every save.** Same root cause, and it would have
+been dead data in every save file forever. `collectFog` now skips memories.
+
+**Old saves are fixed too, not just new ones.** A save written before this
+change still carries `fog.prologue`, and it was verified loading cleanly with
+the prologue still absent from the map — the guard is at the drawing end, not
+only at the writing end.
+
+Also confirmed unaffected: all four areas load with the right cast and prop
+counts, a returning player's CONTINUE goes straight into the world with the save
+intact, and the full prologue still reaches the naming prompt in 54s. The only
+console line anywhere is the pre-existing favicon 404.

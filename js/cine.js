@@ -115,6 +115,12 @@ function updateCine(dt) {
     if (b.follow) Cine.hasCam = false;      // hand the camera back to the player
     if (b.zoom !== undefined) Cine.zoom = b.zoom;
     Cine.bars = b.bars !== undefined ? b.bars : (b.control ? 0 : CINE_BARS);
+    // A ONE-SHOT INSIDE A BEAT is cleared every time the beat is entered.
+    // `Cine._turned` used to live on the runner and was only reset in the
+    // beat's `exit` — which a SKIP never runs. Skipping during the Correction
+    // therefore left the flag set, and on the next New Game the machines never
+    // turned at all. Beat-scoped state belongs on the beat.
+    b.once = false;
     Cine.plate = !!b.plate;
     if (b.plateScale !== undefined) Cine.plateScale = b.plateScale;
     if (b.enter) b.enter();
@@ -139,7 +145,7 @@ function updateCine(dt) {
     const k = Math.min(1, Cine.t / (b.dur || 1));
     Cine.plateScale = b.plateScale + (b.plateTo - b.plateScale) * k;
   }
-  if (b.tick) b.tick(Cine.t, dt);
+  if (b.tick) b.tick(Cine.t, dt, b);
 
   const over = (b.until && b.until()) || Cine.t >= (b.dur || 0);
   if (over) {
@@ -315,11 +321,10 @@ function startPrologue(onDone) {
     // stops on the same frame, two seconds of nothing, then the light changes.
     { dur: 5.2, cam: PRO_CAM_MID, zoom: 1.4, text: '',
       enter: () => { for (const f of folk) f.frame = 0; SFX.uiClose && SFX.uiClose(); },
-      tick: (t) => {
-        if (t > 2.0 && !Cine._turned) { Cine._turned = true; proTurnMachines(); addShake(2.2); }
+      tick: (t, dt, b) => {
+        if (t > 2.0 && !b.once) { b.once = true; proTurnMachines(); addShake(2.2); }
         if (t > 2.0 && t < 2.4) addShake(1.1);
-      },
-      exit: () => { Cine._turned = false; } },
+      } },
 
     // ---- 4. THE CORRECTION -------------------------------------------------
     // ONE PERSON IS CAUGHT, and it is the one the medical unit had its hands on

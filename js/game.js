@@ -363,6 +363,9 @@ function buildMapThumb(areaId) {
       g2.fillRect(i, j, 1, 1);
     }
   }
+  // A memory is not a district. It never gets a thumbnail, so it can never be
+  // drawn, framed by the zoom floor, or counted as somewhere you have been.
+  if (Areas[areaId] && Areas[areaId].memory) return;
   mapThumbs[areaId] = c;
 }
 
