@@ -11,6 +11,12 @@ function px(g, x, y, w, h, col) { g.fillStyle = col; g.fillRect(x, y, w, h); }
 
 // shear a flat sprite so it follows an isometric edge. dir +1 = runs along the
 // world x-axis (screen down-right), dir -1 = along y (screen down-left).
+// WARDEN's own light, and the Core's. Defined once because it is now the
+// single most load-bearing colour in the game: every machine that answers to
+// the Core sees with it, and the Correction is the moment it reaches the edge.
+const CORE_BLUE = '#6fd3ff';
+const CORE_BLUE_RGB = '111,211,255';
+
 function sheared(src, dir) {
   const w = src.width, h = src.height;
   const c = makeCanvas(w, h + Math.ceil(w * 0.5)), g = c.getContext('2d');
@@ -450,7 +456,14 @@ function outlined(src) {
   Sprites.npc = [npcFrame(0), npcFrame(1)];
 
   // ---- Scrapper robot (16x16) ----
-  const METAL = '#63636b', METAL_D = '#43434b', RUST = '#7d4a2a', RUST_D = '#5c3620', EYE = '#ffb02e';
+  // THE SCRAPPER'S EYE IS CORE BLUE, like every other machine in the city.
+  // It used to be amber, and `droids.js` called that out as an exception — the
+  // junk bot's warm bulb against WARDEN's cold one. Making it blue costs that
+  // distinction and buys something worth more: the amber law becomes absolute.
+  // **The only amber left anywhere on a machine is the flash of a hit and the
+  // Compactor's eye** — so "what glows amber can be hurt" is now true with no
+  // footnote, and every blue light in the game is WARDEN looking at you.
+  const METAL = '#63636b', METAL_D = '#43434b', RUST = '#7d4a2a', RUST_D = '#5c3620', EYE = CORE_BLUE;
   function scrapperFrame(lean, armUp) {
     const c = makeCanvas(16, 16), g = c.getContext('2d');
     const hx = lean;
@@ -2308,13 +2321,54 @@ function outlined(src) {
       }
       return outlined(c);
     };
-    // Blue is what they were. Amber is what they became — and it is the ONLY
-    // difference between the two sets.
+    // WARM IS WHAT THEY WERE. CORE BLUE IS WHAT THEY BECAME.
+    // This was the wrong way round in the first pass, and `droids.js` had
+    // already written down why: **Blue is WARDEN. Amber is damage.** A machine
+    // running on its own service programming is a warm lamp in the street, the
+    // colour of every other light people put up. The Correction is the moment
+    // the CORE's colour reaches the edge of the city and every machine in it
+    // starts seeing with the same cold eye. Same sprite, same frame, same
+    // place on the pavement — only the light changes.
     for (const kind of ['carrier', 'sweeper', 'medic']) {
       const cap = kind[0].toUpperCase() + kind.slice(1);
-      Sprites.folk['bot' + cap + 'Blue']  = [helper(kind, 0, '#4fa8ff'), helper(kind, 1, '#4fa8ff')];
-      Sprites.folk['bot' + cap + 'Amber'] = [helper(kind, 0, '#ffb02e'), helper(kind, 1, '#ffb02e')];
+      Sprites.folk['bot' + cap + 'Warm'] = [helper(kind, 0, '#ffb02e'), helper(kind, 1, '#ffb02e')];
+      Sprites.folk['bot' + cap + 'Core'] = [helper(kind, 0, CORE_BLUE), helper(kind, 1, CORE_BLUE)];
     }
+  })();
+
+  // ---- THE CORE, seen from the edge of the city ---------------------------
+  // The thing the whole game is named after, and the player should see it in
+  // the first ten seconds — once, at a distance, lit, working. Everything blue
+  // that happens afterwards is this building's light arriving.
+  //
+  // Drawn FAR: low contrast, desaturated, no black outline. Contrast is depth
+  // in a flat palette, so the nearer a thing is the harder its edges get. An
+  // outlined tower would sit on the street instead of behind it.
+  (function () {
+    const c = makeCanvas(38, 132), g = c.getContext('2d');
+    const FAR = '#5d6772', FAR_L = '#6f7b87', FAR_D = '#4b545e';
+    const BAND = '#3f5c6e', LIT = '#7fb6d0';
+    // three stacked stages, each narrower than the one under it
+    const stage = (y0, y1, w) => {
+      const x = Math.round(19 - w / 2);
+      px(g, x, y0, w, y1 - y0, FAR);
+      px(g, x, y0, 2, y1 - y0, FAR_L);              // lit west face
+      px(g, x + w - 2, y0, 2, y1 - y0, FAR_D);      // shadowed east face
+      for (let y = y0 + 3; y < y1 - 2; y += 7) {    // window bands
+        px(g, x + 2, y, w - 4, 1, BAND);
+        px(g, x + 2, y, Math.max(1, (w - 4) >> 1), 1, LIT);
+      }
+    };
+    stage(64, 132, 24);
+    stage(30, 64, 17);
+    stage(12, 30, 11);
+    // the crown: the Core itself, and the only saturated thing in the sprite
+    px(g, 15, 6, 8, 7, '#48606e');
+    px(g, 16, 7, 6, 5, CORE_BLUE);
+    px(g, 17, 8, 4, 3, '#cdeeff');
+    px(g, 18, 2, 2, 5, '#5d6772');                  // mast
+    px(g, 18, 1, 2, 1, CORE_BLUE);
+    Sprites.coreTower = c;                          // NOT outlined — it is far away
   })();
 
   // ---- THE CHURCHYARD: where he went down, and where the camp now lives ----

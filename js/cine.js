@@ -197,8 +197,8 @@ const proFolk = () => folk.filter(f => !f.bot);
 // now looking at you differently.
 function proTurnMachines() {
   for (const f of proBots()) {
-    f.key = f.key.replace('Blue', 'Amber');
-    f.glow = '255,176,46';
+    f.key = f.key.replace('Warm', 'Core');
+    f.glow = CORE_BLUE_RGB;
     f.turned = true;
   }
   SFX.rage && SFX.rage();
@@ -224,9 +224,22 @@ function startPrologue(onDone) {
   camInit = false;
 
   playCine([
+    // ---- 0. THE CORE -------------------------------------------------------
+    // Seen once, at a distance, lit and working, before it means anything. The
+    // camera drifts UP the city toward it — and every blue thing that happens
+    // for the rest of the game is this building's light arriving.
+    // The tower is anchored at its base and 132px of it stands ABOVE that, so
+    // the camera has to end aimed well up-screen of the tile it stands on —
+    // hence the negative y. Cameras are not clamped to the map; the culler
+    // works off the screen corners either way.
+    { dur: 9.0, cam: [17, 8], panTo: [13, -1], zoom: 1.0,
+      fadeFrom: 1, fadeTo: 0, fadeDur: 2.0,
+      text: 'At the middle of the city they built the Core, and put the ' +
+            "city's mind inside it. WARDEN ran the lights, the trains and the " +
+            'water. It never slept, and it never asked us for anything.' },
+
     // ---- 1. A STREET THAT WORKS -------------------------------------------
     { dur: 6.5, cam: PRO_CAM_EAST, panTo: [21, 13.5], zoom: 1.15,
-      fadeFrom: 1, fadeTo: 0, fadeDur: 1.6,
       text: 'There were nine million of us, and something like a million of them.',
       tick: (t, dt) => {
         // the carrier waits at a door; the woman walks past it
@@ -270,24 +283,17 @@ function startPrologue(onDone) {
         for (const p of proFolk()) proStep(p, p.x + 3, p.y, 2.4, dt);
       } },
 
-    // ---- 5. THE RUN — playable, and where WASD is taught -------------------
-    // Unwinnable and unloseable. The machines never quite reach him because the
-    // outcome of this night is already written; what the player controls is
-    // only how it feels to be the one running.
-    { dur: 60, follow: true, control: true, zoom: 1, bars: 0,
+    // ---- 5. THE RUN — watched, not played ---------------------------------
+    // It WAS playable, and Laurens cut it (2026-08-26). He is right: this is a
+    // memory of a night that has already happened, and handing someone the
+    // sticks quietly promises they can change it. They cannot — he goes down at
+    // the gate no matter what — and a fight you are not allowed to lose or win
+    // is worse than a shot of a man running. It also means the movement lesson
+    // stays in the yard where it always was, and the prologue teaches nothing.
+    { dur: 14, follow: true, control: false, zoom: 1.05, bars: CINE_BARS,
       until: () => player.x <= PRO_GATE_X + 1.2,
-      enter: () => {
-        showMsg('RUN', 1.6);
-        tutShow('promove',
-          ['They are behind you.', 'W A S D to run.'],
-          ['KeyW', 'KeyA', 'KeyS', 'KeyD'], 'RUN');
-        // The yard's own movement lesson is the SAME lesson, and it would fire
-        // again three minutes later in a quiet junkyard. Learning to walk while
-        // something is chasing you is the version worth keeping, so this one
-        // marks the other as taught.
-        Tut.done.move = true;
-      },
       tick: (t, dt) => {
+        proStep(player, PRO_GATE_X + 0.6, 14.5, 3.6, dt);
         // they follow, and they are always just too far back
         for (const f of proBots()) {
           const d = Math.hypot(player.x - f.x, player.y - f.y);

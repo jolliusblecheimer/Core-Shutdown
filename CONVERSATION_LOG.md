@@ -2472,3 +2472,40 @@ The boots-entering-frame shot is not built either, and that is the emotional
 peak of the scene. Also unbuilt: lit windows (the "before" city is lit by
 streetlights, not by people being home), the mechanic's shack and waking up in
 it, and the dressing on the Correction beat.
+
+### Three corrections to the prologue, and the Core in the first shot
+**Laurens:** *"dont make the cutsceens playable, and make the change be from the
+yellow orange to the core blue color, make sure the scapper eye also changes to
+that color, also make sure you show and slightly explain the core in the
+beginning cutsceen."*
+**Claude:**
+- **The run is watched, not played.** He is right and the reason is worth
+  keeping: this is a memory of a night that has already happened, and handing
+  somebody the sticks quietly promises they can change it. They cannot — he goes
+  down at the gate whatever they do. It also means the movement lesson goes back
+  to the yard where it always was, and the prologue teaches nothing.
+- **The colour was the wrong way round, and it was my error.** `droids.js` has
+  said since it was written: *"Blue is WARDEN. Amber is damage."* I had the
+  helper machines blue while they were still serving people and amber once they
+  turned, which inverted the game's own language. Now they are **warm amber
+  while they are the city's, and Core blue the moment they are not** — the
+  Correction is the Core's colour reaching the edge of the city.
+- **The Scrapper's eye is Core blue.** This overrides a deliberate note in
+  `droids.js` that called its amber bulb the junk bot's warm exception. Worth
+  the trade: the amber law becomes absolute. **The only amber left on any
+  machine is a weak-point flash and the Compactor's eye**, so "what glows amber
+  can be hurt" is now true with no footnote. Its attack telegraph stays
+  red/amber — that is a warning, not an eye. Updated the stale comment.
+  `CORE_BLUE` is defined once in `sprites.js` and used everywhere.
+- **The Core is the first thing the game shows.** A new opening beat: the camera
+  drifts up off the rooftops to the tower, lit and working, over two lines
+  explaining what it is and what WARDEN did for the city. It is drawn FAR —
+  desaturated, low contrast and deliberately **not** outlined, because contrast
+  is depth in a flat palette and an outlined tower would sit in the street
+  instead of behind it. The crown is the only saturated thing in the sprite.
+  The framing needed the camera aimed at a negative tile y: the sprite is 132px
+  tall above an anchor at its base, so aiming at the tile it stands on puts the
+  crown off the top of the screen.
+Verified in the browser end to end: warm → Core on one frame, the run driving
+itself from the east end to the lych gate with no input, and the landing in the
+naming prompt. No console errors.

@@ -568,7 +568,10 @@ function droidMeleeHit(m, ps) {
   // CORE BLUE, not amber. The palette journey in art-style.md runs rust/amber
   // at the outskirts to cold neon blue/white at the Core, and an HHD is issued
   // equipment — WARDEN's own light, carried out to the edge where it does not
-  // belong. The Scrapper's amber bulb is junk; this is the machine that built it.
+  // belong. (The Scrapper's bulb was amber when this was written, as the junk
+  // bot's warm exception. It is CORE_BLUE as of 2026-08-26: every machine in
+  // the city sees with the Core's light, and amber means damage and nothing
+  // else. See the note on EYE in sprites.js.)
   //
   // THE AMBER LAW STILL HOLDS. "What glows amber can be hurt, dull plate
   // cannot" now reads even harder: nothing warm is left on the machine at all,

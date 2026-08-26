@@ -1161,6 +1161,10 @@ function buildPrologue() {
   };
   // THE CHURCH, north of its own yard, so it stands behind the stones.
   shell(1, 1, 7, 5, 'R');
+  // THE CORE ITSELF, far up the city, framed in the one gap left in the north
+  // frontage on purpose. It is the first thing the game shows and the last
+  // thing it is about.
+  put(17, 2, 'coreTower');
   // north side of the street
   shell(11, 6, 6, 5, 'H'); shell(18, 6, 5, 5, 'S');
   shell(24, 5, 6, 6, 'B'); shell(31, 6, 2, 5, 'H');

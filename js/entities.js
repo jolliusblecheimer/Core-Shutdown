@@ -294,20 +294,20 @@ const FOLK = {
   // and depth-sorted like the camp is — so the only new thing here is the list.
   //
   // `bot` marks a machine, and `key` is what it is DRAWN as. The Correction is
-  // implemented by swapping every machine's key from ...Blue to ...Amber on one
+  // implemented by swapping every machine's key from ...Warm to ...Core on one
   // frame; nothing else about them changes, which is exactly how it should read.
   // Staged along the NORTH pavement and the near lane, so the frontage behind
   // them is a backdrop rather than something standing in front of them.
   prologue: [
-    { key: 'botCarrierBlue', bot: true, name: 'CARRIER', x: 24.5, y: 12.5, glow: '80,168,255',
+    { key: 'botCarrierWarm', bot: true, name: 'CARRIER', x: 24.5, y: 12.5, glow: '255,176,46',
       lines: ["It waits to be let in. It has been waiting a while."] },
     { key: 'civRed', name: 'A WOMAN', x: 26.5, y: 12.5,
       lines: ["She steps around it without looking at it."] },
-    { key: 'botSweeperBlue', bot: true, name: 'STREET UNIT', x: 19.5, y: 12.5, glow: '80,168,255',
+    { key: 'botSweeperWarm', bot: true, name: 'STREET UNIT', x: 19.5, y: 12.5, glow: '255,176,46',
       lines: ["Mending the kerb. Nobody has watched one of these in years."] },
     { key: 'civGreen', name: 'A MAN', x: 21.5, y: 13.5,
       lines: ["He is late for something that is still going to happen."] },
-    { key: 'botMedicBlue', bot: true, name: 'MEDICAL UNIT', x: 15.5, y: 12.5, glow: '80,168,255',
+    { key: 'botMedicWarm', bot: true, name: 'MEDICAL UNIT', x: 15.5, y: 12.5, glow: '255,176,46',
       lines: ["Its hands are on somebody."] },
     { key: 'civGrey', name: 'A PATIENT', x: 14.5, y: 12.5,
       lines: ["Sitting still for it, the way you sit still for a doctor."] },

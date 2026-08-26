@@ -1927,6 +1927,15 @@ function drawProp(p, x, y) {
     ctx.globalAlpha = 1;
     return;
   }
+  // THE CORE, on the skyline. Drawn from its own anchor with no shadow and no
+  // occlusion fade: it is kilometres away and nothing in this street is in
+  // front of it.
+  if (T === 'coreTower') {
+    const img = Sprites.coreTower;
+    ctx.drawImage(img, Math.round(x - img.width / 2), Math.round(y - img.height + 4));
+    addLight(x, y - img.height + 12, 0, 30, CORE_BLUE_RGB, 0.38);
+    return;
+  }
   // ---- THE CHURCHYARD ----
   if (T === 'railing') {
     const img = p.dir === 'y' ? Sprites.railing.y : Sprites.railing.x;
@@ -2638,7 +2647,7 @@ function drawScrapper(s, x, y) {
     ctx.drawImage(img, Math.round(x - 9), Math.round(y - 16));
   }
   const hunting = s.state === 'chase' || s.state === 'windup' || s.state === 'swing';
-  addLight(x + 0.5, y - 11, 0, hunting ? 14 : 9, '255,176,46', hunting ? 0.5 : 0.3);
+  addLight(x + 0.5, y - 11, 0, hunting ? 14 : 9, CORE_BLUE_RGB, hunting ? 0.5 : 0.3);
   // WHICH WAY IT IS LOOKING. It has a vision cone now, and a cone the player
   // cannot read is not a stealth mechanic, it is bad luck — so its sensor
   // throws a patch of light on the ground in front of it. Amber is the "this
