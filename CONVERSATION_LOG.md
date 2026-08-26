@@ -2509,3 +2509,34 @@ beginning cutsceen."*
 Verified in the browser end to end: warm → Core on one frame, the run driving
 itself from the east end to the lych gate with no input, and the landing in the
 naming prompt. No console errors.
+
+### The Core is a crystal
+**Laurens** (with three reference images): *"Nutze das als inspiration, the core
+soll aber so gross wie ein hochaus sein, der core soll eine art crystal sein
+welcher ganz viele compterserver powert."*
+**Claude:** Replaced the tower with the crystal. A faceted bipyramid the height
+of a high-rise — point at the top, widest line two thirds up, point at the
+bottom sitting in its own cradle — standing over a **rack hall**: rows of
+machines with their status lights on, which at this distance reads as a black
+mass with blue rain in it, and is what says what the thing is *for*.
+Three drawing decisions, all from rules this project already has:
+- **Integer fills only.** Every facet is a scanline run, every part of the heart
+  a stepped diamond. Nothing needs antialiasing to read and anything that did
+  would turn to mush at this size.
+- **The heart is white-hot, not amber.** The reference has a warm centre and it
+  is the best thing in the picture, but amber is spoken for — *what glows amber
+  can be hurt*. The Core is the one thing in the game that cannot be shot, so it
+  runs white into cyan and stays out of that vocabulary entirely.
+- **Not outlined.** Contrast is depth in a flat palette, so the far thing gets
+  soft edges or it sits in the street instead of a mile behind it.
+Two framing lessons worth keeping for every cutscene after this one:
+- **A caption is a wall.** Five lines of pixel font went straight over the
+  middle of the crystal. At 320×180 a shot carries about three lines before the
+  text *is* the picture, so the Core is two shots now instead of one.
+- **A tall sprite needs the camera aimed above the tile it stands on** — 168px
+  of crystal above an anchor at its base means framing on its own tile puts the
+  point off the top of the screen. The camera ends on a negative tile y, which
+  is fine; cameras are not clamped to the map.
+Also fixed the nested-diamond heart, which read as a logo printed on the front
+of the glass — each ring is nudged off the one inside it now, so it reads as
+light trapped behind a lot of stone.

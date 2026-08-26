@@ -1,10 +1,8 @@
 # THE PROLOGUE — the night it turned, and the man who put him back together
 
-**BUILT (first pass), 2026-08-22 — ON THE BRANCH, NOT MERGED.**
-The beat runner and all six beats are in and verified in the browser. This is a
-large visual change, so under the local-first rule it stays on
-`claude/saved-prompts-markdown-review-686nb9` until Laurens has seen it; it must
-not reach the live site before then. What is NOT built is listed in §11.
+**BUILT AND LIVE.** Merged to `main` on Laurens' instruction, 2026-08-26, after
+he reviewed it from screenshots. What is NOT built is listed in §11, and the
+corrections he made on the day are in §12.
 
 Laurens, 2026-08-22: cutscenes at the start of the game and slight tutorial
 changes. *"show the world at harmoney robots helping and at one, turning on
@@ -430,3 +428,53 @@ pushed.
 5. `main-story.md` and Marek's *"found you half-dead by the fence"* line are
    **not yet rewritten** (§1). Nothing contradicts anything while the mechanic
    does not exist yet, but both change the moment §5 is built.
+
+
+---
+
+## 12. Corrections, 2026-08-26
+
+**The run is watched, not played.** Laurens cut the playable section, and the
+reason is worth keeping: this is a memory of a night that has already happened,
+and handing somebody the sticks quietly promises they can change it. They
+cannot. The movement lesson therefore stays in the yard where it always was, and
+the prologue teaches nothing.
+
+**The colour was inverted, and it was my error.** `droids.js` had already written
+the rule down — *Blue is WARDEN. Amber is damage.* The first pass had the helper
+machines blue while they still served people and amber once they turned, which
+is backwards. They are now **warm while they are the city's and Core blue the
+moment they are not**, so the Correction is the Core's own colour arriving at
+the edge of the city.
+
+**The Scrapper's eye is Core blue.** This overrides a deliberate note in
+`droids.js` that called its amber bulb the junk machine's warm exception. The
+trade is worth it: **the only amber left on any machine is a weak-point flash
+and the Compactor's eye**, so "what glows amber can be hurt" is true with no
+footnote. Its attack telegraph stays red/amber — that is a warning, not an eye.
+
+**THE CORE IS A CRYSTAL, and it opens the game.** From Laurens' reference: a
+faceted gem the height of a high-rise, lit from inside, with a server hall
+drinking off it. So the silhouette is a bipyramid over a rack floor, and the
+narration says what it was for. Three things decided how it is drawn:
+
+- **Integer fills only.** Every facet is a scanline run and the heart is a set
+  of stepped diamonds. Nothing here needs antialiasing to read, and at this
+  distance anything that did would turn to mush.
+- **The heart is white-hot, not amber.** The reference has a warm centre and it
+  is beautiful, but amber is spoken for. The Core is the one thing in the game
+  that cannot be shot, so it runs white into cyan and stays out of that
+  vocabulary.
+- **It is not outlined.** Contrast is depth in a flat palette; an outlined tower
+  sits in the street instead of a mile behind it.
+
+Two framing lessons, both learned the hard way and both worth remembering for
+the next cutscene:
+
+1. **A caption is a wall.** At 320×180 a shot carries about three lines of the
+   pixel font before the text is the picture. The Core's narration was five
+   lines over the middle of the crystal; it is two shots now.
+2. **A tall sprite needs the camera aimed above the tile it stands on.** The
+   crystal is 168px tall above an anchor at its base, so framing on its own tile
+   puts the point off the top of the screen. The camera ends on a negative tile
+   y, which is fine — cameras are not clamped to the map.

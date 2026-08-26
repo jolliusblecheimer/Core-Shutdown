@@ -232,11 +232,17 @@ function startPrologue(onDone) {
     // the camera has to end aimed well up-screen of the tile it stands on —
     // hence the negative y. Cameras are not clamped to the map; the culler
     // works off the screen corners either way.
-    { dur: 9.0, cam: [17, 8], panTo: [13, -1], zoom: 1.0,
+    // TWO shots, not one. The first pass ran all of it under a single pan and
+    // five lines of pixel font stacked up over the middle of the crystal —
+    // at 320x180 a caption is a wall, so a shot can carry about three lines
+    // before it stops being a shot.
+    { dur: 7.0, cam: [17, 8], panTo: [13, -2], zoom: 1.0,
       fadeFrom: 1, fadeTo: 0, fadeDur: 2.0,
-      text: 'At the middle of the city they built the Core, and put the ' +
-            "city's mind inside it. WARDEN ran the lights, the trains and the " +
-            'water. It never slept, and it never asked us for anything.' },
+      text: 'At the middle of the city stands the Core: one crystal the ' +
+            'height of a tower.' },
+    { dur: 6.0, cam: [13, -2], zoom: 1.0,
+      text: 'WARDEN lived in it, and every machine in the city ran off its ' +
+            'light.' },
 
     // ---- 1. A STREET THAT WORKS -------------------------------------------
     { dur: 6.5, cam: PRO_CAM_EAST, panTo: [21, 13.5], zoom: 1.15,

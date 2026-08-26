@@ -2345,30 +2345,105 @@ function outlined(src) {
   // in a flat palette, so the nearer a thing is the harder its edges get. An
   // outlined tower would sit on the street instead of behind it.
   (function () {
-    const c = makeCanvas(38, 132), g = c.getContext('2d');
-    const FAR = '#5d6772', FAR_L = '#6f7b87', FAR_D = '#4b545e';
-    const BAND = '#3f5c6e', LIT = '#7fb6d0';
-    // three stacked stages, each narrower than the one under it
-    const stage = (y0, y1, w) => {
-      const x = Math.round(19 - w / 2);
-      px(g, x, y0, w, y1 - y0, FAR);
-      px(g, x, y0, 2, y1 - y0, FAR_L);              // lit west face
-      px(g, x + w - 2, y0, 2, y1 - y0, FAR_D);      // shadowed east face
-      for (let y = y0 + 3; y < y1 - 2; y += 7) {    // window bands
-        px(g, x + 2, y, w - 4, 1, BAND);
-        px(g, x + 2, y, Math.max(1, (w - 4) >> 1), 1, LIT);
-      }
+    // THE CORE IS A CRYSTAL, not a tower. Laurens' reference, 2026-08-26: a
+    // faceted gem the height of a high-rise, lit from inside, with a server
+    // farm drinking off it. So the silhouette is a bipyramid — a point at the
+    // top, the widest line two thirds up, a point at the bottom sitting in its
+    // own cradle — and the building underneath it is a rack hall.
+    //
+    // Two rules from this project decide how it is drawn:
+    //  * INTEGER FILLS ONLY. Every facet is a scanline run, every glow a
+    //    stepped diamond. Nothing here needs antialiasing to read, and at this
+    //    distance anything that did would turn to mush.
+    //  * THE GLOW IS WHITE-HOT, NOT AMBER. The reference has a warm heart, and
+    //    it is beautiful, but amber is spoken for: "what glows amber can be
+    //    hurt". The Core is the one thing in the game that cannot be shot, so
+    //    its heart runs white into cyan and stays out of that vocabulary.
+    const W = 60, H = 168, CX = 30;
+    const c = makeCanvas(W, H), g = c.getContext('2d');
+    const TOP = 2, GIRDLE = 74, TIP = 128, HALF = 25;
+
+    // Four facets across the body, lit on the west face and falling away east —
+    // the same light direction as every building in the game.
+    const FACET = ['#9fdff5', '#7cc9ea', '#57aed4', '#3f93bc'];
+    const RIDGE = '#c8f0ff';
+
+    const halfWidthAt = (y) => {
+      if (y < TOP || y > TIP) return 0;
+      const k = y <= GIRDLE ? (y - TOP) / (GIRDLE - TOP)
+                            : (TIP - y) / (TIP - GIRDLE);
+      return Math.max(1, Math.round(k * HALF));
     };
-    stage(64, 132, 24);
-    stage(30, 64, 17);
-    stage(12, 30, 11);
-    // the crown: the Core itself, and the only saturated thing in the sprite
-    px(g, 15, 6, 8, 7, '#48606e');
-    px(g, 16, 7, 6, 5, CORE_BLUE);
-    px(g, 17, 8, 4, 3, '#cdeeff');
-    px(g, 18, 2, 2, 5, '#5d6772');                  // mast
-    px(g, 18, 1, 2, 1, CORE_BLUE);
-    Sprites.coreTower = c;                          // NOT outlined — it is far away
+
+    for (let y = TOP; y <= TIP; y++) {
+      const hw = halfWidthAt(y);
+      const x0 = CX - hw, w = hw * 2;
+      for (let i = 0; i < 4; i++) {
+        const a = x0 + Math.round(w * i / 4);
+        const b = x0 + Math.round(w * (i + 1) / 4);
+        if (b > a) px(g, a, y, b - a, 1, FACET[i]);
+      }
+      // the front edge where the two near faces meet, and the girdle line
+      px(g, CX - 1, y, 2, 1, RIDGE);
+      if (y === GIRDLE || y === GIRDLE + 1) px(g, x0, y, w, 1, RIDGE);
+    }
+
+    // THE HEART. Stepped diamonds from cyan up to white, so it reads as light
+    // coming from inside the stone rather than painted on the front of it.
+    // Each ring is nudged off the one inside it, because perfectly nested
+    // diamonds read as a logo printed on the front rather than light trapped
+    // behind a lot of glass.
+    const heartY = GIRDLE + 14;
+    const rings = [[20, 0, 1, '#3f93bc'], [16, -1, 0, '#4aa8d0'],
+                   [12, 1, -1, '#7cc9ea'], [8, 0, -2, '#a9e6fb'],
+                   [5, -1, -1, '#dcf6ff'], [2, 0, -2, '#ffffff']];
+    for (const [r, ox, oy, col] of rings) {
+      for (let dy = -r; dy <= r; dy++) {
+        const yy = heartY + oy + dy;
+        if (yy < TOP || yy > TIP) continue;
+        const lim = halfWidthAt(yy);
+        let hw = r - Math.abs(dy);
+        if (hw < 1) continue;
+        const cxr = CX + ox;
+        const x0 = Math.max(CX - lim, cxr - hw);
+        const x1 = Math.min(CX + lim, cxr + hw);
+        if (x1 > x0) px(g, x0, yy, x1 - x0, 1, col);
+      }
+    }
+    // inclusions catching the light, off the centre line so it does not read
+    // as a symmetrical logo
+    for (const [ix, iy] of [[-13, 34], [11, 46], [-8, 58], [16, 88], [-17, 96], [9, 108]]) {
+      const yy = GIRDLE + iy - 40;
+      if (Math.abs(ix) < halfWidthAt(yy)) {
+        px(g, CX + ix, yy, 1, 1, '#eafaff');
+        px(g, CX + ix, yy + 1, 1, 1, '#9fdff5');
+      }
+    }
+
+    // ---- THE RACK HALL. What the crystal is FOR. -------------------------
+    // A dark hall under it, and rows of machines with their status lights on.
+    // At this distance it is a black mass with blue rain in it, which is
+    // exactly what a server floor looks like from a mile away.
+    px(g, 3, 126, W - 6, 8, '#222a32');                 // the cradle it sits in
+    px(g, 3, 126, W - 6, 1, '#39454f');
+    px(g, 6, 124, W - 12, 2, '#2e3942');
+    for (let i = 0; i < 7; i++) {
+      const bx = 2 + i * 8;
+      const bh = 22 + ((i * 5) % 3) * 5;
+      const by = H - 2 - bh;
+      px(g, bx, by, 7, bh, '#1d242b');                  // rack
+      px(g, bx, by, 7, 1, '#2c353e');
+      px(g, bx, by, 1, bh, '#28313a');                  // lit edge
+      for (let r = 3; r < bh - 2; r += 3) {
+        px(g, bx + 2, by + r, 4, 1, '#2b7fb5');         // rows of status lights
+        if (r % 6 === 0) px(g, bx + 2, by + r, 2, 1, CORE_BLUE);
+      }
+    }
+    // conduits carrying the light down into the floor
+    for (const cx2 of [CX - 12, CX - 4, CX + 4, CX + 12]) {
+      px(g, cx2, 130, 1, H - 132, '#2b7fb5');
+    }
+    Sprites.coreTower = c;                              // NOT outlined — it is far away
   })();
 
   // ---- THE CHURCHYARD: where he went down, and where the camp now lives ----
