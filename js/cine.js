@@ -38,10 +38,18 @@ const Cine = {
   bars: 0,              // letterbox height in logical pixels
   text: '', textT: 0,
   skippable: true,
+  // AN ESTABLISHING PLATE. Some shots cannot be taken from inside the world:
+  // in this projection everything north of you is drawn both higher and
+  // taller, so from a street there is no sky, and any camera lifted high
+  // enough to find one is looking over the edge of the tilemap. A plate is
+  // just a picture — no tiles, no camera — which is what an establishing shot
+  // of something ten kilometres away actually is.
+  plate: false, plateScale: 1,
 };
 
 const CINE_TYPE_SPEED = 26;    // characters a second
 const CINE_BARS = 16;          // letterbox height when a beat is not playable
+const CINE_CORE_Y = 88;        // where the crystal sits inside Sprites.cityFar
 
 function playCine(beats, onDone) {
   Cine.active = true;
@@ -56,6 +64,7 @@ function playCine(beats, onDone) {
   Cine.hasCam = false;
   Cine.zoom = 1;
   Cine.bars = 0;
+  Cine.plate = false;
 }
 
 function endCine() {
@@ -70,6 +79,7 @@ function endCine() {
   Cine.bars = 0;
   Cine.text = '';
   Cine.zoom = 1;
+  Cine.plate = false;
   if (cb) cb();
 }
 
@@ -105,6 +115,8 @@ function updateCine(dt) {
     if (b.follow) Cine.hasCam = false;      // hand the camera back to the player
     if (b.zoom !== undefined) Cine.zoom = b.zoom;
     Cine.bars = b.bars !== undefined ? b.bars : (b.control ? 0 : CINE_BARS);
+    Cine.plate = !!b.plate;
+    if (b.plateScale !== undefined) Cine.plateScale = b.plateScale;
     if (b.enter) b.enter();
   }
 
@@ -122,6 +134,10 @@ function updateCine(dt) {
     const from = b.fadeFrom !== undefined ? b.fadeFrom : Cine.fade;
     if (b.fadeFrom !== undefined) Cine.fade = from + (b.fadeTo - from) * k;
     else Cine.fade += (b.fadeTo - Cine.fade) * Math.min(1, 3 * dt);
+  }
+  if (b.plate && b.plateTo !== undefined) {
+    const k = Math.min(1, Cine.t / (b.dur || 1));
+    Cine.plateScale = b.plateScale + (b.plateTo - b.plateScale) * k;
   }
   if (b.tick) b.tick(Cine.t, dt);
 
@@ -145,6 +161,33 @@ function cineCamera() {
 // that UI text is never upscaled pixel mush.
 function drawCineOverlay() {
   if (!Cine.active && Cine.fade <= 0.001) return;
+
+  // THE PLATE, if this beat is one. Drawn with smoothing off and the crystal
+  // pinned to a fixed point on screen, so a push-in enlarges it without ever
+  // letting it wander.
+  if (Cine.plate && Sprites.cityFar) {
+    const img = Sprites.cityFar, sc = Cine.plateScale;
+    uiRect(0, 0, VIEW_W, VIEW_H, '#080b0e');
+    // a sparse, fixed star scatter so the sky is not dead space. Deterministic,
+    // because a plate that twinkles differently every time you see it reads as
+    // noise rather than as a night.
+    for (let i = 0; i < 46; i++) {
+      const sx2 = ((i * 73) % 157) / 157 * VIEW_W;
+      const sy2 = ((i * 131) % 89) / 89 * (VIEW_H * 0.50);
+      uiRect(sx2, sy2 + 6, 1, 1, i % 5 === 0 ? 'rgba(200,225,240,0.55)' : 'rgba(160,190,210,0.28)');
+    }
+    const w = img.width * sc, h = img.height * sc;
+    const x = VIEW_W / 2 - (img.width / 2) * sc;
+    const y = VIEW_H * 0.54 - CINE_CORE_Y * sc;
+    uictx.imageSmoothingEnabled = false;
+    uictx.drawImage(img, Math.round(x * U), Math.round(y * U),
+                    Math.round(w * U), Math.round(h * U));
+    // a thin haze where the city meets the dark, so the band does not end on
+    // a ruled line
+    uictx.globalAlpha = 0.5;
+    uiRect(0, VIEW_H * 0.54 + (img.height - CINE_CORE_Y - 2) * sc, VIEW_W, 3, '#0d1319');
+    uictx.globalAlpha = 1;
+  }
 
   if (Cine.bars > 0.5) {
     uiRect(0, 0, VIEW_W, Cine.bars, '#000');
@@ -236,13 +279,16 @@ function startPrologue(onDone) {
     // five lines of pixel font stacked up over the middle of the crystal —
     // at 320x180 a caption is a wall, so a shot can carry about three lines
     // before it stops being a shot.
-    // The Core is FIVE RINGS AWAY (`design/city-blueprint.html`), so the shot
-    // has to earn it: start on the rooftops, lift to the horizon, and let the
-    // zoom do the reaching. It stays small the whole time, because it is.
-    { dur: 7.0, cam: [17, 9], panTo: [14, 0], zoom: 1.0,
+    // THE CAMERA STAYS ON THE STREET. The first version flew it north to
+    // (13,-2) — off the map — to get the horizon centred, and what filled half
+    // the frame was the EDGE OF THE TILEMAP: a flat wedge of ground with the
+    // void past it. The horizon is a backdrop, not a place, so it does not need
+    // to be travelled to; the shot is a lit street with the Core standing over
+    // it, which is the better picture anyway because it holds both.
+    { dur: 7.0, plate: true, plateScale: 1.0, plateTo: 1.12, zoom: 1,
       fadeFrom: 1, fadeTo: 0, fadeDur: 2.0,
       text: 'Out past the rings, at the middle of it all, stood the Core.' },
-    { dur: 7.5, cam: [14, 0], panTo: [13, -2], zoom: 1.85,
+    { dur: 7.5, plate: true, plateScale: 1.12, plateTo: 1.55, zoom: 1,
       text: 'One crystal the height of a tower, and every machine in the city ' +
             'running off its light. WARDEN lived in it.' },
 

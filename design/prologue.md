@@ -527,3 +527,43 @@ Two things this taught, both worth keeping:
 
 The beat is two shots: the horizon at rest, then a push to 1.85× that closes on
 the Core without ever pretending it is near.
+
+
+---
+
+## 14. Why the Core is a plate, 2026-08-26
+
+Laurens, from an iPad screenshot: *"There is a problem in the cutsceen this looks
+cooked, you know why."* He was right and the cause was mine.
+
+**What was on screen:** half the frame was a flat wedge of ground with speckles
+on it and a hard diagonal edge — the prologue map's default fill, which I had
+written into the code as *"rubble default, never seen"* and then pointed a
+camera straight at. Past that edge was the void where the tilemap stops.
+
+Three attempts to fix it by framing, and what each one taught:
+
+1. **Build on every bare tile.** Traded one problem for a worse one: a solid mass
+   of roofs from edge to edge with no sky left to put a horizon in.
+2. **Keep the camera on the street.** Fully dressed, and the Core was invisible —
+   hidden behind the frontage.
+3. **Lift the camera over the roofs.** Back to seeing the map's edge.
+
+The pattern under all three is a property of the projection, and it is worth
+writing down because it will come up again:
+
+> **In this isometric view, everything north of the camera is drawn both higher
+> up the screen AND taller. There is no sky from street level. Any camera lifted
+> far enough to find one is looking over the edge of the tilemap.**
+
+So the Core does not get a view; **it gets a plate.** A beat can set
+`plate: true`, and the runner draws a picture instead of a place: the skyline
+band, the crystal pinned to a fixed point, a deterministic star scatter, and no
+tiles or camera involved at all. `plateScale` animates across the beat, so the
+push-in enlarges it without ever letting it wander.
+
+That is what an establishing shot of something ten kilometres away *is* — a
+separate image, not a thing you can see from the pavement. It also means the
+Core shot can never again be broken by something changing on the map.
+
+The street beats that follow are unchanged and still play in the real world.

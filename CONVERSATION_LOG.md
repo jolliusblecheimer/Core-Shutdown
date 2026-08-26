@@ -2569,3 +2569,34 @@ Two lessons worth keeping for every backdrop after this:
   reach it, because the cutscene zoom scales about that point.
 The beat is two shots: the horizon at rest, then a push to 1.85x that closes on
 the Core without ever pretending it is near.
+
+### "This looks cooked" — and why the Core is a plate now
+**Laurens** (iPad screenshot): *"There is a problem in the cutsceen this looks
+cooked, you know why."*
+**Claude:** Yes, and the cause was mine. Half the frame was a flat wedge of
+ground with speckles and a hard diagonal edge — the prologue map's default fill,
+which I had written into the code as *"rubble default, never seen"* and then
+pointed a camera straight at. Past that edge was the void where the tilemap
+stops. His screen is much wider than the one I had been checking on, which is
+why it was obvious to him and not to me; I now screenshot at his aspect ratio.
+Three attempts to fix it by framing, each of which taught something:
+1. **Build on every bare tile** — traded one problem for a worse one: a solid
+   mass of roofs edge to edge with no sky left to put a horizon in.
+2. **Keep the camera on the street** — fully dressed, and the Core invisible
+   behind the frontage.
+3. **Lift the camera over the roofs** — back to seeing the edge of the map.
+The pattern under all three is a property of the projection and it is now
+written into `design/prologue.md` §14, because it will come up again:
+**everything north of the camera is drawn both higher up the screen AND taller,
+so there is no sky from street level — and any camera lifted far enough to find
+one is looking over the edge of the tilemap.**
+So the Core does not get a view. **It gets a plate.** A beat can set
+`plate: true` and the runner draws a picture instead of a place: the skyline
+band, the crystal pinned to a fixed point, a deterministic star scatter, no
+tiles and no camera. `plateScale` animates across the beat so the push-in
+enlarges it without letting it wander. That is what an establishing shot of
+something ten kilometres away actually is — and it means the Core shot can never
+again be broken by something changing on the map.
+The street beats after it are untouched and still play in the real world.
+Verified end to end at 2000x1300 as well as 1280x720: the full prologue runs to
+the naming prompt in 52s with no console errors.

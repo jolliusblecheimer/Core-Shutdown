@@ -1216,6 +1216,39 @@ function buildPrologue() {
   put(21, PRO_ROAD_Y - 1, 'car', { v: 2, dir: 'x' });
   put(28, PRO_ROAD_Y + 1, 'car', { v: 1, dir: 'x' });
 
+  // ---- NOTHING BARE MAY BE IN FRAME, BUT THE SKY HAS TO STAY -----------
+  // The default fill above was commented "rubble default, never seen" and that
+  // was wrong: lift the camera to look at the horizon and the undressed part of
+  // the map is half the picture.
+  //
+  // The first fix was to build on EVERY bare tile, and it traded one problem
+  // for a worse one — a solid mass of roofs from edge to edge, with no sky left
+  // to put a horizon in. In this projection anything north of you is drawn both
+  // higher and taller, so a fully built map has no visible sky from anywhere.
+  //
+  // So: build the WEST bare ground only (behind the churchyard, where the
+  // camera never needs to see past), and leave the northern strip open — that
+  // strip is the sky the Core stands in.
+  const KINDS = ['H', 'B', 'S', 'O', 'K', 'N'];
+  const freeBlock = (x0, y0, w, h) => {
+    if (x0 < 0 || y0 < 0 || x0 + w > PRO_W || y0 + h > PRO_H) return false;
+    for (let y = y0; y < y0 + h; y++)
+      for (let x = x0; x < x0 + w; x++)
+        if (solid[y][x] || ground[y][x] !== 2) return false;
+    return true;
+  };
+  let fillSeed = 7;
+  for (let y = 6; y < PRO_H; y += 4) {              // y >= 6: never the north strip
+    for (let x = 0; x < PRO_W; x += 5) {
+      for (const [w, h] of [[5, 4], [4, 4], [3, 3], [2, 2]]) {
+        if (!freeBlock(x, y, w, h)) continue;
+        fillSeed = (fillSeed * 1103515245 + 12345) & 0x7fffffff;
+        shell(x, y, w, h, KINDS[fillSeed % KINDS.length]);
+        break;
+      }
+    }
+  }
+
   buildAO();
   buildSpatialIndex();
 }
