@@ -236,13 +236,15 @@ function startPrologue(onDone) {
     // five lines of pixel font stacked up over the middle of the crystal —
     // at 320x180 a caption is a wall, so a shot can carry about three lines
     // before it stops being a shot.
-    { dur: 7.0, cam: [17, 8], panTo: [13, -2], zoom: 1.0,
+    // The Core is FIVE RINGS AWAY (`design/city-blueprint.html`), so the shot
+    // has to earn it: start on the rooftops, lift to the horizon, and let the
+    // zoom do the reaching. It stays small the whole time, because it is.
+    { dur: 7.0, cam: [17, 9], panTo: [14, 0], zoom: 1.0,
       fadeFrom: 1, fadeTo: 0, fadeDur: 2.0,
-      text: 'At the middle of the city stands the Core: one crystal the ' +
-            'height of a tower.' },
-    { dur: 6.0, cam: [13, -2], zoom: 1.0,
-      text: 'WARDEN lived in it, and every machine in the city ran off its ' +
-            'light.' },
+      text: 'Out past the rings, at the middle of it all, stood the Core.' },
+    { dur: 7.5, cam: [14, 0], panTo: [13, -2], zoom: 1.85,
+      text: 'One crystal the height of a tower, and every machine in the city ' +
+            'running off its light. WARDEN lived in it.' },
 
     // ---- 1. A STREET THAT WORKS -------------------------------------------
     { dur: 6.5, cam: PRO_CAM_EAST, panTo: [21, 13.5], zoom: 1.15,

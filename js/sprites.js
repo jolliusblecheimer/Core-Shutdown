@@ -2345,105 +2345,97 @@ function outlined(src) {
   // in a flat palette, so the nearer a thing is the harder its edges get. An
   // outlined tower would sit on the street instead of behind it.
   (function () {
-    // THE CORE IS A CRYSTAL, not a tower. Laurens' reference, 2026-08-26: a
-    // faceted gem the height of a high-rise, lit from inside, with a server
-    // farm drinking off it. So the silhouette is a bipyramid — a point at the
-    // top, the widest line two thirds up, a point at the bottom sitting in its
-    // own cradle — and the building underneath it is a rack hall.
+    // ---- THE CITY ON THE HORIZON, AND THE CORE AT THE BACK OF IT ----------
     //
-    // Two rules from this project decide how it is drawn:
-    //  * INTEGER FILLS ONLY. Every facet is a scanline run, every glow a
-    //    stepped diamond. Nothing here needs antialiasing to read, and at this
-    //    distance anything that did would turn to mush.
-    //  * THE GLOW IS WHITE-HOT, NOT AMBER. The reference has a warm heart, and
-    //    it is beautiful, but amber is spoken for: "what glows amber can be
-    //    hurt". The Core is the one thing in the game that cannot be shot, so
-    //    its heart runs white into cyan and stays out of that vocabulary.
-    const W = 60, H = 168, CX = 30;
+    // Corrected 2026-08-26 against `design/city-blueprint.html`. The prologue
+    // street is in the FRINGE — Ring 5, the outermost — and the atlas runs the
+    // whole journey bottom-to-centre along the M7. So the Core is **five rings
+    // away**, and the first pass had it twelve tiles up the road filling the
+    // frame, which quietly said the traveller could walk there before
+    // breakfast. The whole game is the distance between those two points.
+    //
+    // So this is not a prop standing on a tile. It is a BACKDROP BAND drawn
+    // behind the world at a fraction of the camera's motion, with three depths
+    // in it, and the Core is the smallest and furthest thing in the picture:
+    //
+    //    layer 3 (deepest, palest)  the Core District, and the Core itself
+    //    layer 2                    the Grid's towers
+    //    layer 1 (nearest, darkest) the Belt's stacks and the Sprawl's blocks
+    //
+    // Contrast falls away with depth, which in a flat palette is the only way
+    // distance reads at all. Everything here is at most three shades off the
+    // night behind it.
+    const W = 480, H = 120;
     const c = makeCanvas(W, H), g = c.getContext('2d');
-    const TOP = 2, GIRDLE = 74, TIP = 128, HALF = 25;
+    const rng = mulberry32(90210);
+    const GROUND = H - 2;
 
-    // Four facets across the body, lit on the west face and falling away east —
-    // the same light direction as every building in the game.
-    const FACET = ['#9fdff5', '#7cc9ea', '#57aed4', '#3f93bc'];
-    const RIDGE = '#c8f0ff';
+    // --- layer 3: the far centre, palest, and the crystal in the middle ---
+    const L3 = '#2b3742', L3_L = '#35434f';
+    for (let x = 0; x < W; x += 3) {
+      const d = Math.abs(x - W / 2) / (W / 2);            // tallest at the centre
+      const h = Math.round((1 - d) * 30 + rng() * 7);
+      if (h < 3) continue;
+      px(g, x, GROUND - h, 3, h, L3);
+      px(g, x, GROUND - h, 3, 1, L3_L);
+      if (rng() < 0.30) px(g, x + 1, GROUND - h + 3 + ((rng() * 6) | 0), 1, 1, '#3d5a6b');
+    }
 
-    const halfWidthAt = (y) => {
+    // --- THE CORE. A high-rise-sized crystal, at ten kilometres. ---
+    // It is about forty pixels tall here, which is what a tower looks like
+    // from the edge of a city — small, unmistakable, and the only saturated
+    // thing on the skyline.
+    const CX = W / 2, TOP = GROUND - 52, GIRDLE = GROUND - 30, TIP = GROUND - 12, HALF = 9;
+    const FACET = ['#7cc9ea', '#5db3d8', '#4498bf', '#357fa3'];
+    const halfW = (y) => {
       if (y < TOP || y > TIP) return 0;
-      const k = y <= GIRDLE ? (y - TOP) / (GIRDLE - TOP)
-                            : (TIP - y) / (TIP - GIRDLE);
+      const k = y <= GIRDLE ? (y - TOP) / (GIRDLE - TOP) : (TIP - y) / (TIP - GIRDLE);
       return Math.max(1, Math.round(k * HALF));
     };
-
     for (let y = TOP; y <= TIP; y++) {
-      const hw = halfWidthAt(y);
-      const x0 = CX - hw, w = hw * 2;
+      const hw = halfW(y), x0 = CX - hw, w = hw * 2;
       for (let i = 0; i < 4; i++) {
-        const a = x0 + Math.round(w * i / 4);
-        const b = x0 + Math.round(w * (i + 1) / 4);
+        const a = x0 + Math.round(w * i / 4), b = x0 + Math.round(w * (i + 1) / 4);
         if (b > a) px(g, a, y, b - a, 1, FACET[i]);
       }
-      // the front edge where the two near faces meet, and the girdle line
-      px(g, CX - 1, y, 2, 1, RIDGE);
-      if (y === GIRDLE || y === GIRDLE + 1) px(g, x0, y, w, 1, RIDGE);
+      px(g, CX - 1, y, 1, 1, '#a9e6fb');                  // the front edge
     }
-
-    // THE HEART. Stepped diamonds from cyan up to white, so it reads as light
-    // coming from inside the stone rather than painted on the front of it.
-    // Each ring is nudged off the one inside it, because perfectly nested
-    // diamonds read as a logo printed on the front rather than light trapped
-    // behind a lot of glass.
-    const heartY = GIRDLE + 14;
-    const rings = [[20, 0, 1, '#3f93bc'], [16, -1, 0, '#4aa8d0'],
-                   [12, 1, -1, '#7cc9ea'], [8, 0, -2, '#a9e6fb'],
-                   [5, -1, -1, '#dcf6ff'], [2, 0, -2, '#ffffff']];
-    for (const [r, ox, oy, col] of rings) {
+    // the heart, four stepped diamonds — all it can be at this size
+    for (const [r, col] of [[6, '#5db3d8'], [4, '#a9e6fb'], [2, '#eafaff'], [1, '#ffffff']]) {
       for (let dy = -r; dy <= r; dy++) {
-        const yy = heartY + oy + dy;
-        if (yy < TOP || yy > TIP) continue;
-        const lim = halfWidthAt(yy);
-        let hw = r - Math.abs(dy);
-        if (hw < 1) continue;
-        const cxr = CX + ox;
-        const x0 = Math.max(CX - lim, cxr - hw);
-        const x1 = Math.min(CX + lim, cxr + hw);
-        if (x1 > x0) px(g, x0, yy, x1 - x0, 1, col);
+        const yy = GIRDLE - 4 + dy, hw = Math.min(r - Math.abs(dy), halfW(yy));
+        if (hw >= 1) px(g, CX - hw, yy, hw * 2, 1, col);
       }
     }
-    // inclusions catching the light, off the centre line so it does not read
-    // as a symmetrical logo
-    for (const [ix, iy] of [[-13, 34], [11, 46], [-8, 58], [16, 88], [-17, 96], [9, 108]]) {
-      const yy = GIRDLE + iy - 40;
-      if (Math.abs(ix) < halfWidthAt(yy)) {
-        px(g, CX + ix, yy, 1, 1, '#eafaff');
-        px(g, CX + ix, yy + 1, 1, 1, '#9fdff5');
-      }
+    // THE SERVER HALLS it powers: a long lit shelf under it. At this range you
+    // do not see racks, you see the floor they are on, glowing.
+    px(g, CX - 26, GROUND - 13, 52, 11, '#1e2831');
+    px(g, CX - 26, GROUND - 13, 52, 1, '#2b3b47');
+    for (let i = 0; i < 26; i++) {
+      const bx = CX - 24 + i * 2, by = GROUND - 11 + ((i * 3) % 8);
+      px(g, bx, by, 1, 1, i % 3 === 0 ? '#6fd3ff' : '#2b7fb5');
     }
 
-    // ---- THE RACK HALL. What the crystal is FOR. -------------------------
-    // A dark hall under it, and rows of machines with their status lights on.
-    // At this distance it is a black mass with blue rain in it, which is
-    // exactly what a server floor looks like from a mile away.
-    px(g, 3, 126, W - 6, 8, '#222a32');                 // the cradle it sits in
-    px(g, 3, 126, W - 6, 1, '#39454f');
-    px(g, 6, 124, W - 12, 2, '#2e3942');
-    for (let i = 0; i < 7; i++) {
-      const bx = 2 + i * 8;
-      const bh = 22 + ((i * 5) % 3) * 5;
-      const by = H - 2 - bh;
-      px(g, bx, by, 7, bh, '#1d242b');                  // rack
-      px(g, bx, by, 7, 1, '#2c353e');
-      px(g, bx, by, 1, bh, '#28313a');                  // lit edge
-      for (let r = 3; r < bh - 2; r += 3) {
-        px(g, bx + 2, by + r, 4, 1, '#2b7fb5');         // rows of status lights
-        if (r % 6 === 0) px(g, bx + 2, by + r, 2, 1, CORE_BLUE);
-      }
+    // --- layer 2: the Grid, a shade nearer ---
+    const L2 = '#212b34', L2_L = '#2a3640';
+    for (let x = -2; x < W; x += 4) {
+      const d = Math.abs(x - W / 2) / (W / 2);
+      const h = Math.round((1 - d) * 20 + rng() * 9) + 3;
+      px(g, x, GROUND - h, 4, h, L2);
+      px(g, x, GROUND - h, 4, 1, L2_L);
+      if (rng() < 0.22) px(g, x + 1, GROUND - h + 2 + ((rng() * 8) | 0), 1, 1, '#33566a');
     }
-    // conduits carrying the light down into the floor
-    for (const cx2 of [CX - 12, CX - 4, CX + 4, CX + 12]) {
-      px(g, cx2, 130, 1, H - 132, '#2b7fb5');
+
+    // --- layer 1: the Belt and the Sprawl, nearest and darkest ---
+    const L1 = '#161d24';
+    for (let x = -3; x < W; x += 6) {
+      const h = Math.round(7 + rng() * 12);
+      px(g, x, GROUND - h, 6, h + 2, L1);
+      px(g, x, GROUND - h, 6, 1, '#1e2831');
+      if (rng() < 0.30) px(g, x + 2, GROUND - h - 3, 1, 3, L1);        // a stack
+      if (rng() < 0.18) px(g, x + 2, GROUND - h - 4, 1, 1, '#7a3a2a');  // its light
     }
-    Sprites.coreTower = c;                              // NOT outlined — it is far away
+    Sprites.cityFar = c;
   })();
 
   // ---- THE CHURCHYARD: where he went down, and where the camp now lives ----

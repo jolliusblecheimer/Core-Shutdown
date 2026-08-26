@@ -2540,3 +2540,32 @@ Two framing lessons worth keeping for every cutscene after this one:
 Also fixed the nested-diamond heart, which read as a logo printed on the front
 of the glass — each ring is nudged off the one inside it now, so it reads as
 light trapped behind a lot of stone.
+
+### The Core belongs on the horizon
+**Laurens:** *"Make the cutsceen accurate with core atlas, the core is far away
+in the inner part of the city."*
+**Claude:** Checked `design/city-blueprint.html` and he is right, in a way that
+mattered. **The prologue street is in the Fringe — Ring 5, the outermost** — and
+the atlas runs the whole journey bottom-to-centre along the M7, so the Core is
+**five rings in**. The crystal was standing twelve tiles up the road filling the
+frame, which quietly told the player they could walk to it before breakfast.
+The entire game is the distance between those two points, so the opening shot is
+exactly the one that has to establish it.
+It is a **backdrop now, not a prop on a tile** — `drawFarCity` paints a band
+behind the world and an area asks for it with `skyline: true`. Three depths: the
+Core District palest at the back, the Grid's towers, then the Belt's stacks and
+the Sprawl's blocks darkest and nearest. Contrast falls away with depth, which
+in a flat palette is the only thing that makes distance read; nothing on the
+band is more than three shades off the night behind it except the Core itself
+and the lit shelf of server floors under it. The crystal is about forty pixels
+tall there, which is what a high-rise looks like from the edge of a city.
+Two lessons worth keeping for every backdrop after this:
+- **Parallax at a tenth** — enough that it reads as being out there, little
+  enough that it never slides out of a shot.
+- **Anchored, never tiled.** The first version tiled the band and let the
+  parallax decide where the Core landed, so the one thing the shot is about
+  drifted off frame the moment the camera moved. Drawn once now and lined up so
+  the crystal sits near screen centre — which is also what lets the push-in
+  reach it, because the cutscene zoom scales about that point.
+The beat is two shots: the horizon at rest, then a push to 1.85x that closes on
+the Core without ever pretending it is near.

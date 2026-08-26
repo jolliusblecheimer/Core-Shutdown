@@ -478,3 +478,52 @@ the next cutscene:
    crystal is 168px tall above an anchor at its base, so framing on its own tile
    puts the point off the top of the screen. The camera ends on a negative tile
    y, which is fine — cameras are not clamped to the map.
+
+
+---
+
+## 13. The Core is on the horizon, 2026-08-26
+
+Laurens: *"Make the cutsceen accurate with core atlas, the core is far away in
+the inner part of the city."* Checked against `design/city-blueprint.html`, and
+he is right — the first pass was wrong in a way that mattered.
+
+**The prologue street is in the FRINGE, Ring 5, the outermost ring**, and the
+atlas runs the whole journey bottom-to-centre along the M7. The Core is **five
+rings in**. The crystal was standing twelve tiles up the road filling the frame,
+which quietly told the player they could walk to it before breakfast. The entire
+game is the distance between those two points, so the opening shot has to be the
+one that establishes it.
+
+**So it is a backdrop now, not a prop on a tile.** `drawFarCity` in `game.js`
+paints a band behind the world, and the area asks for it with `skyline: true`.
+Three depths in it:
+
+| Layer | What | Shade |
+|---|---|---|
+| Back | The Core District, and the Core itself | palest, `#2b3742` |
+| Middle | The Grid's towers | `#212b34` |
+| Front | The Belt's stacks and the Sprawl's blocks | darkest, `#161d24` |
+
+Contrast falls away with depth, which in a flat palette is the only thing that
+makes distance read at all. Nothing on the band is more than three shades off
+the night behind it — except the Core, which is the only saturated thing on the
+skyline, and the lit shelf of server floors under it.
+
+**The crystal is about forty pixels tall there**, which is what a high-rise
+looks like from the edge of a city. It is the same object as before, drawn at
+the size the geography actually gives it.
+
+Two things this taught, both worth keeping:
+
+1. **Parallax at a tenth.** The horizon takes a tenth of the camera's motion —
+   enough that it reads as being out there, little enough that it never slides
+   out of a shot.
+2. **Anchored, never tiled.** The first version tiled the band and let the
+   parallax decide where the Core landed, so the one thing the shot is about
+   drifted off frame the moment the camera moved. It is drawn once now, lined up
+   so the crystal sits near the middle of the screen — which is also what lets
+   the push-in reach it, because the cutscene zoom scales about that point.
+
+The beat is two shots: the horizon at rest, then a push to 1.85× that closes on
+the Core without ever pretending it is near.

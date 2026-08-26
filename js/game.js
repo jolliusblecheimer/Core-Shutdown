@@ -1399,6 +1399,10 @@ function render() {
       (VIEW_W / 2) * (1 - cineZoom), (VIEW_H / 2) * (1 - cineZoom));
   }
 
+  // THE HORIZON. Drawn inside the zoom transform so a push-in reaches it, and
+  // BEFORE the tiles so the whole world stands in front of it.
+  if (currentAreaDef().skyline) drawFarCity(ox, oy);
+
   // ---- only what the camera can see: the map may be 200x150 ----
   const MARG = 3;
   let vx0 = Infinity, vy0 = Infinity, vx1 = -Infinity, vy1 = -Infinity;
@@ -1874,6 +1878,31 @@ function drawRoof(p) {
   }
 }
 
+// How much of the camera's motion the horizon takes. A tenth: enough to feel
+// like it is out there, little enough that it never slides out of a shot.
+const PARALLAX = 0.10;
+const CORE_BAND_Y = 88;      // where the crystal sits inside Sprites.cityFar
+
+// The city between here and the middle of it, and the Core at the back.
+// A BACKDROP, not props on tiles: the Fringe is Ring 5 and the Core is Ring 0,
+// so the honest distance is not something a 34-tile map can hold. It moves at a
+// fraction of the camera, which is the only cue the eye actually needs — a
+// thing that barely shifts when you move is a thing that is a long way off.
+function drawFarCity(ox, oy) {
+  const img = Sprites.cityFar;
+  if (!img) return;
+  // ANCHORED, NOT TILED. The first version tiled the band and let the parallax
+  // decide where the Core landed, which meant the one thing the shot is about
+  // drifted off frame the moment the camera moved. It is drawn once now, lined
+  // up so the crystal sits near the middle of the screen — which also means a
+  // cutscene push-in reaches it, because the zoom scales about that point.
+  const a = isoToScreen(MAP_W / 2, 0);
+  const nx = a.x - ox, ny = a.y - oy;          // the map's far edge, on screen
+  const cx = VIEW_W / 2 + (nx - VIEW_W / 2) * PARALLAX;
+  const cy = VIEW_H * 0.42 + (ny - VIEW_H * 0.42) * PARALLAX;
+  ctx.drawImage(img, Math.round(cx - img.width / 2), Math.round(cy - CORE_BAND_Y));
+}
+
 function drawProp(p, x, y) {
   const T = p.type;
   if (T === 'building') {
@@ -1930,12 +1959,6 @@ function drawProp(p, x, y) {
   // THE CORE, on the skyline. Drawn from its own anchor with no shadow and no
   // occlusion fade: it is kilometres away and nothing in this street is in
   // front of it.
-  if (T === 'coreTower') {
-    const img = Sprites.coreTower;
-    ctx.drawImage(img, Math.round(x - img.width / 2), Math.round(y - img.height + 4));
-    addLight(x, y - img.height + 12, 0, 30, CORE_BLUE_RGB, 0.38);
-    return;
-  }
   // ---- THE CHURCHYARD ----
   if (T === 'railing') {
     const img = p.dir === 'y' ? Sprites.railing.y : Sprites.railing.x;

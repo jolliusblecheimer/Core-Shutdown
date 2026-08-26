@@ -1161,10 +1161,9 @@ function buildPrologue() {
   };
   // THE CHURCH, north of its own yard, so it stands behind the stones.
   shell(1, 1, 7, 5, 'R');
-  // THE CORE ITSELF, far up the city, framed in the one gap left in the north
-  // frontage on purpose. It is the first thing the game shows and the last
-  // thing it is about.
-  put(17, 2, 'coreTower');
+  // (The Core used to stand here as a prop twelve tiles up the road. It is a
+  // BACKDROP now — see drawFarCity in game.js — because the atlas puts it five
+  // rings away and a prop on a tile is a thing you could walk to.)
   // north side of the street
   shell(11, 6, 6, 5, 'H'); shell(18, 6, 5, 5, 'S');
   shell(24, 5, 6, 6, 'B'); shell(31, 6, 2, 5, 'H');
@@ -1266,6 +1265,7 @@ const Areas = {
   prologue: {
     id: 'prologue', name: 'THE CITY, BEFORE', build: buildPrologue,
     world: { x: 40, y: 44 },        // roughly where St Martin's stands, a year on
+    skyline: true,                  // the inner rings, and the Core behind them
     hasScrapper: false, hasBoss: false, hasNpc: false, folk: 'prologue',
     indoors: false,
     tint: '#ffe6c4',        // evening, and every window still lit
