@@ -2797,3 +2797,45 @@ the map, the header click closes it, clicking the junkyard frames it at 4.0
 px/tile and clicking it again returns to 0.77, M closes. Every objective state
 screenshotted from a fresh run to the silence after the map table. The bugcheck
 suite and the systems pass both still come back clean with no console output.
+
+### The junkyard was not on the map, and had never been
+**Laurens:** *"It still doesn't show the junkyard on the map."*
+**Claude:** He was right, and the cause was older than yesterday's change.
+
+A map thumbnail is a picture of an area's TILE ARRAYS, and only one area's tile
+arrays exist at a time — so thumbnails were only ever taken on the way *out* of
+an area, in `stashArea()`. That works inside a session and is useless across
+one: `mapThumbs` lives in memory and a save has never carried it. **So a
+returning player's world map had the area they loaded into and nothing else,
+however far they had walked.** Reproduced it exactly: walk both areas, save,
+reload the page, continue — fog `junkyard=121 fringe=1113`, thumbnails `(none)`,
+and one area drawn.
+
+The world view has been broken across a page load since the day it was built.
+It only became visible when `M` started opening on the whole ring instead of on
+the area you were standing in, which is why it read as a new bug.
+
+**Every area the save has fog for is now built once at load, its fog unpacked
+at its own size, photographed, and thrown away again**; the area the save is
+actually in is rebuilt afterwards, so the live arrays end up right. Verified the
+swept thumbnails are pixel-identical to ones taken from the live area — the
+builds are deterministic — and the whole of `applySave` costs 85ms with the
+sweep in it, once, behind the title screen.
+
+Unpacking the fog there fixed a second thing on the way. It used to be decoded
+with `id === currentArea ? MAP_W : (id === 'fringe' ? FRINGE_W : 32)` — a table
+of two areas and a default, which would have silently decoded the next 64×64
+area's fog at 32×32. Each area is built before its own fog is read now.
+
+**And a leak the fix walked into.** `wipeSave()` cleared the ledger and the
+rifle's parts but not the fog or the thumbnails, so wiping the run and starting
+over *without reloading the page* handed the new traveller the old one's
+explored ground — in the world and on the map both. Fog of war is the one thing
+in this game that is only ever about what THIS run has seen. Both are cleared
+now, and `explored` is re-pointed, because deleting the key does not move what
+the live pointer was aimed at.
+
+Verified the way Laurens actually hits it: play the yard, the Fringe and the
+camp, save, **reload the page**, `[E] continue` from the title, press `M` — the
+Fringe and the junkyard are both there, in proportion. Migration of v1 and v2
+saves, area round trips and the systems pass all still come back clean.

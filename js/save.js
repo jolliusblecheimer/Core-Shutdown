@@ -123,6 +123,14 @@ function wipeSave() {
   // and it certainly does not start with the last run's parts on its rifle
   player.mods = freshMods();
   modsChanged();
+  // AND IT HAS NOT BEEN ANYWHERE. Fog and map thumbnails both live in memory,
+  // and neither was cleared here — so wiping the run and starting over without
+  // reloading the page handed the new traveller the old one's explored ground,
+  // in the world and on the map both. Fog of war is the one thing in the game
+  // that is only ever about what THIS run has seen.
+  for (const id of Object.keys(exploredByArea)) delete exploredByArea[id];
+  for (const id of Object.keys(mapThumbs)) delete mapThumbs[id];
+  initFog(currentArea);          // `explored` still pointed at the old array
 }
 
 const num = (v, fallback) => (typeof v === 'number' && isFinite(v)) ? v : fallback;
@@ -193,6 +201,43 @@ function loadArms(p) {
 }
 
 // pour a loaded save back into the live game state, defensively
+// EVERYWHERE YOU HAVE BEEN, UNPACKED AND PHOTOGRAPHED.
+//
+// A map thumbnail is a picture of an area's tile arrays, and only ONE area's
+// tile arrays exist at a time — so thumbnails were only ever taken on the way
+// OUT of an area, in stashArea(). That works inside a session and is useless
+// across one: `mapThumbs` lives in memory and a save does not carry it. So a
+// returning player's world map showed the area they had loaded into and nothing
+// else, however far they had walked — press M in the Fringe and the junkyard
+// was simply not there. It only became obvious when the map started opening on
+// the whole ring instead of on the area you were standing in.
+//
+// Every area the save has fog for is built once here, its fog unpacked at its
+// own size, and a thumbnail taken before it is thrown away again. The caller
+// rebuilds the area the save is in afterwards, so the live arrays end up right.
+//
+// Unpacking the fog HERE also fixes the size guess it used to be done with:
+// `id === currentArea ? MAP_W : (id === 'fringe' ? FRINGE_W : 32)` — a table of
+// two areas and a default, which would have silently decoded the next 64x64
+// area's fog as 32x32. Each area is built before its fog is read, so each one
+// answers for its own size.
+function loadFogAndThumbs(fogData) {
+  if (!fogData) return;
+  for (const id of Object.keys(Areas)) {
+    const def = Areas[id];
+    // a memory is not ground the traveller has walked, and never gets a pin,
+    // a thumbnail or a line in the save
+    if (def.memory || !fogData[id]) continue;
+    currentArea = id;
+    def.build();
+    initFog(id);                                   // sized from what was just built
+    exploredByArea[id] = fogFromString(fogData[id], fogW * fogH);
+    explored = exploredByArea[id];
+    for (let i = 0; i < explored.length; i++)
+      if (explored[i]) { buildMapThumb(id); break; }
+  }
+}
+
 function applySave(d) {
   playerName = d.name;
   const p = d.player || {};
@@ -240,25 +285,17 @@ function applySave(d) {
   // per-area world state: remember every area, then load the one we're in
   for (const id of Object.keys(d.areas || {})) areaState[id] = d.areas[id];
   const wantArea = d.area || 'junkyard';
-  if (wantArea !== currentArea) {
-    currentArea = wantArea;
-    Areas[wantArea].build();
-    buildMinimap();
-  }
+  // Explored ground comes back first, and every area it names is photographed
+  // for the world map. This leaves SOME area built — whichever was last in the
+  // sweep — so the area the save is actually in is always rebuilt below, never
+  // conditionally.
+  loadFogAndThumbs(d.fog);
+  currentArea = wantArea;
+  Areas[wantArea].build();
+  buildMinimap();
   loadAreaItems(currentArea);
   if (bossDefeated) openGate();
   restoreArea(currentArea);
-  // explored ground comes back with the run
-  if (d.fog) {
-    for (const id of Object.keys(d.fog)) {
-      const def = Areas[id];
-      if (!def) continue;
-      const w = id === currentArea ? MAP_W : (id === 'fringe' ? FRINGE_W : 32);
-      const h = id === currentArea ? MAP_H : (id === 'fringe' ? FRINGE_H : 32);
-      const len = Math.ceil(w / FOG) * Math.ceil(h / FOG);
-      exploredByArea[id] = fogFromString(d.fog[id], len);
-    }
-  }
   initFog(currentArea);
 
   // the position check must run against the AREA WE LOADED

@@ -483,3 +483,20 @@ light at 35,80 stands beside a signboard without touching it.
 - **Still standing:** "Reach the shelter" completes on the altar's map table,
   not on arriving, so it stays up while you stand in the shelter. Finding (a) of
   `design/questline.md`, waiting on approval with the rest of Q2.
+
+## Map thumbnails across a page load, 2026-08-31
+The world map only ever had the area you loaded into. A thumbnail is a picture
+of an area's tile arrays, only one area's arrays exist at a time, so they were
+taken on the way OUT of an area — and `mapThumbs` is memory-only, so a page load
+started with none. Broken since the world view was built; invisible until `M`
+started opening on the ring.
+
+`loadFogAndThumbs()` in `js/save.js` now builds every area the save has fog for,
+unpacks that fog **at the area's own size**, photographs it and moves on; the
+save's own area is rebuilt afterwards. 85ms once, at load. The swept thumbnails
+are pixel-identical to live ones (the builds are deterministic).
+
+Also fixed: fog used to be decoded with a hardcoded `fringe ? 200x150 : 32x32`
+guess, which would have mis-decoded any future area of another size. And
+`wipeSave()` did not clear fog or thumbnails, so wiping and starting over in the
+same page session gave the new run the old run's explored ground.
