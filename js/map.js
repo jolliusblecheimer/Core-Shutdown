@@ -663,6 +663,18 @@ function buildFringe() {
   for (let y = GY - 1; y < GY + 14; y++)
     for (let x = GX - 1; x < GX + 24; x++)
       if (x > 0 && y > 0 && x < MAP_W - 1 && y < MAP_H - 1) { ground[y][x] = 7; solid[y][x] = false; }
+  // The ground claim above only ever moved TILES. Buildings honour it (see
+  // placeBuilding), but the street-furniture pass runs before this and plants
+  // lamp posts, signs and postboxes on any pavement — and pavement inside the
+  // forecourt stays pavement. So a lamp post ended up standing a tile from a
+  // canopy leg, and one stood straight through one. A forecourt is open ground:
+  // sweep the street furniture out of it before the station is built on it.
+  // (Building volumes are already excluded — they never got in.)
+  for (let i = props.length - 1; i >= 0; i--) {
+    const q = props[i];
+    if (q.foot || q.type === 'building') continue;
+    if (q.gx >= GX - 1 && q.gx < GX + 24 && q.gy >= GY - 1 && q.gy < GY + 14) props.splice(i, 1);
+  }
 
   const CAN = { x0: GX + 1, y0: GY + 1, w: 14, h: 8 };     // canopy footprint
   for (const [px2, py2] of [
@@ -1276,7 +1288,9 @@ const Areas = {
     hasDroids: true,
     tint: '#efe0cc',      // thinner, cooler, brighter than the yard's dusk
     makeItems: () => ([
-      { type: 'ammo', x: 150.5, y: 130.5, amount: 6, bob: 0.8 },
+      // was 150.5,130.5 — a later building edit closed over that tile and
+      // sealed the rounds inside the walls. Three tiles west is open street.
+      { type: 'ammo', x: 147.5, y: 130.5, amount: 6, bob: 0.8 },
       { type: 'ammo', x: 62.5, y: 122.5, amount: 6, bob: 2.4 },
       { type: 'ammo', x: 33.5, y: 88.5, amount: 6, bob: 1.5 },
     ]),

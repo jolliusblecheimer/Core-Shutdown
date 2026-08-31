@@ -2674,3 +2674,59 @@ line anywhere is the pre-existing favicon 404.
 Two non-bugs ruled out on the way: `saveGame` already refuses to write outside
 `GameState === 'playing'`, so the prologue can never be saved as a position; and
 the player's invulnerability during it does decay properly once the yard starts.
+
+### A bugcheck across the whole game
+**Laurens:** *"Run a bugcheck, any graphics overlapping that shouldn't or any
+other bugs, and fix after, make a report at the end."*
+**Claude:** Wrote four harnesses rather than eyeballing screenshots, because
+"looks fine" is what let all of these ship in the first place.
+
+**The occlusion test had to be rebuilt before it could be trusted.** The first
+version measured sprite bounding boxes and duly reported that three survivors
+in Candlelight were 100% hidden — behind a church column that is nine parts
+transparent. Bounding boxes cannot see through anything. The test now renders
+the frame, moves the subject off the map, renders again and counts the pixels
+that changed; and it puts the camera on each subject first, so the question is
+"when the traveller walks up to this, can they see it" and not "is it on screen
+from where I happen to be standing". With that, every person, NPC and pickup in
+all five areas is visible. The three Candlelight "bugs" were the tool.
+
+**Three real defects, all the same shape: two hand-written lists that nothing
+compares.**
+
+1. **Six of the Fringe's eighteen rounds could never be picked up.** The ammo at
+   150.5,130.5 sat inside a building footprint — a later edit closed a wall over
+   a coordinate written before it. Moved to open street three tiles west, and
+   `loadAreaItems` now warns and relocates anything spawned inside geometry, the
+   same guard people already had.
+2. **A lamp post standing inside a petrol-station canopy leg, and a second one a
+   tile from another.** The root cause was not the pillars: the forecourt claim
+   only ever moved *tiles*. Buildings honour that claim, but the street-furniture
+   pass runs earlier and plants lamp posts on any pavement, and pavement inside
+   the forecourt stays pavement. The forecourt now sweeps the street furniture
+   out of itself before the station is built on it — two lamp posts removed,
+   nothing else touched.
+3. **A 404 on every single page load.** No favicon was declared, so the browser
+   asked for one and the console carried an error that hid anything real behind
+   it. The tab icon is now the Core: a lit crystal on a dark plate, inline, in
+   both `index.html` and `arena.html`.
+
+**Two flagged, looked at, and left alone.** The map's east boundary wall runs
+through the building at 189,127 — swept every legal standing position around it
+and the worst view differs by 199 pixels of 57,600, where the two structures
+share a palette and read as one building. And the traffic light at 35,80 with a
+signboard beside it is a street corner, not a collision.
+
+**Everything else came back clean:** no entity or pickup inside geometry in any
+area, no unreachable item, chest or person by flood fill from spawn, no stacked
+props beyond the corner tiles that belong to two wall runs by design, the
+prologue's eleven beats, area round trips, all five shop counters, v1 and v2
+save migration, the out-of-bounds rescue (including a save pointing at the tile
+that had swallowed the ammo), death and cross-area respawn, and twenty simulated
+seconds in every area — with no thrown errors and, now, a clean console.
+
+**One thing found and deliberately not fixed.** `currentObjective()` still says
+"Reach the shelter" while the traveller is standing inside the shelter, because
+that objective is completed by reading the altar's map table and not by arriving.
+It is finding (a) of `design/questline.md`, which is still marked *awaiting
+approval, nothing built* — so it stays a report line, not a commit.

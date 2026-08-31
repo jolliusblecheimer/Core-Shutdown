@@ -159,6 +159,18 @@ for (const id of Object.keys(Areas)) {
 function loadAreaItems(areaId) {
   items.length = 0;
   for (const it of Areas[areaId].makeItems()) items.push(it);
+  // Items and geometry are two hand-written lists that nothing compares, so a
+  // building moved by a later edit can seal a pickup inside itself — the
+  // Fringe handed out 18 rounds of which 6 were never reachable. Same guard as
+  // buildFolk: shout in the console so it gets fixed at the source, and in the
+  // meantime put the pickup somewhere the player can actually stand.
+  for (const it of items) {
+    const tx = Math.floor(it.x), ty = Math.floor(it.y);
+    if (tx < 0 || ty < 0 || tx >= MAP_W || ty >= MAP_H || !solid[ty][tx]) continue;
+    console.warn('ITEM: ' + it.type + ' is sealed in geometry at ' + tx + ',' + ty);
+    const spot = typeof findSafeSpot === 'function' ? findSafeSpot(it.x, it.y) : null;
+    if (spot) { it.x = spot.x; it.y = spot.y; }
+  }
 }
 loadAreaItems(currentArea);
 // legacy alias used by the v1→v2 save migration

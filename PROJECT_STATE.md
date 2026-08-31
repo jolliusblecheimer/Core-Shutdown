@@ -435,3 +435,26 @@ built yet, the largest being that there is no drawing of him on the ground.
   real playtest — the numbers live in `BANDIT_ROLES` in `js/entities.js`.
 - The Fringe's only enemies are the two roadblocks; the streets between them
   are still empty, so the danger gradient exists at the gates and nowhere else.
+
+## Bugcheck, 2026-08-31
+Swept all five areas with pixel-accurate occlusion, geometry-conflict,
+prop-collision and flood-fill reachability tests, plus a systems pass over the
+prologue, area transitions, shops, save migration, death/respawn and twenty
+simulated seconds per area. Harnesses live in the session scratchpad
+(`audit2.js`, `smoke.js`, `overlap.js`, `probe5.js`) and are worth rebuilding
+before the next big map edit.
+
+**Fixed:** the Fringe's third ammo pickup was sealed inside a building (6 of its
+18 rounds were unobtainable) and `loadAreaItems` now guards against a repeat; the
+gas-station forecourt now sweeps street furniture out of itself, which removed a
+lamp post standing through a canopy leg and another a tile from one; a favicon is
+declared, so the console no longer carries a 404 on every load.
+
+**Standing:** the objective line still reads "Reach the shelter" while you are
+inside the shelter — it is completed by the altar's map table, not by arriving.
+That is finding (a) of `design/questline.md` and waits on approval with the rest
+of Q2.
+
+**Benign, verified by eye and left:** the east boundary wall passes through the
+building at 189,127 (the two share a palette and read as one), and the traffic
+light at 35,80 stands beside a signboard without touching it.
