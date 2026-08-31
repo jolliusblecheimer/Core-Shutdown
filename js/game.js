@@ -332,10 +332,23 @@ function fogFromString(s, len) {
 const MapUI = {
   open: false,
   zoom: 1, cx: 0, cy: 0,
-  sel: null, hits: [], questHit: null,
+  sel: null, hits: [], questHit: null, areaHits: [],
+  focus: null,              // the area you have clicked into, or null for the ring
+  log: false,               // is the right column showing the ledger?
+  logScroll: 0, logH: 0,    // the ledger outgrows the column, so it scrolls
   wheel: 0,                 // accumulated by the wheel listener, spent per frame
   drag: null,               // {x, y, cx, cy, moved} while the button is down
+  tw: null,                 // {z0,z1,cx0,cx1,cy0,cy1,t,dur} while it is gliding
 };
+// The map no longer owns the whole screen: a fixed column down the right side
+// carries the objective and the ledger, and the map draws into what is left.
+// Every projection below measures from MAP_VIEW_W, never from VIEW_W — get that
+// wrong in one place and the dots sit next to the ground they belong on.
+const MAP_PANEL_W = 112;
+const MAP_VIEW_W = VIEW_W - MAP_PANEL_W;
+// the column's body, top and bottom. Shared, because the scroll clamp and the
+// clip rectangle disagreeing by 24px is how a ledger ends in blank panel.
+const MAP_COL_TOP = 18, MAP_COL_BOT = VIEW_H - 6;
 const MAP_TOP = 18, MAP_VIEW_H = VIEW_H - 18 - 16;
 const ZOOM_MAX = 4;
 
@@ -429,24 +442,9 @@ function travelState(p) {
   if (beingHunted()) return { ok: false, text: 'NOT WHILE HUNTED' };
   return { ok: true, text: '[E] TRAVEL' };
 }
-// Opening the map frames the area you are standing in, centred on you — so
-// until you touch the wheel it behaves exactly as it always did.
-function openMap() {
-  buildMapThumb(currentArea);
-  const def = currentAreaDef();
-  MapUI.zoom = Math.min(ZOOM_MAX, Math.min((VIEW_W - 24) / MAP_W, (MAP_VIEW_H - 10) / MAP_H));
-  // framed on the AREA, not on you — otherwise a small area opens cropped and
-  // the map stops behaving the way it always has until you touch the wheel
-  MapUI.cx = def.world.x + MAP_W / 2;
-  MapUI.cy = def.world.y + MAP_H / 2;
-  MapUI.sel = null;
-  MapUI.drag = null;
-  MapUI.wheel = 0;
-}
-
-// The floor of the zoom is whatever frames every area you know at once, so you
-// can never pull back into empty black. Recomputed as the world grows.
-function mapZoomMin() {
+// The bounding box, in world tiles, of everywhere you have walked. One source
+// for the zoom floor, the opening frame and the "back out to the ring" click.
+function mapWorldBox() {
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const id of Object.keys(Areas)) {
     const th = mapThumbs[id];
@@ -455,33 +453,114 @@ function mapZoomMin() {
     x0 = Math.min(x0, w.x); y0 = Math.min(y0, w.y);
     x1 = Math.max(x1, w.x + th.width * FOG); y1 = Math.max(y1, w.y + th.height * FOG);
   }
-  if (!isFinite(x0)) return 1;
-  return Math.max(0.05, Math.min((VIEW_W - 24) / (x1 - x0), (MAP_VIEW_H - 24) / (y1 - y0)));
+  if (!isFinite(x0)) return null;
+  return { x0, y0, x1, y1 };
+}
+
+// A frame is a zoom and a centre. `mapFit` turns any world box into the one
+// that shows all of it with a margin, so framing the ring and framing one area
+// are the same arithmetic — which is why they can never disagree about scale.
+function mapFit(box, pad) {
+  const w = Math.max(1, box.x1 - box.x0), h = Math.max(1, box.y1 - box.y0);
+  return {
+    zoom: Math.max(0.05, Math.min(ZOOM_MAX, Math.min((MAP_VIEW_W - pad) / w, (MAP_VIEW_H - pad) / h))),
+    cx: (box.x0 + box.x1) / 2,
+    cy: (box.y0 + box.y1) / 2,
+  };
+}
+function mapFrameWorld() {
+  const box = mapWorldBox();
+  return box ? mapFit(box, 26) : { zoom: 1, cx: 0, cy: 0 };
+}
+function mapFrameArea(id) {
+  const th = mapThumbs[id], w = Areas[id].world;
+  if (!th) return mapFrameWorld();
+  return mapFit({ x0: w.x, y0: w.y, x1: w.x + th.width * FOG, y1: w.y + th.height * FOG }, 12);
+}
+// Glide to a frame rather than snapping to it. A cut between two scales of the
+// same picture reads as a different picture; a quarter-second of travel is what
+// tells you the ring you were looking at and the area you are now in are the
+// same map.
+function mapGoto(f) {
+  MapUI.tw = { z0: MapUI.zoom, z1: f.zoom, cx0: MapUI.cx, cx1: f.cx,
+               cy0: MapUI.cy, cy1: f.cy, t: 0, dur: 0.22 };
+}
+
+// M OPENS THE WHOLE RING. Laurens, 2026-08-31: the map used to open framed on
+// the area you were standing in, so everywhere else you had ever been was a
+// scroll away and most players never found it. It opens on everything you know
+// now — in true relative scale, the areas where they actually are — and you
+// click an area to drop into it. The old behaviour is one click away instead of
+// one discovery away, which is the right way round.
+function openMap() {
+  buildMapThumb(currentArea);
+  const f = mapFrameWorld();
+  MapUI.zoom = f.zoom; MapUI.cx = f.cx; MapUI.cy = f.cy;
+  MapUI.focus = null;
+  MapUI.sel = null;
+  MapUI.drag = null;
+  MapUI.tw = null;
+  MapUI.wheel = 0;
+  MapUI.logScroll = 0;
+}
+
+// The floor of the zoom is whatever frames every area you know at once, so you
+// can never pull back into empty black. Recomputed as the world grows.
+function mapZoomMin() {
+  const box = mapWorldBox();
+  if (!box) return 1;
+  return Math.max(0.05, Math.min((MAP_VIEW_W - 24) / (box.x1 - box.x0),
+                                 (MAP_VIEW_H - 24) / (box.y1 - box.y0)));
 }
 
 function updateMap(dt) {
   const zMin = Math.min(mapZoomMin(), ZOOM_MAX);
-  // ---- wheel zooms ABOUT THE CURSOR, so you push toward what you are looking at
-  if (MapUI.wheel) {
+  const overPanel = Input.mouseX >= MAP_VIEW_W;
+
+  // ---- a frame in flight owns the camera until it lands
+  if (MapUI.tw) {
+    const t = MapUI.tw;
+    t.t += dt;
+    const k = Math.min(1, t.t / t.dur), e = k * k * (3 - 2 * k);   // smoothstep
+    MapUI.zoom = t.z0 + (t.z1 - t.z0) * e;
+    MapUI.cx = t.cx0 + (t.cx1 - t.cx0) * e;
+    MapUI.cy = t.cy0 + (t.cy1 - t.cy0) * e;
+    if (k >= 1) MapUI.tw = null;
+    // the wheel and the mouse are ignored while it glides — a grab mid-flight
+    // used to leave the tween fighting the drag for the same two numbers
+    MapUI.wheel = 0;
+    MapUI.drag = null;
+  } else if (MapUI.wheel) {
+    // ---- wheel scrolls the ledger over the column, and zooms over the map
     const before = MapUI.wheel;
     MapUI.wheel = 0;
-    const mxw = MapUI.cx + (Input.mouseX - VIEW_W / 2) / MapUI.zoom;
-    const myw = MapUI.cy + (Input.mouseY - (MAP_TOP + MAP_VIEW_H / 2)) / MapUI.zoom;
-    const next = Math.max(zMin, Math.min(ZOOM_MAX, MapUI.zoom * Math.pow(0.9, before / 100)));
-    if (next !== MapUI.zoom) {
-      MapUI.zoom = next;
-      MapUI.cx = mxw - (Input.mouseX - VIEW_W / 2) / next;
-      MapUI.cy = myw - (Input.mouseY - (MAP_TOP + MAP_VIEW_H / 2)) / next;
+    if (overPanel && MapUI.log) {
+      MapUI.logScroll = Math.max(0, Math.min(Math.max(0, MapUI.logH - (MAP_COL_BOT - MAP_COL_TOP)),
+                                             MapUI.logScroll + before * 0.35));
+    } else {
+      // zoom ABOUT THE CURSOR, so you push toward what you are looking at
+      const mxw = MapUI.cx + (Input.mouseX - MAP_VIEW_W / 2) / MapUI.zoom;
+      const myw = MapUI.cy + (Input.mouseY - (MAP_TOP + MAP_VIEW_H / 2)) / MapUI.zoom;
+      const next = Math.max(zMin, Math.min(ZOOM_MAX, MapUI.zoom * Math.pow(0.9, before / 100)));
+      if (next !== MapUI.zoom) {
+        MapUI.zoom = next;
+        MapUI.cx = mxw - (Input.mouseX - MAP_VIEW_W / 2) / next;
+        MapUI.cy = myw - (Input.mouseY - (MAP_TOP + MAP_VIEW_H / 2)) / next;
+        // pulling back out past the area you clicked into leaves it, so the
+        // header stops claiming you are in a district you can no longer see
+        if (MapUI.focus && next < mapFrameArea(MapUI.focus).zoom * 0.75) MapUI.focus = null;
+      }
     }
   }
   if (MapUI.zoom < zMin) MapUI.zoom = zMin;
 
   // ---- drag to pan. A press that travels less than three pixels is a click.
-  if (Input.mouseDown) {
-    if (!MapUI.drag) MapUI.drag = { x: Input.mouseX, y: Input.mouseY, cx: MapUI.cx, cy: MapUI.cy, moved: 0 };
+  if (Input.mouseDown && !MapUI.tw) {
+    if (!MapUI.drag) MapUI.drag = { x: Input.mouseX, y: Input.mouseY, cx: MapUI.cx, cy: MapUI.cy,
+                                    moved: 0, panel: overPanel };
     const d = MapUI.drag;
     d.moved = Math.max(d.moved, Math.hypot(Input.mouseX - d.x, Input.mouseY - d.y));
-    if (d.moved >= 3) {
+    if (d.moved >= 3 && !d.panel) {
       MapUI.cx = d.cx - (Input.mouseX - d.x) / MapUI.zoom;
       MapUI.cy = d.cy - (Input.mouseY - d.y) / MapUI.zoom;
     }
@@ -489,6 +568,20 @@ function updateMap(dt) {
     const wasClick = MapUI.drag.moved < 3;
     MapUI.drag = null;
     if (wasClick) mapClick(Input.mouseX, Input.mouseY);
+  } else if (Input.pressed['LMB']) {
+    // A press AND its release can both land between two frames — a trackpad tap,
+    // or a slow frame. Then `mouseDown` was never true when the map looked, no
+    // drag ever opened, and the release branch above had nothing to close: the
+    // click simply vanished. The latch from the mousedown event did see it.
+    mapClick(Input.mouseX, Input.mouseY);
+  }
+
+  // ---- L opens and closes the ledger
+  if (Input.pressed['KeyL']) {
+    Input.pressed['KeyL'] = false;
+    MapUI.log = !MapUI.log;
+    MapUI.logScroll = 0;
+    SFX.blip();
   }
   // arrow keys pan too, for anyone not using a mouse
   const pan = 90 * dt / MapUI.zoom;
@@ -510,8 +603,13 @@ function updateMap(dt) {
   Input.pressed['LMB'] = false;
 }
 
-// Click a place to select it; click empty ground to let it go.
+// Click a place to select it, an area to drop into it, empty black to back out.
 function mapClick(mx, my) {
+  // the column has its own click: the header toggles the ledger
+  if (mx >= MAP_VIEW_W) {
+    if (my < MAP_TOP) { MapUI.log = !MapUI.log; MapUI.logScroll = 0; SFX.blip(); }
+    return;
+  }
   let best = null, bd = 7;
   for (const h of (MapUI.hits || [])) {
     const d = Math.hypot(mx - h.x, my - h.y);
@@ -522,8 +620,98 @@ function mapClick(mx, my) {
   if (obj && MapUI.questHit && Math.hypot(mx - MapUI.questHit.x, my - MapUI.questHit.y) < 7) {
     best = { id: '__obj', name: obj.title.toUpperCase(), blurb: obj.detail, kind: 'quest' };
   }
-  if (best !== MapUI.sel) SFX.blip();
-  MapUI.sel = best;
+  if (best) { if (best !== MapUI.sel) SFX.blip(); MapUI.sel = best; return; }
+
+  // NOTHING PINNED UNDER THE CURSOR — so the click is about the ground itself.
+  // Landing on an area frames that area; landing on black backs out to the ring.
+  // A pin always wins, because a pin is smaller and harder to hit on purpose.
+  const hitArea = (MapUI.areaHits || []).find(a =>
+    mx >= a.x && my >= a.y && mx < a.x + a.w && my < a.y + a.h);
+  MapUI.sel = null;
+  if (hitArea && hitArea.id !== MapUI.focus) {
+    MapUI.focus = hitArea.id;
+    mapGoto(mapFrameArea(hitArea.id));
+    SFX.uiOpen();
+  } else if (MapUI.focus || !hitArea) {
+    MapUI.focus = null;
+    mapGoto(mapFrameWorld());
+    SFX.blip();
+  }
+}
+
+// ---------- THE COLUMN: what you are doing, and what you have already done ----
+// The map could always answer "where", and the green dot could answer "where
+// next" — but only if the thing you were doing happened to be in the area you
+// were looking at, and only if you thought to click it. Neither of those is a
+// place to keep the one sentence that says what the run is about. It lives in a
+// column of its own now, beside the map, where it is on screen the whole time
+// the map is open. `L` swaps that column for the ledger of everything the run
+// has been asked to do, so a player coming back after a week can read what they
+// were in the middle of instead of guessing from a dot.
+function drawMapColumn() {
+  const x0 = MAP_VIEW_W, ix = x0 + 6, iw = MAP_PANEL_W - 12;
+  uiRect(x0, 0, MAP_PANEL_W, VIEW_H, 'rgba(10,12,14,0.94)');
+  uiRect(x0, 0, 1, VIEW_H, '#3a4a52');
+  ptext(MapUI.log ? 'THE LOG' : 'OBJECTIVE', ix, 5, 8, '#ffd27a');
+  ptext(MapUI.log ? '[L] BACK' : '[L] LOG', x0 + MAP_PANEL_W - 6, 6, 7,
+        'rgba(232,217,192,0.5)', 'right');
+  uiRect(ix, 15, iw, 1, '#3a4a52');
+
+  const top = MAP_COL_TOP, bottom = MAP_COL_BOT;
+  uictx.save();
+  uictx.beginPath();
+  uictx.rect(x0 * U, top * U, MAP_PANEL_W * U, (bottom - top) * U);
+  uictx.clip();
+
+  let y = top - (MapUI.log ? MapUI.logScroll : 0);
+  const para = (text, size, col, gap) => {
+    for (const line of ptFit(text, iw, size)) { ptext(line, ix, y, size, col); y += size + 1; }
+    y += gap || 0;
+  };
+
+  if (!MapUI.log) {
+    const obj = currentObjective();
+    if (obj) {
+      para(obj.title, 8, '#7ad27a', 3);
+      ptext('IN ' + Areas[obj.area].name, ix, y, 7, 'rgba(232,217,192,0.45)'); y += 12;
+      para(obj.detail, 7, '#e8d9c0', 0);
+    } else {
+      // The chain runs out after the map table and there is nothing dishonest
+      // to put here, so it says so in the traveller's own voice rather than
+      // leaving the column blank and looking broken.
+      para('NOTHING PRESSING', 8, 'rgba(232,217,192,0.6)', 3);
+      para('Nobody has asked anything of me. Whatever is north of the ring, no one here has said.',
+           7, 'rgba(232,217,192,0.65)', 0);
+    }
+  } else {
+    const rows = objectiveLog();
+    for (const r of rows) {
+      // a tick box: filled green for done, a slow pulse for the one you are on
+      const a = r.done ? 1 : 0.55 + 0.45 * Math.sin(gameTime * 3);
+      uictx.globalAlpha = a;
+      uiRect(ix, y + 1, 4, 4, r.done ? '#7ad27a' : '#ffd27a');
+      uictx.globalAlpha = 1;
+      const tx = ix + 8, tw = iw - 8;
+      for (const line of ptFit(r.title, tw, 7)) {
+        ptext(line, tx, y, 7, r.done ? 'rgba(232,217,192,0.75)' : '#ffd27a'); y += 8;
+      }
+      y += 1;
+      for (const line of ptFit(r.text, tw, 7)) {
+        ptext(line, tx, y, 7, r.done ? 'rgba(232,217,192,0.42)' : 'rgba(232,217,192,0.8)'); y += 8;
+      }
+      y += 6;
+    }
+    // measured from the same pass that drew it, so the scroll clamp can never
+    // be stale by a frame
+    MapUI.logH = y + MapUI.logScroll - top;
+  }
+  uictx.restore();
+
+  // a nub on the edge while there is more ledger below the fold
+  if (MapUI.log && MapUI.logH > bottom - top) {
+    const span = bottom - top, k = MapUI.logScroll / Math.max(1, MapUI.logH - span);
+    uiRect(x0 + MAP_PANEL_W - 3, top + k * (span - 14), 2, 14, 'rgba(255,210,122,0.45)');
+  }
 }
 
 function fastTravel(p) {
@@ -2820,7 +3008,12 @@ function drawHUD() {
   // The pack covers the whole screen, so the world HUD would print straight
   // through it — health bar under the footer hint, minimap over the tiles.
   // Everything from here to the floating message belongs to the world.
-  if (!InvUI.open && !GunUI.open) {
+  //
+  // The map covers it too. It used to be left running underneath, which was
+  // invisible for as long as the map's title sat at the middle of the screen —
+  // the moment the map moved over to make room for the objective column, the
+  // HUD's own objective line was printing straight through the map's title.
+  if (!InvUI.open && !GunUI.open && !MapUI.open) {
 
   // health bar — colour slides green → yellow → orange → red with amount
   const hpFrac = Math.max(0, player.hp / player.maxHp);
@@ -3110,7 +3303,7 @@ function drawHUD() {
     // the map is up — same function, same answer, read again here
     const mobj = currentObjective();
     // world tile -> screen pixel
-    const sx2 = (wx) => VIEW_W / 2 + (wx - MapUI.cx) * z;
+    const sx2 = (wx) => MAP_VIEW_W / 2 + (wx - MapUI.cx) * z;
     const sy2 = (wy) => MAP_TOP + MAP_VIEW_H / 2 + (wy - MapUI.cy) * z;
 
     // ---- the ground: one cached thumbnail per area you have been in.
@@ -3124,7 +3317,7 @@ function drawHUD() {
       if (def.indoors && id !== currentArea) continue;         // rooms, not places
       const ox2 = sx2(def.world.x), oy2 = sy2(def.world.y);
       const w2 = th.width * FOG * z, h2 = th.height * FOG * z;
-      if (ox2 > VIEW_W || oy2 > VIEW_H || ox2 + w2 < 0 || oy2 + h2 < 0) continue;
+      if (ox2 > MAP_VIEW_W || oy2 > VIEW_H || ox2 + w2 < 0 || oy2 + h2 < 0) continue;
       uictx.imageSmoothingEnabled = false;
       uictx.globalAlpha = id === currentArea ? 1 : 0.82;
       uictx.drawImage(th, Math.round(ox2 * U), Math.round(oy2 * U),
@@ -3132,13 +3325,26 @@ function drawHUD() {
       uictx.globalAlpha = 1;
       drawn.push({ id, def, ox2, oy2, w2, h2 });
     }
+    // AN AREA IS A THING YOU CAN CLICK. Its rectangle is exactly the ground
+    // just drawn, so the target and the picture can never drift apart.
+    MapUI.areaHits = drawn.map(d => ({ id: d.id, x: d.ox2, y: d.oy2, w: d.w2, h: d.h2 }));
+    // the one you have clicked into gets a hairline around it, so "I am looking
+    // at the Fringe" is something the map says rather than something you infer
+    if (MapUI.focus) {
+      const d = drawn.find(q => q.id === MapUI.focus);
+      if (d) {
+        uictx.strokeStyle = 'rgba(255,210,122,0.55)'; uictx.lineWidth = U;
+        uictx.strokeRect(Math.round(d.ox2 * U) - U, Math.round(d.oy2 * U) - U,
+                         Math.round(d.w2 * U) + 2 * U, Math.round(d.h2 * U) + 2 * U);
+      }
+    }
     // names, once an area is small enough to need telling apart. Never the one
     // you are standing in — the title bar and YOU ARE HERE both say that
     // already, and printing it a third time stacked it under its own title.
     if (z < 1) for (const d of drawn) {
       if (d.id === currentArea) continue;
       const lw = ptWidth(d.def.name, 7);
-      const lx = Math.max(lw / 2 + 4, Math.min(VIEW_W - lw / 2 - 4, d.ox2 + d.w2 / 2));
+      const lx = Math.max(lw / 2 + 4, Math.min(MAP_VIEW_W - lw / 2 - 4, d.ox2 + d.w2 / 2));
       ptext(d.def.name, lx, Math.max(MAP_TOP, d.oy2 - 9), 7, 'rgba(232,217,192,0.55)', 'center');
     }
 
@@ -3147,7 +3353,7 @@ function drawHUD() {
     const hits = [];
     for (const p of visiblePois()) {
       const px3 = sx2(poiWorldX(p)), py3 = sy2(poiWorldY(p));
-      if (px3 < -8 || py3 < -8 || px3 > VIEW_W + 8 || py3 > VIEW_H + 8) continue;
+      if (px3 < -8 || py3 < -8 || px3 > MAP_VIEW_W + 4 || py3 > VIEW_H + 8) continue;
       const img = POI_ICON[p.kind];
       if (!img) continue;
       uictx.imageSmoothingEnabled = false;
@@ -3184,34 +3390,45 @@ function drawHUD() {
     } else {
       uiRect(pxm - 1.5, pym - 1.5, 3, 3, '#ffffff');
       const yw = ptWidth('YOU ARE HERE', 7);
-      ptext('YOU ARE HERE', Math.max(yw / 2 + 4, Math.min(VIEW_W - yw / 2 - 4, pxm)),
+      ptext('YOU ARE HERE', Math.max(yw / 2 + 4, Math.min(MAP_VIEW_W - yw / 2 - 4, pxm)),
             pym + 5, 7, 'rgba(255,255,255,0.75)', 'center');
     }
 
-    // What you are looking at: a place if you picked one, the area while you are
-    // framed on it, and the whole ring once you have pulled back past it — the
-    // areas label themselves down on the map, so this must not repeat one.
-    ptext(MapUI.sel ? MapUI.sel.name : (z < 1 ? 'THE RING' : currentAreaDef().name),
-          VIEW_W / 2, 8, 8, '#ffd27a', 'center');
+    // What you are looking at: a place if you picked one, the area you have
+    // clicked into, and otherwise the ring — the areas label themselves down on
+    // the map, so this must not repeat one.
+    // "THE RING" is a lie on the first day, when the junkyard is the only ground
+    // you have walked and the ring is a rumour — so one area names itself.
+    ptext(MapUI.sel ? MapUI.sel.name
+        : MapUI.focus ? Areas[MapUI.focus].name
+        : drawn.length === 1 ? drawn[0].def.name
+        : 'THE RING',
+          MAP_VIEW_W / 2, 8, 8, '#ffd27a', 'center');
 
-    // ---- the panel: what this place is, and whether you can go there
+    // ---- the strip: what this place is, and whether you can go there
     if (MapUI.sel) {
-      const p = MapUI.sel, ph2 = 42, py4 = VIEW_H - ph2 - 10;
-      uiRect(10, py4, VIEW_W - 20, ph2, 'rgba(10,12,14,0.92)');
+      // sized to what it has to say — a fixed 42px box left a hand's width of
+      // empty panel under every two-line blurb
+      const p = MapUI.sel;
+      const blurb = ptFit(p.blurb, MAP_VIEW_W - 24, 7).slice(0, 3);
+      const ph2 = 19 + blurb.length * 9, py4 = VIEW_H - ph2 - 12;
+      uiRect(6, py4, MAP_VIEW_W - 12, ph2, 'rgba(10,12,14,0.92)');
       uictx.strokeStyle = '#3a4a52'; uictx.lineWidth = U;
-      uictx.strokeRect(10 * U, py4 * U, (VIEW_W - 20) * U, ph2 * U);
-      ptext(p.name, 16, py4 + 4, 8, '#ffd27a');
+      uictx.strokeRect(6 * U, py4 * U, (MAP_VIEW_W - 12) * U, ph2 * U);
+      ptext(p.name, 11, py4 + 4, 8, '#ffd27a');
       let ly = py4 + 15;
-      for (const line of ptFit(p.blurb, VIEW_W - 32, 7).slice(0, 2)) {
-        ptext(line, 16, ly, 7, '#e8d9c0'); ly += 9;
+      for (const line of blurb) {
+        ptext(line, 11, ly, 7, '#e8d9c0'); ly += 9;
       }
       const t = travelState(p);
-      if (t) ptext(t.text, VIEW_W - 16, py4 + 4, 8, t.ok ? '#7ad27a' : 'rgba(232,217,192,0.4)', 'right');
+      if (t) ptext(t.text, MAP_VIEW_W - 11, py4 + 4, 8, t.ok ? '#7ad27a' : 'rgba(232,217,192,0.4)', 'right');
     }
 
-    ptext(z < 1 ? 'scroll to zoom  ·  drag to pan  ·  M or ESC to close'
-                : 'scroll to zoom out  ·  drag to pan  ·  click a place',
-          VIEW_W / 2, VIEW_H - 8, 7, 'rgba(232,217,192,0.5)', 'center');
+    ptext(MapUI.focus ? 'click it again to back out  ·  M closes'
+                      : 'click an area to look at it  ·  M closes',
+          MAP_VIEW_W / 2, VIEW_H - 8, 7, 'rgba(232,217,192,0.5)', 'center');
+
+    drawMapColumn();
     return;
   }
 

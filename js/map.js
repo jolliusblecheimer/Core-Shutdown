@@ -1370,10 +1370,15 @@ const POIS = [
   { id: 'shack', area: 'junkyard', x: 21.5, y: 6.5, kind: 'camp',
     name: "MAREK'S SHACK", travel: { x: 21.5, y: 10.5 },
     blurb: 'One lit window in a yard of dead machines. The old man trades, and he does not ask questions he would not want asked back.' },
+  // Both gate blurbs used to end on a line that explained nothing. The yard
+  // side said "It was chained shut for a reason" — a riddle with no answer
+  // anywhere in the game — and the Fringe side spent its second sentence on
+  // Marek's counter instead of saying where the gate goes. A pin on a map has
+  // one job: say what is on the other side, and what it costs to get there.
   { id: 'yardgate', area: 'junkyard', x: 30.5, y: 12.5, kind: 'gate',
-    name: 'THE YARD GATE', blurb: 'East, out of the yard, onto the old ring road. It was chained shut for a reason.' },
+    name: 'THE YARD GATE', blurb: "The way east out of the junkyard. Marek keeps the key. Past it the old ring road runs on into the Fringe." },
   { id: 'yardgate-f', area: 'fringe', x: 197, y: 120, kind: 'gate',
-    name: 'THE YARD GATE', blurb: 'Back into the junkyard. Marek is still in there, and he still has the only counter in the ring worth the walk.' },
+    name: 'THE YARD GATE', blurb: "The way west back into the junkyard, and Marek's counter at the far end of it." },
   { id: 'stmartins', area: 'fringe', x: 56, y: 60, kind: 'camp',
     name: 'CANDLELIGHT', travel: { x: 56.5, y: 69.5 },
     blurb: "St Martin's, and people living in it. Fires, a medbay, a map of the ring drawn by the people who walked it." },

@@ -326,3 +326,118 @@ Three things the plan did not anticipate:
 - This is a **UI overhaul touching the HUD**, so it is not a "big art change"
   under the local-first rule — but it is large enough that it stays on the
   branch until reviewed.
+
+---
+
+# Revision, 2026-08-31 — the map opens on the ring, and gets a column
+
+**Laurens:** *"change the map, i want it so if you press m it shows the whole map
+i have explored — for example when i'm in the Fringe also show the junkyard map,
+in proportion of course — then you can click on an area to only show that area.
+Next to the map you can also see your current objective and add an option to view
+all past objectives too, all with a short explanation."*
+
+Built the same day. What changed from the plan above:
+
+## 1. `M` frames everything, not the area you are in
+
+Section 3 had the map open framed on the current area, on the reasoning that
+"until you touch the wheel it behaves exactly as it always did". That was the
+mistake. The world view was the whole point of the overhaul and it was hidden
+behind a gesture nobody makes on a screen that has never rewarded scrolling —
+so most of the map most players ever saw was the one area they were already
+standing in, which is what the minimap was already for.
+
+It opens on the ring now: every area you have walked, at true relative scale,
+where they actually are. **Clicking an area frames that area**; clicking it
+again, or pulling back past three quarters of its fit zoom, returns to the ring.
+The old behaviour is one click away instead of one discovery away.
+
+- `mapWorldBox()` / `mapFit()` / `mapFrameWorld()` / `mapFrameArea()` — one
+  piece of arithmetic turns any world box into a frame, so framing the ring and
+  framing one area cannot disagree about scale.
+- `mapGoto()` glides between frames over 0.22s on a smoothstep. A cut between
+  two scales of the same picture reads as a *different* picture; the travel is
+  what says they are the same map.
+- The area rectangles used for hit-testing are the exact rectangles the ground
+  was just drawn into, so the target and the picture can never drift apart.
+- A pin always beats an area: it is smaller and harder to hit on purpose.
+- With one area known the header says that area's name, because "THE RING" is a
+  lie on the first day.
+
+## 2. The objective column
+
+A fixed 112px column down the right, so the map draws into 208×146. **Every
+projection in the map now measures from `MAP_VIEW_W`, never `VIEW_W`** — get
+that wrong in one place and the dots sit next to the ground they belong on.
+
+- **OBJECTIVE** — the current step's title, the area it is in, and the detail
+  line, on screen the whole time the map is open. It used to be readable only by
+  clicking the green dot, and only if that dot happened to be in the area you
+  were looking at.
+- **`L` swaps it for THE LOG** — every step the run has reached, oldest first,
+  a green tick for done and a pulse for the one you are on, each with a short
+  line. Wheel over the column scrolls it; the map keeps the wheel everywhere
+  else. Clicking the column header toggles it too.
+- The chain outgrows the column already at six steps, so the ledger scrolls and
+  shows a nub. That is deliberate: Q2–Q5 will make it longer, not shorter.
+
+## 3. What the column needed underneath it
+
+`currentObjective()` was a ladder of ifs that could only answer *what now*. A
+ledger has to be able to ask the same chain *backwards*, so it is a table now
+(`OBJECTIVES` in `js/entities.js`) plus a rank:
+
+```js
+function questRank() {           // the index of the step you are ON
+  if (campMapRead)                  return 6;
+  if (bossDefeated)                 return 5;
+  if (yardGateOpen())               return 4;
+  if (mission.state === 'turned')   return 3;
+  if (mission.state === 'complete') return 2;
+  if (mission.state === 'active')   return 1;
+  return 0;
+}
+```
+
+- **Nothing new is saved.** "Done" is not stored anywhere — it is `rank > mine`,
+  and the rank only climbs, so the log cannot contradict itself and an old save
+  needs no migration.
+- Read top-down, so the furthest evidence wins: a save that arrives with the
+  boss dead can never report the errand it skipped as still outstanding.
+- Each step carries **`detail`** (forward-looking, shown while it is current)
+  and **`log`** (past tense, shown once it is behind you).
+- The Compactor is in the table as a **silent** step. It is still never marked
+  while you are on it — a dot pointing at the ambush gives the whole thing away
+  — but it appears in the log once it is done, because the ledger would be
+  lying by omission without the biggest thing that happened in the yard.
+- A finished step drops its live counter: the ledger read *"loot scrap 0/5"*
+  beside a tick, because the scrap it was counting had long since been spent.
+
+## 4. The yard gate pin
+
+The icon was a blue arch. Two things wrong with it: an arch reads as a doorway,
+which is the one thing a chain-link gate you unlock is not; and **blue is
+WARDEN**, and the Core's own colour. Spending it on a junkyard gate put the
+map's coldest signal on the least important thing on it. It is grey steel now —
+two posts and a barred leaf — so the only colours left on the map are amber for
+a camp and green for the objective.
+
+Both gate blurbs ended on a line that explained nothing. The yard side said
+*"It was chained shut for a reason"* — a riddle with no answer anywhere in the
+game — and the Fringe side spent its second sentence on Marek's counter instead
+of saying where the gate goes. A pin has one job: what is on the other side, and
+what it costs to get there.
+
+## 5. Two bugs this uncovered
+
+- **The world HUD was running underneath the map the whole time.** Invisible for
+  as long as the map's title sat at the centre of the screen; the moment the map
+  moved left to make room for the column, the HUD's own objective line printed
+  straight through the map's title. The map suppresses the world HUD now, the
+  same way the pack and the bench already did.
+- **A fast click on the map did nothing.** Clicks were detected by polling
+  `mouseDown` across frames, so a press and release that both landed between two
+  frames — a trackpad tap, or one slow frame — never opened a drag and the
+  release branch had nothing to close. The `pressed['LMB']` latch from the
+  mousedown event catches it.

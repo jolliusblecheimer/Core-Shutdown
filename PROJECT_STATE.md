@@ -458,3 +458,28 @@ of Q2.
 **Benign, verified by eye and left:** the east boundary wall passes through the
 building at 189,127 (the two share a palette and read as one), and the traffic
 light at 35,80 stands beside a signboard without touching it.
+
+## Map and objectives, 2026-08-31
+- **`M` opens the ring**, not the area you are standing in: every area walked,
+  at true relative scale. Click an area to frame it, click it again (or scroll
+  out past three quarters of its fit) to go back. Frames glide, they do not cut.
+- **A 112px column down the right of the map** carries the current objective —
+  title, area, detail — and `L` swaps it for the ledger of every step the run
+  has reached, ticked, each with a short line. The wheel scrolls the column and
+  zooms the map. The map region is 208×146 and everything in it measures from
+  `MAP_VIEW_W`.
+- **`currentObjective()` is a table plus a rank now** (`OBJECTIVES` and
+  `questRank()` in `js/entities.js`). Nothing new is saved: done is
+  `rank > mine`, so no migration and no way for the log to contradict itself.
+  Each step has a forward-looking `detail` and a past-tense `log`. The Compactor
+  is a **silent** step — never marked while you are on it, listed once it is
+  behind you.
+- **The yard gate pin is grey steel**, two posts and a barred leaf. It was a
+  blue arch, which read as a doorway and spent WARDEN blue on the least
+  important pin on the map. Both gate blurbs rewritten to say where the gate
+  goes instead of ending on a riddle.
+- Fixed on the way: the world HUD had been drawing underneath the map all along,
+  and a click whose press and release landed between two frames was dropped.
+- **Still standing:** "Reach the shelter" completes on the altar's map table,
+  not on arriving, so it stays up while you stand in the shelter. Finding (a) of
+  `design/questline.md`, waiting on approval with the rest of Q2.

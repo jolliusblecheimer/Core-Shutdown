@@ -518,31 +518,86 @@ const mission = { state: 'none' };   // none -> active -> complete -> turned
 // off live globals like patrolCenter, because the question has to be
 // answerable from anywhere — you should be able to open the map in the church
 // and see where the yard wants you.
+// THE CHAIN, IN ORDER. It used to be a ladder of ifs that could only ever
+// answer "what now" — which was enough while the only consumer was one dot.
+// The map shows the log now, so the same six steps have to be addressable
+// backwards as well: which are behind you, and what each one was. A table plus
+// a rank does both and cannot contradict itself, because "done" is not stored
+// anywhere — it is `rank > mine`, and the rank only ever climbs.
+//
+// `detail` is the forward-looking line: what you are about to do, in the
+// traveller's voice. `log` is the same step in the past tense, for the ledger.
+const OBJECTIVES = [
+  { id: 'marek', title: () => 'Talk to the survivor',
+    area: 'junkyard', x: 21.5, y: 7.5,
+    detail: 'There is a light on in the shack, and a man in it who has not shot at me yet.',
+    log: 'Found the lit shack, and Marek in it.' },
+  // The counter belongs to the step while you are ON it. In the ledger it read
+  // "loot scrap 0/5" beside a tick, because the scrap it was counting had long
+  // since been handed over — a finished step must not report live state.
+  { id: 'scrap', title: (done) => done ? 'Destroy Scrappers'
+        : `Destroy Scrappers — loot scrap ${Math.min(player.inv.scrap, 5)}/5`,
+    area: 'junkyard', x: 21.5, y: 12.5,
+    detail: 'The old man fed me. He will want something for the pipe. They patrol the middle of the yard.',
+    log: 'Broke the yard machines for five scrap.' },
+  { id: 'return', title: () => 'Return to the survivor',
+    area: 'junkyard', x: 21.5, y: 7.5,
+    detail: 'Five scrap, and the machines that were carrying it are not any more.',
+    log: 'Paid Marek. He gave me a pistol and his gate key.' },
+  { id: 'gate', title: () => 'Unlock the yard gate',
+    area: 'junkyard', x: 30.5, y: 12.5,
+    detail: 'Marek gave me the key to it. East through that gate is the ring road out of the yard.',
+    log: 'Unlocked the gate and went east.' },
+  // THE AMBUSH IS NEVER MARKED — a dot pointing at it gives the whole thing
+  // away — so this step is silent while you are on it. It still belongs in the
+  // table: once it is behind you it is the biggest thing that happened, and the
+  // log would be lying by omission without it.
+  { id: 'compactor', title: () => 'Survive the yard', silent: true,
+    area: 'junkyard', x: 30.5, y: 12.5,
+    detail: '',
+    log: 'Something enormous was waiting at the gate. Not any more.' },
+  { id: 'shelter', title: () => 'Reach the shelter',
+    area: 'fringe', x: 56, y: 68,
+    detail: 'Somebody painted the signs after. Follow them west and there is a church people live in.',
+    log: "Followed the signs west to St Martin's." },
+];
+
+// `gateProp` only exists while the junkyard is the area that is built, and the
+// gate is the only way out of the yard — so from anywhere else it is open by
+// definition, and the chain must not fall back a step because you walked away.
+const yardGateOpen = () => currentArea !== 'junkyard' || !!(gateProp && gateProp.open);
+
+// How far along the chain the run is: the index of the step you are ON.
+// Read top-down so the furthest evidence always wins — a save that arrives with
+// the boss dead can never report the errand it skipped as still outstanding.
+function questRank() {
+  if (campMapRead)                  return 6;   // past the end: the chain is quiet
+  if (bossDefeated)                 return 5;
+  if (yardGateOpen())               return 4;
+  if (mission.state === 'turned')   return 3;
+  if (mission.state === 'complete') return 2;
+  if (mission.state === 'active')   return 1;
+  return 0;
+}
+
 function currentObjective() {
-  // ---- Q1: the yard
-  if (!bossDefeated) {
-    if (mission.state === 'none') return {
-      title: 'Talk to the survivor', area: 'junkyard', x: 21.5, y: 7.5,
-      detail: 'There is a light on in the shack, and a man in it who has not shot at me yet.' };
-    if (mission.state === 'active') return {
-      title: `Destroy Scrappers — loot scrap ${Math.min(player.inv.scrap, 5)}/5`,
-      area: 'junkyard', x: 21.5, y: 12.5,
-      detail: 'The old man fed me. He will want something for the pipe. They patrol the middle of the yard.' };
-    if (mission.state === 'complete') return {
-      title: 'Return to the survivor', area: 'junkyard', x: 21.5, y: 7.5,
-      detail: 'Five scrap, and the machines that were carrying it are not any more.' };
-    if (!(gateProp && gateProp.open)) return {
-      title: 'Unlock the yard gate', area: 'junkyard', x: 30.5, y: 12.5,
-      detail: 'He gave me the key with the look of a man who does not expect it back.' };
-    // The gate is open and the Compactor is still in the junk. THE AMBUSH IS
-    // NEVER MARKED — a dot pointing at it gives the whole thing away.
-    return null;
+  const o = OBJECTIVES[questRank()];
+  if (!o || o.silent) return null;
+  return { id: o.id, title: o.title(false), area: o.area, x: o.x, y: o.y, detail: o.detail };
+}
+
+// The ledger: every step the run has reached, oldest first. A silent step shows
+// up only once it is behind you — while you are on it, it is a surprise.
+function objectiveLog() {
+  const r = questRank();
+  const out = [];
+  for (let i = 0; i < OBJECTIVES.length; i++) {
+    if (i > r) break;
+    const o = OBJECTIVES[i], done = i < r;
+    if (o.silent && !done) continue;
+    out.push({ id: o.id, done, title: o.title(done), text: done ? o.log : o.detail });
   }
-  // ---- Q2: the road out, and the shelter at the end of it
-  if (!campMapRead) return {
-    title: 'Reach the shelter', area: 'fringe', x: 56, y: 68,
-    detail: 'Somebody painted the signs after. Follow them west and there is a church people live in.' };
-  return null;
+  return out;
 }
 
 const Msg = { text: '', t: 0 };

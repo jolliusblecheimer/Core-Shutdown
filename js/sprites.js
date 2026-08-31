@@ -1186,11 +1186,19 @@ function outlined(src) {
       px(g, 1, 4, 1, 1, '#8d959b'); px(g, 5, 4, 1, 1, '#8d959b');
       px(g, 0, 5, 2, 1, '#8d959b'); px(g, 3, 5, 1, 1, '#8d959b'); px(g, 5, 5, 2, 1, '#8d959b');
     });
-    // a way out: an arch with a gap under it
+    // A WAY THROUGH A BARRIER — two posts and a barred leaf between them.
+    // WAS an arch in '#4fc3ff'. Two things wrong with it: an arch reads as a
+    // doorway, which is the one thing this is not — it is a chain-link gate in
+    // a fence, the sort you unlock — and the blue broke the colour law. Blue is
+    // WARDEN, and it is the Core's own colour; spending it on a junkyard gate
+    // put the map's coldest signal on the least important thing on it. Grey
+    // steel now, the same grey the map's other structures use, so the only
+    // colours left on the map are amber for a camp and green for the objective.
     Sprites.icoGate = icon7(g => {
-      px(g, 1, 1, 5, 1, '#4fc3ff');
-      px(g, 0, 2, 1, 4, '#4fc3ff'); px(g, 6, 2, 1, 4, '#4fc3ff');
-      px(g, 1, 2, 1, 1, '#4fc3ff'); px(g, 5, 2, 1, 1, '#4fc3ff');
+      px(g, 0, 1, 1, 5, '#8d959b'); px(g, 6, 1, 1, 5, '#8d959b');   // the posts
+      px(g, 1, 2, 5, 1, '#6f777d');                                  // top rail
+      px(g, 1, 5, 5, 1, '#6f777d');                                  // bottom rail
+      px(g, 2, 3, 1, 2, '#6f777d'); px(g, 4, 3, 1, 2, '#6f777d');    // the bars
     });
     // something you can see from a long way off
     Sprites.icoLandmark = icon7(g => {

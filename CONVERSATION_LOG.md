@@ -2730,3 +2730,70 @@ seconds in every area — with no thrown errors and, now, a clean console.
 that objective is completed by reading the altar's map table and not by arriving.
 It is finding (a) of `design/questline.md`, which is still marked *awaiting
 approval, nothing built* — so it stays a report line, not a commit.
+
+### The map opens on the ring, and grows a column
+**Laurens:** *"1. change the map, i want it so if you press m it shows the whole
+map i have explored, for example when i'm in the Fringe also show the junkyard
+map, in proportion of course, then you can click on an area to only show that
+area. 2. Next to the map you can also see your current objective and add an
+option to view all past objectives too, all with a short explanation. 3. Change
+the icon for the yard gate and the description, right now i don't get the second
+part."*
+
+**1. `M` frames everything now.** The overhaul built the world view and then
+opened the map framed on the area you were standing in, on the reasoning that it
+should behave as it always had until you touched the wheel. That hid the whole
+point of it behind a gesture nobody makes on a screen that had never rewarded
+scrolling. It opens on the ring: every area walked, at true relative scale,
+where they actually are. Click an area to frame it; click it again — or pull
+back past three quarters of its fit — to return to the ring, gliding rather than
+cutting, because a cut between two scales of one picture reads as two pictures.
+One piece of arithmetic (`mapFit`) makes both frames, so they cannot disagree
+about scale, and the clickable rectangle for an area IS the rectangle its ground
+was drawn into. A pin always beats an area under the cursor: it is smaller and
+harder to hit on purpose. With one area known the header names that area, since
+"THE RING" is a lie on the first day.
+
+**2. A column down the right, 112px of it.** The objective — title, which area,
+and the detail line — is now on screen the whole time the map is open, instead
+of being readable only by clicking the green dot, and only when that dot
+happened to be in the area you were looking at. **`L` swaps it for the ledger**:
+every step the run has reached, oldest first, green tick for done, a pulse for
+the one you are on, each with a short line. The wheel scrolls the column and
+still zooms everywhere else.
+
+**What the column needed underneath it.** `currentObjective()` was a ladder of
+ifs that could only ever answer *what now*. A ledger has to ask the same chain
+backwards, so it is a table plus a rank now. **Nothing new is saved** — "done"
+is `rank > mine`, and the rank only climbs, so the log cannot contradict itself
+and no old save needs migrating. Each step carries a forward-looking `detail`
+and a past-tense `log`. The Compactor is in the table as a **silent** step:
+still never marked while you are on it, because a dot pointing at the ambush
+gives it away, but present in the log once it is done — the ledger would be
+lying by omission without the biggest thing that happened in the yard. And a
+finished step drops its live counter, which was reading *"loot scrap 0/5"*
+beside a tick, counting scrap that had long since been spent.
+
+**3. The yard gate.** The icon was a blue arch, and both things were wrong. An
+arch reads as a doorway, which is the one thing a chain-link gate you unlock is
+not — and **blue is WARDEN**, the Core's own colour, spent here on the least
+important pin on the map. Grey steel now: two posts and a barred leaf, so the
+only colours left on the map are amber for a camp and green for the objective.
+The description Laurens could not parse was *"It was chained shut for a reason"*
+— a riddle with no answer anywhere in the game. Both gate blurbs say plainly
+what is on the other side and what it costs now.
+
+**Two bugs it uncovered.** The world HUD had been running underneath the map all
+along — invisible only because the map's title sat at the centre of the screen,
+and printing straight through that title the moment the map moved left. And a
+fast click on the map did nothing at all: clicks were found by polling
+`mouseDown` across frames, so a press and release that both landed between two
+frames — a trackpad tap, or one slow frame — never opened a drag and the release
+branch had nothing to close.
+
+Verified through the real input path, not by calling the functions: M opens the
+ring, L opens the ledger, the wheel scrolls it over the column and zooms over
+the map, the header click closes it, clicking the junkyard frames it at 4.0
+px/tile and clicking it again returns to 0.77, M closes. Every objective state
+screenshotted from a fresh run to the silence after the map table. The bugcheck
+suite and the systems pass both still come back clean with no console output.
