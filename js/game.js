@@ -771,6 +771,31 @@ function beingHunted() {
   return false;
 }
 
+// SUSPICION — one meter, drawn the same way by everything in the ring that can
+// notice you: an eye, and a bar that fills white and turns red as it locks on,
+// on its own plate, in a colour language deliberately unlike the health bar
+// underneath it.
+//
+// This was three copies. The Scrapper and the raider drew the same one; the
+// droids drew a comment saying "same language as the Scrapper's" over a bar
+// with NO EYE on it, two pixels narrower, in a different white, with no track
+// behind the fill — so the machines that hunt you in packs were the ones whose
+// meter you had to learn separately. Three copies of a rule is how the third
+// one drifts. `cx` is the middle of the badge and `ay` the top of the eye.
+function drawSuspicion(cx, ay, alert) {
+  const a = Math.min(1, alert);
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.fillRect(Math.round(cx - 12), ay - 1, 24, 5);
+  ctx.fillStyle = '#e8eef5';                        // the eye
+  ctx.fillRect(Math.round(cx - 10), ay, 3, 3);
+  ctx.fillStyle = '#1a1c22';                        // and its pupil
+  ctx.fillRect(Math.round(cx - 9), ay + 1, 1, 1);
+  ctx.fillStyle = '#3a3e48';                        // the track it fills along
+  ctx.fillRect(Math.round(cx - 5), ay + 1, 14, 2);
+  ctx.fillStyle = a > 0.7 ? '#ff5a3c' : '#e8eef5';  // and how far it has got
+  ctx.fillRect(Math.round(cx - 5), ay + 1, Math.round(14 * a), 2);
+}
+
 // ---------- area transitions ----------
 // Fade out, swap the world, fade in. Per-area state (what you took, what you
 // blew up) is stashed so an area remembers you were there.
@@ -2853,20 +2878,7 @@ function drawBandit(b, x, y) {
     ctx.fillStyle = ((performance.now() / 80) | 0) % 2 ? '#ff5a3c' : '#ffb02e';
     ctx.fillRect(Math.round(x - 1), Math.round(y - 25), 2, 2);
   }
-  // suspicion, in the same language the machines use — eye plus bar
-  if (b.state === 'guard' && b.alert > 0.03) {
-    const ay = Math.round(y - 29);
-    ctx.fillStyle = 'rgba(0,0,0,0.55)';
-    ctx.fillRect(Math.round(x - 12), ay - 1, 24, 5);
-    ctx.fillStyle = '#e8eef5';
-    ctx.fillRect(Math.round(x - 10), ay, 3, 3);
-    ctx.fillStyle = '#1a1c22';
-    ctx.fillRect(Math.round(x - 9), ay + 1, 1, 1);
-    ctx.fillStyle = '#3a3e48';
-    ctx.fillRect(Math.round(x - 5), ay + 1, 14, 2);
-    ctx.fillStyle = b.alert > 0.7 ? '#ff5a3c' : '#e8eef5';
-    ctx.fillRect(Math.round(x - 5), ay + 1, Math.round(14 * Math.min(1, b.alert)), 2);
-  }
+  if (b.state === 'guard' && b.alert > 0.03) drawSuspicion(x, Math.round(y - 29), b.alert);
   if (b.hp < b.maxHp) {
     const frac = Math.max(0, b.hp / b.maxHp);
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
@@ -2912,23 +2924,7 @@ function drawScrapper(s, x, y) {
     ctx.fillStyle = ((performance.now() / 80) | 0) % 2 ? '#ff5a3c' : '#ffb02e';
     ctx.fillRect(Math.round(x - 1), Math.round(y - 23), 2, 2);
   }
-  // SUSPICION: eye icon + white bar (turns red when nearly locked on) —
-  // deliberately different colour language from the health bar below it
-  if (s.state === 'patrol' && s.alert > 0.03) {
-    const ay = Math.round(y - 27);
-    ctx.fillStyle = 'rgba(0,0,0,0.55)';
-    ctx.fillRect(Math.round(x - 12), ay - 1, 24, 5);
-    // tiny eye glyph
-    ctx.fillStyle = '#e8eef5';
-    ctx.fillRect(Math.round(x - 10), ay, 3, 3);
-    ctx.fillStyle = '#1a1c22';
-    ctx.fillRect(Math.round(x - 9), ay + 1, 1, 1);
-    // fill bar
-    ctx.fillStyle = '#3a3e48';
-    ctx.fillRect(Math.round(x - 5), ay + 1, 14, 2);
-    ctx.fillStyle = s.alert > 0.7 ? '#ff5a3c' : '#e8eef5';
-    ctx.fillRect(Math.round(x - 5), ay + 1, Math.round(14 * Math.min(1, s.alert)), 2);
-  }
+  if (s.state === 'patrol' && s.alert > 0.03) drawSuspicion(x, Math.round(y - 27), s.alert);
   // HEALTH: green→red gradient, same colour language as the player's bar
   if (s.hp < s.maxHp) {
     const frac = Math.max(0, s.hp / s.maxHp);

@@ -795,15 +795,11 @@ function drawDroid(d, x, y) {
     ctx.fillRect(Math.round(x - 1), Math.round(y - fr.oy + 8), 2, 2);
   }
 
-  // SUSPICION METER — same language as the Scrapper's: an eye bar that
-  // turns red as it fills, deliberately unlike the health bar
-  if (d.squad && d.squad.alert < 1 && d.alert > 0.03) {
-    const ay = Math.round(y - fr.oy - 6);
-    ctx.fillStyle = 'rgba(0,0,0,0.55)';
-    ctx.fillRect(Math.round(x - 6), ay - 1, 14, 4);
-    ctx.fillStyle = d.alert > 0.7 ? '#ff5a3c' : '#efe6d2';
-    ctx.fillRect(Math.round(x - 5), ay, Math.round(12 * Math.min(1, d.alert)), 2);
-  }
+  // SUSPICION METER — the Scrapper's, literally: drawSuspicion() in js/game.js
+  // is the one copy now. This used to be its own bar with no eye on it, and a
+  // comment claiming it was the same thing.
+  if (d.squad && d.squad.alert < 1 && d.alert > 0.03)
+    drawSuspicion(x, Math.round(y - fr.oy - 7), d.alert);
   // health, once hurt
   if (d.hp < d.maxHp) {
     const hy = Math.round(y - fr.oy - 2);

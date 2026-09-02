@@ -3043,3 +3043,29 @@ HUNTED**; both machines killed → **[E] TRAVEL** at once; twenty-five seconds
 later with the pair respawned → still **[E] TRAVEL**. Also that breaking off and
 escaping ends it after the memory runs out, and that walking into another area
 ends it. Bugcheck, systems and map-input suites clean.
+
+### One suspicion meter, drawn once
+**Laurens:** *"Change the vision bar to see if the enemies are watching you to
+the one the Scrappers have with the eye — the squads have different ones."*
+
+They did, and the comment above the droids' version said *"same language as the
+Scrapper's"* over something that was not: a bare bar with **no eye on it**, two
+pixels narrower, in a different white (`#efe6d2` against `#e8eef5`), on a
+smaller plate, and with no dark track behind the fill — so the machines that
+hunt you in packs, the ones it matters most to read, were the ones whose meter
+you had to learn separately.
+
+The Scrapper and the raider already drew the same meter, as two verbatim copies
+of each other. Three copies of a rule is exactly how the third one drifts, so
+there is one now: `drawSuspicion(cx, ay, alert)` in `js/game.js` — the eye, its
+pupil, the track, and the fill that turns red past 0.7 — and the Scrapper, the
+raider and every droid call it.
+
+Measured rather than eyeballed: render each one with the meter drawn and with
+`drawSuspicion` stubbed out, and diff. All three come back **24×5 pixels, 120 of
+them** — the same badge, pixel for pixel. (Two things had to be pinned first to
+get a clean read: the live render loop, which was landing a normal frame between
+the two captures, and `performance.now()`, because the Bailiff's lamp pulses in
+the same screen column as its badge.)
+
+Bugcheck, systems and hunted suites all still clean.
