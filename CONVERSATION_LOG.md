@@ -3469,3 +3469,35 @@ headlamps, which reads as a parked car no matter how dark the paint.
 And it created a save bug that got caught: the fire's margin is walkable, so it
 passes `canStand`, and `findSafeSpot` would have rescued a save **onto burning
 ground**. It skips burning tiles now — standable is not the same as safe.
+
+---
+
+## "check that props and buildings dont collide and i still cant go further under the broken bridge"
+
+Both were the same bug: something stopping you that is not drawn.
+
+**Props behind buildings.** `westProp` skipped the two tests `placeProp` has had
+since the lamp-post pass. Measured with the same pixel-diff — render, remove the
+prop, render again, count changed pixels — **9 of 67 burnt props drew zero
+pixels**. With the tests applied: 0 of 50, none on a building tile. Bumped
+attempts per row 2 → 3 to keep the density.
+
+**The underpass.** It stopped eleven tiles in against ground id 14 that happened
+to be solid, with nothing drawn on it — the invisible wall this whole plan
+exists to remove, at the one place the map invites you to push. It is built now:
+**21 tiles deep**, retaining walls either side (`BUILD_STYLE.W`), its own dark
+`tunnel` ground (id 16), ending against a concrete face choked with debris,
+girders and tipped drums so it reads as a collapse rather than as the map
+stopping.
+
+**And the same class of bug for the third time**: opening eighteen tiles that had
+been solid let `placeBuilding` — which only refuses *solid* — drop a block across
+the mid mouth and seal it. Ground 16 is refused like ground 4 now. Buildings in
+the fire, weeds on the coals, a block in the tunnel: check the ground type, not
+just `solid`.
+
+Walkable 16,012 → 16,191. Props 475 → 497. Frame cost unchanged. All suites
+green. `verifycut` now asserts you can reach y 17 — deep inside the tunnel, not
+just its lip.
+
+The far side of the collapse is still Field 12, which is spec'd and not built.

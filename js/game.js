@@ -264,6 +264,7 @@ function buildTilesets() {
   // the Fringe's three edges — see design/finish-the-fringe.md
   TILESETS[12] = Sprites.ash;    TILESETS[13] = Sprites.water;
   TILESETS[14] = Sprites.deck;  TILESETS[15] = Sprites.scorch;
+  TILESETS[16] = Sprites.tunnel;
 }
 buildTilesets();
 

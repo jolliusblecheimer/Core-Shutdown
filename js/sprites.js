@@ -214,6 +214,7 @@ function outlined(src) {
   // anything you could look at. These are the ground under the three blockers
   // the atlas has specified since it was drawn. See design/finish-the-fringe.md.
   Sprites.ash = []; Sprites.water = []; Sprites.deck = []; Sprites.scorch = [];
+  Sprites.tunnel = [];
   for (let i = 0; i < 6; i++) {
     // THE ASHFIELD, west: a tank farm that caught fire on the Longest Night and
     // never went out. THIS TILE HAS TO SAY "FIRE" ON ITS OWN. The first version
@@ -258,6 +259,17 @@ function outlined(src) {
     sprinkle(d.g, 20, ['#1e1e22', '#2d2d32', '#212125']);
     if (rng() < 0.4) { const r = (rng()*TILE_H)|0; dpx(d.g, (rng()*24)|0, r, 4, '#33333a'); }
     Sprites.deck.push(d.c);
+
+    // THE UNDERPASS FLOOR. Under the M7 and out the other side — road surface
+    // that has not been rained on except where the deck is open, so it is
+    // darker than the street, wetter in patches, and polished down the middle
+    // where everything that ever drove through went.
+    const t = tileBase('#22232a');
+    sprinkle(t.g, 18, ['#1b1c22', '#282932', '#17181d']);
+    if (rng() < 0.55) { const r = (rng()*TILE_H)|0; dpx(t.g, (rng()*24)|0, r, 5, '#2c2e38'); }
+    if (rng() < 0.35) { const r = (rng()*TILE_H)|0; dpx(t.g, 8 + ((rng()*10)|0), r, 4, '#333a45'); }
+    if (rng() < 0.20) { const r = (rng()*TILE_H)|0; dpx(t.g, (rng()*26)|0, r, 2, '#3d4550'); }
+    Sprites.tunnel.push(t.c);
   }
 
   // road paint, laid as decals
@@ -2732,6 +2744,11 @@ function outlined(src) {
     // the value tells them apart.
     X: { w: '#3b3431', s: '#2c2624', t: '#473e3a', r: '#2f2c2a', re: '#211e1c',
          g: '#0d0b0a', h: 40, burnt: true },
+    // W — RETAINING WALL. The cutting the underpass runs in, and the collapse
+    // that closes it off. Same blank concrete as the viaduct, half the height,
+    // and nothing on top: it is a wall, not a building with a roof.
+    W: { w: '#464440', s: '#363431', t: '#524f4a', r: '#403e3a', re: '#2b2926',
+         g: '#1a1a1c', h: 30, blank: true, bare: true },
   };
 
   function poly(g, pts, fill, stroke) {
@@ -3134,6 +3151,12 @@ function outlined(src) {
       g.moveTo(D2[0], D2[1] - 3); g.lineTo(C2[0], C2[1] - 3); g.lineTo(B2[0], B2[1] - 3);
       g.stroke();
       const mx = (A2[0] + C2[0]) / 2, my = (A2[1] + C2[1]) / 2 - 3;
+      if (st.bare) {
+        // a wall has a top, not a roof: the deck and its parapet, and stop.
+        const resB = { img: c, ax, ay, h: Hh };
+        if (buildingCache.size < 400) buildingCache.set(key, resB);
+        return resB;
+      }
       if (st.burnt) {
         // caved in. Nothing up here survived, so nothing up here is drawn:
         // just the deck opened up where the roof went through.

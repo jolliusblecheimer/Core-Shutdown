@@ -466,7 +466,7 @@ function buildFringe() {
   // map table, raider, droid, area exit and the player's own entry point before
   // a line of it was written. All four came back clear.
   // See design/finish-the-fringe.md.
-  const EDGE_ASH = 12, EDGE_WATER = 13, EDGE_DECK = 14, EDGE_SCORCH = 15;
+  const EDGE_ASH = 12, EDGE_WATER = 13, EDGE_DECK = 14, EDGE_SCORCH = 15, EDGE_TUNNEL = 16;
   // The renderer has to know where these run too — the fire glow and the water
   // are drawn as weather anchored to the fire line and the shore — so the
   // numbers live on the area definition and this pass reads them from there.
@@ -478,6 +478,13 @@ function buildFringe() {
   // of is a promise; a wall you later knock a hole in is a demolition.
   const DECK_HOLES = [[26, 34], [88, 96]];
   const inHole = (x) => DECK_HOLES.some(([a, b]) => x >= a && x <= b);
+  // HOW FAR THE UNDERPASS ACTUALLY GOES. It used to stop at y 22, eight tiles
+  // in — and what stopped you was ground id 14 that happened to be solid, with
+  // NOTHING DRAWN ON IT. That is the invisible wall this whole plan exists to
+  // get rid of, sitting at the one place on the map a player pushes hardest
+  // against. It runs to y 12 now, in a cutting with real retaining walls, and
+  // it ends against a collapse you can see.
+  const TUN_Y0 = 12, TUN_END = 6;
 
   // THE FIRE IS NOT A LINE, AND IT IS NOT A WALL.
   //
@@ -541,7 +548,8 @@ function buildFringe() {
         continue;
       }
       // the mouths are the one place under the deck you may stand
-      const open = g === EDGE_DECK && y >= VIA_Y0 && inHole(x);
+      const open = g === EDGE_DECK && y >= TUN_Y0 && inHole(x);
+      if (open) ground[y][x] = EDGE_TUNNEL;
       solid[y][x] = !open;
       heavy[y][x] = !open;
     }
@@ -558,6 +566,21 @@ function buildFringe() {
   // the renderer draws the fire's glow along this front, so it has to be the
   // same front the collision uses — one array, published once
   FRINGE_EDGES.front = ashFront;
+
+  // THE UNDERPASS, BUILT RATHER THAN IMPLIED. A cutting has sides and an end,
+  // and all three have to be things the camera can see or the player is being
+  // stopped by arithmetic again. Volumes, like everything else that stands up
+  // on this map — never assembled panels.
+  for (const [a, b] of DECK_HOLES) {
+    const w = b - a + 1;
+    // the two retaining walls the road runs between, north of the deck
+    for (const wx of [a - 6, b + 1]) {
+      if (wx < 0 || wx + 6 > MAP_W) continue;
+      addBuildingProp({ x0: wx, y0: TUN_Y0, w: 6, h: VIA_Y0 - TUN_Y0, kind: 'W' });
+    }
+    // and what closes it: the far end came down, and you can look at it
+    addBuildingProp({ x0: a, y0: TUN_END, w, h: TUN_Y0 - TUN_END, kind: 'W' });
+  }
 
   const deckSpans = [[0, 25], [35, 87], [97, MAP_W - 1]];
   for (const [sx, ex] of deckSpans) {
@@ -581,8 +604,13 @@ function buildFringe() {
         // solid — you are meant to be able to walk into it — and this filler
         // refuses solid tiles, so without the `burning` test it happily put
         // two office blocks in the middle of the coals.
+        // ...and nothing stands in the underpass either. Opening the tunnel made
+        // eighteen tiles walkable that had been solid, and this filler only
+        // refuses SOLID — so it dropped a block across the mid mouth and sealed
+        // it eight tiles in. Ground 16 is a road under a motorway, same as 4.
         const gt = ground[y][x];
-        if (gt === 4 || gt === 5 || gt === 7 || solid[y][x] || burning[y][x]) return false;
+        if (gt === 4 || gt === 5 || gt === 7 || gt === EDGE_TUNNEL ||
+            solid[y][x] || burning[y][x]) return false;
       }
     for (let y = y0; y < y0 + h; y++)
       for (let x = x0; x < x0 + w; x++) { solid[y][x] = true; heavy[y][x] = true; ground[y][x] = 2; }
@@ -1242,17 +1270,25 @@ function buildFringe() {
   for (const b of buildings) if (b.westShell) addBuildingProp(b);
 
   // what the fire left standing in the street
+  // A PROP THE CAMERA CANNOT SEE IS NOT A PROP — and this pass forgot the rule
+  // the street furniture already lives by. Nine of the first sixty-seven burnt
+  // props drew ZERO pixels: depth is x + y, so the pavement along a block's
+  // up-screen faces is simply not visible, and a stump planted there is a tile
+  // you bump into with nothing standing on it. Same two tests as `placeProp`.
   const westProp = (x, y, type, extra) => {
     if (x < 2 || y < 2 || x >= MAP_W - 1 || y >= MAP_H - 1) return;
     if (solid[y][x] || heavy[y][x] || burning[y][x]) return;
+    if (behindSomethingTall(x, y) || coveredByABlock(x, y)) return;
     const g = ground[y][x];
     if (g === 4) return;                            // never park it on the lane
     solid[y][x] = true;
     props.push(Object.assign({ gx: x, gy: y, type }, extra || {}));
   };
+  // three attempts a row, not two: the visibility test above rejects roughly a
+  // quarter of them, and a burnt district wants to look picked over
   for (let y = 33; y < 138; y += 2) {
     const front = ashFront[y];
-    for (let k = 0; k < 2; k++) {
+    for (let k = 0; k < 3; k++) {
       const x = front + 1 + ((brng() * (WEST_KERB - front - 2)) | 0);
       const r = brng();
       if (r < 0.30) westProp(x, y, 'stump');
@@ -1266,12 +1302,38 @@ function buildFringe() {
     if (brng() < 0.45) continue;
     const x = 13 + ((brng() * 5) | 0);
     if (y + 2 >= MAP_H - 1) break;
-    let clear = true;
+    let clear = !behindSomethingTall(x, y + 1) && !coveredByABlock(x, y + 1);
     for (let i = 0; i < 3; i++) if (solid[y + i][x]) clear = false;
     if (!clear) continue;
     for (let i = 0; i < 3; i++) solid[y + i][x] = true;
     props.push({ gx: x, gy: y + 1, type: 'burntCar', dir: 'y',
                  v: (brng() * 3) | 0, foot: [x, y, 1, 3] });
+  }
+
+  // ---------- WHAT CLOSED THE UNDERPASS ----------
+  // The far end is a concrete face, which stops you and can be looked at — but
+  // a clean wall reads as "the map ends here", and the truth is "this came
+  // down". The rubble is the difference between a boundary and a story, and it
+  // is also the thing the next area gets dug out of.
+  for (const [a, b] of DECK_HOLES) {
+    for (let x = a; x <= b; x++) {
+      for (let y = TUN_Y0; y <= TUN_Y0 + 2; y++) {
+        if (solid[y][x] || brng() < 0.55) continue;
+        const r = brng();
+        solid[y][x] = true;
+        props.push({ gx: x, gy: y,
+                     type: r < 0.5 ? 'debris' : r < 0.78 ? 'girder' : 'barrelTipped' });
+      }
+    }
+    // and a few pieces that got thrown further down the tunnel
+    for (let i = 0; i < 5; i++) {
+      const x = a + ((brng() * (b - a + 1)) | 0);
+      const y = TUN_Y0 + 3 + ((brng() * 7) | 0);
+      const r = brng();
+      if (solid[y][x]) continue;
+      solid[y][x] = true;
+      props.push({ gx: x, gy: y, type: r < 0.6 ? 'debris' : 'barrelTipped' });
+    }
   }
 
   // ---------- THE GREY RUN, dressed ----------

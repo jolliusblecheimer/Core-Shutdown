@@ -503,3 +503,67 @@ same as safe.** All five rescue cases verified landing on safe ground.
 `verifycut` now also asserts the west lane, both links and three points along it
 are **reachable from the gate** — a new district that is a second island would
 be worse than no district. All suites green, no console errors.
+
+---
+
+## 15. TWO INVISIBLE WALLS, AND WHY THEY ARE THE SAME BUG
+
+*"Check that props and buildings dont collide and i still cant go further under
+the broken bridge."*
+
+Both complaints turned out to be the same failure the whole plan exists to fix:
+**something stopping you that is not drawn.**
+
+### Props behind buildings
+
+`westProp` — the burnt-district dressing added in §14 — skipped the two tests
+`placeProp` has had since the lamp-post pass. Depth is `x + y`, so the pavement
+along a block's up-screen faces is not visible at all, and a prop planted there
+is a tile you bump into with nothing standing on it.
+
+**Measured, by the same pixel-diff the lamp posts were fixed with** (render the
+scene, remove the prop, render again, count changed pixels): **9 of 67 burnt
+props drew ZERO pixels.** With `behindSomethingTall` and `coveredByABlock`
+applied: **0 of 50 invisible**, and none on a building tile. Attempts per row
+went 2 → 3 to keep the density, since the tests now reject about a quarter.
+
+### The underpass stopped against nothing
+
+You walked eleven tiles under the viaduct and stopped — against **ground id 14
+that happened to be solid, with nothing drawn on it.** The worst possible place
+for that: it is the one direction the map openly invites you to push at.
+
+The underpass is **built** now rather than implied:
+
+| | |
+|---|---|
+| **Depth** | `TUN_Y0 = 12` — walkable y 12–29, **21 tiles**, up from 11 |
+| **Sides** | Retaining-wall volumes (new `BUILD_STYLE.W`: blank concrete, half the viaduct's height, no roof) flanking the cutting |
+| **Floor** | New `tunnel` ground (id 16) — darker than the street, wet in patches |
+| **End** | A concrete face you can look at, **choked with rubble** — debris, girders, tipped drums. A clean wall reads as "the map ends"; the truth is "this came down", and it is what the next area gets dug out of |
+
+### And it caught the same bug a third time
+
+Opening eighteen tiles that had been solid meant `placeBuilding` — which only
+refuses *solid* — **dropped a block across the mid mouth and sealed it eight
+tiles in.** Ground 16 is a road under a motorway, so it is refused like ground 4
+now. That is three times in three sessions: **anything that places something on
+this map must test the ground type, not just `solid`.**
+
+### Measured
+
+| | §14 | §15 |
+|---|---|---|
+| Walkable from the gate | 16,012 | **16,191** |
+| Underpass depth, both mouths | 11 tiles | **21 / 21** (deepest standable y 13 / 15) |
+| Burnt props drawing zero pixels | 9 of 67 | **0 of 50** |
+| Props | 475 | **497** |
+| Reachable outside the box, not burning | 5 | **5** |
+| Outer ring solid | 200/200 · 200/200 · 150/150 · 150/150 | **unchanged** |
+| Frame cost, five spots (ms) | 14.65 / 14.93 / 14.81 / 14.82 / 13.19 | 14.21 / 14.13 / 14.99 / 15.13 / 14.69 |
+
+`verifycut`'s mouth test now also asserts you can reach **y 17** — deep inside
+the tunnel, not just its lip — and that the far end is the wall at y 11.
+
+**The far side is still Field 12.** `design/expansion-build-spec.md` is the
+build. The tunnel is now a proper seam for it rather than an alcove.

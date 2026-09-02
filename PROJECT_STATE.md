@@ -607,6 +607,22 @@ numbers are drawn — the east is bit-identical. The west lane is kept OUT of
 **`findSafeSpot` skips burning tiles.** The fire's margin passes `canStand`, so
 a rescued save could have woken up already on fire. Standable is not safe.
 
+### THE UNDERPASS IS BUILT, NOT IMPLIED
+It used to stop eleven tiles in, against ground id 14 that happened to be solid
+with **nothing drawn on it** — an invisible wall at the one place a player pushes
+hardest. It runs **21 tiles** now (`TUN_Y0 = 12`), in a cutting with retaining
+walls (`BUILD_STYLE.W`), on its own `tunnel` ground (id 16), ending against a
+concrete face choked with rubble. The far side is Field 12.
+
+**THREE TIMES NOW, a pass that places things has only tested `solid` and put
+something where it must not go**: buildings in the fire, weeds on the coals, and
+a block sealing the mid tunnel eight tiles in. `placeBuilding` refuses ground 4,
+5, 7, 16, solid and burning. Check the ground type, not just `solid`.
+
+**And `westProp` skipped the visibility rule** the street furniture has had since
+the lamp-post pass — 9 of 67 burnt props drew zero pixels. Any pass that stands
+something up on this map needs `behindSomethingTall` + `coveredByABlock`.
+
 ### Outstanding
 - Crash barriers along the spine's edges (F4) — not built; ~200 props for what
   the gantries already say.
