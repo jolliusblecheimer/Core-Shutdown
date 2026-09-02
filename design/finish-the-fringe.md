@@ -567,3 +567,61 @@ the tunnel, not just its lip — and that the far end is the wall at y 11.
 
 **The far side is still Field 12.** `design/expansion-build-spec.md` is the
 build. The tunnel is now a proper seam for it rather than an alcove.
+
+
+---
+
+## 16. THE UNDERPASS IS A BORE, NOT A CUTTING
+
+*"Make the underpass look like a tunnel from fringe view, it looks cut off, why
+would it instantly stop, rather than going through the side make it so you
+actually go through like a car."*
+
+Right, and for a reason worth writing down. §15 built the underpass as a
+**cutting** — retaining walls either side, open sky above. From the Fringe that
+reads as the road being *sliced off*, because a road that dives under a motorway
+has a **roof** on it, and the dark rectangle of its mouth is the thing that says
+*this continues* from fifty tiles away. Walls at the sides say the opposite:
+they say the road stopped and somebody built a trench.
+
+So both bores are roofed for their whole length, using the machinery the shack
+has always had:
+
+| | |
+|---|---|
+| **The soffit** | A slab at lift 40 over the tunnel rectangle, with beam lines across it on the bore's own diagonal |
+| **The portal** | A header band across the mouth at full opacity **whatever the roof is doing** — it is the thing that has to read from the far end of the map, so it never fades |
+| **The fade** | `insideTunnel()` joins `insideShack()` in driving `roofAlpha`, so the roof goes to 0.12 as you walk in and you can still see yourself |
+| **Published once** | `FRINGE_EDGES.tunnels`, same as the fire front: the collision and the art read the same rectangles |
+
+## 17. NOTHING LIES IN THE ROAD BUT FOOD AND RIFLE ROUNDS
+
+*"Don't put rounds on the floor anywhere, do some snack bars instead, and rifle
+rounds too."*
+
+Every area's floor pickups were loose pistol rounds. That is the lazy pickup: it
+says nothing about the place it is lying in and there is nothing to decide about
+it. Now:
+
+| Area | Was | Is |
+|---|---|---|
+| The junkyard | pipe, 6 rounds, 6 rounds | pipe, **snack, snack** |
+| The Fringe | 6, 6, 6 rounds | **snack, 8 rifle rounds, snack** |
+| The Underpass | 6 rounds | **snack** |
+| Field 12 | 12, 6 rounds | **12 rifle rounds, snack** |
+| Candlelight | 6 rounds | **snack** |
+
+A snack bar is a choice — eat it now or carry it — and rifle rounds found before
+you have a working rifle are a promise about one.
+
+**And it exposed a bug.** The pickup had exactly two branches: the pipe, and
+*everything else is rounds*. A snack bar lying in the street would have handed
+the player ammunition. It knows about `FOOD` now, uses the existing snack icon,
+and puts the bar in the pack.
+
+**The junkyard has no pistol ammunition on its floor any more.** That is
+deliberate and it is safe: the Compactor drops two lots of six itself
+(`js/boss.js`), which is what actually supplies that fight.
+
+Verified: floor snack picked up → `inv.snack` 1, rounds unchanged 0 → 0, eaten →
++40 HP. `audit2`, `smoke`, `verifycut`, `loop`, `f12` all green.

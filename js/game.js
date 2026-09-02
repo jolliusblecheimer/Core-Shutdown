@@ -1283,7 +1283,8 @@ function update(dt) {
   // arena: death resets the whole fight
   if (window.ARENA_MODE && player.dead > 0 && player.dead < 0.1) resetArena();
 
-  const targetRoof = insideShack(player.x, player.y) ? 0.12 : 1;
+  const targetRoof = (insideShack(player.x, player.y) || insideTunnel(player.x, player.y))
+                     ? 0.12 : 1;
   roofAlpha += (targetRoof - roofAlpha) * Math.min(1, 10 * dt);
 
   // dust drifts down-right through the light shafts
@@ -1801,6 +1802,44 @@ function render() {
       addLight(s.x - ox, s.y - oy - 5, 0, 10, '255,190,90', 0.25);
     }});
   }
+  const TUN = currentAreaDef().edges && currentAreaDef().edges.tunnels;
+  if (TUN) {
+    for (const t of TUN) {
+      const LIFT = 40;                       // under the deck, over the road
+      const c1 = isoToScreen(t.x0, t.y0), c2 = isoToScreen(t.x1 + 1, t.y0);
+      const c3 = isoToScreen(t.x1 + 1, t.y1 + 1), c4 = isoToScreen(t.x0, t.y1 + 1);
+      draws.push({ depth: c3.y + 3, draw: () => {
+        // the header beam across the mouth, and the dark it puts on the road:
+        // drawn at FULL strength whatever the roof is doing, because it is the
+        // portal, and the portal is what has to read from the far end of the map
+        ctx.fillStyle = 'rgba(8,9,11,0.55)';
+        ctx.beginPath();
+        ctx.moveTo(c4.x - ox, c4.y - oy - LIFT);
+        ctx.lineTo(c3.x - ox, c3.y - oy - LIFT);
+        ctx.lineTo(c3.x - ox, c3.y - oy - LIFT + 11);
+        ctx.lineTo(c4.x - ox, c4.y - oy - LIFT + 11);
+        ctx.closePath(); ctx.fill();
+        ctx.globalAlpha = roofAlpha;
+        ctx.fillStyle = '#33322f';           // the soffit
+        ctx.beginPath();
+        ctx.moveTo(c1.x - ox, c1.y - oy - LIFT);
+        ctx.lineTo(c2.x - ox, c2.y - oy - LIFT);
+        ctx.lineTo(c3.x - ox, c3.y - oy - LIFT);
+        ctx.lineTo(c4.x - ox, c4.y - oy - LIFT);
+        ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = '#1e1d1b'; ctx.stroke();
+        // beam lines across the soffit, on the bore's own diagonal
+        ctx.strokeStyle = 'rgba(0,0,0,0.30)';
+        for (let yy = t.y0 + 2; yy < t.y1; yy += 3) {
+          const a = isoToScreen(t.x0, yy), b2 = isoToScreen(t.x1 + 1, yy);
+          ctx.beginPath();
+          ctx.moveTo(a.x - ox, a.y - oy - LIFT); ctx.lineTo(b2.x - ox, b2.y - oy - LIFT);
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+      }});
+    }
+  }
   if (SHACK) {
     const c1 = isoToScreen(SHACK.x0, SHACK.y0);
     const c2 = isoToScreen(SHACK.x1 + 1, SHACK.y0);
@@ -2240,6 +2279,24 @@ function updateBurning(dt) {
 // screen-space thing is the falling ash, because ash in the air between you
 // and the camera genuinely is.
 // =====================================================================
+// AN UNDERPASS IS SOMETHING YOU DRIVE THROUGH.
+//
+// The first version was a cutting: retaining walls either side and open sky
+// above, which from the Fringe read as the road being sliced off rather than
+// going anywhere. A road that dives under a motorway has a ROOF on it, and the
+// dark rectangle of its mouth is the thing that says "this continues" from
+// fifty tiles away. So the bore is roofed for its whole length, with a header
+// beam across the mouth and the shadow it throws on the road under it — and
+// the roof fades out as you go in, the same way the shack's does, because you
+// still have to be able to see yourself in there.
+function insideTunnel(x, y) {
+  const T = currentAreaDef().edges && currentAreaDef().edges.tunnels;
+  if (!T) return false;
+  for (const t of T)
+    if (x > t.x0 - 0.5 && x < t.x1 + 1.5 && y > t.y0 - 0.5 && y < t.y1 + 1.5) return true;
+  return false;
+}
+
 function drawEdgeWeather(ox, oy) {
   const E = currentAreaDef().edges;
   if (!E || Trans.active) return;
@@ -2929,6 +2986,7 @@ function drawItem(it, x, y) {
   ctx.fillRect(Math.round(x - 5), Math.round(y - 30), 10, 30);
   drawShadow(x, y, 4);
   const img = it.type === 'pipe' ? Sprites.pipeIcon
+            : it.type === 'snack' ? Sprites.snackIcon
             : (it.gun === 'rifle' ? Sprites.ammoRifle : Sprites.ammo);
   ctx.drawImage(img, Math.round(x - img.width / 2), Math.round(y - 10 + bobY));
   addLight(x, y - 6, 0, 14, '255,210,120', 0.22 + Math.sin(gameTime * 3 + it.bob) * 0.06);

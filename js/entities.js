@@ -1070,6 +1070,13 @@ function updateItems(dt) {
         tutShow('melee',
           ['Click toward a target to swing the pipe.', 'It outranges the machines — strike from', 'the edge of your reach.'],
           ['LMB'], 'CLICK TO CONTINUE');
+      } else if (FOOD.some(f => f.id === best.type)) {
+        // FOOD ON THE FLOOR. The pickup used to have exactly two branches — the
+        // pipe, and everything-else-is-rounds — so a snack bar lying in the
+        // street would have handed the player ammunition.
+        const f = FOOD.find(f2 => f2.id === best.type);
+        player.inv[f.id] = (player.inv[f.id] || 0) + 1;
+        showMsg('Picked up ' + f.label + '   [H] to eat');
       } else {
         const gun = best.gun || 'pistol';
         const n = giveRounds(gun, best.amount);

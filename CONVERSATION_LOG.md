@@ -3540,3 +3540,30 @@ All suites green.
 **E4–E8 are not built**: the rust drones, the beacon sweep, Wren and Oz in the
 Lamp, and the two quests. Both areas are places you can walk; they are not yet
 levels.
+
+---
+
+## "make the underpass look like a tunnel · don't put rounds on the floor"
+
+**The underpass is a bore now, not a cutting.** Retaining walls either side with
+open sky above reads as the road being sliced off — a road that dives under a
+motorway has a roof on it, and the dark rectangle of its mouth is what says
+*this continues* from fifty tiles away. Both bores are roofed for their whole
+length using the shack's own machinery: a soffit slab with beam lines, a header
+band across the mouth drawn at full opacity whatever the roof is doing (it is
+the portal, and the portal has to read from the far end of the map), and
+`insideTunnel()` joining `insideShack()` to fade the roof as you walk in.
+
+**Nothing lies in the road but food and rifle rounds.** Every area's pickups
+were loose pistol rounds — the lazy pickup: it says nothing about where it is
+lying and there is nothing to decide about it. Snacks everywhere now, with
+rifle rounds on the Fringe and Field 12. The junkyard has no pistol ammo on its
+floor any more, which is safe because the Compactor drops two lots of six
+itself.
+
+**It exposed a bug**: the pickup had two branches — the pipe, and
+*everything-else-is-rounds*. A snack bar lying in the street would have handed
+the player ammunition. It knows about `FOOD` now and uses the existing icon.
+
+Verified: floor snack → inv.snack 1, rounds unchanged, eaten → +40 HP.
+All suites green.

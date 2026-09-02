@@ -373,7 +373,7 @@ let signs = [];   // readable street signs {gx, gy, text}
 // explain why). See drawEdgeWeather in js/game.js.
 // `front` is filled in by buildFringe: the fire's edge wanders, so the glow has
 // to follow the same per-row boundary the collision uses.
-const FRINGE_EDGES = { viaY0: 22, viaY1: 29, ashX1: 5, waterY0: 140, front: null };
+const FRINGE_EDGES = { viaY0: 22, viaY1: 29, ashX1: 5, waterY0: 140, front: null, tunnels: null };
 
 function buildFringe() {
   const rng = mulberry32(20260817);
@@ -566,6 +566,10 @@ function buildFringe() {
   // the renderer draws the fire's glow along this front, so it has to be the
   // same front the collision uses — one array, published once
   FRINGE_EDGES.front = ashFront;
+  // and where the two bores are, so the renderer can put a ROOF on them —
+  // an underpass is a thing you drive through, not a slot you walk down
+  FRINGE_EDGES.tunnels = DECK_HOLES.map(([a, b]) =>
+    ({ x0: a, x1: b, y0: TUN_Y0, y1: VIA_Y1 }));
 
   // THE UNDERPASS, BUILT RATHER THAN IMPLIED. A cutting has sides and an end,
   // and all three have to be things the camera can see or the player is being
@@ -1952,8 +1956,13 @@ const Areas = {
     tint: '#e6c092',
     makeItems: () => ([
       { type: 'pipe', x: 9.5, y: 23.5, bob: 0 },
-      { type: 'ammo', x: 14.5, y: 21.5, amount: 6, bob: 1.3 },
-      { type: 'ammo', x: 25.5, y: 26.5, amount: 6, bob: 2.1 },
+      // FOOD, NOT ROUNDS. Loose ammunition lying in the road everywhere was
+      // the lazy pickup: it says nothing about the place it is lying in, and
+      // there is nothing to decide about it. A snack bar is a choice — eat it
+      // now or carry it — and the rifle rounds are a promise about a gun you
+      // have not got yet. The Compactor's own drops still cover the fight.
+      { type: 'snack', x: 14.5, y: 21.5, bob: 1.3 },
+      { type: 'snack', x: 25.5, y: 26.5, bob: 2.1 },
     ]),
     // walking into the open gate leaves for the open city
     exits: [{ x0: 30.2, y0: 10.6, x1: 32, y1: 14.4, to: 'fringe', entry: { x: 194, y: 120 },
@@ -1973,9 +1982,9 @@ const Areas = {
     makeItems: () => ([
       // was 150.5,130.5 — a later building edit closed over that tile and
       // sealed the rounds inside the walls. Three tiles west is open street.
-      { type: 'ammo', x: 147.5, y: 130.5, amount: 6, bob: 0.8 },
-      { type: 'ammo', x: 62.5, y: 122.5, amount: 6, bob: 2.4 },
-      { type: 'ammo', x: 33.5, y: 88.5, amount: 6, bob: 1.5 },
+      { type: 'snack', x: 147.5, y: 130.5, bob: 0.8 },
+      { type: 'ammo', gun: 'rifle', x: 62.5, y: 122.5, amount: 8, bob: 2.4 },
+      { type: 'snack', x: 33.5, y: 88.5, bob: 1.5 },
     ]),
     // back through the yard gate, and in at the west door of St Martin's
     exits: [
@@ -2029,7 +2038,7 @@ const Areas = {
     hasDroids: false,
     tint: '#b9bfc4',                        // wet concrete, and no warmth in it
     makeItems: () => ([
-      { type: 'ammo', x: 12.5, y: 20.5, amount: 6, bob: 1.1 },
+      { type: 'snack', x: 12.5, y: 20.5, bob: 1.1 },
     ]),
     exits: [
       // back down the spine, and on through the east door to the airfield
@@ -2046,8 +2055,8 @@ const Areas = {
     hasDroids: false,                       // the drones are E4, and not built
     tint: '#e4e2dc',                        // bleached grey. Not blue.
     makeItems: () => ([
-      { type: 'ammo', x: 27.5, y: 52.5, amount: 12, bob: 0.4 },
-      { type: 'ammo', x: 63.5, y: 39.5, amount: 6, bob: 1.7 },
+      { type: 'ammo', gun: 'rifle', x: 27.5, y: 52.5, amount: 12, bob: 0.4 },
+      { type: 'snack', x: 63.5, y: 39.5, bob: 1.7 },
     ]),
     exits: [
       // the vehicle gate south, and the west breach onto the Underpass
@@ -2063,7 +2072,7 @@ const Areas = {
     indoors: true,
     tint: '#f0d4b0',        // firelight, but the stone still has to read as stone
     makeItems: () => ([
-      { type: 'ammo', x: 6.5, y: 5.5, amount: 6, bob: 0.5 },
+      { type: 'snack', x: 6.5, y: 5.5, bob: 0.5 },
     ]),
     exits: [
       { x0: 4.4, y0: 14.4, x1: 7.6, y1: 16, to: 'fringe', entry: { x: 56.5, y: 69.5 } },
