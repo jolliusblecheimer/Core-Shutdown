@@ -578,8 +578,12 @@ function buildFringe() {
       if (wx < 0 || wx + 6 > MAP_W) continue;
       addBuildingProp({ x0: wx, y0: TUN_Y0, w: 6, h: VIA_Y0 - TUN_Y0, kind: 'W' });
     }
-    // and what closes it: the far end came down, and you can look at it
-    addBuildingProp({ x0: a, y0: TUN_END, w, h: TUN_Y0 - TUN_END, kind: 'W' });
+    // The far end used to be a concrete face — a wall you could look at, which
+    // was the right answer while there was nothing behind it. There is now, so
+    // the tunnel runs on into the dark and the SEAM is the last thing in it:
+    // you walk into black and the screen fades. See the-road-north.md §4.
+    // The tiles beyond stay solid as a backstop the player never reaches.
+    void w;
   }
 
   const deckSpans = [[0, 25], [35, 87], [97, MAP_W - 1]];
@@ -1310,29 +1314,24 @@ function buildFringe() {
                  v: (brng() * 3) | 0, foot: [x, y, 1, 3] });
   }
 
-  // ---------- WHAT CLOSED THE UNDERPASS ----------
-  // The far end is a concrete face, which stops you and can be looked at — but
-  // a clean wall reads as "the map ends here", and the truth is "this came
-  // down". The rubble is the difference between a boundary and a story, and it
-  // is also the thing the next area gets dug out of.
+  // ---------- WHAT IS LEFT IN THE UNDERPASS ----------
+  // These two tunnels were dead ends with a collapse across them. They are
+  // SEAMS now — the spine goes through to the Underpass and the mid street to
+  // Field 12 — so the rubble moved to the SIDES. It is still what a tunnel
+  // under a fallen motorway has in it; it just no longer closes the door the
+  // north expansion is walking through. Nothing goes in the middle three
+  // columns of either mouth: that is the lane, and the exit zone is on it.
   for (const [a, b] of DECK_HOLES) {
+    const mid0 = a + 3, mid1 = b - 3;
     for (let x = a; x <= b; x++) {
-      for (let y = TUN_Y0; y <= TUN_Y0 + 2; y++) {
-        if (solid[y][x] || brng() < 0.55) continue;
+      if (x >= mid0 && x <= mid1) continue;
+      for (let y = TUN_Y0 + 1; y <= TUN_Y0 + 9; y++) {
+        if (solid[y][x] || brng() < 0.62) continue;
         const r = brng();
         solid[y][x] = true;
         props.push({ gx: x, gy: y,
                      type: r < 0.5 ? 'debris' : r < 0.78 ? 'girder' : 'barrelTipped' });
       }
-    }
-    // and a few pieces that got thrown further down the tunnel
-    for (let i = 0; i < 5; i++) {
-      const x = a + ((brng() * (b - a + 1)) | 0);
-      const y = TUN_Y0 + 3 + ((brng() * 7) | 0);
-      const r = brng();
-      if (solid[y][x]) continue;
-      solid[y][x] = true;
-      props.push({ gx: x, gy: y, type: r < 0.6 ? 'debris' : 'barrelTipped' });
     }
   }
 
@@ -1390,6 +1389,225 @@ function buildFringe() {
 // Budget: 192 tiles. 27 go to the two real walls, 27 to the kerb, ~34 to
 // furniture and piers. That leaves a bit over a hundred to walk on, which is
 // what stops a camp from being a warehouse full of crates.
+// =====================================================================
+// AREA 5 — THE UNDERPASS, and AREA 6 — FIELD 12
+// The north expansion. design/expansion-build-spec.md is the plan; this is
+// E1-E3 of it: the two seams, the airfield's ground and fence, and the
+// structures. The drones, the beacon, the Lamp's people and the quests are
+// E4-E8 and are NOT here.
+//
+// THE LOOP. Up the spine you come out in the Underpass; up the mid street you
+// come out on the airfield. They join, so neither way round is the wrong one.
+// =====================================================================
+const UNDER_W = 20, UNDER_H = 36;
+const F12_W = 96, F12_H = 72;
+
+// ---------------------------------------------------------------------
+// THE UNDERPASS — 20 x 36. A corridor, and every tile of it is tunnel,
+// bay or wall. The Lamp's people are E6; this builds the room they stand in.
+// ---------------------------------------------------------------------
+function buildUnderpass() {
+  const rng = mulberry32(9143);
+  resetMap(UNDER_W, UNDER_H, rng);
+  const W = MAP_W, H = MAP_H;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    ground[y][x] = 16;                       // tunnel floor, same as the mouths
+    groundVar[y][x] = (rng() * 6) | 0;
+  }
+  // The walls are the tunnel. Two runs of concrete volumes down the sides, and
+  // the north end sealed — Ring 4 goes there and does not exist yet.
+  for (let y = 0; y < H; y += 6) {
+    const h = Math.min(6, H - y);
+    addBuildingProp({ x0: 0, y0: y, w: 4, h, kind: 'W' });
+    addBuildingProp({ x0: W - 4, y0: y, w: 4, h, kind: 'W' });
+  }
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const wall = x < 4 || x >= W - 4 || y < 4;
+    solid[y][x] = wall; heavy[y][x] = wall;
+  }
+  // the north end: rubble against the wall, so what stops you is a thing
+  addBuildingProp({ x0: 4, y0: 0, w: W - 8, h: 4, kind: 'W' });
+  for (let x = 5; x < W - 5; x++) {
+    if (rng() < 0.5) continue;
+    solid[4][x] = true;
+    props.push({ gx: x, gy: 4, type: rng() < 0.55 ? 'debris' : 'girder' });
+  }
+  // THE SERVICE BAY — a maintenance recess in the west wall. E6 puts Wren and
+  // Oz in it; for now it is the shape, so the corridor is not just a corridor.
+  for (let y = 8; y <= 13; y++) for (let x = 4; x <= 9; x++) {
+    solid[y][x] = false; heavy[y][x] = false;
+    ground[y][x] = 18;                       // poured slab, not road
+  }
+  addBuildingProp({ x0: 0, y0: 6, w: 4, h: 2, kind: 'W' });
+  // THE DEAD CAR — the one obstacle, and the only cover if anything follows
+  // you in. Along the tunnel, so it takes its 'y' variant.
+  props.push({ gx: 9, gy: 24, type: 'car', v: 2, dir: 'y', foot: [9, 23, 1, 3] });
+  for (let i = 0; i < 3; i++) solid[23 + i][9] = true;
+  // dressing: drums and debris down the length, never in the middle three lanes
+  for (let i = 0; i < 22; i++) {
+    const x = 4 + ((rng() * (W - 8)) | 0), y = 5 + ((rng() * (H - 8)) | 0);
+    if (x >= 8 && x <= 11) continue;
+    if (solid[y][x] || (x >= 4 && x <= 9 && y >= 8 && y <= 13)) continue;
+    const r = rng();
+    solid[y][x] = true;
+    props.push({ gx: x, gy: y, type: r < 0.4 ? 'debris' : r < 0.7 ? 'barrelTipped' : 'girder' });
+  }
+  for (let i = 0; i < 90; i++) {
+    const x = 4 + rng() * (W - 8), y = 4 + rng() * (H - 5);
+    if (solid[y | 0][x | 0]) continue;
+    decals.push({ gx: x, gy: y, type: rng() < 0.45 ? 'crack' : 'stain' });
+  }
+  // standing water where the deck leaks
+  for (const [px2, py2] of [[10.4, 18.2], [13.6, 27.4], [6.6, 30.8], [12.2, 8.6]])
+    decals.push({ gx: px2, gy: py2, type: 'puddle' });
+  buildAO();
+  buildSpatialIndex();
+}
+
+// ---------------------------------------------------------------------
+// FIELD 12 — 96 x 72. An airfield inside a fence, with its edges paid for.
+// Compare: the Fringe's dead north band was 4,400 tiles of nothing.
+//
+// THE ANGLE RULE runs this whole area. A runway is the largest flat painted
+// surface in the game and every mark on it lies ON the ground, so not one of
+// them is an axis-aligned rectangle — they are built in tile space and
+// projected. See the RUNWAY PAINT block in js/sprites.js.
+// ---------------------------------------------------------------------
+function buildField12() {
+  const rng = mulberry32(120012);
+  resetMap(F12_W, F12_H, rng);
+  const W = MAP_W, H = MAP_H;
+
+  // ---- ground: verge everywhere, then the apron, then the runway ----
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    ground[y][x] = rng() < 0.62 ? 6 : 2;
+    groundVar[y][x] = (rng() * 6) | 0;
+  }
+  const RW_Y0 = 24, RW_Y1 = 30;               // the runway
+  const AP = [[14, 22], [32, 44]];            // apron north and south of it
+  for (let y = 0; y < H; y++) for (let x = 4; x < W - 4; x++) {
+    if (y >= RW_Y0 && y <= RW_Y1) ground[y][x] = 17;
+    else if (AP.some(([a, b]) => y >= a && y <= b)) ground[y][x] = 18;
+  }
+  // the perimeter road, all the way round inside the fence
+  for (let x = 2; x < W - 2; x++) { ground[2][x] = 18; ground[H - 3][x] = 18; }
+  for (let y = 2; y < H - 2; y++) { ground[y][2] = 18; ground[y][W - 3] = 18; }
+
+  // ---- the paint ----
+  // centreline down the runway, three tiles on, two off
+  for (let x = 6; x < W - 8; x += 5) decals.push({ gx: x, gy: RW_Y0 + 3, type: 'rwCentre' });
+  // edge lines, both sides, laid a tile at a time
+  for (let x = 5; x < W - 6; x++) {
+    decals.push({ gx: x, gy: RW_Y0, type: 'rwEdge' });
+    decals.push({ gx: x, gy: RW_Y1, type: 'rwEdge' });
+  }
+  // threshold piano keys at both ends, running ACROSS the runway
+  for (const bx of [5, 6, 7, W - 9, W - 8, W - 7])
+    decals.push({ gx: bx, gy: RW_Y0 + 1.5, type: 'rwBar' });
+  // and the numbers the runway is called by
+  decals.push({ gx: 10, gy: RW_Y0 + 0.2, type: 'rwNum12' });
+  decals.push({ gx: W - 16, gy: RW_Y0 + 0.2, type: 'rwNum30' });
+  // taxiway guide off the apron
+  for (let y = 16; y < RW_Y0; y++) decals.push({ gx: 46, gy: y, type: 'rwGuide' });
+
+  // ---- THE FENCE, and two ways through it ----
+  // The junkyard's own chain-link, already proven. Two openings and no others;
+  // the flood fill in the verification note is what says so.
+  const GATE_X0 = 44, GATE_X1 = 48;           // vehicle gate, south
+  const BREACH_Y0 = 44, BREACH_Y1 = 48;       // west breach
+  const run = (tiles, axis) => {
+    if (!tiles.length) return;
+    wallRun(tiles, fenceKinds(tiles.length), axis, false, true, true);
+    for (const [x, y] of tiles) { solid[y][x] = true; heavy[y][x] = true; }
+  };
+  const rowX = (y, x0, x1) => Array.from({ length: x1 - x0 + 1 }, (_, i) => [x0 + i, y]);
+  const colY = (x, y0, y1) => Array.from({ length: y1 - y0 + 1 }, (_, i) => [x, y0 + i]);
+  run(rowX(0, 0, W - 1), 'x');
+  run(rowX(H - 1, 0, GATE_X0 - 1), 'x');
+  run(rowX(H - 1, GATE_X1 + 1, W - 1), 'x');
+  run(colY(0, 0, BREACH_Y0 - 1), 'y');
+  run(colY(0, BREACH_Y1 + 1, H - 1), 'y');
+  run(colY(W - 1, 0, H - 1), 'y');
+  // the gate's own posts, and the chain that was cut lying in the grass
+  props.push({ gx: GATE_X0 - 1, gy: H - 1, type: 'post', big: true });
+  props.push({ gx: GATE_X1 + 1, gy: H - 1, type: 'post', big: true });
+  // the breach: the fence went down outwards and a path is worn through it
+  for (let y = BREACH_Y0; y <= BREACH_Y1; y++) ground[y][1] = 2;
+
+  // ---- THE STRUCTURES ----
+  const box = (x0, y0, w, h, kind) => {
+    for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) {
+      if (x < 0 || y < 0 || x >= W || y >= H) continue;
+      solid[y][x] = true; heavy[y][x] = true; ground[y][x] = 2;
+    }
+    addBuildingProp({ x0, y0, w, h, kind });
+  };
+  const door = (x0, x1, y) => {
+    for (let x = x0; x <= x1; x++) { solid[y][x] = false; heavy[y][x] = false; ground[y][x] = 18; }
+  };
+  box(6, 5, 15, 9, 'A');                       // HANGAR 1 — the nest
+  door(12, 15, 13);
+  box(50, 5, 15, 9, 'A');                      // HANGAR 2 — the store
+  door(57, 57, 13);                            // half-open: one tile passable
+  box(80, 5, 8, 9, 'O');                       // the control tower
+  door(83, 84, 13);
+  // blast pens: three-sided, opening north
+  for (const px2 of [12, 34]) {
+    box(px2, 38, 10, 2, 'W');                  // the back wall
+    box(px2, 34, 2, 4, 'W');                   // and the two arms
+    box(px2 + 8, 34, 2, 4, 'W');
+  }
+  box(8, 50, 12, 7, 'G');                      // crash tender shed
+  door(19, 19, 53);
+
+  // fuel bowsers — four tankers, and every one of them goes up
+  for (let i = 0; i < 4; i++) {
+    const bx = 62 + i * 4;
+    if (bx + 2 >= W) break;
+    for (let k = 0; k < 3; k++) solid[36][bx + k] = true;
+    props.push({ gx: bx + 1, gy: 36, type: 'bus', dir: 'x', foot: [bx, 36, 3, 1] });
+    boomBarrels.push({ gx: bx + 1, gy: 36, dead: false, r: 3 });
+  }
+  // THE WRECK — the news drone that came down on the runway, and the thing
+  // the whole area is about. Work lamps still standing round it.
+  for (let y = 26; y <= 28; y++) for (let x = 44; x <= 48; x++) solid[y][x] = true;
+  props.push({ gx: 46, gy: 27, type: 'wreckDrone', foot: [44, 26, 5, 3] });
+  for (const [lx, ly] of [[42, 25], [49, 25], [46, 30]]) {
+    if (solid[ly][lx]) continue;
+    solid[ly][lx] = true;
+    props.push({ gx: lx, gy: ly, type: 'workLamp' });
+  }
+  // dead floodlight masts along the apron — unlit, every one of them
+  for (const [lx, ly] of [[26, 16], [44, 16], [62, 16], [26, 44], [44, 44], [70, 44]]) {
+    if (solid[ly][lx]) continue;
+    solid[ly][lx] = true;
+    props.push({ gx: lx, gy: ly, type: 'apronLamp' });
+  }
+  // the windsock, still turning, and the only thing that moves in the wind
+  solid[20][90] = true;
+  props.push({ gx: 90, gy: 20, type: 'windsock' });
+
+  // ---- dressing ----
+  const free = (x, y) => x > 3 && y > 3 && x < W - 3 && y < H - 3 &&
+                         !solid[y][x] && !heavy[y][x] && ground[y][x] !== 17;
+  for (let i = 0; i < 46; i++) {
+    const x = 4 + ((rng() * (W - 8)) | 0), y = 4 + ((rng() * (H - 8)) | 0);
+    const r = rng();
+    if (!free(x, y)) continue;
+    solid[y][x] = true;
+    props.push({ gx: x, gy: y, type: r < 0.3 ? 'crate' : r < 0.55 ? 'barrel'
+                              : r < 0.75 ? 'barrelTipped' : r < 0.9 ? 'debris' : 'girder' });
+  }
+  for (let i = 0; i < 700; i++) {
+    const x = 1 + rng() * (W - 2), y = 1 + rng() * (H - 2);
+    const r = rng();
+    if (solid[y | 0][x | 0]) continue;
+    decals.push({ gx: x, gy: y, type: r < 0.42 ? 'crack' : r < 0.74 ? 'weed' : 'stain' });
+  }
+  buildAO();
+  buildSpatialIndex();
+}
+
 const CAND_W = 12, CAND_H = 16;
 function shellWalls(doorX0, doorX1) {
   const W = MAP_W, H = MAP_H;
@@ -1763,6 +1981,11 @@ const Areas = {
     exits: [
       { x0: 196.4, y0: 117.6, x1: 201, y1: 122.4, to: 'junkyard', entry: { x: 29.6, y: 12.5 } },
       { x0: 54.8, y0: 66.3, x1: 57.2, y1: 67.95, to: 'candlelight', entry: { x: 5.5, y: 13.4 } },
+      // THE TWO SEAMS NORTH. Not doors with a prompt: you walk up a tunnel into
+      // the dark and the screen fades. The spine comes out in the Underpass and
+      // the mid street on the airfield.
+      { x0: 28.4, y0: 12.4, x1: 32.6, y1: 15.6, to: 'underpass', entry: { x: 10.5, y: 31.5 } },
+      { x0: 90.4, y0: 12.4, x1: 94.6, y1: 15.6, to: 'field12', entry: { x: 46.5, y: 67.5 } },
     ],
   },
   // THE PROLOGUE. A real area, not a set of painted cards — which is the whole
@@ -1791,6 +2014,46 @@ const Areas = {
     tint: '#ffe6c4',        // evening, and every window still lit
     makeItems: () => ([]),
     exits: [],
+  },
+  // ---- THE NORTH EXPANSION ----
+  // Both sit north of the Fringe on the world map and neither overlaps it or
+  // the other: the Underpass is the narrow one at x 20-40, Field 12 the wide
+  // one at x 60-156. You reach the Underpass up the spine and the airfield up
+  // the mid street, and they join — so neither way round is the wrong one.
+  underpass: {
+    id: 'underpass', name: 'THE UNDERPASS', build: buildUnderpass,
+    world: { x: 20, y: -38 },
+    safeSpawn: { x: 10.5, y: 30.5 },       // the lane, south of the dead car
+    indoors: true,                          // lit by what comes through the cracks
+    hasScrapper: false, hasBoss: false, hasNpc: false, hasBandits: false,
+    hasDroids: false,
+    tint: '#b9bfc4',                        // wet concrete, and no warmth in it
+    makeItems: () => ([
+      { type: 'ammo', x: 12.5, y: 20.5, amount: 6, bob: 1.1 },
+    ]),
+    exits: [
+      // back down the spine, and on through the east door to the airfield
+      { x0: 7.4, y0: 33.4, x1: 12.6, y1: 35.6, to: 'fringe', entry: { x: 30.5, y: 16.5 } },
+      { x0: 14.4, y0: 9.4, x1: 15.6, y1: 12.6, to: 'field12', entry: { x: 3.5, y: 46.5 } },
+    ],
+  },
+  field12: {
+    id: 'field12', name: 'FIELD 12', build: buildField12,
+    world: { x: 60, y: -74 },
+    safeSpawn: { x: 46.5, y: 66.5 },       // inside the vehicle gate
+    indoors: false, skyline: false,         // NO far-city band: see map-shape.md
+    hasScrapper: false, hasBoss: false, hasNpc: false, hasBandits: false,
+    hasDroids: false,                       // the drones are E4, and not built
+    tint: '#e4e2dc',                        // bleached grey. Not blue.
+    makeItems: () => ([
+      { type: 'ammo', x: 27.5, y: 52.5, amount: 12, bob: 0.4 },
+      { type: 'ammo', x: 63.5, y: 39.5, amount: 6, bob: 1.7 },
+    ]),
+    exits: [
+      // the vehicle gate south, and the west breach onto the Underpass
+      { x0: 43.4, y0: 69.4, x1: 48.6, y1: 71.6, to: 'fringe', entry: { x: 92.5, y: 16.5 } },
+      { x0: 0.4, y0: 44.4, x1: 2.6, y1: 48.6, to: 'underpass', entry: { x: 12.5, y: 10.5 } },
+    ],
   },
   candlelight: {
     id: 'candlelight', name: 'CANDLELIGHT', build: buildCandlelight,

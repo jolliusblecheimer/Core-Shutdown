@@ -3501,3 +3501,42 @@ green. `verifycut` now asserts you can reach y 17 — deep inside the tunnel, no
 just its lip.
 
 The far side of the collapse is still Field 12, which is spec'd and not built.
+
+---
+
+## "Start it" — the north expansion, E0 to E3
+
+Built the first four phases of `design/expansion-build-spec.md`. Two new areas
+and the loop between them.
+
+**E0 — the runway paint, and the spec was wrong.** §2.1 said the markings would
+be `sheared(img, +1)`. A shear maps the u axis and leaves v alone: fine for a
+2px dash, plainly wrong for a 4 × 7-tile runway number. Every mark is built in
+tile space and projected instead, like the cathedral and the viaduct deck — the
+angle rule by construction, with no rectangle anywhere to get wrong. Two
+tunings after looking: opacity 0.55 → 0.34 (it read as freshly repainted), and
+the digit box narrowed because the number spanned 9.5 tiles of a 7-tile runway.
+
+**E1 — the loop closes.** Both viaduct mouths are seams now; the rubble moved to
+the sides and the collapse face came out. Walked in both directions, six hops,
+every one landing on standable ground.
+
+**E2 — the fence holds.** Field 12 is 6,912 tiles, 6,024 walkable from the
+vehicle gate, and with both openings sealed **0 tiles are reachable in either
+opening** — the church-corridor test. Nothing unreachable.
+
+**E3 — it reads as an airfield.** Hangars, tower, blast pens, four bowsers (each
+a `boomBarrel`), the crash tender shed, the wreck with work lamps, six dead
+floodlight masts, the windsock. 392 props against the ~390 estimated.
+
+The style table was wrong first time: hangars and pens went in as the garage and
+*shopfront* styles and came out with glazing and a fascia board. New
+`BUILD_STYLE.A` for the hangars, `W` for the pens. An airfield is not a high
+street.
+
+Frame cost at the wreck 16.66 ms, inside the band the Fringe already sits in.
+All suites green.
+
+**E4–E8 are not built**: the rust drones, the beacon sweep, Wren and Oz in the
+Lamp, and the two quests. Both areas are places you can walk; they are not yet
+levels.

@@ -214,7 +214,7 @@ function outlined(src) {
   // anything you could look at. These are the ground under the three blockers
   // the atlas has specified since it was drawn. See design/finish-the-fringe.md.
   Sprites.ash = []; Sprites.water = []; Sprites.deck = []; Sprites.scorch = [];
-  Sprites.tunnel = [];
+  Sprites.tunnel = []; Sprites.runway = []; Sprites.apron = [];
   for (let i = 0; i < 6; i++) {
     // THE ASHFIELD, west: a tank farm that caught fire on the Longest Night and
     // never went out. THIS TILE HAS TO SAY "FIRE" ON ITS OWN. The first version
@@ -270,6 +270,24 @@ function outlined(src) {
     if (rng() < 0.35) { const r = (rng()*TILE_H)|0; dpx(t.g, 8 + ((rng()*10)|0), r, 4, '#333a45'); }
     if (rng() < 0.20) { const r = (rng()*TILE_H)|0; dpx(t.g, (rng()*26)|0, r, 2, '#3d4550'); }
     Sprites.tunnel.push(t.c);
+
+    // FIELD 12 — the airfield north of the viaduct. Runway asphalt is darker
+    // and smoother than a street: it was laid to one grade and maintained, so
+    // it has no potholes and no kerb, only rubber and weather.
+    const rw = tileBase('#2b2c2e');
+    sprinkle(rw.g, 14, ['#242527', '#313234', '#1f2022']);
+    if (rng() < 0.35) { const r = (rng()*TILE_H)|0; dpx(rw.g, (rng()*24)|0, r, 6, '#26272a'); }
+    if (rng() < 0.18) { const r = (rng()*TILE_H)|0; dpx(rw.g, (rng()*26)|0, r, 3, '#383a3d'); }
+    Sprites.runway.push(rw.c);
+
+    // Apron is poured in slabs, so it is paler, and it is where everything was
+    // parked and spilled.
+    const ap = tileBase('#46474a');
+    sprinkle(ap.g, 22, ['#3c3d40', '#4e4f53', '#353639']);
+    if (rng() < 0.30) { const r = (rng()*TILE_H)|0; dpx(ap.g, (rng()*24)|0, r, 5, '#2f3033'); }
+    if (rng() < 0.22) { const r = (rng()*TILE_H)|0; dpx(ap.g, (rng()*22)|0, r, 4, '#524f46'); }
+    if (rng() < 0.12) { const r = (rng()*TILE_H)|0; dpx(ap.g, (rng()*26)|0, r, 3, '#2a2622'); }
+    Sprites.apron.push(ap.c);
   }
 
   // road paint, laid as decals
@@ -2749,6 +2767,12 @@ function outlined(src) {
     // and nothing on top: it is a wall, not a building with a roof.
     W: { w: '#464440', s: '#363431', t: '#524f4a', r: '#403e3a', re: '#2b2926',
          g: '#1a1a1c', h: 30, blank: true, bare: true },
+    // A — THE HANGARS. An airfield is not a high street: the first pass used
+    // the shop and garage styles and put rows of glazing and a fascia board on
+    // a building whose whole point is that it is one enormous blank shed. Tall,
+    // blank, corrugated, nothing on the roof.
+    A: { w: '#585a55', s: '#45473f', t: '#666860', r: '#4c4e47', re: '#34362f',
+         g: '#1a1c1a', h: 44, blank: true, bare: true },
   };
 
   function poly(g, pts, fill, stroke) {
@@ -3844,6 +3868,96 @@ function outlined(src) {
     Sprites.leanerR = leaner(1);
   })();
 
+  // ---- FIELD 12's own furniture ----------------------------------------
+  (function () {
+    // A DEAD FLOODLIGHT MAST. Unlit, all six of them — the beacon is the only
+    // light on this field and a working lamp would take that away from it.
+    const apronLamp = () => {
+      const c = makeCanvas(14, 46), g = c.getContext('2d');
+      px(g, 6, 6, 3, 39, '#4a4e52');
+      px(g, 6, 6, 1, 39, '#5c6064');
+      px(g, 4, 43, 7, 3, '#3a3e42');
+      for (let i = 0; i < 5; i++) px(g, 5, 12 + i * 7, 5, 1, '#3a3e42');
+      px(g, 2, 2, 11, 5, '#43474b');                 // the head, four dead lamps
+      px(g, 2, 2, 11, 1, '#565a5e');
+      for (let i = 0; i < 4; i++) px(g, 3 + i * 3, 4, 2, 2, '#1c1f22');
+      return outlined(c);
+    };
+    // A WORK LAMP ON A STAND. Somebody was working on the wreck when they
+    // stopped. Also dead — nothing on this field has power.
+    const workLamp = () => {
+      const c = makeCanvas(12, 24), g = c.getContext('2d');
+      px(g, 5, 8, 2, 14, '#5a5348');
+      px(g, 3, 21, 6, 2, '#463f36');
+      px(g, 2, 3, 8, 6, '#7a6f5c');
+      px(g, 2, 3, 8, 1, '#8d8168');
+      px(g, 3, 5, 6, 3, '#2a2622');                  // the glass, gone dark
+      return outlined(c);
+    };
+    // THE WINDSOCK. Torn, still turning, and the only thing on the field that
+    // moves in the wind. The mast is an upright, so it may be drawn straight.
+    const windsock = () => {
+      const c = makeCanvas(26, 44), g = c.getContext('2d');
+      px(g, 4, 4, 2, 38, '#5a5e62');
+      px(g, 2, 40, 6, 2, '#43474b');
+      px(g, 6, 6, 4, 1, '#5a5e62');
+      // the sock itself: five bands, narrowing, and the last one is in ribbons
+      const bands = ['#c4642a', '#d8d2c2', '#c4642a', '#d8d2c2', '#b8551f'];
+      for (let i = 0; i < 5; i++) {
+        const h = 9 - i, y = 5 + ((9 - h) >> 1);
+        px(g, 9 + i * 3, y, 3, h, bands[i]);
+      }
+      px(g, 24, 7, 1, 2, '#b8551f');                 // a strip torn loose
+      px(g, 23, 10, 1, 1, '#b8551f');
+      return outlined(c);
+    };
+    // THE WRECK. A news drone, five tiles by three, one wing folded under it.
+    // Built as an iso volume in tile space, so its hull lies along the runway
+    // by construction — it is the largest thing lying flat in the game.
+    // Weathered, not showroom. It came down a year ago and has been out in it
+    // ever since — the first pass was pale grey and read as a clean airliner
+    // parked on a dark field.
+    const wreckDrone = () => {
+      const L = 5, Wd = 3, BH = 13;
+      const OX = Math.ceil(Wd * 16) + 3, OY = BH + 6;
+      const c = makeCanvas(Math.ceil((L + Wd) * 16) + 6,
+                           Math.ceil((L + Wd) * 8) + BH + 10);
+      const g = c.getContext('2d');
+      const P = (u, v, h) => [(u - v) * 16 + OX, (u + v) * 8 - h + OY];
+      const quad = (u0, v0, u1, v1, h, col) =>
+        isoFill(g, [P(u0, v0, h), P(u1, v0, h), P(u1, v1, h), P(u0, v1, h)], col);
+      const side = (u0, v0, u1, v1, h0, h1, col) =>
+        isoFill(g, [P(u0, v0, h0), P(u1, v1, h0), P(u1, v1, h1), P(u0, v0, h1)], col);
+      // the folded wing, flat on the deck and bent back under the hull
+      quad(0.4, 2.1, 4.2, 2.9, 1, '#4a4c50');
+      quad(0.4, 2.1, 4.2, 2.3, 1, '#565a5e');
+      // the fuselage
+      side(0.3, 1.9, 4.6, 1.9, 1, BH, '#60635a');           // the lit flank
+      side(0.3, 0.6, 4.6, 0.6, 1, BH, '#42443f');
+      quad(0.3, 0.6, 4.6, 1.9, BH, '#6a6d63');              // the spine
+      quad(0.6, 0.85, 4.3, 1.65, BH + 1, '#5a5d55');
+      // burst panels, and the dark inside where they came off
+      quad(1.2, 0.9, 2.0, 1.6, BH + 1, '#2b2d30');
+      quad(3.1, 1.0, 3.6, 1.5, BH + 1, '#232528');
+      // the nose, crushed
+      side(4.6, 0.6, 4.6, 1.9, 1, BH - 4, '#3b3e3a');
+      quad(4.2, 0.6, 4.8, 1.9, BH - 5, '#51544c');
+      // the other wing, snapped off and lying beside it
+      quad(1.4, -0.9, 3.6, -0.2, 1, '#4d5049');
+      quad(1.4, -0.9, 3.6, -0.7, 1, '#585b53');
+      // a rotor boom, still up
+      side(3.4, 1.2, 3.4, 1.2, BH, BH + 9, '#3a3d39');
+      quad(2.9, 0.9, 3.9, 1.5, BH + 9, '#494c46');
+      const out = outlined(c);
+      out.ox = OX + 1; out.oy = OY + 1;
+      return out;
+    };
+    Sprites.apronLamp = apronLamp();
+    Sprites.workLamp = workLamp();
+    Sprites.windsock = windsock();
+    Sprites.wreckDrone = wreckDrone();
+  })();
+
   // ---- THE M7 GANTRY ---------------------------------------------------
   // The map had no INWARD: nothing on it said which way the Core was. This is
   // the answer — a sign gantry over the spine, still carrying the board that
@@ -4050,6 +4164,62 @@ function outlined(src) {
     };
     Sprites.decals.silt = silt(1);
     Sprites.decals.siltY = silt(-1);
+
+    // ================= RUNWAY PAINT =================
+    // Ninety tiles of markings is the largest flat surface this project has
+    // ever painted, and flat rectangles pasted on an iso floor is its most
+    // repeated bug. So none of this is a rectangle that gets sheared: every
+    // mark is built in TILE SPACE — u along world +x, v along world +y — and
+    // projected through Q(). A shear maps the u axis correctly and leaves v
+    // alone, which is fine for a 2px dash and visibly wrong for anything with
+    // width. Runway numbers have width.
+    const paint = (wT, hT, marks, col) => {
+      const cw = Math.ceil((wT + hT) * 16) + 4, ch = Math.ceil((wT + hT) * 8) + 6;
+      const c = makeCanvas(cw, ch), g = c.getContext('2d');
+      const OX = Math.ceil(hT * 16) + 2;
+      const Q = (u, v) => [(u - v) * 16 + OX, (u + v) * 8 + 2];
+      for (const [u0, v0, u1, v1, cc] of marks) {
+        isoFill(g, [Q(u0, v0), Q(u1, v0), Q(u1, v1), Q(u0, v1)], cc || col);
+      }
+      const out = c;
+      out.ox = OX; out.oy = 2;
+      return out;
+    };
+    // A YEAR OLD, NOT REPAINTED. The first pass was at 0.55 and read as fresh
+    // white lines on an airfield nobody has swept since the Correction.
+    const PW = 'rgba(206,201,184,0.34)';
+    // centreline: one dash, three tiles long and a third of a tile wide
+    Sprites.decals.rwCentre = paint(3, 1, [[0, 0.34, 3, 0.66]], PW);
+    // edge line: continuous, laid a tile at a time
+    Sprites.decals.rwEdge   = paint(1, 1, [[0, 0.38, 1, 0.62]], PW);
+    // threshold "piano keys": bars that run ACROSS the runway, so they are long
+    // in v and short in u — the other diagonal, by construction and not by flag
+    Sprites.decals.rwBar    = paint(1, 4, [[0.30, 0, 0.70, 4]], PW);
+    // taxiway guide line, in yellow, the one warm mark on the field
+    Sprites.decals.rwGuide  = paint(1, 1, [[0, 0.40, 1, 0.60]], 'rgba(196,168,72,0.5)');
+    // the numbers. Strokes in a 3x5 glyph box, scaled to 4x6 tiles, laid on
+    // their side the way a runway number is read from the approach.
+    const DIGIT = {
+      0: [[0,0,3,1],[0,4,3,5],[0,0,1,5],[2,0,3,5]],
+      1: [[1,0,2,5],[0,0,2,1],[0,4,3,5]],
+      2: [[0,0,3,1],[2,0,3,3],[0,2,3,3],[0,2,1,5],[0,4,3,5]],
+      3: [[0,0,3,1],[0,2,3,3],[0,4,3,5],[2,0,3,5]],
+    };
+    const number = (a, b2) => {
+      const marks = [];
+      // A RUNWAY NUMBER HAS TO FIT ON THE RUNWAY. At 6/3 the two digits spanned
+      // nine and a half tiles across a seven-tile strip and ran off both sides.
+      const SU = 4 / 5, SV = 1;                    // glyph rows -> u, cols -> v
+      [a, b2].forEach((d, i) => {
+        for (const [gx0, gy0, gx1, gy1] of DIGIT[d]) {
+          // glyph y runs along u (down the runway), glyph x runs across it
+          marks.push([gy0 * SU, i * 3.6 + gx0 * SV, gy1 * SU, i * 3.6 + gx1 * SV]);
+        }
+      });
+      return paint(4, 7, marks, PW);
+    };
+    Sprites.decals.rwNum12 = number(1, 2);
+    Sprites.decals.rwNum30 = number(3, 0);
   })();
 
   // =====================================================================

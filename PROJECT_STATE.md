@@ -623,6 +623,31 @@ a block sealing the mid tunnel eight tiles in. `placeBuilding` refuses ground 4,
 the lamp-post pass — 9 of 67 burnt props drew zero pixels. Any pass that stands
 something up on this map needs `behindSomethingTall` + `coveredByABlock`.
 
+### THE NORTH EXPANSION — E0 to E3 built
+`design/expansion-build-spec.md` §15 is the record. Two new areas, and the loop
+between them closes:
+
+- **THE UNDERPASS** (20 × 36) — up the spine, through the tunnel. A corridor with
+  a service bay cut into its west wall, a dead car, leaks and rubble. **The bay
+  is empty**: Wren and Oz are E6.
+- **FIELD 12** (96 × 72) — up the mid street, or east out of the Underpass. A
+  runway, two aprons, two hangars, a control tower, two blast pens, four fuel
+  bowsers, the crash tender shed, the wreck, six dead floodlight masts and a
+  windsock. 6,024 walkable tiles, 392 props. **No drones and no beacon** — E4/E5.
+- **Both viaduct mouths are seams now**, not dead ends. You walk up a tunnel into
+  the dark and the screen fades.
+
+**RUNWAY PAINT IS NOT SHEARED.** The spec said `sheared(img, +1)`; that maps the
+u axis and leaves v alone, which is invisible on a dash and plainly wrong on a
+4 × 7-tile runway number. Every mark is built in tile space and projected
+through `Q(u, v)` — `paint()` in `js/sprites.js`. Decals may now carry their own
+`ox`/`oy` anchor. **Use `paint()` for anything wider than a line.**
+
+**An airfield is not a high street.** The hangars and blast pens first went in as
+the garage and shopfront styles and came out with rows of glazing and a fascia
+board. `BUILD_STYLE.A` (tall blank corrugated) and `W` (retaining wall) exist for
+buildings whose point is that they are blank.
+
 ### Outstanding
 - Crash barriers along the spine's edges (F4) — not built; ~200 props for what
   the gantries already say.

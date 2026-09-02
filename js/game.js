@@ -264,7 +264,8 @@ function buildTilesets() {
   // the Fringe's three edges — see design/finish-the-fringe.md
   TILESETS[12] = Sprites.ash;    TILESETS[13] = Sprites.water;
   TILESETS[14] = Sprites.deck;  TILESETS[15] = Sprites.scorch;
-  TILESETS[16] = Sprites.tunnel;
+  TILESETS[16] = Sprites.tunnel; TILESETS[17] = Sprites.runway;
+  TILESETS[18] = Sprites.apron;
 }
 buildTilesets();
 
@@ -1709,7 +1710,15 @@ function render() {
     const img = Sprites.decals[d.type];
     if (!img) continue;
     const s = isoToScreen(d.gx, d.gy);
-    ctx.drawImage(img, Math.round(s.x - ox - img.width / 2), Math.round(s.y - oy - img.height / 2));
+    // Most decals are small and centred on their tile. The runway paint is
+    // built in tile space and carries its own anchor — the point in the image
+    // that IS (gx, gy) — because a four-by-seven-tile number has no meaningful
+    // centre to hang off.
+    if (img.ox !== undefined) {
+      ctx.drawImage(img, Math.round(s.x - ox - img.ox), Math.round(s.y - oy - img.oy));
+    } else {
+      ctx.drawImage(img, Math.round(s.x - ox - img.width / 2), Math.round(s.y - oy - img.height / 2));
+    }
     if (d.type === 'puddle') {
       addLight(s.x - ox, s.y - oy, 0, 8, '160,185,230',
         0.07 + 0.05 * Math.sin(gameTime * 1.7 + d.gx * 3));
@@ -1723,7 +1732,8 @@ function render() {
   for (const p of gatherNear(propCells, vx0 - 14, vy0 - 14, vx1 + 10, vy1 + 10, [])) {
     const s = isoToScreen(p.gx + 0.5, p.gy + 0.5);
     // volumes sort by their south corner: anything in front of that draws over
-    const depth = (p.type === 'building' || p.type === 'canopy' || p.type === 'gantry')
+    const depth = (p.type === 'building' || p.type === 'canopy' || p.type === 'gantry' ||
+                   p.type === 'wreckDrone')
       ? isoToScreen(p.foot[0] + p.foot[2], p.foot[1] + p.foot[3]).y - 1
       : (p.foot ? s.y + (p.foot[2] + p.foot[3]) * 4 : s.y);
     draws.push({ depth, draw: () => drawProp(p, s.x - ox, s.y - oy) });
@@ -2555,6 +2565,20 @@ function drawProp(p, x, y) {
     img = set[p.v % set.length];
     oyOff = img.oy;
     drawShadow(x, y + 1, 14);
+  }
+  else if (T === 'apronLamp') { img = Sprites.apronLamp; oyOff = -46; drawShadow(x, y, 4); }
+  else if (T === 'workLamp')  { img = Sprites.workLamp;  oyOff = -24; drawShadow(x, y, 4); }
+  else if (T === 'windsock') {
+    img = Sprites.windsock; oyOff = -44; drawShadow(x, y, 4);
+  }
+  else if (T === 'wreckDrone') {
+    // five tiles by three, anchored on its own north corner like a building
+    const im = Sprites.wreckDrone;
+    const a = isoToScreen(p.foot[0], p.foot[1]);
+    const bx2 = Math.round(a.x - lastOx - im.ox), by2 = Math.round(a.y - lastOy - im.oy);
+    ctx.drawImage(im, bx2, by2);
+    blocks(bx2, by2, im.width, im.height);
+    return;
   }
   else if (T === 'stump')  { img = Sprites.stump;  oyOff = -19; drawShadow(x, y, 5); }
   else if (T === 'debris') { img = Sprites.debris; oyOff = -13; drawShadow(x, y, 8); }

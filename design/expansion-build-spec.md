@@ -1,7 +1,9 @@
 # THE NORTH EXPANSION — the build spec
 
-**Status: SPEC. Nothing here is built. Needs approval before any code.**
+**Status: E0–E3 BUILT AND SHIPPED. E4–E8 are still spec.**
 Written 2026-09-02 in answer to *"make the expansion plan in extreme detail now."*
+Built 2026-09-02 in answer to *"start it."* See §15 at the bottom for what
+actually landed and where it departed from this document.
 
 Three documents stack here and none of them replaces another:
 
@@ -621,3 +623,90 @@ before. If it costs, the answer is fewer drones, not smaller drones.
 7. **EMP or a thrown consumable.** A flyer is the first enemy that really wants
    one. New system — here, or hold for Ring 4?
 8. **Names.** Field 12, Wren, Osgood, Aldergrove Primary — all still placeholders.
+
+
+---
+
+## 15. BUILT — E0 to E3
+
+*Everything below is measured. E4 (the rust drone), E5 (the beacon), E6 (Wren,
+Oz and `STOCK.wren`), E7 (Q2) and E8 (Q3 and the tower area) are NOT built.*
+
+### E0 — the runway paint, and the one real departure from this spec
+
+§2.1 said the markings would be `sheared(img, +1)`. **They are not, and they
+could not be.** A shear maps the u axis (world +x) correctly and leaves v alone;
+that is invisible on a 2px dash and plainly wrong on anything with width, and a
+runway number is 4 × 7 tiles. Every mark is built in **tile space** and
+projected through a `Q(u, v)` exactly like the cathedral and the viaduct deck —
+so it is the angle rule enforced by construction, with no rectangle anywhere to
+get wrong. `paint(wT, hT, marks, col)` in `js/sprites.js` is the whole thing;
+decals may now carry their own `ox`/`oy` anchor because a seven-tile number has
+no meaningful centre.
+
+Two tunings after looking at it: paint opacity 0.55 → **0.34** (it read as
+freshly repainted on a field nobody has swept in a year), and the digit box
+6/3 → **1** across, because at 6/3 the number spanned 9.5 tiles of a 7-tile
+runway and ran off both sides.
+
+### E1 — the loop closes
+
+Both viaduct mouths are seams now instead of dead ends: the rubble moved to the
+sides of each tunnel and the collapse face came out. Walked end to end, in both
+directions, every hop landing on standable ground:
+
+```
+Fringe --up the spine--> Underpass --east door--> Field 12
+Field 12 --vehicle gate--> Fringe --up the mid street--> Field 12
+Field 12 --west breach--> Underpass --south mouth--> Fringe
+```
+
+World offsets differ from §1.1 (`underpass` at 20,−38 and `field12` at 60,−74)
+because both had to sit north of the Fringe without overlapping it or each
+other on the world map. Checked: no new overlap. Candlelight and the crypt sit
+inside the Fringe's box by design and always have.
+
+### E2 — the fence holds
+
+| | |
+|---|---|
+| Field 12 | 96 × 72 = **6,912 tiles**, **6,024 walkable** from the vehicle gate |
+| **Both openings sealed** | **0 tiles reachable in either opening** — the church-corridor test, passed |
+| Unreachable | none — both hangar doors, the tower, both pens, the bowsers, the shed, the wreck, the windsock, the breach, both runway ends, all items |
+| The Underpass | 20 × 36, **359 walkable**, service bay and east door both reachable |
+
+### E3 — it reads as an airfield
+
+Hangars, tower, two blast pens, four bowsers (each a `boomBarrel` with a 3-tile
+blast), the crash tender shed, the wreck with its work lamps, six dead
+floodlight masts and the windsock. **392 props** against the ~390 this spec
+estimated.
+
+**The style table was wrong the first time.** Hangars and pens went in as `G`
+and `S` — the garage and *shopfront* styles — which put rows of glazing and a
+fascia board on buildings whose whole point is that they are enormous and blank.
+New `BUILD_STYLE.A` (tall blank corrugated) for the hangars, `W` for the pens.
+An airfield is not a high street.
+
+### Frame cost
+
+| | ms |
+|---|---|
+| At the wreck | **16.66** |
+| The apron | 14.12 |
+| The vehicle gate | 13.91 |
+
+Within the band the Fringe already occupies (13.2–16.6). §12 said to measure at
+the wreck *with four drones up* — that measurement waits for E4.
+
+### Suites
+
+`verifycut`, `loop` (every exit landing and zone), `f12` (the fence and
+reachability), `walkloop` (the loop in both directions), `audit2`, `smoke`,
+`hunted`, `live`, `rescue`, `cost` — all green, no console errors.
+
+### Still open
+
+Both areas are **empty of people and enemies**. Field 12 has no drones and no
+beacon; the Underpass has the service bay but nobody in it. That is E4–E6 and it
+is the difference between a place and a level.
