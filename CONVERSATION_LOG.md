@@ -3230,3 +3230,64 @@ than re-cutting a live map to prove it.
 Five open questions, the sharpest being whether taking ~9,000 walkable tiles of
 bare ground away behind fire and water is acceptable. *(My lean: do it — the map
 gets smaller and the world gets bigger.)*
+
+### A plan to finish the Fringe
+**Laurens:** *"Ok make a detailed plan to finish the Fringe."*
+
+`design/finish-the-fringe.md` — idea B1 from `design/map-shape.md`, costed and
+drawn on real coordinates. It adds **no new walkable ground and no new content**;
+it gives the map the four edges it has never had and brings them inward to where
+the content actually stops.
+
+**The fact that settles what kind of problem this is:** solid tiles on the outer
+ring — **north 0, south 0, west 0, east 0.** The Fringe has no edges at all.
+Every boundary is the arithmetic check in `canStand`. You do not walk up to
+anything; you walk until the game stops letting you.
+
+**Every cut was checked against everything the game needs** — POIs, signs, items,
+chests, the workbench, the map table, raiders, droids, the area exits and the
+player's entry — before a line was written:
+
+| edge | region | tiles | walkable | props | verdict |
+|---|---|---|---|---|---|
+| North — **the viaduct** | y 0–21 | 4,400 | 3,157 | 24 | clear |
+| South — **the Grey Run** | y 140–149 | 2,000 | 1,800 | 0 | clear |
+| West — **the Ashfield** | x 0–19 | 3,000 | 2,180 | 10 | clear |
+| East — **the city limit** | x 190–199 except the gate | 1,170 | 992 | 0 | clear |
+
+All four came back `NOTHING — clear to cut`. **Walkable 21,437 → ~13,912**, and
+the share of walkable ground within five tiles of something goes **46.3% →
+58.5%**.
+
+**Where the pass goes matters more than what it draws.** Inserted after the
+street network and before the city blocks, every later pass avoids the dead
+zones for free: `placeBuilding` already refuses solid tiles, so the block filler
+stops generating the 34 props and their buildings, and `placeProp`'s `freeSpot`
+already requires pavement. **The map gets cheaper, not more expensive** — 312
+props down to ~278.
+
+**The M7 gets dressed, not widened.** Re-cutting a 106-tile street's frontage is
+the expensive half of idea A and buys less than the cheap version: three sign
+gantries over the spine, motorway-blue boards reading **`M7 (N) — CITY CENTRE`**
+with an arrow and, hand-painted over the top by somebody, **`DON'T`**. Crash
+barriers instead of kerbs, motorway lane dashes. A blue sign naming the
+destination is a stronger *inward* than eight lanes of tarmac, and it costs four
+props and a decal.
+
+**Six phases, each lookable-at**, and F1 — the cut in placeholder grey, no art at
+all — is worth shipping on its own: it carries all the risk, and everything after
+it is art on top of a proven cut. F3/F5/F6 stay local-first per CLAUDE.md.
+
+**A migration bug this exposed.** A live save can be standing inside what is
+about to become fire. `applySave` rescues an out-of-bounds player — but
+`findSafeSpot` searches a radius of **8 tiles** and then gives up, and the
+fallback is the map's centre, which happens to be on the east cross and happens
+to work. **It works by luck, and luck is not a migration.** Two small fixes: walk
+the search outward to 64, and give each area an explicit `safeSpawn` instead of
+guessing at `MAP_W / 2`.
+
+Five open questions, the first being whether losing 7,525 walkable tiles of bare
+ground is acceptable at all. *(My lean: yes.)* The second is whether to cut the
+underpass mouth in the viaduct now as the future seam — *(my lean: yes; a tunnel
+you cannot enter yet is a promise, a wall you later knock a hole in is a
+demolition.)*
