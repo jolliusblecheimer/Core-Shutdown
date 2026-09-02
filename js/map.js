@@ -1346,7 +1346,12 @@ function buildPrologue() {
 const Areas = {
   junkyard: {
     id: 'junkyard', name: 'THE JUNKYARD', build: buildJunkyard,
-    world: { x: 206, y: 106 },
+    // The Fringe is 200 wide, so this sits the yard three tiles off its east
+    // edge — close enough that the one gate pin, at Fringe 197,120, lands in the
+    // seam between the two and reads as the door it is, and far enough that the
+    // two districts still read as two. The y is what lines the gate rows up:
+    // the yard's gate row (12) lands at world 118, the Fringe's at 120.
+    world: { x: 203, y: 106 },
     hasScrapper: true, hasBoss: true, hasNpc: true,
     tint: '#e6c092',
     makeItems: () => ([
@@ -1453,10 +1458,14 @@ const POIS = [
   // anywhere in the game — and the Fringe side spent its second sentence on
   // Marek's counter instead of saying where the gate goes. A pin on a map has
   // one job: say what is on the other side, and what it costs to get there.
-  { id: 'yardgate', area: 'junkyard', x: 30.5, y: 12.5, kind: 'gate',
-    name: 'THE YARD GATE', blurb: "The way east out of the junkyard. Marek keeps the key. Past it the old ring road runs on into the Fringe." },
-  { id: 'yardgate-f', area: 'fringe', x: 197, y: 120, kind: 'gate',
-    name: 'THE YARD GATE', blurb: "The way west back into the junkyard, and Marek's counter at the far end of it." },
+  // ONE DOOR, ONE PIN. There were two of these, one anchored in each area, and
+  // on the world map they came out as two gates on opposite OUTER sides with
+  // both districts in between — the yard's pin sat at world x 236, its far
+  // side, pointing away from the Fringe it opens onto. A door is a single place
+  // that two areas share, so it is pinned once, on the seam, and its blurb
+  // names both sides instead of reading as a one-way trip.
+  { id: 'yardgate', area: 'fringe', x: 197, y: 120, kind: 'gate',
+    name: 'THE YARD GATE', blurb: "The one way between Marek's yard and the ring road. His counter is on the one side of it, and the road west into the Fringe on the other." },
   { id: 'stmartins', area: 'fringe', x: 56, y: 60, kind: 'camp',
     name: 'CANDLELIGHT', travel: { x: 56.5, y: 69.5 },
     blurb: "St Martin's, and people living in it. Fires, a medbay, a map of the ring drawn by the people who walked it." },

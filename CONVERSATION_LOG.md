@@ -2939,3 +2939,27 @@ props, and not a bug. And no lamp is "floating" (base hidden, head showing),
 which would read as one bolted to a wall: checked separately, none.
 
 The bugcheck and systems suites still come back clean, with no console output.
+
+### One gate, one pin, on the seam
+**Laurens:** *"On the map, the junkyard gate is there twice, just make it like
+one connection in the right spot."*
+
+There were two `THE YARD GATE` pins, one anchored in each area — and neither was
+in the right place. A door is a single thing that two areas share, but each side
+had been given its own entry, so the world map drew them on opposite **outer**
+edges with both districts in between: the yard's pin at world x 236, its far
+side, pointing away from the Fringe it opens onto.
+
+One pin now, anchored on the Fringe at the gate tile, with a blurb that names
+both sides instead of reading as a one-way trip. And the junkyard's world offset
+moved from x 206 to 203, so the yard sits three tiles off the Fringe's east edge
+and the pin lands in the gap between the two thumbnails: the Fringe ends at
+screen x 169, the yard starts at 170, and the gate is at 166. It reads as the
+door it is. Framed on the yard it is still on screen, just outside the yard's
+own rectangle — which is exactly where the gate is.
+
+(The y offset was already right and stays: 106 puts the yard's gate row at world
+118 against the Fringe's 120.)
+
+Verified with the map open at ring scale and framed on the junkyard, the pin
+clicked to read its blurb, and the systems and map-input suites clean.
