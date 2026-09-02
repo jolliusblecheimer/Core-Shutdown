@@ -159,8 +159,8 @@ and currently runs 0–11.
 
 | id | name | where | look |
 |---|---|---|---|
-| **15** | `runway` | y 24–30, x 4–92 | Dark asphalt, rubber-streaked at both thresholds, centreline dashes as decals |
-| **16** | `apron` | y 14–22 and y 32–44 | Paler concrete in slabs, oil stains, expansion joints |
+| **16** | `runway` | y 24–30, x 4–92 | Dark asphalt, rubber-streaked at both thresholds, centreline dashes as decals |
+| **17** | `apron` | y 14–22 and y 32–44 | Paler concrete in slabs, oil stains, expansion joints |
 | **6** | `verge` *(existing)* | everywhere else inside the fence | Grass through cracks — the overgrowth motif on concrete |
 
 **THE ANGLE RULE applies to every marking.** Centreline dashes, threshold bars,
@@ -243,7 +243,7 @@ and every tile of it is either tunnel, bay or wall.
 
 | | |
 |---|---|
-| **Ground** | New id **17** `tunnel` — wet concrete, puddles, tyre-polished centre |
+| **Ground** | New id **18** `tunnel` — wet concrete, puddles, tyre-polished centre |
 | **Light** | Three shafts through cracks in the deck at y 6, 17, 28 — the only daylight. The Lamp's drum fire is the only other source, and it is the warmest thing in three areas |
 | **Sound** | Drips on a timer, and everything else muffled. The wind from Field 12 stops the moment you are inside |
 | **The service bay** | x 5–14, y 8–13. Was a maintenance recess. Tarp, drum fire, two crates, a kettle, a hand-cart |
@@ -509,7 +509,7 @@ Unique keepables only. **Never the ammunition** — you cannot tell "spent it" f
 
 | | Sprite | Notes |
 |---|---|---|
-| **Ground** | `runway`, `apron`, `tunnel` | ids 15, 16, 17 in `buildTilesets()` — **12/13/14 are taken**: the Fringe's edge pass claimed them for `ash`, `water` and `deck` when the four edges were cut |
+| **Ground** | `runway`, `apron`, `tunnel` | ids 16, 17, 18 in `buildTilesets()` — **12-15 are taken**: the Fringe's edge pass claimed them for `ash`, `water`, `deck` and `scorch` |
 | **Decals** | centreline dash, threshold bar, the numerals `12` and `30`, taxi guide line, tyre streaks | **all sheared** — `sheared(img, +1)` |
 | **Volumes** | `hangar` ×2 variants, `towerBlock`, `revetment` | Pre-rendered volumes. **Never assembled panels** — three attempts failed before that rule |
 | **Props** | `bowser`, `tender`, `wreckDrone`, `workLamp`, `apronLamp`, `windsock`, `tug`, `gantry`, `pallet`, `dictaphone`, `deadCrew` | |

@@ -213,16 +213,35 @@ function outlined(src) {
   // side, so you were stopped by the arithmetic in canStand rather than by
   // anything you could look at. These are the ground under the three blockers
   // the atlas has specified since it was drawn. See design/finish-the-fringe.md.
-  Sprites.ash = []; Sprites.water = []; Sprites.deck = [];
+  Sprites.ash = []; Sprites.water = []; Sprites.deck = []; Sprites.scorch = [];
   for (let i = 0; i < 6; i++) {
     // THE ASHFIELD, west: a tank farm that caught fire on the Longest Night and
-    // never went out. Burnt ground, and embers still in it.
-    const a = tileBase('#231d1a');
-    sprinkle(a.g, 30, ['#1a1513', '#2c2320', '#171313', '#332723']);
-    if (rng() < 0.55) { const r = (rng()*TILE_H)|0; dpx(a.g, (rng()*24)|0, r, 3, '#4a2a18'); }
-    if (rng() < 0.30) { const r = (rng()*TILE_H)|0; dpx(a.g, (rng()*26)|0, r, 2, '#7a3a16'); }
-    if (rng() < 0.16) { const r = (rng()*TILE_H)|0; dpx(a.g, (rng()*28)|0, r, 1, '#c9631f'); }
+    // never went out. THIS TILE HAS TO SAY "FIRE" ON ITS OWN. The first version
+    // was charcoal with a few embers in it, and next to a dark road at night it
+    // read as more road — you walked into it and the only thing that told you
+    // anything had changed was that you had stopped. It is coals now: black
+    // crust broken open by orange, bright enough that you would never step on
+    // it by accident.
+    // Density is the whole balance here. Too sparse and it reads as more road,
+    // which is what the first version did; too dense and it reads as lava and
+    // the traveller disappears into it while it is killing them. Mostly black
+    // crust, with heat showing through the cracks.
+    const a = tileBase('#241811');
+    sprinkle(a.g, 30, ['#1a110e', '#301d16', '#120d0b', '#3d2419']);
+    { const r = (rng()*TILE_H)|0; dpx(a.g, (rng()*22)|0, r, 3 + ((rng()*5)|0), '#5e2a0e'); }
+    if (rng() < 0.65) { const r = (rng()*TILE_H)|0; dpx(a.g, (rng()*24)|0, r, 2 + ((rng()*3)|0), '#8a3f12'); }
+    if (rng() < 0.34) { const r = (rng()*TILE_H)|0; dpx(a.g, (rng()*26)|0, r, 2, '#c2601c'); }
+    if (rng() < 0.16) { const r = (rng()*TILE_H)|0; dpx(a.g, (rng()*28)|0, r, 1, '#ffb257'); }
     Sprites.ash.push(a.c);
+
+    // THE SCORCHED BAND: two tiles of ground the fire has already been over,
+    // outside the front. It is the warning — grey road, then this, then coals —
+    // so the fire is announced a step before you are standing in it.
+    const sc = tileBase('#3a352f');
+    sprinkle(sc.g, 30, ['#2c2823', '#454039', '#242019']);
+    if (rng() < 0.7) { const r = (rng()*TILE_H)|0; dpx(sc.g, (rng()*24)|0, r, 4, '#241c16'); }
+    if (rng() < 0.4) { const r = (rng()*TILE_H)|0; dpx(sc.g, (rng()*26)|0, r, 2, '#4e3624'); }
+    Sprites.scorch.push(sc.c);
 
     // THE GREY RUN, south: the river took the lowlands when the pumps died.
     // Black shallow water — the darkest ground in the game, with one cold

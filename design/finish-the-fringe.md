@@ -378,3 +378,64 @@ trips, v1/v2 save migration, thumbs, death/respawn, 20s sim per area) ·
 harness, not the map** — the pin sits in the middle of the cathedral volume and
 the test's 5×5 adjacency window does not reach the parvis. It reports the same
 thing against the untouched pre-build code.
+
+---
+
+## 13. THE FIRE, SECOND PASS — irregular, and you can walk into it
+
+*Laurens played §12 on the live site and said three things: the road was the
+same colour, he could not go more than a bit west, and the Ashfield should be
+irregular and enterable with burn damage. All three are the same problem seen
+from three sides.*
+
+**What was wrong.** The Ashfield was a dead-straight solid column at `x = 19`.
+A fire does not have a ruled edge; and a wall you cannot enter teaches you
+nothing — you walk ten tiles west of the spine, stop against a dark surface the
+same colour as the tarmac you are standing on, and the map has simply ended
+again. That is the box in a different paint.
+
+**The front wanders.** Three sine waves at different frequencies, on their own
+`mulberry32(7717)` so the map builder's stream is untouched, give a boundary
+with real bays and headlands: **x 11–22**, clamped never to pass x 22 because
+the spine's west pavement is x 24–25 and the fire may not touch the road the
+whole map hangs off.
+
+**It is walkable, and it kills.** Six tiles of margin you can step into; the
+heart of it, deeper than that (and always `x ≤ 5`), is still solid — that is
+what bounds the map, and it is never the thing that stops you. **100 HP → 0 in
+7.7 s**, measured: long enough to dart in and back out, far too short to cross.
+Damage deliberately does not go through `hurtPlayer()`, which knocks you back
+and grants i-frames; being shoved around by the ground would fight the player
+for control exactly when they are trying to leave.
+
+**Three bands, so the fire announces itself.** Grey road → **new `scorch`
+ground (id 15)**, two tiles of ground the fire has already been over → coals.
+The ash tile was re-cut as black crust broken open by orange. Density was the
+whole balance: the first attempt read as lava and the traveller *disappeared
+into it while it was killing him*, which is the one thing that must never
+happen. The screen-space glow now peaks at the front and backs off both ways —
+approaching, and again once you are inside, where the ground is already orange.
+
+**And it caught a bug of its own.** The margin is not solid, and `placeBuilding`
+only refused *solid* tiles — so the block filler put **two office blocks in the
+middle of the coals**, plus 15 weed decals. Both passes test `burning` now.
+
+| | §12 | §13 |
+|---|---|---|
+| Ash boundary | straight line, x 19 | wanders x 11–22 |
+| Ash tiles | all solid | 6-tile walkable margin, solid heart |
+| Walkable from the gate | 14,423 | **15,167** (+744, all of it lethal) |
+| Reachable outside the box, not burning | 5 | **5** |
+| Outer ring solid | 200/200 · 200/200 · 150/150 · 150/150 | **unchanged** |
+| Props | 399 | **399** |
+| Frame cost, five spots (ms) | 14.83 / 14.04 / 14.00 / 14.71 / 13.33 | 14.67 / 16.61 / 14.74 / 15.04 / 14.34 |
+
+`verifycut`, `audit2`, `smoke`, `hunted`, `live`, `cost` all green.
+`verifycut`'s box test was taught the difference between a hole in the map and
+a margin that is reachable on purpose because it is lethal.
+
+**One thing left honest.** West of the spine is still a thin strip — 6 to 15
+tiles depending on the row, and on some rows city blocks reach the pavement. §3
+cut that ground deliberately because nothing was ever out there. The fire makes
+it *interesting* rather than *bigger*; if the west should actually be walkable
+territory, that is a different job from this one.

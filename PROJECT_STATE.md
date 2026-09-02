@@ -571,6 +571,15 @@ could look at, you were stopped by `x > 1 && x < MAP_W - 1` inside `canStand`.
 - **Saves survive it.** `findSafeSpot` reached 8 tiles and gave up — the Ashfield
   is twenty columns deep. It reaches 44 now, and every area names a `safeSpawn`
   instead of falling through to the middle of the map.
+- **THE FIRE IS NOT A WALL.** Second pass, after playing it: the Ashfield's front
+  **wanders** (x 11–22, three sine waves on `mulberry32(7717)` — its own stream)
+  and its outer six tiles are **walkable and lethal**. 100 HP burns away in 7.7 s.
+  Only the heart of it is solid, and that is what bounds the map. Three bands so
+  it announces itself: road → `scorch` (ground id 15) → coals. `burning[y][x]` is
+  the grid; `updateBurning()` in `js/game.js` is the tick.
+  **Anything that places something on the map must test `burning`, not just
+  `solid`** — the margin is walkable, so `placeBuilding` put two office blocks in
+  the coals until it did.
 
 **Frame cost is unchanged within noise** (the plan's claim that the cut would
 make the map *cheaper* was wrong — props went 312 → 399), except beside the

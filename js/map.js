@@ -9,6 +9,7 @@ const ground = [];
 const groundVar = [];
 const solid = [];
 const heavy = [];         // walls & mountains — stops even the boss
+const burning = [];       // ground that is ON FIRE — walkable, and it hurts
 let crushProps = {};      // "x,y" -> prop: small junk the Compactor flattens
 const props = [];         // {gx, gy, type, v, dir, front, foot}
 const decals = [];
@@ -60,18 +61,20 @@ function openGate() {
 function resetMap(w, h, rng) {
   MAP_W = w; MAP_H = h;
   ground.length = 0; groundVar.length = 0; solid.length = 0; heavy.length = 0;
+  burning.length = 0;
   props.length = 0; decals.length = 0; moundSpawns.length = 0;
   boomBarrels.length = 0; patrolPoints.length = 0;
   roadblocks = [];
   crushProps = {};
   gateProp = null; SHACK = null;
   for (let y = 0; y < h; y++) {
-    ground[y] = []; groundVar[y] = []; solid[y] = []; heavy[y] = [];
+    ground[y] = []; groundVar[y] = []; solid[y] = []; heavy[y] = []; burning[y] = [];
     for (let x = 0; x < w; x++) {
       ground[y][x] = 0;
       groundVar[y][x] = (rng() * 6) | 0;
       solid[y][x] = false;
       heavy[y][x] = false;
+      burning[y][x] = false;
     }
   }
 }
@@ -368,7 +371,9 @@ let signs = [];   // readable street signs {gx, gy, text}
 // WHERE THE FRINGE STOPS BEING THE FRINGE. Shared by the map builder (which
 // makes these solid) and the renderer (which draws the fire and the water that
 // explain why). See drawEdgeWeather in js/game.js.
-const FRINGE_EDGES = { viaY0: 22, viaY1: 29, ashX1: 19, waterY0: 140 };
+// `front` is filled in by buildFringe: the fire's edge wanders, so the glow has
+// to follow the same per-row boundary the collision uses.
+const FRINGE_EDGES = { viaY0: 22, viaY1: 29, ashX1: 19, waterY0: 140, front: null };
 
 function buildFringe() {
   const rng = mulberry32(20260817);
@@ -440,7 +445,7 @@ function buildFringe() {
   // map table, raider, droid, area exit and the player's own entry point before
   // a line of it was written. All four came back clear.
   // See design/finish-the-fringe.md.
-  const EDGE_ASH = 12, EDGE_WATER = 13, EDGE_DECK = 14;
+  const EDGE_ASH = 12, EDGE_WATER = 13, EDGE_DECK = 14, EDGE_SCORCH = 15;
   // The renderer has to know where these run too — the fire glow and the water
   // are drawn as weather anchored to the fire line and the shore — so the
   // numbers live on the area definition and this pass reads them from there.
@@ -452,14 +457,66 @@ function buildFringe() {
   // of is a promise; a wall you later knock a hole in is a demolition.
   const DECK_HOLES = [[26, 34], [88, 96]];
   const inHole = (x) => DECK_HOLES.some(([a, b]) => x >= a && x <= b);
+
+  // THE FIRE IS NOT A LINE, AND IT IS NOT A WALL.
+  //
+  // First version of this made the Ashfield a dead-straight column at x = 19
+  // and made every tile of it solid. Two things were wrong with that. A fire
+  // does not have a ruled edge — a burn front eats into what it is burning in
+  // bays and tongues — and a wall you cannot enter teaches you nothing: you
+  // walk ten tiles west of the spine, stop against something the same colour
+  // as the road, and the map has simply ended again, which is the box all over
+  // again in a different paint.
+  //
+  // So the front WANDERS, and it is walkable. Three sine waves at different
+  // frequencies give a boundary with real inlets and headlands; you can step
+  // into the fire and it will kill you in about eight seconds, and only the
+  // HEART of it, six tiles deeper, is solid — that is what keeps the map
+  // bounded without ever being the thing that stops you. Outside the front
+  // there is a two-tile band of scorched ground, so the fire announces itself
+  // before you are standing in it.
+  //
+  // ON ITS OWN RNG. This pass runs before the block filler, and the map builder
+  // draws from `rng` in a fixed order — taking numbers out of that stream here
+  // would re-roll every building placed afterwards. See §12 of the plan.
+  const arng = mulberry32(7717);
+  const ph1 = arng() * 6.28, ph2 = arng() * 6.28, ph3 = arng() * 6.28;
+  const BURN_DEPTH = 6;                  // how far into the fire you can walk
+  const CORE_X = 5;                      // and the heart of it, which you cannot
+  const ashFront = new Int16Array(MAP_H);
+  for (let y = 0; y < MAP_H; y++) {
+    const w = Math.sin(y * 0.055 + ph1) * 5.5
+            + Math.sin(y * 0.130 + ph2) * 3.0
+            + Math.sin(y * 0.310 + ph3) * 1.5;
+    // never past x 22: the spine's west pavement is x 24-25 and the fire may
+    // not touch the road the whole map is hung off
+    ashFront[y] = Math.max(10, Math.min(22, Math.round(ASH_X1 + w)));
+  }
+
   for (let y = 0; y < MAP_H; y++) {
     for (let x = 0; x < MAP_W; x++) {
       let g = -1;
-      if (x <= ASH_X1) g = EDGE_ASH;
+      const front = ashFront[y];
+      // THE DECK AND THE WATER WIN THEIR ROWS. The fire is the WEST FLANK, and
+      // it runs between them — if it were allowed to claim the top and bottom
+      // bands too, its walkable margin would run north past the viaduct and
+      // south into the Grey Run, and the rim of the map would stop being solid.
+      if (y <= VIA_Y1) g = EDGE_DECK;
       else if (y >= WATER_Y0) g = EDGE_WATER;
-      else if (y <= VIA_Y1) g = EDGE_DECK;
+      else if (x <= front) g = EDGE_ASH;
+      else if (x <= front + 2 && ground[y][x] !== 4 && ground[y][x] !== 5) g = EDGE_SCORCH;
       if (g < 0) continue;
+      // the scorched band is a warning, not a blocker: normal ground, new paint
+      if (g === EDGE_SCORCH) { ground[y][x] = g; continue; }
       ground[y][x] = g;
+      if (g === EDGE_ASH) {
+        // you may walk into the fire. You may not walk through it.
+        burning[y][x] = true;
+        const core = x <= CORE_X || x <= front - BURN_DEPTH;
+        solid[y][x] = core;
+        heavy[y][x] = core;
+        continue;
+      }
       // the mouths are the one place under the deck you may stand
       const open = g === EDGE_DECK && y >= VIA_Y0 && inHole(x);
       solid[y][x] = !open;
@@ -475,6 +532,10 @@ function buildFringe() {
   // Buildings are single pre-rendered volumes here and this is the same thing:
   // one per section, never assembled panels — three attempts at panels failed
   // before that rule existed.
+  // the renderer draws the fire's glow along this front, so it has to be the
+  // same front the collision uses — one array, published once
+  FRINGE_EDGES.front = ashFront;
+
   const deckSpans = [[0, 25], [35, 87], [97, MAP_W - 1]];
   for (const [sx, ex] of deckSpans) {
     for (let x = sx; x <= ex; x += 12) {
@@ -493,8 +554,12 @@ function buildFringe() {
         // 7 = forecourt: ground already claimed by a landmark that needs its
         // open space (the gas station). Buildings dropped on it used to stand
         // underneath the canopy — that was the grey slab floating over the road.
+        // NOTHING STANDS IN THE FIRE. The Ashfield's margin is deliberately not
+        // solid — you are meant to be able to walk into it — and this filler
+        // refuses solid tiles, so without the `burning` test it happily put
+        // two office blocks in the middle of the coals.
         const gt = ground[y][x];
-        if (gt === 4 || gt === 5 || gt === 7 || solid[y][x]) return false;
+        if (gt === 4 || gt === 5 || gt === 7 || solid[y][x] || burning[y][x]) return false;
       }
     for (let y = y0; y < y0 + h; y++)
       for (let x = x0; x < x0 + w; x++) { solid[y][x] = true; heavy[y][x] = true; ground[y][x] = 2; }
@@ -1100,8 +1165,8 @@ function buildFringe() {
   // ---------- ground dressing ----------
   for (let i = 0; i < 900; i++) {
     const x = 1 + rng() * (MAP_W - 2), y = 1 + rng() * (MAP_H - 2);
-    if (solid[y | 0][x | 0]) continue;
-    const r = rng();
+    const r = rng();                       // drawn either way, so the stream never shifts
+    if (solid[y | 0][x | 0] || burning[y | 0][x | 0]) continue;   // no weeds on live coals
     decals.push({ gx: x, gy: y, type: r < 0.4 ? 'crack' : r < 0.72 ? 'weed' : 'stain' });
   }
   for (let i = 0; i < 40; i++) {

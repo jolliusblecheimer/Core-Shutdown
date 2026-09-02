@@ -3403,3 +3403,36 @@ Also renumbered Field 12's ground ids in `design/expansion-build-spec.md` from
 12/13/14 to **15/16/17** — the edge pass took those three.
 
 **Not pushed.** Big art change: local-first until Laurens has seen it.
+
+---
+
+## "the road has the same color · i cant go farther as one bit · make the ash field irregular, walkable, burning"
+
+Played on the live site and sent a screenshot. Three complaints, one cause: the
+Ashfield was a dead-straight solid column at x 19, so it read as more dark
+ground and it stopped you without teaching you anything.
+
+- **The front wanders now** — three sine waves on its own `mulberry32(7717)`,
+  x 11–22, clamped off the spine's pavement. Bays and headlands instead of a
+  ruled line.
+- **You can walk into it.** Six tiles of margin; the heart is still solid, which
+  is what bounds the map. Measured 100 HP → 0 in **7.7 s**. The burn does not go
+  through `hurtPlayer()` — that knocks you back and grants i-frames, and being
+  shoved by the ground while trying to escape it is the wrong feel.
+- **Three bands, so it warns you**: grey road → new `scorch` ground (id 15) →
+  coals. The ash tile was re-cut as black crust broken open by orange. First
+  attempt was too dense and read as lava — the traveller vanished into it while
+  it was killing him — so it was pulled back to embers on black, and the
+  screen-space glow now peaks at the front and backs off once you are inside it.
+- **It caught a bug**: the margin is not solid, and `placeBuilding` only refused
+  *solid* tiles, so two office blocks generated inside the fire (plus 15 weeds).
+  Both passes test `burning` now.
+
+On "I can't go farther as one bit": part of that was my own probe walking due
+west into a parked car. But it is honest that west of the spine is a thin strip
+— 6 to 15 tiles by row, city blocks on some of them. §3 cut that ground on
+purpose. The fire makes it interesting, not bigger.
+
+Walkable 14,423 → 15,167 (+744, all lethal). Props unchanged at 399. Ring still
+solid on all four sides. All suites green. Field 12's ground ids moved again,
+15/16/17 → 16/17/18, since 15 is scorch.

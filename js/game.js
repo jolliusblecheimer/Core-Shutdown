@@ -263,7 +263,7 @@ function buildTilesets() {
   TILESETS[10] = Sprites.straw;  TILESETS[11] = Sprites.crypt;
   // the Fringe's three edges — see design/finish-the-fringe.md
   TILESETS[12] = Sprites.ash;    TILESETS[13] = Sprites.water;
-  TILESETS[14] = Sprites.deck;
+  TILESETS[14] = Sprites.deck;  TILESETS[15] = Sprites.scorch;
 }
 buildTilesets();
 
@@ -1261,6 +1261,7 @@ function update(dt) {
       updateBandits(dt);
       updateDroids(dt);
       updateItems(dt);
+      updateBurning(dt);
       checkExits(dt);
       markExplored(player.x, player.y, 9);
     }
@@ -2177,6 +2178,42 @@ function drawFarCity(ox, oy) {
   ctx.drawImage(img, Math.round(cx - img.width / 2), Math.round(cy - CORE_BAND_Y));
 }
 
+// THE FIRE HURTS.
+//
+// The Ashfield used to be solid, which meant it was a wall painted orange:
+// you were stopped by it and learned nothing. It is walkable now, and this is
+// what makes that a decision rather than a free stroll — about eight seconds
+// of standing in it will kill you from full health, which is long enough to
+// dart in for something and back out, and far too short to cross.
+//
+// Damage is CONTINUOUS, so it deliberately does not go through hurtPlayer():
+// that knocks you back and grants 0.45s of invulnerability, and being shoved
+// around by the ground you are standing on would fight the player for control
+// at the exact moment they are trying to get out.
+const Burn = { t: 0, warned: 0 };
+function updateBurning(dt) {
+  const tx = Math.floor(player.x), ty = Math.floor(player.y);
+  const onFire = player.dead <= 0 && burning[ty] && burning[ty][tx];
+  if (!onFire) { Burn.t = Math.max(0, Burn.t - dt * 2); return; }
+
+  Burn.t += dt;
+  player.hp -= 13 * dt;
+  player.combatT = 0;                       // burning counts as being in trouble
+  player.flash = Math.max(player.flash, 0.10 + 0.06 * Math.sin(gameTime * 22));
+  if (Burn.t > 0.6) addShake(dt * 2.2);
+  // embers coming off you, and the smoke of your own coat
+  if (Math.random() < dt * 26) spawnSparks(player.x, player.y, 1, ['#ffb02e', '#ff5a3c'], 1.6);
+  if (Math.random() < dt * 7) spawnSmoke(player.x, player.y, 1);
+  if (gameTime - Burn.warned > 6) {
+    Burn.warned = gameTime;
+    showMsg('THE GROUND IS BURNING', 1.6);
+    SFX.hurt();
+  }
+  if (player.hp <= 0 && player.dead <= 0) {
+    player.hp = 0; player.dead = 2; SFX.die();
+  }
+}
+
 // =====================================================================
 // THE EDGES, AS WEATHER
 // Two of the Fringe's four boundaries are not walls, they are conditions:
@@ -2206,30 +2243,59 @@ function drawEdgeWeather(ox, oy) {
   };
 
   // ---- THE ASHFIELD: fire beyond the west edge ----
-  // distance from the player to the fire line, in tiles: everything below
-  // scales off it, so the effect arrives as you walk west and leaves as you
-  // walk away, instead of being permanently on
-  const near = Math.max(0, 1 - Math.max(0, player.x - (E.ashX1 + 1)) / 46);
+  // THE FRONT WANDERS, so everything here follows it row by row rather than
+  // sitting on one column. `frontAt` is the same array the collision uses, so
+  // the glow cannot drift away from the ground that actually burns.
+  const F = E.front;
+  const frontAt = wy => {
+    if (!F) return E.ashX1;
+    return F[Math.max(0, Math.min(F.length - 1, Math.round(wy)))];
+  };
+  // a band that follows the front: one quad per slab of rows
+  const SLAB = 10;
+  const followQuad = (inset, fill) => {
+    ctx.beginPath();
+    let started = false;
+    for (let wy = -6; wy <= MAP_H + 6; wy += SLAB) {          // down the fire's edge
+      const a = S(frontAt(wy) + inset, wy);
+      if (!started) { ctx.moveTo(a[0], a[1]); started = true; } else ctx.lineTo(a[0], a[1]);
+    }
+    for (let wy = MAP_H + 6; wy >= -6; wy -= SLAB) {          // and back up the rim
+      const a = S(-8, wy);
+      ctx.lineTo(a[0], a[1]);
+    }
+    ctx.closePath(); ctx.fillStyle = fill; ctx.fill();
+  };
+  // Distance from the player to the fire's edge, in tiles — 0 standing on it,
+  // positive out on the street, negative once you are in the coals. The glow
+  // PEAKS AT THE EDGE and backs off on both sides: approaching, because a fire
+  // a hundred tiles away should not light your face; and inside, because the
+  // ground under you is already orange and piling the same colour on top of it
+  // in screen space washed the whole frame out — the traveller disappeared into
+  // it, which is the one thing that must never happen while something is
+  // killing you.
+  const d = player.x - (frontAt(player.y) + 1);
+  const near = d >= 0 ? Math.max(0, 1 - d / 46) : Math.max(0.22, 1 + d / 9);
   if (near > 0.01) {
     // the burning ground itself, seen over the top of the margin
     ctx.globalCompositeOperation = 'lighter';
     const flick = 0.86 + 0.14 * Math.sin(gameTime * 1.9) * Math.sin(gameTime * 0.7 + 1.3);
-    quad(0, -6, E.ashX1 + 1, MAP_H + 6, `rgba(150,58,16,${0.16 * flick})`);
-    quad(0, -6, E.ashX1 - 7, MAP_H + 6, `rgba(196,86,20,${0.15 * flick})`);
+    followQuad(1, `rgba(150,58,16,${0.16 * near * flick})`);
+    followQuad(-7, `rgba(196,86,20,${0.15 * near * flick})`);
     // and the glow it throws onto the ground you are standing on. Real lights
     // spaced along the fire line, so it falls off with distance for free and
     // wraps whatever is between you and it.
     ctx.globalCompositeOperation = 'source-over';
     for (let wy = 0; wy <= MAP_H; wy += 22) {
-      const s = isoToScreen(E.ashX1 + 1, wy);
+      const s = isoToScreen(frontAt(wy) + 1, wy);
       const lx = s.x - ox, ly = s.y - oy;
       if (lx < -180 || lx > VIEW_W + 180 || ly < -180 || ly > VIEW_H + 180) continue;
-      addLight(lx, ly, 0, 150, '236,116,34', 0.20 * near * flick);
+      addLight(lx, ly, 0, 150, '236,116,34', 0.17 * near * flick);
     }
     // the smoke ceiling: it does not burn, it sits on top of everything and
     // takes the colour out of the sky over the western third
     ctx.globalCompositeOperation = 'source-over';
-    quad(-8, -6, E.ashX1 + 5, MAP_H + 6, `rgba(38,30,28,${0.30 * near})`);
+    followQuad(5, `rgba(38,30,28,${0.30 * near})`);
     // falling ash, thinning out the further east you get
     const shown = Math.round(ashFall.length * near);
     for (let i = 0; i < shown; i++) {
