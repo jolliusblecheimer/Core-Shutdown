@@ -3291,3 +3291,48 @@ ground is acceptable at all. *(My lean: yes.)* The second is whether to cut the
 underpass mouth in the viaduct now as the future seam — *(my lean: yes; a tunnel
 you cannot enter yet is a promise, a wall you later knock a hole in is a
 demolition.)*
+
+### The expansion, specified to the tile
+**Laurens:** *"Make the expansion plan in extreme detail now."* — then: *"Output
+the detailed plan."*
+
+`design/expansion-build-spec.md`. Four documents now stack and none replaces
+another: `the-road-north.md` picks **which** area, `field-twelve.md` says what it
+**feels like**, `map-shape.md` says how the world is **put together**, and this
+one is **exactly what to type**.
+
+**The structural idea got better under the districts model.** The brainstorm's
+"two roads north" becomes a **loop of three areas**: the Fringe's viaduct gets
+*two* holes — the spine at x 26–34 and the mid street at x 88–96 — leading to
+**the Underpass** (20×36, with the Lamp in a service bay) and **Field 12**
+(96×72), and Field 12's west breach opens into the Underpass's bay. Go up the
+spine and Wren briefs you before you enter by the quiet end; go up the mid street
+and you arrive cold with the wreck dead ahead. Leave by the other end and find
+what you missed. Both halves already had to exist, so the loop costs nothing.
+
+Written to be typed from, not interpreted: the three `Areas` entries with world
+offsets and the arithmetic that derives them; the fence runs as `wallRun` calls;
+every structure with an (x, y, w, h); three new ground ids; a ~390-line prop
+census; the rust drone's four states with real numbers and **the four engine
+touchpoints it needs** (altitude, no ground collision, melee reach limited to
+`recover`, and the cover/ghost passes that assume feet on a tile); the beacon
+sweep's arc, range, per-second detection contribution and its cap below alert
+1.0; `FOLK.lamp` and `STOCK.wren` in the existing shape with Wren's and Oz's
+lines verbatim; the quest state machine with save fields and the new
+`OBJECTIVES` rows; both `PARTS` entries with real stats and their
+`MILESTONE_GRANTS`; the full new-art list; nine build phases each with its own
+verification; and a frame budget that says to measure at the wreck with four
+drones up rather than in the quiet.
+
+**E0 goes first and is thrown away**: twenty tiles of sheared runway paint on the
+existing Fringe, looked at, then deleted. Ninety tiles of centreline is the
+largest sheared surface ever attempted here and flat rectangles on an iso floor
+is this project's most repeated bug.
+
+**E1–E3 is a shippable milestone on its own** — an empty, walkable, fenced
+airfield with no enemies and no quest is already a place, and it is the right
+thing to look at before committing to the drone, the beacon and the quests.
+
+Eight open questions. The sharpest is whether the rust drones should preview over
+the Fringe's north end first so Field 12 is one new thing and not two. *(My lean:
+yes.)*
