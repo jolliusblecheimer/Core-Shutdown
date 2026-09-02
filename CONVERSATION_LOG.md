@@ -2888,3 +2888,54 @@ title where that is where you left. `[E]` continues into the right area with the
 run intact; `[N]` → confirm → prologue starts with nothing owned, no scrap, no
 boss down, no fog, no thumbnails, no name, and the save gone from storage. The
 bugcheck, the systems pass and the map input suite all still come back clean.
+
+### Lamp posts standing behind buildings
+**Laurens** (screenshot of a bare pole beside a block): *"There are still lanterns
+in buildings."*
+
+He was right, and it was not a placement mistake — it was a projection one.
+Screen-right-down is world +x and screen-left-down is world +y, so **depth is
+x + y**: every block of buildings has pavement along its up-screen faces that
+the camera cannot see into at all. `freeSpot` was happily planting lamp posts
+down it, because a pavement tile is a pavement tile. A three-storey facade then
+swallowed the post whole and left the tip poking out through the roof.
+
+Measured rather than eyeballed: stand the camera on each of the Fringe's 49 lamp
+posts in turn, render, move the lamp off the map, render again, and count the
+pixels that changed. **Eleven were more than half gone and one showed a single
+pixel.** Two more showed 61% — those were the ones with their heads taken off,
+which is the version in Laurens's screenshot.
+
+**Three rules, in the order they were needed, each one wrong until it was
+measured.**
+
+1. *A wedge of tiles straight in front.* Killed the eleven badly buried ones.
+   36 lamps left, worst 61%.
+2. *A half-plane out to six tiles.* Every survivor perfect — and the Fringe went
+   from 36 lamp posts to 14, from 5 hydrants to 1, and lost two boards off the
+   trail west. A cure worse than the disease.
+3. **A block is a wide diamond on screen, not a tile.** The building that took
+   the heads off had its near corner at (+4, −2): two steps deeper, drawn later,
+   and wide enough to reach back across the lamp from over there. No tile test
+   can express that. So compare against the block's own rectangle in the two
+   axes the projection actually has — depth (x + y) and screen-across (x − y) —
+   and ask whether its near corner is within a facade's height in front and its
+   span reaches across. **34 lamps, worst 99%, nothing under 70%.**
+
+**Signs are not lamps.** Two boards on the trail west were in the same shadow,
+one drawing exactly zero pixels while still putting a pin on the map — the map
+promising a waypoint that is not there. A lamp in that spot can be dropped; a
+waypoint on the only marked route west cannot, so a board steps ACROSS the road
+instead, perpendicular to the way it points, and takes the nearest tile that is
+both free pavement and actually in view. The first attempt searched only
+perpendicular and dropped "KEEP TO THIS ROAD", leaving a forty-tile gap in the
+trail — worse than the bug. It searches both axes now, preferring to cross the
+road over sliding along it. All fourteen boards stand, all fourteen visible, the
+order of the trail unchanged.
+
+**Two things ruled out on the way.** The grey stubs poking through a roof beside
+the buried lamp are the buildings' own chimneys, drawn by `drawRoof` — not
+props, and not a bug. And no lamp is "floating" (base hidden, head showing),
+which would read as one bolted to a wall: checked separately, none.
+
+The bugcheck and systems suites still come back clean, with no console output.

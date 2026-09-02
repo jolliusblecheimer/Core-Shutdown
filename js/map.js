@@ -593,8 +593,58 @@ function buildFringe() {
   // ---------- street dressing ----------
   const freeSpot = (x, y) => x > 1 && y > 1 && x < MAP_W - 1 && y < MAP_H - 1 &&
                              !solid[y][x] && ground[y][x] === 5;
+  // STREET FURNITURE GOES IN FRONT OF A BLOCK, NEVER BEHIND IT.
+  //
+  // Screen-right-down is world +x and screen-left-down is world +y, so anything
+  // at a greater x or y is drawn LATER, which is to say IN FRONT. Every block of
+  // buildings therefore has a pavement strip along its up-screen faces that the
+  // camera cannot see into at all — and `freeSpot` was happily planting lamp
+  // posts down it, because a pavement tile is a pavement tile. A three-storey
+  // facade then swallowed the whole post and left the tip of it poking out
+  // through the roof. That is what "there are lanterns in buildings" looks like.
+  //
+  // `heavy` is the grid of things with real height — building volumes, the
+  // cathedral, the boundary wall — so this asks the only question that matters:
+  // is there something tall between this tile and the camera. Four tiles is what
+  // it takes for a facade to stop covering a lamp; measured by counting the
+  // pixels of every lamp in the Fringe that reach the screen, not guessed.
+  // Close range first: anything tall in the wedge straight in front — the
+  // cathedral, the boundary wall, a fence — none of which is a block rectangle.
+  const HIDDEN_BEHIND = 4;
+  const behindSomethingTall = (x, y) => {
+    for (let dx = 0; dx <= HIDDEN_BEHIND; dx++)
+      for (let dy = 0; dy <= HIDDEN_BEHIND - dx; dy++) {
+        if (dx === 0 && dy === 0) continue;
+        const tx = x + dx, ty = y + dy;
+        if (tx < MAP_W && ty < MAP_H && heavy[ty][tx]) return true;
+      }
+    return false;
+  };
+  // A BLOCK IS A WIDE DIAMOND ON SCREEN, NOT A TILE.
+  //
+  // Depth is x + y, so a block whose NEAR CORNER is only a few steps deeper than
+  // this tile is drawn after it and stands three storeys in front of it — and
+  // because the block is wide, that corner can be well off to one side while the
+  // volume still reaches back across the lamp and takes its head off. Testing
+  // tile by tile cannot express that: a quadrant walks past it, and a half-plane
+  // radius wide enough to catch it condemns nearly every pavement in the ring
+  // (it took the Fringe from 36 lamp posts to 14 and cost two boards off the
+  // trail west). So compare against the block's own rectangle, in the two axes
+  // the projection actually has: depth is (x + y), screen-across is (x - y).
+  const FACADE = 12;              // a facade covers about twelve depth-steps above itself
+  const coveredByABlock = (x, y) => {
+    const sL = x + y, aL = x - y;
+    for (const bl of buildings) {
+      const x1 = bl.x0 + bl.w - 1, y1 = bl.y0 + bl.h - 1;
+      const sB = x1 + y1;                                  // the block's near corner
+      if (sB <= sL || sB - sL >= FACADE) continue;          // behind me, or clear of me
+      if (aL < bl.x0 - y1 || aL > x1 - bl.y0) continue;     // off to one side entirely
+      return true;
+    }
+    return false;
+  };
   function placeProp(x, y, type, extra) {
-    if (!freeSpot(x, y)) return null;
+    if (!freeSpot(x, y) || behindSomethingTall(x, y) || coveredByABlock(x, y)) return null;
     solid[y][x] = true;
     const p = Object.assign({ gx: x, gy: y, type }, extra || {});
     props.push(p);
@@ -745,13 +795,41 @@ function buildFringe() {
     // west front just got in the way of the building. The turn-off board below
     // is the last one you read; the cathedral says the rest by being there.
   ];
-  for (const s of SIGNS) {
-    const x = s.gx | 0, y = s.gy | 0;
-    if (x < MAP_W - 1 && y < MAP_H - 1 && !solid[y][x]) {
-      solid[y][x] = true;
-      props.push({ gx: x, gy: y, type: 'sign', kind: s.kind, dir: s.dir, text: s.text });
-      signs.push({ gx: x, gy: y, text: s.text, kind: s.kind });
+  // A SIGN THE CAMERA CANNOT SEE IS NOT A SIGN.
+  // Two boards on this trail had ended up on the pavement strip along a block's
+  // up-screen face, where the building in front swallows them — one of them
+  // drawing exactly ZERO pixels while still putting a pin on the map, which is
+  // the map promising a waypoint that is not there. A lamp post in that spot can
+  // simply be dropped; a waypoint on the only marked route west cannot. So a
+  // board steps ACROSS the road instead — perpendicular to the way it points,
+  // nearest tile first — and takes the first free pavement the camera can see.
+  // Crossing the road keeps the board at its waypoint, so that is preferred;
+  // sliding along the road is the fallback, because on one stretch of leg one
+  // BOTH pavements are in the shadow of a block and the only board that fits is
+  // a few tiles further on. Dropping it instead left a forty-tile gap in the
+  // only marked route west, which is a worse bug than the one being fixed.
+  function signSpot(s) {
+    const x0 = s.gx | 0, y0 = s.gy | 0;
+    const vert = (s.dir === 'ym' || s.dir === 'yp');
+    let best = null, bestScore = Infinity;
+    for (let a = -12; a <= 12; a++) {
+      for (let b = -8; b <= 8; b++) {
+        const x = x0 + (vert ? a : b), y = y0 + (vert ? b : a);
+        if (x < 1 || y < 1 || x >= MAP_W - 1 || y >= MAP_H - 1) continue;
+        if (solid[y][x] || ground[y][x] !== 5) continue;
+        if (behindSomethingTall(x, y) || coveredByABlock(x, y)) continue;
+        const score = Math.abs(a) + Math.abs(b) * 1.4;   // across is cheaper than along
+        if (score < bestScore) { bestScore = score; best = { x, y }; }
+      }
     }
+    return best;                    // null only if nowhere near it is in view
+  }
+  for (const s of SIGNS) {
+    const at = signSpot(s);
+    if (!at) continue;
+    solid[at.y][at.x] = true;
+    props.push({ gx: at.x, gy: at.y, type: 'sign', kind: s.kind, dir: s.dir, text: s.text });
+    signs.push({ gx: at.x, gy: at.y, text: s.text, kind: s.kind });
   }
   // painted arrows on the tarmac, following the same three legs
   for (const ax of [178, 158, 138, 118, 100])

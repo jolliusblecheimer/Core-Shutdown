@@ -519,3 +519,24 @@ same page session gave the new run the old run's explored ground.
 - **`buildMapThumb` refuses an area with nothing explored.** A thumbnail is what
   makes the world map draw, frame and name an area; a blank one is a promise the
   fog contract does not allow.
+
+## Street furniture and the projection, 2026-09-02
+Lamp posts were being planted on the pavement along a block's up-screen faces,
+where the facade in front swallows them — eleven of the Fringe's 49 were more
+than half gone, one showed a single pixel, and two had their heads taken off.
+Depth is x + y, so that strip is simply not visible.
+
+`placeProp` now refuses a tile that is behind something tall. Two tests, because
+one is not enough: a short wedge over the `heavy` grid for the cathedral, the
+boundary wall and fences; and a rectangle test against `buildings[]`, because a
+block is a wide diamond on screen and the one taking heads off had its near
+corner at (+4, -2). A half-plane tile radius wide enough to catch that took the
+Fringe from 36 lamp posts to 14 — the block test keeps 34, worst 99% visible.
+
+Trail signs get the same test but are RELOCATED, never dropped: a waypoint on
+the only marked route west matters more than a tidy tile. `signSpot()` searches
+across the road first, then along it.
+
+Harnesses in the session scratchpad: `lampfrac.js` (each lamp against its own
+unobstructed self), `furnvis.js` (every furniture type), `lamphalf.js` (base vs
+head), `trail.js` (the boards, in order).
