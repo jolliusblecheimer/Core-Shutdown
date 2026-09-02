@@ -710,3 +710,36 @@ reachability), `walkloop` (the loop in both directions), `audit2`, `smoke`,
 Both areas are **empty of people and enemies**. Field 12 has no drones and no
 beacon; the Underpass has the service bay but nobody in it. That is E4–E6 and it
 is the difference between a place and a level.
+
+
+---
+
+## 16. THE TUNNEL COMES OUT THE OTHER END
+
+*"So the underpass you still leave on the side instead of the other side, which
+would make sense."*
+
+Correct, and it was worse than a layout question. §1.1 put the way onward on the
+Underpass's **east wall** — and the build made it a bare trigger zone standing in
+open floor, with **no door drawn on that wall at all**. You walked at blank
+concrete and the screen faded.
+
+You drive into a tunnel and you come out the other side of it. That is the whole
+shape of a tunnel and there was no reason to break it.
+
+| | Was | Is |
+|---|---|---|
+| South mouth | → the Fringe spine | unchanged |
+| Onward to Field 12 | a trigger by the east wall, no door | **an opening in the north wall** at x 8–11, the road running out between two pieces of it |
+| North end | sealed, "Ring 4 goes here" | the way on |
+| Side walls | one invisible door | **nothing but the service bay** |
+
+**This moves Ring 4's seam.** It attaches to Field 12's north fence when it is
+built, not to the Underpass's far end. A tunnel with a door in its side is a
+corridor with a secret; a tunnel with two ends is a road, and the road is what
+this area is.
+
+Walked both ways: Fringe → south mouth → **north end** → Field 12 → vehicle gate
+→ Fringe, and the reverse through the west breach. Every hop lands on standable
+ground. Underpass walkable 359 → 376. `loop`, `f12`, `walkloop`, `audit2` and
+`smoke` all green.

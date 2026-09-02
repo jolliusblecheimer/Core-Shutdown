@@ -3567,3 +3567,23 @@ the player ammunition. It knows about `FOOD` now and uses the existing icon.
 
 Verified: floor snack → inv.snack 1, rounds unchanged, eaten → +40 HP.
 All suites green.
+
+---
+
+## "you still leave on the side instead of the other side"
+
+Right, and it was worse than a layout question: the way onward was on the
+Underpass's east wall, and it was a bare trigger zone standing in open floor
+with **no door drawn on that wall at all**. You walked at blank concrete and the
+screen faded.
+
+The opening is in the **north wall** now — x 8–11, with the road running out
+between the two pieces of it. In the south mouth, out the far end. Nothing in
+the side walls but the service bay.
+
+This moves Ring 4's seam: it attaches to Field 12's north fence when it is
+built, rather than to the Underpass's far end. A tunnel with a door in its side
+is a corridor with a secret; a tunnel with two ends is a road.
+
+Walked both ways, every hop landing on standable ground. Underpass walkable
+359 → 376. All suites green.

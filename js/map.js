@@ -1418,21 +1418,32 @@ function buildUnderpass() {
     ground[y][x] = 16;                       // tunnel floor, same as the mouths
     groundVar[y][x] = (rng() * 6) | 0;
   }
-  // The walls are the tunnel. Two runs of concrete volumes down the sides, and
-  // the north end sealed — Ring 4 goes there and does not exist yet.
+  // YOU COME OUT THE FAR END. The first version put the way onward on the EAST
+  // WALL — and worse, it was a trigger zone standing in open floor with no door
+  // drawn on the wall at all, so you walked at blank concrete and the screen
+  // faded. You drive into a tunnel and you come out the other side of it; that
+  // is the whole shape of a tunnel and there is no reason to break it.
+  //
+  // So the north end is the way on to Field 12, and Ring 4's seam moves to the
+  // airfield's north fence when it is built. A tunnel with a door in its side
+  // is a corridor with a secret; a tunnel with two ends is a road.
+  const GAP0 = 8, GAP1 = 11;
   for (let y = 0; y < H; y += 6) {
     const h = Math.min(6, H - y);
     addBuildingProp({ x0: 0, y0: y, w: 4, h, kind: 'W' });
     addBuildingProp({ x0: W - 4, y0: y, w: 4, h, kind: 'W' });
   }
+  const inGap = (x) => x >= GAP0 && x <= GAP1;
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-    const wall = x < 4 || x >= W - 4 || y < 4;
+    const wall = x < 4 || x >= W - 4 || (y < 4 && !inGap(x));
     solid[y][x] = wall; heavy[y][x] = wall;
   }
-  // the north end: rubble against the wall, so what stops you is a thing
-  addBuildingProp({ x0: 4, y0: 0, w: W - 8, h: 4, kind: 'W' });
+  // the north wall, in two pieces with the road running out between them
+  addBuildingProp({ x0: 4, y0: 0, w: GAP0 - 4, h: 4, kind: 'W' });
+  addBuildingProp({ x0: GAP1 + 1, y0: 0, w: W - 4 - (GAP1 + 1), h: 4, kind: 'W' });
+  // rubble banked against the wall either side of the opening, never across it
   for (let x = 5; x < W - 5; x++) {
-    if (rng() < 0.5) continue;
+    if (inGap(x) || rng() < 0.5) continue;
     solid[4][x] = true;
     props.push({ gx: x, gy: 4, type: rng() < 0.55 ? 'debris' : 'girder' });
   }
@@ -2041,9 +2052,10 @@ const Areas = {
       { type: 'snack', x: 12.5, y: 20.5, bob: 1.1 },
     ]),
     exits: [
-      // back down the spine, and on through the east door to the airfield
+      // in the south mouth, out the north end. Both ends of a tunnel, and
+      // nothing in the side walls but the service bay.
       { x0: 7.4, y0: 33.4, x1: 12.6, y1: 35.6, to: 'fringe', entry: { x: 30.5, y: 16.5 } },
-      { x0: 14.4, y0: 9.4, x1: 15.6, y1: 12.6, to: 'field12', entry: { x: 3.5, y: 46.5 } },
+      { x0: 7.4, y0: 0, x1: 12.6, y1: 2.6, to: 'field12', entry: { x: 3.5, y: 46.5 } },
     ],
   },
   field12: {
@@ -2061,7 +2073,7 @@ const Areas = {
     exits: [
       // the vehicle gate south, and the west breach onto the Underpass
       { x0: 43.4, y0: 69.4, x1: 48.6, y1: 71.6, to: 'fringe', entry: { x: 92.5, y: 16.5 } },
-      { x0: 0.4, y0: 44.4, x1: 2.6, y1: 48.6, to: 'underpass', entry: { x: 12.5, y: 10.5 } },
+      { x0: 0.4, y0: 44.4, x1: 2.6, y1: 48.6, to: 'underpass', entry: { x: 9.5, y: 5.5 } },
     ],
   },
   candlelight: {
