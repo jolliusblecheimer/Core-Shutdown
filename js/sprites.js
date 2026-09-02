@@ -208,6 +208,39 @@ function outlined(src) {
     Sprites.forecourt.push(c);
   }
 
+  // ---- THE FRINGE'S THREE EDGES ----
+  // The map had no edges at all: solid tiles on the outer ring were 0 on every
+  // side, so you were stopped by the arithmetic in canStand rather than by
+  // anything you could look at. These are the ground under the three blockers
+  // the atlas has specified since it was drawn. See design/finish-the-fringe.md.
+  Sprites.ash = []; Sprites.water = []; Sprites.deck = [];
+  for (let i = 0; i < 6; i++) {
+    // THE ASHFIELD, west: a tank farm that caught fire on the Longest Night and
+    // never went out. Burnt ground, and embers still in it.
+    const a = tileBase('#231d1a');
+    sprinkle(a.g, 30, ['#1a1513', '#2c2320', '#171313', '#332723']);
+    if (rng() < 0.55) { const r = (rng()*TILE_H)|0; dpx(a.g, (rng()*24)|0, r, 3, '#4a2a18'); }
+    if (rng() < 0.30) { const r = (rng()*TILE_H)|0; dpx(a.g, (rng()*26)|0, r, 2, '#7a3a16'); }
+    if (rng() < 0.16) { const r = (rng()*TILE_H)|0; dpx(a.g, (rng()*28)|0, r, 1, '#c9631f'); }
+    Sprites.ash.push(a.c);
+
+    // THE GREY RUN, south: the river took the lowlands when the pumps died.
+    // Black shallow water — the darkest ground in the game, with one cold
+    // highlight so it reads as a surface and not as a hole.
+    const w = tileBase('#10161a');
+    sprinkle(w.g, 14, ['#0c1114', '#141c21', '#0e1418']);
+    if (rng() < 0.6) { const r = 3 + ((rng()*8)|0); dpx(w.g, 8 + ((rng()*8)|0), r, 6, '#1b262c'); }
+    if (rng() < 0.3) { const r = 4 + ((rng()*6)|0); dpx(w.g, 10 + ((rng()*6)|0), r, 4, '#26343b'); }
+    Sprites.water.push(w.c);
+
+    // UNDER THE VIADUCT, north: the deck's own shadow. Nothing grows here and
+    // nothing has been rained on in a year.
+    const d = tileBase('#26262a');
+    sprinkle(d.g, 20, ['#1e1e22', '#2d2d32', '#212125']);
+    if (rng() < 0.4) { const r = (rng()*TILE_H)|0; dpx(d.g, (rng()*24)|0, r, 4, '#33333a'); }
+    Sprites.deck.push(d.c);
+  }
+
   // road paint, laid as decals
   Sprites.decals = Sprites.decals || {};
   (function () {
@@ -2643,6 +2676,13 @@ function outlined(src) {
     R: { w: '#7f796d', s: '#666158', t: '#918a7c', r: '#41485a', re: '#2c313d', g: '#2a2036', h: 58, pitch: true },
     T: { w: '#61534e', s: '#4d4340', t: '#75655f', r: '#463e3a', re: '#2f2a27', g: '#1c2026', h: 78 },
     N: { w: '#8d8878', s: '#726d60', t: '#a29c8a', r: '#5c584c', re: '#403d34', g: '#1b1f24', h: 58 },
+    // V — THE VIADUCT. Not a building: a kilometre of elevated motorway that
+    // pancaked on the Longest Night. Raw concrete, no windows, no roof edge
+    // worth the name, and a broken top instead of a parapet. It is built
+    // through makeBuilding because a deck IS a volume and volumes are the one
+    // thing this project has proven — panels failed three times before the rule.
+    V: { w: '#4a4844', s: '#3a3835', t: '#57544f', r: '#3f3d39', re: '#2a2825',
+         g: '#1a1a1c', h: 54, blank: true, deck: true },
   };
 
   function poly(g, pts, fill, stroke) {
@@ -2722,8 +2762,23 @@ function outlined(src) {
       }
     };
     const cellsE = Math.max(1, Math.round(h * 0.7)), cellsS = Math.max(1, Math.round(w * 0.7));
-    winRow(B, C, cellsE, st.g, false);
-    winRow(C, D, cellsS, st.g, true);
+    if (st.blank) {
+      // a concrete face: the deck's own edge beam near the top, the pour lines
+      // under it, and the streaks a year of rain leaves down the shutter joints
+      for (const [P0, P1] of [[B, C], [C, D]]) {
+        hard(P0, P1, 0.0, 1.0, 0.80, 0.90, st.t);                 // edge beam
+        hard(P0, P1, 0.0, 1.0, 0.78, 0.80, st.s);                 // its shadow
+        for (let i = 0; i < 7; i++) {
+          const u = 0.06 + i * 0.13;
+          hard(P0, P1, u, u + 0.012, 0.10, 0.78, st.s);           // shutter joint
+          if ((i + seed) % 3 === 0) hard(P0, P1, u + 0.012, u + 0.03, 0.10, 0.78, '#33312e');
+        }
+        hard(P0, P1, 0.0, 1.0, 0.02, 0.07, st.s);                 // grime at the base
+      }
+    } else {
+      winRow(B, C, cellsE, st.g, false);
+      winRow(C, D, cellsS, st.g, true);
+    }
 
     // per-type face detail
     if (kind === 'S') {                                   // painted shop name band
@@ -2749,7 +2804,104 @@ function outlined(src) {
     }
 
     // ---- the roof, sharing the exact same corners ----
-    if (st.pitch) {
+    if (st.deck) {
+      // NOT A ROOF — A CARRIAGEWAY. The M7 ran along world +x here, so the
+      // whole surface is laid out in deck space (u along +x, v across the
+      // road) and projected through R(). That is the angle rule enforced by
+      // construction: a lane line, a barrier or a wreck built from these
+      // helpers CANNOT come out axis-aligned, because there is no rectangle
+      // anywhere below — only points on the road.
+      const R = (u, v) => [A2[0] + (B2[0] - A2[0]) * u + (D2[0] - A2[0]) * v,
+                           A2[1] + (B2[1] - A2[1]) * u + (D2[1] - A2[1]) * v];
+      const rrng = mulberry32(seed * 2654435761 + w * 97 + h * 31);
+      const lay = (u0, u1, v0, v1, col) =>
+        isoFill(g, [R(u0, v0), R(u1, v0), R(u1, v1), R(u0, v1)], col);
+      // a low concrete run standing on the deck, seen from the south
+      const barrier = (v0, v1, z, top, face) => {
+        const p0 = R(0, v0), p1 = R(1, v0), p2 = R(1, v1), p3 = R(0, v1);
+        const u = p => [p[0], p[1] - z];
+        isoFill(g, [p3, p2, u(p2), u(p3)], face);
+        isoFill(g, [u(p0), u(p1), u(p2), u(p3)], top);
+      };
+
+      poly(g, [A2, B2, C2, D2], '#312f2c', '#1b1e22');        // the running surface
+      // wear: the two darker ruts each lane's traffic polished into the top
+      for (const v of [0.20, 0.38, 0.62, 0.80]) lay(0, 1, v - 0.035, v + 0.035, '#2b2926');
+      // paint, faded to nearly nothing by a year of weather
+      lay(0, 1, 0.085, 0.105, '#6e6a5e');                     // north edge line
+      lay(0, 1, 0.895, 0.915, '#6e6a5e');                     // south edge line
+      const dashes = Math.max(3, w);
+      for (const v of [0.29, 0.71]) {
+        for (let i = 0; i < dashes; i++) {
+          const u0 = (i + 0.10) / dashes, u1 = (i + 0.62) / dashes;
+          if (rrng() < 0.18) continue;                        // worn clean away
+          lay(u0, u1, v - 0.011, v + 0.011, '#67635a');
+        }
+      }
+      // spalling and blown patches, then the grit that came off them
+      const holes = 2 + ((rrng() * 4) | 0);
+      for (let i = 0; i < holes; i++) {
+        const u = 0.04 + rrng() * 0.84, v = 0.08 + rrng() * 0.78;
+        lay(u, u + 0.04 + rrng() * 0.12, v, v + 0.04 + rrng() * 0.1,
+            rrng() < 0.5 ? '#252320' : '#3b3833');
+      }
+      const grit = Math.round(w * h * 9);
+      for (let i = 0; i < grit; i++) {
+        const p = R(rrng(), 0.03 + rrng() * 0.94);
+        g.fillStyle = rrng() < 0.45 ? 'rgba(214,206,188,0.10)' : 'rgba(0,0,0,0.20)';
+        g.fillRect(p[0] | 0, p[1] | 0, 1, 1);
+      }
+      // a crack walking the length of the deck, one segment at a time
+      let cv = 0.42 + rrng() * 0.16;
+      for (let i = 0; i < 9; i++) {
+        const u0 = i / 9, u1 = (i + 1) / 9, nv = cv + (rrng() - 0.5) * 0.09;
+        const a = R(u0, cv), b2 = R(u1, nv);
+        g.strokeStyle = 'rgba(0,0,0,0.42)'; g.lineWidth = 1;
+        g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b2[0], b2[1]); g.stroke();
+        cv = nv;
+      }
+
+      // the ridge "bristling with rebar" — rods are free-standing uprights, so
+      // the angle rule lets these be drawn straight
+      const rebar = (v, z, n) => {
+        for (let i = 0; i < n; i++) {
+          if (rrng() < 0.45) continue;
+          const p = R(rrng(), v);
+          const bx = (p[0] | 0) + 0.5, by = (p[1] - z) | 0;
+          const hgt = 4 + ((rrng() * 7) | 0), lean = rrng() < 0.5 ? -2 : 2;
+          g.strokeStyle = '#6a5344'; g.lineWidth = 1;
+          g.beginPath();
+          g.moveTo(bx, by); g.lineTo(bx, by - hgt); g.lineTo(bx + lean, by - hgt - 2);
+          g.stroke();
+        }
+      };
+
+      barrier(0.0, 0.055, 5, st.t, st.s);                     // north edge barrier
+      rebar(0.03, 5, 6);
+      barrier(0.475, 0.525, 6, st.t, st.re);                  // central reservation
+      rebar(0.5, 6, 4);
+      // what was left on the road when the lights went out. A box in deck
+      // space, so the wreck lies along the carriageway and not along the screen
+      const box = (u0, u1, v0, v1, z0, z1, col, topCol) => {
+        const q = z => [R(u0, v0), R(u1, v0), R(u1, v1), R(u0, v1)]
+                         .map(p => [p[0], p[1] - z]);
+        const lo = q(z0), hi = q(z1);
+        isoFill(g, [lo[3], lo[2], hi[2], hi[3]], shadeHex(col, 0.62));  // south flank
+        isoFill(g, [lo[1], lo[2], hi[2], hi[1]], shadeHex(col, 0.46));  // east end
+        isoFill(g, hi, topCol || col);
+      };
+      const cars = rrng() < 0.55 ? 1 : 2;
+      for (let i = 0; i < cars; i++) {
+        const u = 0.08 + rrng() * 0.7, v = rrng() < 0.5 ? 0.24 : 0.67;
+        const len = 0.115 + rrng() * 0.055, wide = 0.13;
+        const col = ['#4a4e52', '#5a4038', '#3f4650', '#5b5348'][(rrng() * 4) | 0];
+        box(u, u + len, v, v + wide, 0, 4, col);                        // the body
+        box(u + len * 0.24, u + len * 0.72, v + 0.018, v + wide - 0.018,
+            4, 8.5, shadeHex(col, 0.8), '#191715');                     // burnt-out cabin
+      }
+      barrier(0.945, 1.0, 5, st.t, st.s);                     // south edge barrier
+      rebar(0.972, 5, 6);
+    } else if (st.pitch) {
       const along = w >= h;
       const mA = along ? [(A2[0] + D2[0]) / 2, (A2[1] + D2[1]) / 2] : [(A2[0] + B2[0]) / 2, (A2[1] + B2[1]) / 2];
       const mB = along ? [(B2[0] + C2[0]) / 2, (B2[1] + C2[1]) / 2] : [(D2[0] + C2[0]) / 2, (D2[1] + C2[1]) / 2];
@@ -3543,6 +3695,103 @@ function outlined(src) {
     Sprites.signCloth = Sprites.signClothDir.xm;
   })();
 
+  // ---- THE M7 GANTRY ---------------------------------------------------
+  // The map had no INWARD: nothing on it said which way the Core was. This is
+  // the answer — a sign gantry over the spine, still carrying the board that
+  // names the destination, and somebody has been back along this road with a
+  // tin of red and answered it.
+  //
+  // ANGLE: the gantry runs along world +x, so the whole thing is drawn FLAT
+  // and put through sheared(+1). That single call is what makes the beam and
+  // the board come out on the iso diagonal — and because shearing moves whole
+  // columns straight down, the two legs stay upright, which is what the rule
+  // asks for: free-standing verticals straight, everything spanning sheared.
+  //
+  // Built lazily, on the first frame that needs one: the lettering comes from
+  // the game's own 5x7 bitmap font, and game.js has not loaded yet when this
+  // file runs.
+  const gantryCache = new Map();
+  Sprites.makeGantry = function (seed) {
+    const hit = gantryCache.get(seed);
+    if (hit) return hit;
+    const W = 176, FH = 82, LEGX = 8, LEGY = 76;
+    const c0 = makeCanvas(W, FH), g = c0.getContext('2d');
+    const rng = mulberry32(seed * 2246822519 + 7);
+    const STEEL = '#6d7176', STEEL_D = '#4a4e52', STEEL_L = '#878b90';
+
+    // --- the two lattice legs, one at each end of the span ---
+    for (const lx of [LEGX - 3, W - LEGX - 3]) {
+      px(g, lx, 12, 2, LEGY - 12, STEEL);
+      px(g, lx + 4, 12, 2, LEGY - 12, STEEL_D);
+      for (let y = 16; y < LEGY - 4; y += 7) px(g, lx, y, 6, 1, STEEL_D);
+      for (let y = 19; y < LEGY - 6; y += 7) {                 // lattice bracing
+        px(g, lx + 2, y, 1, 1, STEEL_D); px(g, lx + 3, y + 2, 1, 1, STEEL_D);
+      }
+      px(g, lx - 2, LEGY - 3, 10, 4, '#57544f');               // concrete base
+      px(g, lx - 2, LEGY - 3, 10, 1, '#6b6862');
+    }
+    // --- the beam across ---
+    px(g, 4, 4, W - 8, 3, STEEL_L);                            // top chord
+    px(g, 4, 13, W - 8, 3, STEEL);                             // bottom chord
+    px(g, 4, 6, W - 8, 1, STEEL_D);
+    for (let x = 6; x < W - 8; x += 11) {                      // web
+      for (let i = 0; i < 7; i++) px(g, x + i, 7 + i, 1, 1, STEEL_D);
+      for (let i = 0; i < 7; i++) px(g, x + 10 - i, 7 + i, 1, 1, STEEL_D);
+    }
+
+    // --- the board ---
+    // the board's underside has to clear a person's head: its bottom edge sits
+    // 29px above the leg base, and a traveller is 24 tall
+    const BW = 104, BH = 30, bx = ((W - BW) / 2) | 0, by = 17;
+    px(g, bx, by, BW, BH, '#0f1216');                          // its own shadow line
+    px(g, bx, by, BW, BH - 1, '#1d4d8a');                      // motorway blue
+    px(g, bx, by, BW, 1, '#2a5f9f');
+    px(g, bx + 2, by + 2, BW - 4, 1, '#dfe4ea');               // white border
+    px(g, bx + 2, by + BH - 5, BW - 4, 1, '#dfe4ea');
+    px(g, bx + 2, by + 2, 1, BH - 6, '#dfe4ea');
+    px(g, bx + BW - 3, by + 2, 1, BH - 6, '#dfe4ea');
+    // lettering — the only place in the game that names the destination
+    if (typeof ptGet === 'function') {
+      const a = ptGet('M7 (N)', 8, '#dfe4ea');
+      g.drawImage(a.img, bx + 6, by + 5);
+      const b2 = ptGet('CITY CENTRE', 8, '#dfe4ea');
+      g.drawImage(b2.img, bx + 6, by + 15);
+    }
+    // ahead-arrow, the sign's own promise: apex at the top, base below it
+    const arx = bx + BW - 13, ary = by + 4;
+    for (let i = 0; i < 6; i++) px(g, arx - i, ary + i, 1 + i * 2, 1, '#dfe4ea');
+    px(g, arx - 1, ary + 6, 3, 14, '#dfe4ea');
+
+    // --- and the answer, in red, by hand ---
+    // drawn column by column with a slow drift so it leans the way a tin of
+    // paint leans, without an antialiased rotate putting fuzz on 2px letters
+    if (typeof ptGet === 'function') {
+      // It runs UP the board, bottom-left to top-right, the way an arm swings
+      // when the writer is angry and standing on the roof of a car. Slanting it
+      // is also what keeps the destination readable: a level word would sit on
+      // one line and delete it, and the sign has to still say what it says or
+      // there is nothing to argue with.
+      const dark = ptGet("DON'T", 14, '#2a0a08').img;
+      const dn = ptGet("DON'T", 14, '#c22a22').img;
+      const dx0 = bx + 9, dy0 = by + 13;
+      const off = x => Math.round(-x * 0.16 + Math.sin(x * 0.3 + seed) * 0.7);
+      for (const [im, ddx, ddy] of [[dark, 1, 1], [dn, 0, 0]]) {
+        for (let x = 0; x < im.width; x++)
+          g.drawImage(im, x, 0, 1, im.height,
+                      dx0 + x + ddx, dy0 + off(x) + ddy, 1, im.height);
+      }
+      for (let i = 0; i < 8; i++) {                            // runs
+        const x = (rng() * dn.width) | 0;
+        px(g, dx0 + x, dy0 + off(x) + 15, 1, 2 + ((rng() * 6) | 0), '#8e1a15');
+      }
+    }
+
+    const img = outlined(sheared(c0, 1));
+    const res = { img, ax: LEGX + 1, ay: LEGY + Math.round(LEGX * 0.5) + 1 };
+    gantryCache.set(seed, res);
+    return res;
+  };
+
   // ---- gas station: canopy fascia, pylon totem, kerbed island ----
   (function () {
     const py = makeCanvas(22, 52), g = py.getContext('2d');
@@ -3577,6 +3826,11 @@ function outlined(src) {
     };
     Sprites.decals.dashX = stripe(1, 7, 2, 'rgba(206,201,176,0.6)');
     Sprites.decals.dashY = stripe(-1, 7, 2, 'rgba(206,201,176,0.6)');
+    // motorway paint: the spine IS the M7, and a motorway's centre line is a
+    // longer mark with more road between the marks. It is the cheapest half of
+    // telling the player which road this is.
+    Sprites.decals.dashXm = stripe(1, 16, 2, 'rgba(210,205,180,0.62)');
+    Sprites.decals.dashYm = stripe(-1, 16, 2, 'rgba(210,205,180,0.62)');
 
     // crossing: bars laid ACROSS the road, so they run on the other diagonal
     const crossing = dir => {
@@ -3622,6 +3876,31 @@ function outlined(src) {
     Sprites.decals.arrowYp = arrow(0, 1);    // toward +y  (down-left)
     Sprites.decals.arrowYm = arrow(0, -1);   // toward -y  (up-right)
     Sprites.decals.paintArrow = Sprites.decals.arrowXm;
+
+    // SILT: what the Grey Run left on the last dry ground. A tidemark lies ON
+    // the shore, so it is a stripe on the iso diagonal like every other mark
+    // here — never a rectangle — with grit and a few reeds scattered off it.
+    const silt = (dir) => {
+      const c = makeCanvas(40, 30), g = c.getContext('2d');
+      const rr = mulberry32(dir > 0 ? 811 : 907);
+      for (let i = 0; i < 36; i++) {
+        const yy = dir > 0 ? i * 0.5 : (18 - i * 0.5);
+        const th = 2 + ((rr() * 4) | 0);
+        g.fillStyle = 'rgba(120,116,100,0.34)';
+        g.fillRect(i, yy + 6, 1, th);
+        if (rr() < 0.35) {
+          g.fillStyle = 'rgba(146,142,124,0.30)';
+          g.fillRect(i, yy + 5, 1, 1);
+        }
+        if (rr() < 0.12) {                                // reeds, standing up
+          g.fillStyle = 'rgba(88,92,66,0.55)';
+          g.fillRect(i, yy + 1, 1, 5);
+        }
+      }
+      return c;
+    };
+    Sprites.decals.silt = silt(1);
+    Sprites.decals.siltY = silt(-1);
   })();
 
   // =====================================================================

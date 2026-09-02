@@ -3336,3 +3336,70 @@ thing to look at before committing to the drone, the beacon and the quests.
 Eight open questions. The sharpest is whether the rust drones should preview over
 the Fringe's north end first so Field 12 is one new thing and not two. *(My lean:
 yes.)*
+
+---
+
+## "Ok build the fringe map expansion"
+
+Built `design/finish-the-fringe.md` — all six phases, locally, nothing pushed.
+
+**F1/F2 (the cut and the east wall).** Ash `x ≤ 19`, water `y ≥ 140`, deck
+`y ≤ 29` all set solid and heavy with three new ground types; the junkyard's
+boundary wall extended from 32 tiles to the full height of the map with the gate
+still in it, and the one-tile corridor outside it sealed. Outer ring solid went
+from 0/0/0/0 to 200/200 · 200/200 · 150/150 · 150/150.
+
+**F3 (the viaduct).** The north edge shipped as invisible collision at first —
+"honest grey walls" turned out to draw nothing at all. Deck volumes fixed that,
+but `kind: 'B'` rendered them as brick offices with windows, which reads as more
+city rather than as an edge. New `BUILD_STYLE.V`: blank concrete faces with
+shutter joints and base grime, and a **carriageway** on the roof instead of a
+felt-and-aircon flat roof — lane paint, edge lines, a central reservation, ruts,
+spalling, a crack walking the length, burnt-out cars and rebar bristling off the
+broken parapets. Both underpass mouths open, walkable and dead-ending.
+
+**F4 (the M7).** Three gantries over the spine, drawn flat and put through one
+`sheared(+1)` — which is what puts the beam and the board on the iso diagonal
+while leaving the legs upright. Each carries `M7 (N) / CITY CENTRE` with an
+arrow, and **`DON'T`** sprayed across it in red on a slant, with runs. Three
+iterations: the first board hung *below head height*, the second had `DON'T`
+sitting level and deleting the destination, the third leans it so you can still
+read what is being argued with. The spine's paint is motorway paint now — 16px
+marks at 5-tile spacing. **Crash barriers along the spine were not built**: ~200
+props for something the gantries already say.
+
+**F5 (the Grey Run).** Silt-and-reed tidemark along the last dry ground, 26
+drowned cars sitting window-deep, sheen bands sliding along the water and
+per-point glints. The first waterline across each car was a horizontal
+`fillRect` — the same bug as a rectangle of road paint. It is the car's own
+footprint diamond now.
+
+**F6 (the Ashfield).** Burning ground beyond the west edge, a smoke ceiling over
+the western strip, real lights spaced along the fire line so the glow lands on
+the ground you are standing on, and ash falling east as it drops (the opposite
+way to the dust, so the two never read as one effect). All of it anchored in the
+world, not pinned to the screen, and all of it scaled by how close you are — off
+entirely by x 66.
+
+**The bug this build made and caught.** The Grey Run's dressing first drew from
+`rng` in the middle of `buildFringe`, which re-rolled every pass after it: 354
+walkable tiles moved and **St Martin's ended up inside a block**. The Fringe is
+generated fresh on every load, so that is a different city for an existing save.
+New dressing runs last, on its own seed.
+
+**Saves.** `findSafeSpot` searched 8 tiles and gave up; the Ashfield is twenty
+columns deep, so a run saved at x 5 fell through to a hardcoded map centre. It
+reaches 44 now and every area names a `safeSpawn`. Five rescue cases that all
+returned `null` before now land on real ground.
+
+**Measured, not estimated.** Walkable 21,437 → 14,423. Props 312 → **399**, not
+the ~278 the plan predicted — the east wall alone adds ~105 slices. Frame cost
+**unchanged within noise**, not cheaper: 14.72/15.54/14.53/13.44/12.99 ms before
+against 14.83/14.04/14.00/14.71/13.33 after, the one real cost being ~1.3 ms
+beside the fire. Church corridor still gates 0/24. `audit2`, `smoke`, `hunted`,
+`live`, `verifycut` and `cost` all green, no console errors.
+
+Also renumbered Field 12's ground ids in `design/expansion-build-spec.md` from
+12/13/14 to **15/16/17** — the edge pass took those three.
+
+**Not pushed.** Big art change: local-first until Laurens has seen it.

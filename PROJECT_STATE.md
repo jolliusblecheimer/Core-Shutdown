@@ -540,3 +540,49 @@ across the road first, then along it.
 Harnesses in the session scratchpad: `lampfrac.js` (each lamp against its own
 unobstructed self), `furnvis.js` (every furniture type), `lamphalf.js` (base vs
 head), `trail.js` (the boards, in order).
+
+## THE FRINGE HAS EDGES NOW, 2026-09-02
+The map was a box: solid tiles on the outer ring were **0 to the north, 0 to the
+south, 0 to the west and 0 to the east**. You were not stopped by anything you
+could look at, you were stopped by `x > 1 && x < MAP_W - 1` inside `canStand`.
+`design/finish-the-fringe.md` §12 has the full build record; the shape of it:
+
+- **Four edges cut and dressed.** The **Ashfield** burns off the west (`x ≤ 19`),
+  the **Grey Run** stands over the south (`y ≥ 140`), the **viaduct** pancaked
+  across the north (`y ≤ 29`), and the junkyard's boundary wall now runs the full
+  height of the east side with the gate still in it. Walkable **21,437 → 14,423**;
+  the outer ring is now solid on all four sides.
+- **The viaduct is volumes, not a fence.** New `BUILD_STYLE.V` — blank concrete
+  faces with shutter joints, and a real **carriageway** on the roof: lane paint,
+  edge lines, a central reservation, ruts, spalling, a crack down the length,
+  burnt-out cars and rebar off the broken parapets. Two underpass mouths (x 26–34
+  and 88–96) are open, walkable and dead-end at y 21 — the seam the next area
+  attaches to.
+- **The map has an inward.** Three gantries over the spine carry
+  `M7 (N) / CITY CENTRE` with an arrow, and somebody has sprayed **`DON'T`**
+  across every one of them. The spine's paint is motorway paint now.
+- **Two of the edges are weather, not walls.** `drawEdgeWeather()` in
+  `js/game.js` draws the fire and the water **anchored in the world** — the fire
+  line is the column `x = ashX1 + 1` and the shore is the row `y = waterY0`, so
+  both run down the screen on the iso diagonal and swing across it as you walk.
+  It fades in as you approach and is off entirely by x 66 / y 100. The numbers
+  live once, in `FRINGE_EDGES` in `js/map.js`, and both the collision and the art
+  read them from there.
+- **Saves survive it.** `findSafeSpot` reached 8 tiles and gave up — the Ashfield
+  is twenty columns deep. It reaches 44 now, and every area names a `safeSpawn`
+  instead of falling through to the middle of the map.
+
+**Frame cost is unchanged within noise** (the plan's claim that the cut would
+make the map *cheaper* was wrong — props went 312 → 399), except beside the
+Ashfield, where the fire costs about 1.3 ms.
+
+**Do not add a pass to `buildFringe` that draws from `rng` unless it goes at the
+end.** The first version of the Grey Run's dressing did, and re-rolled every
+building placed after it: 354 walkable tiles moved and St Martin's ended up
+inside a block. New dressing runs last on its own `mulberry32(90210)`.
+
+### Outstanding
+- Crash barriers along the spine's edges (F4) — not built; ~200 props for what
+  the gantries already say.
+- `design/expansion-build-spec.md` (Field 12) is written and costed. Its ground
+  ids were renumbered to **15/16/17** because 12/13/14 are ash/water/deck now.

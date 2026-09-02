@@ -324,9 +324,15 @@ function applySave(d) {
     // The respawn point is only a safe fallback in the area it belongs to —
     // it used to be tested against 'junkyard' by name, which was the same
     // thing back when the shack was the only bed in the world.
+    // AND THE LAST RESORT IS A REAL PLACE. It used to be the middle of the
+    // map, which is a coordinate, not a location: on the Fringe that is the
+    // east cross and on an indoor area it can be inside the stonework. Each
+    // area names a tile it knows is standable, and the rescue lands there.
+    const def = currentAreaDef();
     const safe = findSafeSpot(player.x, player.y) ||
       (currentArea === player.respawnArea
-        ? { x: player.respawnX, y: player.respawnY } : { x: MAP_W / 2, y: MAP_H / 2 });
+        ? { x: player.respawnX, y: player.respawnY }
+        : (def.safeSpawn || { x: MAP_W / 2, y: MAP_H / 2 }));
     player.x = safe.x; player.y = safe.y;
   }
 
@@ -379,11 +385,22 @@ function grantMilestoneItems() {
   return handed;
 }
 
-// nearest open tile, spiralling outward
+// nearest open tile, spiralling outward.
+//
+// RADIUS 8 WAS NOT ENOUGH ONCE THE MAP GREW EDGES. Every one of the Fringe's
+// four boundaries turned open ground into solid — the Ashfield alone is twenty
+// columns deep — so a run saved standing at x 5 was fourteen tiles from the
+// nearest tile it could stand on, this returned null, and the player was
+// teleported to a hardcoded map centre. That is exactly the "saves must
+// survive updates" rule failing: the run is not lost, but it wakes up
+// somewhere it has never been. The search reaches across the widest edge now,
+// and the ring is sampled finely enough at large r that a two-tile gap in a
+// wall cannot be stepped over.
 function findSafeSpot(x, y) {
-  for (let r = 1; r <= 8; r++) {
-    for (let a = 0; a < 16; a++) {
-      const ang = (a / 16) * Math.PI * 2;
+  for (let r = 1; r <= 44; r++) {
+    const rays = Math.max(16, Math.round(r * 6));
+    for (let a = 0; a < rays; a++) {
+      const ang = (a / rays) * Math.PI * 2;
       const nx = x + Math.cos(ang) * r, ny = y + Math.sin(ang) * r;
       if (nx > 1 && ny > 1 && nx < MAP_W - 1 && ny < MAP_H - 1 && canStand(nx, ny, 0.3)) {
         return { x: nx, y: ny };

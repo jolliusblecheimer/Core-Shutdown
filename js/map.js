@@ -365,6 +365,11 @@ function buildJunkyard() {
 const FRINGE_W = 200, FRINGE_H = 150;
 let signs = [];   // readable street signs {gx, gy, text}
 
+// WHERE THE FRINGE STOPS BEING THE FRINGE. Shared by the map builder (which
+// makes these solid) and the renderer (which draws the fire and the water that
+// explain why). See drawEdgeWeather in js/game.js.
+const FRINGE_EDGES = { viaY0: 22, viaY1: 29, ashX1: 19, waterY0: 140 };
+
 function buildFringe() {
   const rng = mulberry32(20260817);
   resetMap(FRINGE_W, FRINGE_H, rng);
@@ -409,6 +414,73 @@ function buildFringe() {
         if (d <= s.half) ground[y][x] = 4;                                  // carriageway
         else if (d <= s.half + 2 && ground[y][x] !== 4) ground[y][x] = 5;   // pavement
       }
+    }
+  }
+
+  // ---------- THE EDGES ----------
+  // THIS MAP HAD NO EDGES. Measured before any of this was written: solid tiles
+  // on the outer ring were 0 to the north, 0 to the south, 0 to the west and 0
+  // to the east. You were not stopped by anything you could look at — you were
+  // stopped by `x > 1 && x < MAP_W - 1` inside canStand. That is the whole
+  // reason it read as a box and not as part of a ring.
+  //
+  // The atlas has specified what belongs on three of those sides since it was
+  // drawn, and none of it was built. So the blockers go in — and they come
+  // INWARD, to where the content actually stops, because the emptiness IS the
+  // box: 30,000 tiles were carrying about 3,900 tiles of game, and two thirds
+  // of the map was more than five tiles from anything at all.
+  //
+  // It runs HERE, after the streets and before the blocks, and that ordering is
+  // the whole trick: placeBuilding already refuses a solid tile and placeProp's
+  // freeSpot already demands pavement, so every later pass avoids the dead
+  // ground for free. The map gets CHEAPER — the block filler stops generating
+  // the ~34 props that used to stand out there where nobody goes.
+  //
+  // Every region below was checked against every POI, sign, item, chest, bench,
+  // map table, raider, droid, area exit and the player's own entry point before
+  // a line of it was written. All four came back clear.
+  // See design/finish-the-fringe.md.
+  const EDGE_ASH = 12, EDGE_WATER = 13, EDGE_DECK = 14;
+  // The renderer has to know where these run too — the fire glow and the water
+  // are drawn as weather anchored to the fire line and the shore — so the
+  // numbers live on the area definition and this pass reads them from there.
+  // One place to change, and the art cannot drift away from the collision.
+  const { viaY0: VIA_Y0, viaY1: VIA_Y1, ashX1: ASH_X1, waterY0: WATER_Y0 } = FRINGE_EDGES;
+  // THE TWO HOLES IN THE DECK. The spine goes under it at x 26-34 and the mid
+  // street at x 88-96 — walkable, unlit, and dead-ending in rubble at y 21
+  // because there is nothing on the far side yet. A tunnel you cannot walk out
+  // of is a promise; a wall you later knock a hole in is a demolition.
+  const DECK_HOLES = [[26, 34], [88, 96]];
+  const inHole = (x) => DECK_HOLES.some(([a, b]) => x >= a && x <= b);
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      let g = -1;
+      if (x <= ASH_X1) g = EDGE_ASH;
+      else if (y >= WATER_Y0) g = EDGE_WATER;
+      else if (y <= VIA_Y1) g = EDGE_DECK;
+      if (g < 0) continue;
+      ground[y][x] = g;
+      // the mouths are the one place under the deck you may stand
+      const open = g === EDGE_DECK && y >= VIA_Y0 && inHole(x);
+      solid[y][x] = !open;
+      heavy[y][x] = !open;
+    }
+  }
+
+  // THE DECK HAS TO BE SEEN, not just bumped into. The west edge is burnt
+  // ground and the south edge is black water, and both of those say what they
+  // are the moment you look at them — but "solid" on its own draws nothing, so
+  // the north edge was an invisible wall across the middle of the city, which is
+  // worse than the open boundary it replaced. It is a ridge of volumes now.
+  // Buildings are single pre-rendered volumes here and this is the same thing:
+  // one per section, never assembled panels — three attempts at panels failed
+  // before that rule existed.
+  const deckSpans = [[0, 25], [35, 87], [97, MAP_W - 1]];
+  for (const [sx, ex] of deckSpans) {
+    for (let x = sx; x <= ex; x += 12) {
+      const w = Math.min(12, ex - x + 1);
+      if (w < 2) continue;
+      addBuildingProp({ x0: x, y0: VIA_Y0, w, h: VIA_Y1 - VIA_Y0 + 1, kind: 'V' });
     }
   }
 
@@ -668,9 +740,12 @@ function buildFringe() {
         else if (r < 0.86) placeProp(x, y, 'busStop', { dir: sd });
       }
     }
-    // lane paint down the middle, sheared to lie along the road
-    if (vertical) for (let t2 = start + 2; t2 < start + len - 2; t2 += 3) decals.push({ gx: s.x0 + 0.4, gy: t2, type: 'dashY' });
-    else for (let t2 = start + 2; t2 < start + len - 2; t2 += 3) decals.push({ gx: t2, gy: s.y0 + 0.4, type: 'dashX' });
+    // lane paint down the middle, sheared to lie along the road. The spine is
+    // the M7 and gets motorway paint: a longer mark with more road between.
+    const m7 = s.name === 'spine';
+    const step = m7 ? 5 : 3, dt = m7 ? 'm' : '';
+    if (vertical) for (let t2 = start + 2; t2 < start + len - 2; t2 += step) decals.push({ gx: s.x0 + 0.4, gy: t2, type: 'dashY' + dt });
+    else for (let t2 = start + 2; t2 < start + len - 2; t2 += step) decals.push({ gx: t2, gy: s.y0 + 0.4, type: 'dashX' + dt });
   }
   // traffic lights + crossings at the junctions
   for (const [jx, jy] of [[30, 120], [30, 75], [30, 36], [92, 75], [92, 36], [165, 75], [165, 120], [92, 120]]) {
@@ -839,18 +914,61 @@ function buildFringe() {
   for (const ax of [84, 74, 64])
     decals.push({ gx: ax, gy: 73.6, type: 'arrowXm' });
 
+  // ---------- THE M7: GIVING THE MAP AN INWARD ----------
+  // The Fringe was a box: four edges and nothing anywhere on it saying which
+  // way the Core is. The spine IS the M7 — the radial motorway every ring
+  // crosses — and it had never been told so. Three gantries over it still
+  // carry the board, and the board still names the destination. Somebody has
+  // painted DON'T across every one of them, which is this ring's whole
+  // attitude in one word, and it is a stronger inward than eight lanes of
+  // tarmac would have been.
+  //
+  // Legs stand on the pavement at x 25 and x 35 — the carriageway is x 26-34
+  // and stays open, you walk under it. Placed after the street dressing so it
+  // can take its two tiles off whatever got there first.
+  const GANTRY_Y = [46, 88, 112];
+  for (let i = 0; i < GANTRY_Y.length; i++) {
+    const gyy = GANTRY_Y[i];
+    for (const lx of [25, 35]) {
+      for (let k = props.length - 1; k >= 0; k--) {
+        const q = props[k];
+        if (q.type === 'building' || q.type === 'wallSlice') continue;
+        if (q.gx === lx && q.gy === gyy) { props.splice(k, 1); delete crushProps[lx + ',' + gyy]; }
+      }
+      solid[gyy][lx] = true;
+    }
+    props.push({ gx: 25, gy: gyy, type: 'gantry', seed: i, foot: [25, gyy, 11, 1] });
+  }
+
   // ---------- the JUNKYARD gate, seen from the road ----------
   // the yard's outer wall, so returning is an actual door and not a void
+  // THE EAST EDGE IS THIS WALL, and it now runs the whole height of the map.
+  // It was 32 tiles long, from y 104 to y 136 — real where the gate is and
+  // nothing at all above or below it, so three quarters of the city's east side
+  // was an invisible limit. The same wall, the same fence kinds, from the
+  // viaduct's shadow down to the water: one continuous thing with one door in
+  // it. This is the cheapest of the four edges by a wide margin.
   const gy0 = 118, gy1 = 122;
-  for (let y = 104; y < 136; y++) {
+  const WALL_Y0 = VIA_Y1 + 1, WALL_Y1 = WATER_Y0 - 1;   // between the other two edges
+  for (let y = WALL_Y0; y <= WALL_Y1; y++) {
     if (y >= gy0 && y <= gy1) continue;
-    if (y >= MAP_H - 1) break;
     solid[y][MAP_W - 2] = true; heavy[y][MAP_W - 2] = true;
   }
-  wallRun(Array.from({ length: gy0 - 104 }, (_, i) => [MAP_W - 2, 104 + i]),
-          fenceKinds(gy0 - 104), 'y', false, true, true);
-  wallRun(Array.from({ length: 136 - (gy1 + 1) }, (_, i) => [MAP_W - 2, gy1 + 1 + i]),
-          fenceKinds(136 - (gy1 + 1)), 'y', false, true, true);
+  const wallSeg = (y0, y1) => {
+    const n = y1 - y0 + 1;
+    if (n <= 0) return;
+    wallRun(Array.from({ length: n }, (_, i) => [MAP_W - 2, y0 + i]),
+            fenceKinds(n), 'y', false, true, true);
+  };
+  wallSeg(WALL_Y0, gy0 - 1);
+  wallSeg(gy1 + 1, WALL_Y1);
+  // AND THE STRIP BEHIND IT. The wall stands on x = MAP_W - 2, which leaves one
+  // column outside it — and the gate is a hole in the wall, so the player could
+  // step through, turn, and walk a hundred tiles up the outside of the city in a
+  // one-tile corridor. The flood fill found 115 of them. Nothing is out there
+  // and nothing ever will be: the junkyard exit triggers at x 196.4, well before
+  // the wall, so this column is never legitimately stood on.
+  for (let y = 0; y < MAP_H; y++) { solid[y][MAP_W - 1] = true; heavy[y][MAP_W - 1] = true; }
   props.push({ gx: MAP_W - 2, gy: gy0 - 1, type: 'post', big: true });
   props.push({ gx: MAP_W - 2, gy: gy1 + 1, type: 'post', big: true });
   props.push({ gx: MAP_W - 2, gy: 120, type: 'gate', open: true, dir: 'b' });
@@ -990,6 +1108,37 @@ function buildFringe() {
     const x = 2 + rng() * (MAP_W - 4), y = 2 + rng() * (MAP_H - 4);
     if (solid[y | 0][x | 0] || ground[y | 0][x | 0] !== 4) continue;
     decals.push({ gx: x, gy: y, type: 'puddle' });
+  }
+
+  // ---------- THE GREY RUN, dressed ----------
+  // The lowlands flooded when the pumps died and the traffic that was sitting
+  // in them is still there, window-deep. These are the ordinary street cars,
+  // sunk — the flood did not go and find different ones — and they are what
+  // turns a flat dark band into a place something happened to.
+  //
+  // ON ITS OWN RNG, AND LAST. Every pass above draws from `rng` in a fixed
+  // order, so a new pass that takes numbers out of that stream re-rolls every
+  // building, prop and decal placed after it. Adding this in the middle of the
+  // build moved 354 walkable tiles and shut St Martin's inside a block — the
+  // map is generated fresh on every load, so that is a different city for a
+  // save written against the old one. New dressing gets its own seed and goes
+  // at the end, where it cannot move anything that was already there.
+  const wrng = mulberry32(90210);
+  for (let i = 0; i < 26; i++) {
+    const wx = 22 + ((wrng() * (MAP_W - 46)) | 0);
+    const wy = WATER_Y0 + 1 + ((wrng() * 6) | 0);
+    const clash = props.some(q => q.type === 'drowned' &&
+                                  Math.abs(q.gx - wx) < 4 && Math.abs(q.gy - wy) < 3);
+    const dir = wrng() < 0.65 ? 'x' : 'y', v = (wrng() * 6) | 0, sink = 11 + ((wrng() * 8) | 0);
+    if (clash) continue;
+    props.push({ gx: wx, gy: wy, type: 'drowned', dir, v, sink });
+  }
+  // the last dry ground: silt and reeds where the water took the street.
+  // Decals lie ON the ground, so these are stripes on the iso diagonal.
+  for (let x = 21; x < MAP_W - 2; x += 2) {
+    const skip = wrng() < 0.45, jx = wrng(), jy = wrng(), which = wrng();
+    if (skip) continue;
+    decals.push({ gx: x + jx, gy: WATER_Y0 - 1 - jy * 1.6, type: which < 0.5 ? 'silt' : 'siltY' });
   }
 
   buildAO();
@@ -1346,6 +1495,9 @@ function buildPrologue() {
 const Areas = {
   junkyard: {
     id: 'junkyard', name: 'THE JUNKYARD', build: buildJunkyard,
+    // last-resort rescue tile for a save that woke up inside geometry: the
+    // open yard south of the shack, which has been walkable since day one
+    safeSpawn: { x: 21.5, y: 14.5 },
     // The Fringe is 200 wide, so this sits the yard three tiles off its east
     // edge — close enough that the one gate pin, at Fringe 197,120, lands in the
     // seam between the two and reads as the door it is, and far enough that the
@@ -1365,6 +1517,10 @@ const Areas = {
   },
   fringe: {
     id: 'fringe', name: 'THE FRINGE', build: buildFringe,
+    edges: FRINGE_EDGES,                   // drives the fire and the water
+    // the spine's carriageway just inside the gate road junction — the one
+    // stretch of this map that every version of it has had open
+    safeSpawn: { x: 30.5, y: 110.5 },
     world: { x: 0, y: 0 },
     hasScrapper: false, hasBoss: false, hasNpc: false, hasBandits: true,
     // raiders hold the roadblocks; the droid squads patrol between them
@@ -1394,6 +1550,7 @@ const Areas = {
   // script and left by it.
   prologue: {
     id: 'prologue', name: 'THE CITY, BEFORE', build: buildPrologue,
+    safeSpawn: { x: 16.5, y: 12.5 },       // mid-street, though a memory never loads one
     world: { x: 40, y: 44 },        // roughly where St Martin's stands, a year on
     skyline: true,                  // the inner rings, and the Core behind them
     // A MEMORY, NOT A PLACE. Without this the prologue street ends up drawn on
@@ -1411,6 +1568,7 @@ const Areas = {
   },
   candlelight: {
     id: 'candlelight', name: 'CANDLELIGHT', build: buildCandlelight,
+    safeSpawn: { x: 6.5, y: 13.5 },        // the nave, inside the west door
     world: { x: 50, y: 52 },        // the church's own footprint, exactly
     hasScrapper: false, hasBoss: false, hasNpc: false, folk: 'camp',
     indoors: true,
@@ -1426,6 +1584,7 @@ const Areas = {
   },
   crypt: {
     id: 'crypt', name: 'THE CRYPT', build: buildCrypt,
+    safeSpawn: { x: 3.5, y: 2.5 },         // the foot of the stair
     world: { x: 51, y: 53 },        // under the chancel
     hasScrapper: false, hasBoss: false, hasNpc: false, folk: 'crypt',
     indoors: true,

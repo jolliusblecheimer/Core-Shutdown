@@ -298,3 +298,83 @@ position and none of the keyed objects are in a cut region.
 5. **Order.** F1 → F2 → F3 → F4 → F5 → F6 costs least and looks worst for
    longest. Doing F6 (the Ashfield) early would make the map feel finished much
    sooner, at the price of building the riskiest art on an unproven cut.
+
+---
+
+## 12. BUILT — what actually shipped, and what it measured
+
+*Appended after the build. Everything below is measured, not estimated.*
+
+### What is in
+
+| | Phase | State |
+|---|---|---|
+| **F1** | The cut | **Done.** Ash `x ≤ 19`, water `y ≥ 140`, deck `y ≤ 29`, all solid + heavy, three new ground ids (12 ash, 13 water, 14 deck) |
+| **F2** | The east wall | **Done.** The junkyard wall run extended from 32 tiles to the full height, gate still at y 118–122, and `x = MAP_W - 1` sealed |
+| **F3** | The viaduct | **Done.** Deck volumes in a new `BUILD_STYLE.V`: blank concrete faces with shutter joints and base grime, and a **carriageway** on top — lane paint, edge lines, a central reservation, ruts, spalling, a crack down the length, burnt-out cars and rebar off the broken parapets. Both underpass mouths open and dead-ending |
+| **F4** | The M7 | **Partly.** Three gantries over the spine at y 46, 88, 112, each carrying `M7 (N) / CITY CENTRE` with an arrow and **`DON'T`** sprayed across it in red, dripping. The spine's lane paint is motorway paint now (16px marks at 5-tile spacing instead of 7px at 3). **Crash barriers along the spine were NOT built** — see below |
+| **F5** | The Grey Run | **Done.** Silt-and-reed tidemark along the shore, 26 drowned cars sitting window-deep, sliding sheen bands and per-point glints on the water |
+| **F6** | The Ashfield | **Done.** Burning ground beyond the west edge, a smoke ceiling over the western strip, real lights spaced along the fire line so the glow falls on the ground you stand on, and ash falling — all of it fading in as you walk west and off again by x 66 |
+
+### What was deliberately left out
+
+**Crash barrier along the spine's edges (F4).** It is 106 tiles of street with two
+sides, so it is ~200 props on a map that has just gone 312 → 399, and the gantries
+plus the motorway paint already do the job the phase existed to do. Not built,
+not forgotten.
+
+**A cast shadow band on the verge under the deck (F3).** The night ambient
+already darkens the strip under the viaduct and a separate decal band was not
+buying anything on top of it.
+
+### Measured
+
+| | Before | After |
+|---|---|---|
+| Walkable from the gate | 21,437 | **14,423** |
+| Props on the Fringe | 312 | **399** |
+| Outer ring solid — N / S / W / E | 0 / 0 / 0 / 0 | **200/200 · 200/200 · 150/150 · 150/150** |
+| Reachable outside x 20–197, y 22–139 | 6,852 | **5** — the gate rows at x 198, behind an exit trigger that fires at x 196.4 |
+| Church corridor, both roadblocks sealed | 0 / 24 | **0 / 24** |
+| Frame cost — street / roadblock / spine mouth / ash / water (ms) | 14.72 / 15.54 / 14.53 / 13.44 / 12.99 | **14.83 / 14.04 / 14.00 / 14.71 / 13.33** |
+
+**§7.5 of this plan was wrong twice and both corrections stand.** Props did not
+fall to ~278, they rose to 399 — the east wall alone adds ~105 wall slices, and
+the deck, the gantries and the drowned cars add more. And frame cost did not
+drop: it is unchanged within noise, except beside the Ashfield where the fire
+costs about **1.3 ms**. The cut buys honesty about where the map ends, not speed.
+
+### The bug this build created and caught
+
+The first version of the Grey Run's dressing drew from `rng`, the map builder's
+shared stream, in the middle of `buildFringe`. Every pass after it re-rolled:
+**walkable fell to 14,075, props jumped to 419, and St Martin's ended up inside a
+block.** The Fringe is generated fresh on every load, so that is a *different
+city* for a save written against the old one. New dressing now runs **last, on
+its own `mulberry32(90210)`**, and the numbers came straight back. Any future
+pass added to `buildFringe` has to do the same or go at the end.
+
+### §8, done
+
+- `findSafeSpot` searched a radius of 8 and gave up. The Ashfield is twenty
+  columns deep, so a run saved at x 5 was fifteen tiles from anywhere it could
+  stand and fell through to a hardcoded map centre. It reaches **44** now, with
+  the ring sampled at `max(16, r·6)` rays so a two-tile gap cannot be stepped
+  over. Measured rescues: ash 5,70 → 20.5,70.5 (15 tiles) · water 100,145 →
+  99.5,139.6 · deck 60,25 → 61,30.5 · behind the east wall 198,60 → 197.6,60.9 ·
+  the ash/deck corner 3,3 → 26.5,22.8 (30 tiles). All five returned `null` before.
+- Every area now names a **`safeSpawn`** and the last-resort rescue lands there
+  instead of `{ MAP_W / 2, MAP_H / 2 }`. All five verified standable in their own
+  area — the first guess for the prologue was inside geometry and was moved.
+
+### Suites re-run, all green
+
+`verifycut.js` · `audit2.js` (four areas: nothing hidden, nothing inside
+geometry, nothing stacked, nothing unreachable) · `smoke.js` (prologue, round
+trips, v1/v2 save migration, thumbs, death/respawn, 20s sim per area) ·
+`hunted.js` (all eight cases) · `live.js` (map UI) · `cost.js`. No console errors.
+
+`verifycut.js` still reports `POI stmartins@56,60` as unreachable. **That is the
+harness, not the map** — the pin sits in the middle of the cathedral volume and
+the test's 5×5 adjacency window does not reach the parvis. It reports the same
+thing against the untouched pre-build code.

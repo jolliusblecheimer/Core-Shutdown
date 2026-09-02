@@ -108,6 +108,14 @@ const motes = Array.from({ length: 42 }, () => ({
   s: 1.5 + Math.random() * 3,
   ph: Math.random() * 6.28,
 }));
+// ash off the burning tank farm on the west edge — a second, heavier fall,
+// only drawn where the fire can actually reach you
+const ashFall = Array.from({ length: 90 }, () => ({
+  x: Math.random() * VIEW_W,
+  y: Math.random() * VIEW_H,
+  s: Math.random(),
+  ph: Math.random() * 6.28,
+}));
 
 function fitCanvas() {
   const s = Math.max(1, Math.floor(Math.min(innerWidth / VIEW_W, innerHeight / VIEW_H)));
@@ -253,6 +261,9 @@ function buildTilesets() {
   TILESETS[6] = Sprites.verge;   TILESETS[7] = Sprites.forecourt;
   TILESETS[8] = Sprites.flag;    TILESETS[9] = Sprites.flagWorn;
   TILESETS[10] = Sprites.straw;  TILESETS[11] = Sprites.crypt;
+  // the Fringe's three edges — see design/finish-the-fringe.md
+  TILESETS[12] = Sprites.ash;    TILESETS[13] = Sprites.water;
+  TILESETS[14] = Sprites.deck;
 }
 buildTilesets();
 
@@ -1279,6 +1290,14 @@ function update(dt) {
     if (m.x > VIEW_W) m.x -= VIEW_W;
     if (m.y > VIEW_H) m.y -= VIEW_H;
   }
+  // ash comes off the Ashfield, so it drifts EAST as it falls — the opposite
+  // way to the dust, which is what stops the two reading as the same effect
+  for (const a of ashFall) {
+    a.x += (7 + a.s * 5) * dt;
+    a.y += (5 + a.s * 9) * dt + Math.sin(gameTime * 1.1 + a.ph) * 2 * dt;
+    if (a.x > VIEW_W + 4) { a.x -= VIEW_W + 8; }
+    if (a.y > VIEW_H + 4) { a.y -= VIEW_H + 8; a.x = Math.random() * VIEW_W; }
+  }
 
   updateCamera(dt);
 }
@@ -1702,7 +1721,7 @@ function render() {
   for (const p of gatherNear(propCells, vx0 - 14, vy0 - 14, vx1 + 10, vy1 + 10, [])) {
     const s = isoToScreen(p.gx + 0.5, p.gy + 0.5);
     // volumes sort by their south corner: anything in front of that draws over
-    const depth = (p.type === 'building' || p.type === 'canopy')
+    const depth = (p.type === 'building' || p.type === 'canopy' || p.type === 'gantry')
       ? isoToScreen(p.foot[0] + p.foot[2], p.foot[1] + p.foot[3]).y - 1
       : (p.foot ? s.y + (p.foot[2] + p.foot[3]) * 4 : s.y);
     draws.push({ depth, draw: () => drawProp(p, s.x - ox, s.y - oy) });
@@ -1862,6 +1881,8 @@ function render() {
     ctx.globalAlpha = 1;
     addLight(rx, ry, 0, 34 * (1 - p * 0.4), '255,150,70', 0.7 * (1 - p));
   }
+
+  drawEdgeWeather(ox, oy);
 
   ctx.globalCompositeOperation = 'multiply';
   ctx.fillStyle = currentAreaDef().tint || '#e6c092';
@@ -2156,6 +2177,103 @@ function drawFarCity(ox, oy) {
   ctx.drawImage(img, Math.round(cx - img.width / 2), Math.round(cy - CORE_BAND_Y));
 }
 
+// =====================================================================
+// THE EDGES, AS WEATHER
+// Two of the Fringe's four boundaries are not walls, they are conditions:
+// a tank farm that has been burning for a year off the west edge, and the
+// river standing over the lowlands to the south. Solid ground says "you
+// cannot go there"; this says WHY, from anywhere on the map that can see it.
+//
+// Everything here is ANCHORED IN THE WORLD, not pinned to the screen. The
+// fire line is the world column x = ashX1 + 1 and the shore is the world row
+// y = waterY0, so both of them run down the screen on the iso diagonal and
+// swing across it as you walk — which is the whole difference between a place
+// off to your left and a gradient stuck to the left of the monitor. The only
+// screen-space thing is the falling ash, because ash in the air between you
+// and the camera genuinely is.
+// =====================================================================
+function drawEdgeWeather(ox, oy) {
+  const E = currentAreaDef().edges;
+  if (!E || Trans.active) return;
+  const S = (wx, wy) => { const s = isoToScreen(wx, wy); return [s.x - ox, s.y - oy]; };
+  // a world-space quad, which in this projection is a parallelogram
+  const quad = (x0, y0, x1, y1, fill) => {
+    const a = S(x0, y0), b = S(x1, y0), c = S(x1, y1), d = S(x0, y1);
+    ctx.beginPath();
+    ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]);
+    ctx.lineTo(c[0], c[1]); ctx.lineTo(d[0], d[1]);
+    ctx.closePath(); ctx.fillStyle = fill; ctx.fill();
+  };
+
+  // ---- THE ASHFIELD: fire beyond the west edge ----
+  // distance from the player to the fire line, in tiles: everything below
+  // scales off it, so the effect arrives as you walk west and leaves as you
+  // walk away, instead of being permanently on
+  const near = Math.max(0, 1 - Math.max(0, player.x - (E.ashX1 + 1)) / 46);
+  if (near > 0.01) {
+    // the burning ground itself, seen over the top of the margin
+    ctx.globalCompositeOperation = 'lighter';
+    const flick = 0.86 + 0.14 * Math.sin(gameTime * 1.9) * Math.sin(gameTime * 0.7 + 1.3);
+    quad(0, -6, E.ashX1 + 1, MAP_H + 6, `rgba(150,58,16,${0.16 * flick})`);
+    quad(0, -6, E.ashX1 - 7, MAP_H + 6, `rgba(196,86,20,${0.15 * flick})`);
+    // and the glow it throws onto the ground you are standing on. Real lights
+    // spaced along the fire line, so it falls off with distance for free and
+    // wraps whatever is between you and it.
+    ctx.globalCompositeOperation = 'source-over';
+    for (let wy = 0; wy <= MAP_H; wy += 22) {
+      const s = isoToScreen(E.ashX1 + 1, wy);
+      const lx = s.x - ox, ly = s.y - oy;
+      if (lx < -180 || lx > VIEW_W + 180 || ly < -180 || ly > VIEW_H + 180) continue;
+      addLight(lx, ly, 0, 150, '236,116,34', 0.20 * near * flick);
+    }
+    // the smoke ceiling: it does not burn, it sits on top of everything and
+    // takes the colour out of the sky over the western third
+    ctx.globalCompositeOperation = 'source-over';
+    quad(-8, -6, E.ashX1 + 5, MAP_H + 6, `rgba(38,30,28,${0.30 * near})`);
+    // falling ash, thinning out the further east you get
+    const shown = Math.round(ashFall.length * near);
+    for (let i = 0; i < shown; i++) {
+      const a = ashFall[i];
+      const tw = 0.55 + 0.45 * Math.sin(gameTime * 2.2 + a.ph);
+      ctx.fillStyle = a.s > 0.86
+        ? `rgba(255,150,60,${(0.30 + 0.3 * tw) * near})`      // one still alight
+        : `rgba(196,188,178,${(0.13 + 0.16 * tw) * near})`;
+      ctx.fillRect(Math.round(a.x), Math.round(a.y), 1, a.s > 0.6 ? 2 : 1);
+    }
+  }
+
+  // ---- THE GREY RUN: standing water off the south edge ----
+  const wnear = Math.max(0, 1 - Math.max(0, E.waterY0 - player.y) / 40);
+  if (wnear > 0.01) {
+    ctx.globalCompositeOperation = 'lighter';
+    // sheen: two slow bands sliding along the water, on the water's own
+    // diagonal, so it reads as a surface and not as a painted floor
+    for (let i = 0; i < 3; i++) {
+      const t = (gameTime * 0.06 + i * 0.37) % 1;
+      const y0 = E.waterY0 + 0.5 + t * (MAP_H - E.waterY0 - 2);
+      quad(-6, y0, MAP_W + 6, y0 + 0.9,
+           `rgba(150,178,206,${0.05 * wnear * (0.5 + 0.5 * Math.sin(t * Math.PI))})`);
+    }
+    // glints: fixed points on the water catching the light, each on its own
+    // clock, which is what stops the surface reading as a moving texture
+    for (let i = 0; i < 46; i++) {
+      const gx = 6 + ((i * 37) % (MAP_W - 12));
+      const gy = E.waterY0 + 1 + ((i * 13) % 8);
+      const tw = Math.sin(gameTime * 1.3 + i * 1.7);
+      if (tw < 0.55) continue;
+      const s = isoToScreen(gx + 0.5, gy + 0.5);
+      const px2 = s.x - ox, py2 = s.y - oy;
+      if (px2 < -8 || px2 > VIEW_W + 8 || py2 < -8 || py2 > VIEW_H + 8) continue;
+      ctx.fillStyle = `rgba(178,204,226,${(tw - 0.55) * 0.9 * wnear})`;
+      ctx.fillRect(Math.round(px2) - 1, Math.round(py2), 3, 1);
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    // and the cold sitting over it, which is what makes the water read as far
+    quad(-6, E.waterY0, MAP_W + 6, MAP_H + 6, `rgba(24,34,44,${0.26 * wnear})`);
+  }
+  ctx.globalCompositeOperation = 'source-over';
+}
+
 function drawProp(p, x, y) {
   const T = p.type;
   if (T === 'building') {
@@ -2168,6 +2286,15 @@ function drawProp(p, x, y) {
     return;
   }
   if (T === 'canopy') { drawRoof(p); return; }
+  if (T === 'gantry') {
+    // anchored by its WEST leg's base: the sprite carries its own iso shear,
+    // so the east leg lands ten tiles down-right of it on its own
+    const gs = Sprites.makeGantry(p.seed || 0);
+    ctx.drawImage(gs.img, Math.round(x - gs.ax), Math.round(y - gs.ay));
+    drawShadow(x, y, 4);
+    drawShadow(x + 160, y + 80, 4);
+    return;
+  }
   if (T === 'pylon') {
     ctx.drawImage(Sprites.pylonSign, Math.round(x - 11), Math.round(y - 54));
     addLight(x, y - 40, 0, 16, '255,225,190', 0.14);
@@ -2318,6 +2445,43 @@ function drawProp(p, x, y) {
     img = set[p.v % set.length];
     oyOff = img.oy;
     drawShadow(x, y + 1, 14);
+  }
+  else if (T === 'drowned') {
+    // A CAR IN THE GREY RUN, with the water at its window line. It is the same
+    // car sprite as the ones in the street — the flood did not go and find
+    // different cars — clipped off below the waterline and given a bloom of
+    // pale silt where it breaks the surface. Drawing the whole car and sinking
+    // it would have put wheels on top of the water.
+    const set = p.dir === 'y' ? Sprites.carsIso.y : Sprites.carsIso.x;
+    const im = set[p.v % set.length];
+    // THE WATERLINE IS NOT A HORIZONTAL BAR. Where a flat sheet of water cuts
+    // a car, the mark it leaves is the car's own FOOTPRINT — a diamond on the
+    // iso grid — so the disturbed water is drawn from the footprint's four
+    // corners, and the hull goes on top of it. A rectangle here would have
+    // been the same bug as a rectangle of road paint: a flat card pasted over
+    // an isometric floor.
+    const L = 2.25, Wd = 1.05;
+    const lx = (p.dir === 'y' ? Wd : L) / 2, ly = (p.dir === 'y' ? L : Wd) / 2;
+    ctx.beginPath();
+    let first = true;
+    for (const [tx, ty] of [[-lx, -ly], [lx, -ly], [lx, ly], [-lx, ly]]) {
+      const sx2 = x + (tx - ty) * 16, sy2 = y + (tx + ty) * 8;
+      if (first) { ctx.moveTo(sx2, sy2); first = false; } else ctx.lineTo(sx2, sy2);
+    }
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(26,36,44,0.45)';                  // the hull, under
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(158,178,192,0.28)';             // silt on the surface
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    // and the part still in the air, cut off at the window line
+    const keep = Math.max(4, im.height - (p.sink || 14));
+    const dx = Math.round(x - im.width / 2), dy = Math.round(y + im.oy);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(dx, dy, im.width, keep); ctx.clip();
+    ctx.drawImage(im, dx, dy);
+    ctx.restore();
+    return;
   }
   else if (T === 'barrel') { img = Sprites.barrel; oyOff = -14; drawShadow(x, y, 5); }
   else if (T === 'barrelTipped') { img = Sprites.barrelTipped; oyOff = -8; drawShadow(x, y, 7); }
