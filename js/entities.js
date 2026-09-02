@@ -238,6 +238,13 @@ function spawnScrapper(s) {
   s.looted = false;
   s.detour = 0;
   s.alert = 0;
+  // ...and the one that is rebuilt has not seen anyone either. This cleared
+  // `alert` and left `memory`, so a Scrapper killed while chasing you came back
+  // twenty seconds later on patrol, having seen nothing, still counting as
+  // hunting you — and nothing decrements memory outside the chase, so it stayed
+  // that way for the rest of the run. Kill the hunter and the hunt is over.
+  s.memory = 0;
+  s.lastPX = s.x; s.lastPY = s.y;
   s.idleT = 0;
   s.kbx = 0; s.kby = 0;
   s.hitFlash = 0;
@@ -1406,6 +1413,12 @@ function updateBullets(dt) {
 
 function killScrapper(s) {
   s.state = 'dead';
+  // A DEAD MACHINE HUNTS NOBODY. `memory` is the twelve seconds one keeps
+  // coming after losing sight of you, and it is only ever counted DOWN inside
+  // the chase state — so a machine killed mid-chase kept its 12 forever, and
+  // `beingHunted()` went on answering yes for a wreck's leftovers.
+  s.alert = 0;
+  s.memory = 0;
   s.looted = false;
   s.respawn = 20;               // lingers as a lootable wreck; 4s after looting
   ScrapperStats.kills++;
@@ -1753,6 +1766,7 @@ function alertBlock(block, px, py, shout) {
 function killBandit(b) {
   b.dead = true;
   b.state = 'dead';
+  b.alert = 0; b.memory = 0;    // same rule: a dead raider hunts nobody
   b.looted = false;
   b.fell = 0.35;
   b.deadT = 0;

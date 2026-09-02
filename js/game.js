@@ -625,10 +625,19 @@ function mapClick(mx, my) {
     const d = Math.hypot(mx - h.x, my - h.y);
     if (d < bd) { bd = d; best = h.poi; }
   }
-  // the objective answers too — clicking it says what you are meant to be doing
+  // The objective answers too — clicking it says what you are meant to be doing.
+  // It COMPETES on distance rather than winning outright: the shelter objective
+  // sits eight tiles from Candlelight's own pin, which is inside the click
+  // radius once you are pulled back, so an unconditional override meant you
+  // could not select the camp to travel to it for as long as it was the thing
+  // you were being sent to.
   const obj = currentObjective();
-  if (obj && MapUI.questHit && Math.hypot(mx - MapUI.questHit.x, my - MapUI.questHit.y) < 7) {
-    best = { id: '__obj', name: obj.title.toUpperCase(), blurb: obj.detail, kind: 'quest' };
+  if (obj && MapUI.questHit) {
+    const qd = Math.hypot(mx - MapUI.questHit.x, my - MapUI.questHit.y);
+    if (qd < bd) {
+      bd = qd;
+      best = { id: '__obj', name: obj.title.toUpperCase(), blurb: obj.detail, kind: 'quest' };
+    }
   }
   if (best) { if (best !== MapUI.sel) SFX.blip(); MapUI.sel = best; return; }
 
@@ -735,12 +744,30 @@ function fastTravel(p) {
 }
 
 // Anything that has seen you, plus the fight you cannot walk out of.
+// IS SOMETHING ACTUALLY COMING FOR YOU? This is what stops you fast-travelling,
+// so it has to mean "there is a fight here you would be walking out of" and
+// nothing else. `alert` is how close something is to spotting you; `memory` is
+// the seconds it keeps hunting after losing sight.
+//
+// It used to answer yes for machines that had never seen you. Memory is only
+// ever counted down inside the chase, so anything left holding a number outside
+// one held it forever — and a Scrapper killed mid-chase was rebuilt with
+// `alert` cleared and `memory` still at 12, put back on patrol where nothing
+// decrements it. Kill the thing hunting you, wait for the respawn, and the map
+// refused to travel for the rest of the run. Both counters are cleared on death
+// and on respawn now, and this asks the living only.
 function beingHunted() {
   if (boss.active && boss.state !== 'hidden' && boss.state !== 'dead') return true;
+  const onYou = (e) => e.alert > 0.6 || e.memory > 0;
   for (const sc of scrappers)
-    if (sc.state !== 'off' && sc.state !== 'dead' && (sc.alert > 0.6 || sc.memory > 0)) return true;
+    if (sc.state !== 'off' && sc.state !== 'dead' && onYou(sc)) return true;
   for (const bd of bandits)
-    if (!bd.dead && (bd.alert > 0.6 || bd.memory > 0)) return true;
+    if (!bd.dead && onYou(bd)) return true;
+  // The droid squads were not in here at all — a squad chasing you down the ring
+  // road was no reason you could not vanish off the map. They hunt as one and
+  // share a single memory, so a squad counts for as long as any of it stands.
+  for (const sq of squads)
+    if (onYou(sq) && sq.members.some(m => m.state !== 'dead')) return true;
   return false;
 }
 
@@ -3394,17 +3421,26 @@ function drawHUD() {
     }
     MapUI.hits = hits;
 
+    // Anything drawn over the ground has to stay inside the map's own region.
+    // The pins were already culled; the objective dot and the "you" marker were
+    // not, so panning your own district off the edge painted them over the
+    // objective column beside it.
+    const inMapView = (x, y) => x >= -8 && x <= MAP_VIEW_W + 4 && y >= -8 && y <= VIEW_H + 8;
+
     // ---- the objective, over everything, and the only green on the map
     if (mobj && Areas[mobj.area] && mapThumbs[mobj.area]) {
       const qw = Areas[mobj.area].world;
       const qx2 = sx2(qw.x + mobj.x), qy2 = sy2(qw.y + mobj.y);
       const qi = Sprites.icoQuest;
+      if (!inMapView(qx2, qy2)) { MapUI.questHit = null; }
+      else {
       uictx.globalAlpha = 0.7 + 0.3 * Math.sin(gameTime * 3);
       uictx.imageSmoothingEnabled = false;
       uictx.drawImage(qi, Math.round(qx2 - qi.width / 2) * U, Math.round(qy2 - qi.height / 2) * U,
                       qi.width * U, qi.height * U);
       uictx.globalAlpha = 1;
       MapUI.questHit = { x: qx2, y: qy2 };
+      }
     } else MapUI.questHit = null;
 
     // ---- YOU. One symbol at every zoom.
@@ -3417,7 +3453,7 @@ function drawHUD() {
     // on the ring without hunting.
     const cw = currentAreaDef().world;
     const pxm = sx2(cw.x + player.x), pym = sy2(cw.y + player.y);
-    {
+    if (inMapView(pxm, pym)) {
       // the ping: an iso diamond, drawn a pixel at a time because the whole
       // game is pixels and ctx.arc would put grey fringes on it
       const t = (gameTime * 0.8) % 1;

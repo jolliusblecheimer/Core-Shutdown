@@ -506,7 +506,12 @@ function killDroid(d) {
   addShake(2.5);
   SFX.robotDie();
   const sq = d.squad;
-  if (sq && sq.members.every(m => m.state === 'dead')) sq.respawnT = SQUAD_RESPAWN;
+  if (sq && sq.members.every(m => m.state === 'dead')) {
+    sq.respawnT = SQUAD_RESPAWN;
+    // the squad hunts as one and remembers as one, so a squad with nothing left
+    // standing is not hunting anybody — clear what it was carrying
+    sq.alert = 0; sq.memory = 0;
+  }
 }
 
 // player bullets — called from updateBullets

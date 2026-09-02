@@ -3000,3 +3000,46 @@ so it reads as a label on the map rather than as marks in the ground.
 
 Checked at ring scale, framed on an area, and zoomed close; the systems, map
 input and bugcheck suites all clean.
+
+### Kill the hunter and the hunt is over
+**Laurens:** *"Make sure that the while hunted status ends if you kill the
+opponent that is hunting you."*
+
+It did not, and the reason is that `memory` — the seconds an enemy keeps coming
+after losing sight of you — **is only ever counted down inside the chase state.**
+Anything left holding a number outside a chase held it forever.
+
+`spawnScrapper()` cleared `alert` and left `memory` alone. So a Scrapper killed
+mid-chase came back twenty seconds later on patrol, having seen nothing, with 12
+seconds of memory that nothing would ever decrement — and `beingHunted()` went
+on answering yes for the rest of the run. Measured it: thirty seconds after the
+kill, `state=patrol  mem=12.0  alert=0.00`, and the map still refusing to
+travel. Killing the thing hunting you was not enough, because what came back was
+not hunting you either and still counted.
+
+Fixed at the root and then guarded: `killScrapper`, `killBandit` and a wiped
+droid squad all clear `alert` and `memory` now, `spawnScrapper` clears them
+too, and `beingHunted()` asks only the living.
+
+**Two more things the test found.**
+
+- **The droid squads were not in `beingHunted` at all.** A squad chasing you
+  down the ring road was no reason you could not vanish off the map. They hunt
+  as one and share a single memory, so a squad counts for as long as any of it
+  is standing — and stops the moment the last of it is down.
+- **You could not select Candlelight to travel to it while it was your
+  objective.** The green dot for "Reach the shelter" sits eight tiles from the
+  camp's own pin, inside the click radius once you pull back, and the objective
+  used to win the click outright. It competes on distance now, so the nearer of
+  the two is what you select.
+
+And one drawn where it should not be: the objective dot and the you-marker had
+no bounds test, so panning your own district off the edge of the map painted
+them over the objective column beside it. The pins were already culled; those
+two are now too.
+
+Verified through the line the player actually reads: chased → **NOT WHILE
+HUNTED**; both machines killed → **[E] TRAVEL** at once; twenty-five seconds
+later with the pair respawned → still **[E] TRAVEL**. Also that breaking off and
+escaping ends it after the memory runs out, and that walking into another area
+ends it. Bugcheck, systems and map-input suites clean.
