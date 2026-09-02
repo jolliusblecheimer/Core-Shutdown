@@ -692,7 +692,7 @@ function outlined(src) {
       if (xb > xa) { g.fillStyle = col; g.fillRect(xa, y, xb - xa, 1); }
     }
   }
-  function carIso(along, body, bodyD, roofC) {
+  function carIso(along, body, bodyD, roofC, burnt) {
     const L = 2.25, W = 1.0, BH = 11, CH = 9;      // length · width · body · cabin
     const lx = along === 'x' ? L : W, ly = along === 'x' ? W : L;
     const OX = Math.ceil(ly * 16) + 2, OY = BH + CH + 2;
@@ -726,12 +726,21 @@ function outlined(src) {
       isoFill(g, [P(t0 + 0.04, 1.03, 4.4), P(t1 - 0.04, 1.03, 4.4),
                   P(t1 - 0.04, 1.03, 1.6), P(t0 + 0.04, 1.03, 1.6)], '#3f444b');
     }
-    // headlamps on the nose
+    // headlamps on the nose — a burnt-out car has empty sockets instead, and
+    // that one detail does most of the work: a bright pair of lamps reads as a
+    // parked car no matter how dark you paint the panels around them
     for (const [v0, v1] of [[0.08, 0.28], [0.72, 0.92]]) {
-      isoFill(g, [P(1, v0, 8.5), P(1, v1, 8.5), P(1, v1, 6.2), P(1, v0, 6.2)], '#8c949c');
+      isoFill(g, [P(1, v0, 8.5), P(1, v1, 8.5), P(1, v1, 6.2), P(1, v0, 6.2)],
+              burnt ? '#151211' : '#8c949c');
     }
     // rust, so no two are the same
     isoFill(g, [P(0.34, 1, 9), P(0.5, 1, 9), P(0.5, 1, 5), P(0.34, 1, 5)], RUST_D);
+    if (burnt) {
+      // scorch up the flank out of the window line, and a roof burnt through
+      isoFill(g, [P(0.2, 1, BH), P(0.8, 1, BH), P(0.8, 1, 4), P(0.2, 1, 4)], 'rgba(12,10,9,0.5)');
+      isoFill(g, [P(0.3, 0.2, BH + CH), P(0.68, 0.2, BH + CH),
+                  P(0.68, 0.8, BH + CH), P(0.3, 0.8, BH + CH)], '#100e0d');
+    }
     const out = outlined(c);
     // Anchor the sprite on the CENTRE of its own footprint, not on P(0,0).
     // The old +1 put the drawn car three quarters of a tile down-screen of the
@@ -814,6 +823,17 @@ function outlined(src) {
   }
   Sprites.busIso = { x: busIso('x'), y: busIso('y') };
 
+  // BURNT OUT. Same car, same construction — the fire did not go and find
+  // different cars — with the paint gone and only scale and rust left.
+  const CAR_BURNT = [
+    ['#272220', '#171413', '#2f2926'],
+    ['#231f1e', '#141212', '#2a2422'],
+    ['#2b2320', '#191413', '#332a25'],
+  ];
+  Sprites.carsBurnt = {
+    x: CAR_BURNT.map(p => carIso('x', p[0], p[1], p[2], true)),
+    y: CAR_BURNT.map(p => carIso('y', p[0], p[1], p[2], true)),
+  };
   Sprites.carsIso = {
     x: CAR_COLS.map(p => carIso('x', p[0], p[1], p[2])),
     y: CAR_COLS.map(p => carIso('y', p[0], p[1], p[2])),
@@ -2702,6 +2722,16 @@ function outlined(src) {
     // thing this project has proven — panels failed three times before the rule.
     V: { w: '#4a4844', s: '#3a3835', t: '#57544f', r: '#3f3d39', re: '#2a2825',
          g: '#1a1a1c', h: 54, blank: true, deck: true },
+    // X — A GUTTED SHELL. Everything west of the motorway stood next to a tank
+    // farm that has been alight for a year. These are the same volumes as the
+    // rest of the city, burnt: soot-grey render, window openings with nothing
+    // behind them and a smear of soot up the wall above each one where the fire
+    // came out, and a roof that has fallen in rather than a roof with plant on
+    // it. Glass is very nearly black, which is what an empty opening looks like
+    // from the outside — a lit window and a hole are the same shape and only
+    // the value tells them apart.
+    X: { w: '#3b3431', s: '#2c2624', t: '#473e3a', r: '#2f2c2a', re: '#211e1c',
+         g: '#0d0b0a', h: 40, burnt: true },
   };
 
   function poly(g, pts, fill, stroke) {
@@ -2757,6 +2787,12 @@ function outlined(src) {
           const u0 = (i + 0.22) / cells, u1 = (i + 0.78) / cells;
           if (kind === 'S' && r === rows - 1) continue;             // shop sign band
           hard(P0, P1, u0, u1, v0, v1, glass);
+          if (st.burnt) {
+            // soot up the wall above the opening — the fire came out of here
+            hard(P0, P1, u0 - 0.012, u1 + 0.012, v1, Math.min(0.985, v1 + 0.30 / rows), '#1b1714');
+            hard(P0, P1, u0 + 0.02, u1 - 0.02, v1, Math.min(0.99, v1 + 0.46 / rows), '#221d19');
+            continue;
+          }
           // a highlight streak down the light side of the pane
           hard(P0, P1, u0, u0 + (u1 - u0) * 0.3, v0, v1, shadeHex(glass, 1.5));
         }
@@ -3098,6 +3134,20 @@ function outlined(src) {
       g.moveTo(D2[0], D2[1] - 3); g.lineTo(C2[0], C2[1] - 3); g.lineTo(B2[0], B2[1] - 3);
       g.stroke();
       const mx = (A2[0] + C2[0]) / 2, my = (A2[1] + C2[1]) / 2 - 3;
+      if (st.burnt) {
+        // caved in. Nothing up here survived, so nothing up here is drawn:
+        // just the deck opened up where the roof went through.
+        for (let i = 0; i < 3 + (seed % 3); i++) {
+          const u = 0.12 + rrng() * 0.6, v = 0.12 + rrng() * 0.6;
+          const uw = 0.12 + rrng() * 0.26, vh = 0.14 + rrng() * 0.3;
+          poly(g, [R(u, v), R(u + uw, v), R(u + uw, v + vh), R(u, v + vh)], '#141110');
+          poly(g, [R(u + 0.02, v + 0.02), R(u + uw * 0.5, v + 0.02),
+                   R(u + uw * 0.5, v + vh * 0.5), R(u + 0.02, v + vh * 0.5)], '#0b0908');
+        }
+        const res2 = { img: c, ax, ay, h: Hh };
+        if (buildingCache.size < 400) buildingCache.set(key, res2);
+        return res2;
+      }
       const acUnit = (ux, uy) => {
         g.fillStyle = '#5a5e62'; g.fillRect(ux, uy - 7, 10, 7);
         g.fillStyle = '#6c7074'; g.fillRect(ux, uy - 8, 10, 2);
@@ -3712,6 +3762,63 @@ function outlined(src) {
     }
     Sprites.signPlank = Sprites.signPlankDir.xm;
     Sprites.signCloth = Sprites.signClothDir.xm;
+  })();
+
+  // ---- WHAT THE FIRE LEFT ----------------------------------------------
+  // Free-standing uprights, so the angle rule lets these be drawn straight —
+  // a stump and a pole do not lie along anything.
+  (function () {
+    // a burnt tree: trunk snapped off, two stubs of branch, ash at the foot
+    // A STUMP IS A BREAK, NOT A POST. First version was a straight trunk with a
+    // symmetrical stub either side, which is the silhouette of a cactus — it
+    // read as desert, not as a fire. Squat, spreading at the root, and the top
+    // is splintered at three different heights so nothing about it is even.
+    const stump = () => {
+      const c = makeCanvas(16, 20), g = c.getContext('2d');
+      px(g, 3, 15, 10, 4, '#221b17');                // root flare, ash banked up
+      px(g, 4, 16, 10, 1, '#2e2620');
+      px(g, 5, 7, 6, 9, '#2a211c');
+      px(g, 5, 7, 2, 9, '#372c25');                  // the lit side
+      px(g, 5, 5, 2, 3, '#2a211c');                  // splinters, all different
+      px(g, 8, 3, 2, 5, '#2a211c');
+      px(g, 10, 6, 1, 4, '#2a211c');
+      px(g, 8, 2, 1, 1, '#5a3d22');                  // raw wood in the break
+      px(g, 5, 4, 1, 1, '#4a3220');
+      px(g, 10, 5, 1, 2, '#4a3220');
+      return outlined(c);
+    };
+    // a heap of what a building leaves: charred timber, plaster, a bit of pipe
+    const debris = () => {
+      const c = makeCanvas(24, 16), g = c.getContext('2d');
+      const rr = mulberry32(4451);
+      for (let i = 0; i < 26; i++) {
+        const x = 2 + ((rr() * 19) | 0), y = 6 + ((rr() * 7) | 0);
+        const w = 2 + ((rr() * 5) | 0);
+        px(g, x, y, w, 1 + ((rr() * 2) | 0),
+           ['#2b2320', '#3a2f28', '#1d1815', '#463a30'][(rr() * 4) | 0]);
+      }
+      px(g, 7, 5, 9, 1, '#4e4139');
+      px(g, 5, 12, 14, 2, '#231d19');
+      return outlined(c);
+    };
+    // a telegraph pole the fire got at, leaning the way it fell
+    const leaner = (dir) => {
+      const c = makeCanvas(20, 36), g = c.getContext('2d');
+      for (let i = 0; i < 30; i++) {
+        const t = i / 29;
+        const x = 9 + Math.round(dir * t * 6);
+        px(g, x, 33 - i, 2, 1, i > 24 ? '#4a3a2a' : '#2d2521');
+      }
+      const tx = 9 + Math.round(dir * 6);
+      px(g, tx - 4, 4, 9, 1, '#2d2521');             // the crossarm, still on
+      px(g, tx - 3, 2, 1, 2, '#241d19');
+      px(g, tx + 3, 2, 1, 2, '#241d19');
+      return outlined(c);
+    };
+    Sprites.stump = stump();
+    Sprites.debris = debris();
+    Sprites.leanerL = leaner(-1);
+    Sprites.leanerR = leaner(1);
   })();
 
   // ---- THE M7 GANTRY ---------------------------------------------------

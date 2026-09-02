@@ -403,6 +403,12 @@ function findSafeSpot(x, y) {
       const ang = (a / rays) * Math.PI * 2;
       const nx = x + Math.cos(ang) * r, ny = y + Math.sin(ang) * r;
       if (nx > 1 && ny > 1 && nx < MAP_W - 1 && ny < MAP_H - 1 && canStand(nx, ny, 0.3)) {
+        // AND NOT ONTO THE FIRE. The Ashfield's margin is walkable, so it
+        // passes canStand — and a run rescued onto it would wake up already
+        // burning, from a save that did nothing wrong. Standable is not the
+        // same as safe.
+        const by = burning[Math.floor(ny)];
+        if (by && by[Math.floor(nx)]) continue;
         return { x: nx, y: ny };
       }
     }

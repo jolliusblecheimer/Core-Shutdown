@@ -373,7 +373,7 @@ let signs = [];   // readable street signs {gx, gy, text}
 // explain why). See drawEdgeWeather in js/game.js.
 // `front` is filled in by buildFringe: the fire's edge wanders, so the glow has
 // to follow the same per-row boundary the collision uses.
-const FRINGE_EDGES = { viaY0: 22, viaY1: 29, ashX1: 19, waterY0: 140, front: null };
+const FRINGE_EDGES = { viaY0: 22, viaY1: 29, ashX1: 5, waterY0: 140, front: null };
 
 function buildFringe() {
   const rng = mulberry32(20260817);
@@ -395,8 +395,29 @@ function buildFringe() {
     { x0: 165, y0: 75, x1: 165, y1: 120, half: 3, name: 'south link' },
     { x0: 92, y0: 36, x1: 92, y1: 120, half: 2, name: 'mid street' },
   ];
+  // THE WEST LANE — a back street beyond the M7, through what the fire took.
+  //
+  // West of the spine was eight to fifteen tiles of ground with buildings
+  // filling most of it: you could step off the kerb and you were already at the
+  // edge. This is the road that makes it a place you walk THROUGH rather than a
+  // verge you stand on — a north-south lane at x 14, with burnt shells between
+  // it and the motorway and the fire coming the other way.
+  //
+  // It is painted and it blocks buildings like any street, but it is kept OUT
+  // of `STREETS`, which is what the building-lining and street-dressing loops
+  // walk. Those loops draw from the map's rng in a fixed order, and an extra
+  // street in the middle of them would re-roll every building east of here.
+  // The lane gets its own dressing pass, on its own seed, at the end.
+  const WEST_LANES = [
+    { x0: 15, y0: 31, x1: 15, y1: 138, half: 2, name: 'west lane' },
+    // and two ways onto it from the motorway, so it is a junction and not a
+    // scramble across open lots
+    { x0: 15, y0: 52, x1: 30, y1: 52, half: 2, name: 'west link n' },
+    { x0: 15, y0: 104, x1: 30, y1: 104, half: 2, name: 'west link s' },
+  ];
+  const ALL_STREETS = STREETS.concat(WEST_LANES);
   const onStreet = (x, y) => {
-    for (const s of STREETS) {
+    for (const s of ALL_STREETS) {
       const h = s.half + 2;                     // + pavement
       if (s.x0 === s.x1) {
         if (Math.abs(x - s.x0) <= h && y >= Math.min(s.y0, s.y1) - h && y <= Math.max(s.y0, s.y1) + h) return s;
@@ -408,7 +429,7 @@ function buildFringe() {
   };
   for (let y = 0; y < MAP_H; y++) {
     for (let x = 0; x < MAP_W; x++) {
-      for (const s of STREETS) {
+      for (const s of ALL_STREETS) {
         let d = null;
         if (s.x0 === s.x1) {
           if (y >= Math.min(s.y0, s.y1) - s.half - 2 && y <= Math.max(s.y0, s.y1) + s.half + 2) d = Math.abs(x - s.x0);
@@ -450,7 +471,7 @@ function buildFringe() {
   // are drawn as weather anchored to the fire line and the shore — so the
   // numbers live on the area definition and this pass reads them from there.
   // One place to change, and the art cannot drift away from the collision.
-  const { viaY0: VIA_Y0, viaY1: VIA_Y1, ashX1: ASH_X1, waterY0: WATER_Y0 } = FRINGE_EDGES;
+  const { viaY0: VIA_Y0, viaY1: VIA_Y1, ashX1: ASH_WEST, waterY0: WATER_Y0 } = FRINGE_EDGES;
   // THE TWO HOLES IN THE DECK. The spine goes under it at x 26-34 and the mid
   // street at x 88-96 — walkable, unlit, and dead-ending in rubble at y 21
   // because there is nothing on the far side yet. A tunnel you cannot walk out
@@ -481,16 +502,18 @@ function buildFringe() {
   // would re-roll every building placed afterwards. See §12 of the plan.
   const arng = mulberry32(7717);
   const ph1 = arng() * 6.28, ph2 = arng() * 6.28, ph3 = arng() * 6.28;
-  const BURN_DEPTH = 6;                  // how far into the fire you can walk
-  const CORE_X = 5;                      // and the heart of it, which you cannot
+  const BURN_DEPTH = 5;                  // how far into the fire you can walk
+  const CORE_X = 1;                      // and the heart of it, which you cannot
   const ashFront = new Int16Array(MAP_H);
   for (let y = 0; y < MAP_H; y++) {
-    const w = Math.sin(y * 0.055 + ph1) * 5.5
-            + Math.sin(y * 0.130 + ph2) * 3.0
-            + Math.sin(y * 0.310 + ph3) * 1.5;
-    // never past x 22: the spine's west pavement is x 24-25 and the fire may
-    // not touch the road the whole map is hung off
-    ashFront[y] = Math.max(10, Math.min(22, Math.round(ASH_X1 + w)));
+    const w = Math.sin(y * 0.055 + ph1) * 1.8
+            + Math.sin(y * 0.130 + ph2) * 1.1
+            + Math.sin(y * 0.310 + ph3) * 0.7;
+    // THE FIRE WAS PULLED BACK WEST to make room for a district. It used to sit
+    // at x 19 and there was nothing between it and the motorway but a strip. It
+    // stops short of the west lane's pavement (x 12-13) now: the lane is the
+    // last road before the fire, and you can see the fire from it.
+    ashFront[y] = Math.max(2, Math.min(8, Math.round(ASH_WEST + w)));
   }
 
   for (let y = 0; y < MAP_H; y++) {
@@ -1173,6 +1196,82 @@ function buildFringe() {
     const x = 2 + rng() * (MAP_W - 4), y = 2 + rng() * (MAP_H - 4);
     if (solid[y | 0][x | 0] || ground[y | 0][x | 0] !== 4) continue;
     decals.push({ gx: x, gy: y, type: 'puddle' });
+  }
+
+  // ---------- THE BURNT WEST ----------
+  // Everything from here to the fire stood next to a tank farm that has been
+  // alight for a year, so everything from here to the fire is a ruin. Two
+  // things happen in this pass and both are deliberate:
+  //
+  // 1. Every building whose footprint is entirely west of the motorway's west
+  //    kerb becomes a GUTTED SHELL. Retagging is enough — they are the same
+  //    volumes, drawn burnt — so this costs nothing and cannot move anything.
+  // 2. The strip between the west lane and the motorway is four tiles deep,
+  //    and the generic filler needs seven, so it left bare lots there. Shallow
+  //    terraces go in by hand, which is also how they end up all burnt.
+  //
+  // ON ITS OWN RNG AND LAST, for the reason in §12 of the plan: this pass
+  // cannot be allowed to shift the stream the rest of the map is built from.
+  const WEST_KERB = 24;
+  const brng = mulberry32(31337);
+  for (const b of buildings) if (b.x0 + b.w <= WEST_KERB) b.kind = 'X';
+
+  // shallow terraces in the strip, broken by the two links onto the lane
+  for (const [ty0, ty1] of [[32, 49], [55, 101], [107, 137]]) {
+    let t = ty0;
+    while (t < ty1 - 4) {
+      const run = 5 + ((brng() * 7) | 0);
+      if (t + run > ty1) break;
+      const depth = 4;
+      if (placeBuilding(WEST_KERB - 4, t, depth, run, 'X')) {
+        buildings[buildings.length - 1].westShell = true;
+      }
+      t += run + 1 + ((brng() * 3) | 0);
+    }
+  }
+  // and one more line of them along the lane's west side where there is room
+  for (let t = 34; t < 136; ) {
+    const run = 4 + ((brng() * 5) | 0);
+    const front = ashFront[Math.min(MAP_H - 1, t)];
+    const x0 = front + 3;
+    if (x0 + 3 <= 10 && placeBuilding(x0, t, 3, run, 'X')) {
+      buildings[buildings.length - 1].westShell = true;
+    }
+    t += run + 2 + ((brng() * 6) | 0);
+  }
+  for (const b of buildings) if (b.westShell) addBuildingProp(b);
+
+  // what the fire left standing in the street
+  const westProp = (x, y, type, extra) => {
+    if (x < 2 || y < 2 || x >= MAP_W - 1 || y >= MAP_H - 1) return;
+    if (solid[y][x] || heavy[y][x] || burning[y][x]) return;
+    const g = ground[y][x];
+    if (g === 4) return;                            // never park it on the lane
+    solid[y][x] = true;
+    props.push(Object.assign({ gx: x, gy: y, type }, extra || {}));
+  };
+  for (let y = 33; y < 138; y += 2) {
+    const front = ashFront[y];
+    for (let k = 0; k < 2; k++) {
+      const x = front + 1 + ((brng() * (WEST_KERB - front - 2)) | 0);
+      const r = brng();
+      if (r < 0.30) westProp(x, y, 'stump');
+      else if (r < 0.56) westProp(x, y, 'debris');
+      else if (r < 0.70) westProp(x, y, 'leaner', { dir: brng() < 0.5 ? 'y' : 'x' });
+      else if (r < 0.80) westProp(x, y, 'barrelTipped');
+    }
+  }
+  // burnt-out traffic, nose to tail down the lane the way it was left
+  for (let y = 34; y < 136; y += 3 + ((brng() * 7) | 0)) {
+    if (brng() < 0.45) continue;
+    const x = 13 + ((brng() * 5) | 0);
+    if (y + 2 >= MAP_H - 1) break;
+    let clear = true;
+    for (let i = 0; i < 3; i++) if (solid[y + i][x]) clear = false;
+    if (!clear) continue;
+    for (let i = 0; i < 3; i++) solid[y + i][x] = true;
+    props.push({ gx: x, gy: y + 1, type: 'burntCar', dir: 'y',
+                 v: (brng() * 3) | 0, foot: [x, y, 1, 3] });
   }
 
   // ---------- THE GREY RUN, dressed ----------

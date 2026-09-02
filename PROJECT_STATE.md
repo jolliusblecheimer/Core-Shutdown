@@ -590,6 +590,23 @@ end.** The first version of the Grey Run's dressing did, and re-rolled every
 building placed after it: 354 walkable tiles moved and St Martin's ended up
 inside a block. New dressing runs last on its own `mulberry32(90210)`.
 
+### THE BURNT WEST
+West of the motorway used to be eight to fifteen tiles of ground with buildings
+filling most of it. It is a district now: the fire was pulled back to **x 2–8**,
+a back lane runs the height of the map at **x 15** with two links onto the M7 at
+y 52 and y 104, and everything between them is ruins — gutted shells
+(`BUILD_STYLE.X`), burnt-out cars, snapped stumps, debris and fallen poles.
+Walking west from the spine is **26–28 tiles**, up from 10.
+
+**Both block fillers draw their rng before deciding whether a candidate fits**,
+so opening ground in the west changed which candidates succeed, never which
+numbers are drawn — the east is bit-identical. The west lane is kept OUT of
+`STREETS` (which the lining and dressing loops walk) and painted through
+`WEST_LANES`; its own dressing runs last on `mulberry32(31337)`.
+
+**`findSafeSpot` skips burning tiles.** The fire's margin passes `canStand`, so
+a rescued save could have woken up already on fire. Standable is not safe.
+
 ### Outstanding
 - Crash barriers along the spine's edges (F4) — not built; ~200 props for what
   the gantries already say.

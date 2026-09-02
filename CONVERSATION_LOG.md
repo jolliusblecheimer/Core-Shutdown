@@ -3436,3 +3436,36 @@ purpose. The fire makes it interesting, not bigger.
 Walkable 14,423 → 15,167 (+744, all lethal). Props unchanged at 399. Ring still
 solid on all four sides. All suites green. Field 12's ground ids moved again,
 15/16/17 → 16/17/18, since 15 is scorch.
+
+---
+
+## "add some burnt things there, also expand the map so i can walk further than the broken up road"
+
+Turned the west strip into a district.
+
+- **The fire pulled back** from x 11–22 to **x 2–8**, which is what made room.
+- **A west lane** at x 15 running the height of the map, with two links onto the
+  M7 at y 52 and y 104 so you can get onto it properly.
+- **Gutted shells** — new `BUILD_STYLE.X`: soot render, window openings with
+  nothing behind them and soot smeared up the wall above each, roof caved in.
+  Every building entirely west of the motorway's kerb is retagged to it, and
+  shallow terraces fill the four-tile strip the generic filler could not use.
+- **Burnt things**: burnt-out cars, snapped stumps, debris heaps, leaning poles,
+  tipped barrels.
+
+Walking west from the spine: **10 tiles → 26–28**. Walkable 15,167 → 16,012.
+Props 399 → 475. Frame cost unchanged.
+
+**It did not re-roll the map**, and the reason is worth keeping: both block
+fillers draw their rng *before* testing whether a candidate fits, so opening
+ground changes which candidates succeed, never which numbers come out. The lane
+is kept out of `STREETS` (the lining and dressing loops walk that) and dressed
+last on its own seed.
+
+Two sprites were wrong first time: the stumps were straight trunks with
+symmetrical stubs, which is a cactus, and the "burnt" cars still had bright
+headlamps, which reads as a parked car no matter how dark the paint.
+
+And it created a save bug that got caught: the fire's margin is walkable, so it
+passes `canStand`, and `findSafeSpot` would have rescued a save **onto burning
+ground**. It skips burning tiles now — standable is not the same as safe.

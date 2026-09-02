@@ -439,3 +439,67 @@ tiles depending on the row, and on some rows city blocks reach the pavement. §3
 cut that ground deliberately because nothing was ever out there. The fire makes
 it *interesting* rather than *bigger*; if the west should actually be walkable
 territory, that is a different job from this one.
+
+---
+
+## 14. THE BURNT WEST — a district, not a verge
+
+*"Maybe add some burnt things there, also expand the map so i can walk further
+than the broken up road."*
+
+§13 made the fire honest but the ground west of the motorway was still eight to
+fifteen tiles: you stepped off the kerb and you were already at the edge. This
+turns that strip into somewhere you walk **through**.
+
+### What was built
+
+| | |
+|---|---|
+| **The fire pulled back** | Front moved from x 11–22 to **x 2–8**. It stops short of the west lane's pavement, so the lane is the last road before the fire and you can see the fire from it |
+| **The west lane** | A back street at **x 15**, y 31–138, running the height of the map, with **two links onto the M7** at y 52 and y 104 so it is a junction and not a scramble across lots |
+| **Gutted shells** | New `BUILD_STYLE.X`. Every building whose footprint is entirely west of the motorway's west kerb is retagged burnt — soot render, window openings with nothing behind them and a soot smear up the wall above each one, and a roof that has **fallen in** rather than a roof with plant on it |
+| **Terraces** | The strip between the lane and the motorway is four tiles deep and the generic filler needs seven, so it was leaving bare lots. Shallow terraces go in by hand, which is also how they come out all burnt |
+| **What the fire left** | Burnt-out cars (the same car, paint gone, headlamps dark, roof burnt through), snapped tree stumps, debris heaps, leaning telegraph poles, tipped barrels |
+
+**Walking west from the spine is 26–28 tiles now, up from 10.**
+
+### Why it did not re-roll the map
+
+Both block fillers **draw their random numbers before deciding** whether a
+candidate fits. Opening ground in the west therefore changes which candidates
+*succeed*, never which numbers are *drawn* — so the entire east is bit-identical.
+The west lane is deliberately kept **out of `STREETS`**, which is what the
+building-lining and street-dressing loops walk; it is painted through a separate
+`WEST_LANES` array and dressed by its own pass on `mulberry32(31337)` at the end.
+
+### Two sprites that were wrong the first time
+
+- **The stumps were cacti.** A straight trunk with a symmetrical stub either
+  side is the silhouette of a cactus, and it read as desert rather than fire.
+  Squat now, spreading at the root, splintered at three different heights.
+- **The burnt cars were not burnt.** Dark paint alone did not do it — a bright
+  pair of headlamps reads as a parked car however black the panels are. Empty
+  sockets, a burnt-through roof and scorch up the flank did.
+
+### And a save bug this created
+
+The fire's margin is walkable, so it passes `canStand` — and `findSafeSpot`
+would happily rescue a save **onto burning ground**, so a run that did nothing
+wrong would wake up on fire. It skips burning tiles now. **Standable is not the
+same as safe.** All five rescue cases verified landing on safe ground.
+
+### Measured
+
+| | §13 | §14 |
+|---|---|---|
+| Walkable from the gate | 15,167 | **16,012** |
+| West of the spine, at y 80 | 13 tiles | **28 tiles** |
+| Props | 399 | **475** |
+| Fire front | x 11–22 | x 2–8 |
+| Reachable outside the box, not burning | 5 | **5** |
+| Outer ring solid | 200/200 · 200/200 · 150/150 · 150/150 | **unchanged** |
+| Frame cost, five spots (ms) | 14.67 / 16.61 / 14.74 / 15.04 / 14.34 | 14.65 / 14.93 / 14.81 / 14.82 / 13.19 |
+
+`verifycut` now also asserts the west lane, both links and three points along it
+are **reachable from the gate** — a new district that is a second island would
+be worse than no district. All suites green, no console errors.

@@ -2549,6 +2549,18 @@ function drawProp(p, x, y) {
     ctx.restore();
     return;
   }
+  else if (T === 'burntCar') {
+    const set = p.dir === 'y' ? Sprites.carsBurnt.y : Sprites.carsBurnt.x;
+    img = set[p.v % set.length];
+    oyOff = img.oy;
+    drawShadow(x, y + 1, 14);
+  }
+  else if (T === 'stump')  { img = Sprites.stump;  oyOff = -19; drawShadow(x, y, 5); }
+  else if (T === 'debris') { img = Sprites.debris; oyOff = -13; drawShadow(x, y, 8); }
+  else if (T === 'leaner') {
+    img = p.dir === 'y' ? Sprites.leanerL : Sprites.leanerR;
+    oyOff = -34; drawShadow(x, y, 4);
+  }
   else if (T === 'barrel') { img = Sprites.barrel; oyOff = -14; drawShadow(x, y, 5); }
   else if (T === 'barrelTipped') { img = Sprites.barrelTipped; oyOff = -8; drawShadow(x, y, 7); }
   else if (T === 'tires') { img = Sprites.tires; oyOff = -12; drawShadow(x, y, 6); }
