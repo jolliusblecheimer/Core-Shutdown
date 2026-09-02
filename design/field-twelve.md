@@ -5,6 +5,16 @@ Written 2026-09-02 in answer to *"start brainstorming the next map expansion,
 the next area, the vibe, buildings, quests, NPCs, upgrades, all of that in
 detail."*
 
+> **REVISED the same day, twice, by Laurens.**
+> **1.** *"It's too early to tease the Core with ambiance."* — the tower's view
+> of the Core is cut and the tint is no longer blue. See §3.4 and
+> `design/map-shape.md` §5.
+> **2.** *"The Fringe is currently a box and not a ring."* — Field 12 is
+> proposed as **its own fenced area** rather than a band of the Fringe. The
+> whole of this document still applies; only how it attaches changes, and §7
+> (two roads north) becomes two seams rather than two gates. The argument, and
+> the measurements behind it, are in `design/map-shape.md`.
+
 This does not replace `design/the-road-north.md` — that document already picked
 **which** area is next and mapped the route to Ring 4, and it still stands. This
 is the layer under it: what the place *feels* like, what is inside each
@@ -27,8 +37,8 @@ walls. **An airfield has none.** That is the reason to build it, and it is also
 the reason it is the riskiest thing on the board.
 
 It is not *deeper* than the Fringe — depth is Ring 4's job and the pressure
-gradient must not be spent early. It is **wider and colder**: the same ring, seen
-from the one place in it with a horizon.
+gradient must not be spent early. It is **wider and emptier**: the same ring,
+with the roofs taken off it.
 
 ---
 
@@ -43,7 +53,7 @@ aircraft that have not come in a year.
 ### Palette and light
 | | |
 |---|---|
-| **Tint** | `#dfe4e6` — cold grey-blue. **The first cold tint in the game.** The Fringe is `#efe0cc`, warm dust; the yard is warmer still. Walking through the vehicle gate should feel like stepping out of a house into a cold morning, and it quietly foreshadows the Core's blue two rings early without saying anything. |
+| **Tint** | `#e4e2dc` — bleached grey. **Not blue.** The first draft made it cold blue-grey "to foreshadow the Core two rings early"; Laurens, 2026-09-02: *"it's too early to tease the Core with ambiance."* He is right — see `design/map-shape.md` §5. Field 12 is colder than the Fringe because concrete at dawn is colder than brick at dusk, and for no other reason. |
 | **Time** | Pre-dawn. The palest sky Ring 5 ever gets. Everywhere else in the game is dusk or night. |
 | **Ground** | Concrete, not brick or dirt: `runway` (dark, rubber-streaked at the thresholds), `apron` (paler, oil-stained), and grass verges pushing up through every crack — the overgrowth motif, but through concrete instead of over rubble. |
 | **Lights, and there are only three kinds** | **1.** The tower **beacon** — a slow red-white sweep, the airfield's heartbeat. **2.** The recovery detail's **work lamps** — one harsh white pool in the middle of all that dark, which is both your objective and the thing you must not walk into. **3.** The fuel bowsers' **hazard strobes**, amber, on a lazy blink. No streetlights. Nothing warm. |
@@ -133,22 +143,22 @@ proven and cheap. Three floors that matter:
 |---|---|
 | **Ground** | The stairwell is flooded and the lift shaft is open. You cannot go up from here — and being *shown* a way up you cannot take is what makes the external fire stair worth finding. |
 | **Fire stair** | Outside, on the north face, reached from the perimeter road. Wren knows about it. This is the Lamp's information being worth something. |
-| **The cab (top)** | Consoles, a dead radar repeater, the beacon motor turning in the corner with a sound you have been hearing since you arrived. **The gun-camera optic** is here, on a wrecked surveillance mount. **The beacon's breaker** is here. |
+| **The cab (top)** | Consoles, a dead radar repeater, the beacon motor turning in the corner with a sound you have been hearing since you arrived. **The gun-camera optic** is here, on a wrecked surveillance mount. **The beacon's breaker** is here, and the third tape. |
 
-**And the window.** The cab is glass on all four sides, and it is the highest the
-player has stood since the prologue. Out of the north face, over the viaduct,
-across the rings — **the Core.**
+**CUT: the view of the Core.** The first draft had the cab's north window
+looking over the viaduct at the Core, using the `skyline: true` and
+`Sprites.cityFar` the prologue already has. Laurens, 2026-09-02: *"it's too
+early to tease the Core with ambiance."* Cut, and he is right twice over — the
+Core has been seen once, in the prologue, as a thing from a year ago, and the
+next time should be earned; and a Core you can see from a Ring-5 airfield is not
+five rings away, which is the distance the whole atlas is built on.
 
-`skyline: true` and `Sprites.cityFar` already exist and already draw the Core
-crystal; only the prologue uses them. This is the second place in the game that
-earns it, and this time the player is standing there in control rather than
-watching a cutscene. It should be silent when it happens. No line, no bubble,
-nothing. Just the room, the turning beacon, and the thing on the horizon.
+The climb keeps its reasons: the optic, the breaker, the tape, and being the one
+room in the area that is quiet. It does not need a horizon.
 
-*(Why the tower and not the runway: the viaduct is a five-storey ridge across
-the whole north edge, so from ground level it eats the horizon. From the cab you
-are above it. This also keeps the reveal somewhere I fully control what is drawn
-— see Risks.)*
+*(If a vantage point ever wants a view, it should be of somewhere the player is
+about to go — the Sprawl's rooftops from the Underpass mouth, say. Not the end
+of the game, from the start of it.)*
 
 ### 3.5 The crash tender shed
 Small, at the runway's west end, on the way in from the west breach. A **crash
@@ -440,10 +450,6 @@ wrong, and all three can be looked at inside a day.
 - **A fourth indoor area** (the tower) after the crypt and Candlelight. The
   pattern is proven, but each one is another `world` offset on the map and
   another thing the map's area labels have to not collide with.
-- **The Core on the horizon could be a let-down.** It is the second time the
-  player sees it and the first time they choose to. If the cab's window is a
-  200-pixel band with a small crystal in it, it will read as wallpaper. It needs
-  the treatment the prologue's plate got, or it should not be built at all.
 - **Frame cost.** The Fringe is 353 props and ~4.3 ms in open street. Field 12
   adds maybe 150 more, most of them in a band that is mostly empty. Measure at
   the wreck with the detail alive and four drones up, not in the quiet.
@@ -463,8 +469,6 @@ wrong, and all three can be looked at inside a day.
 2. **Two roads north** (§7) — worth building the spine as an unsignposted
    alternative approach, or does the sign trail's clarity matter more?
    *(My lean: build both. It costs nothing and it is the first real choice.)*
-3. **The Core from the tower cab.** Yes, and give it the prologue's production —
-   or save the second sighting for somewhere later and deeper?
 4. **The rust drone's debut.** Field 12, or should a pair appear over the Fringe
    streets first so the airfield is not two new things at once? *(The old doc
    asked this too and it is still the sharpest question here. My lean: one pair

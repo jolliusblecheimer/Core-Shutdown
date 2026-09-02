@@ -3162,3 +3162,71 @@ No armour: armour is Ring 4's and that stays decided.
 Eight open questions at the end, the sharpest being whether the rust drone
 should preview over the Fringe first so Field 12 is one new thing and not two.
 *(My lean: yes.)*
+
+### The box, and two ways out of it
+**Laurens:** *"It's too early to tease the Core with ambiance. Also the Fringe
+is currently a box and not a ring — maybe we need to reimagine the way the map
+is built. Open atlas for me and add a second idea: we can make the Fringe
+larger, make a second map, that doesn't have huge parts where we will never go
+/ build."*
+
+**The atlas:** https://claude.ai/code/artifact/e5127405-9a8f-4c59-a807-0dd9c58b2927
+
+**The Core tease is cut**, and it was two mistakes at once. The tower cab's
+window onto the Core is gone from `design/field-twelve.md`, and so is the cold
+blue-grey tint that was there to "foreshadow the Core two rings early" — the
+same mistake with the volume down. He is right twice over: the Core has been
+seen once, in the prologue, as a thing from a year ago, and the next time should
+be earned; and a Core you can see from a Ring-5 airfield is not five rings away,
+which is the distance the whole atlas is built on. Field 12 is still colder than
+the Fringe, but because concrete at dawn is colder than brick at dusk and for no
+other reason. Bleached grey, not blue. The tower keeps its climb, its beacon,
+its breaker and the optic; it loses the view.
+
+**Then I measured the box rather than agreeing with it**, and the numbers are
+worse than the complaint. The Fringe is 30,000 tiles. 21,437 are walkable. Only
+**33% is within five tiles of any prop**, only **12.9% is within fourteen tiles
+of the critical path**, and **everything the game ever sends you to fits in 32%
+of the map** — x 35–197, y 60–120. The whole northern half and the far west
+contain nothing anyone is ever sent to or would miss. Thirty thousand tiles
+carrying about three thousand nine hundred tiles of game.
+
+**Why it reads as a box**, in order of how cheap each is to fix: three of its
+four edges are invisible and the atlas already says what belongs on them (the
+Ashfield fire, the Grey Run floodplain, the Cordon, the viaduct — none built);
+the density is uniform, so no part feels closer to anything; the street grid has
+no *inward*, because the M7 that is the radial road on the atlas is just another
+street here; and the emptiness **is** the box, because undressed ground has no
+shape to feel instead.
+
+**Two ideas, in `design/map-shape.md`.**
+
+**A — grow the Fringe into an arc.** Finish the edges, curve the circumferential
+streets (a tile of offset every twelve is enough, and it stays a staircase of
+straight runs so the angle rule is untouched), make the spine an eight-lane M7
+so the world has an inward, density falloff toward the centre, and put Field 12
+in the north band. Honest verdict: **it fixes "box" and makes "dead space"
+worse** — after rewriting the street table and re-proving the church corridor's
+flood fill, it is 3,900 tiles of game in 38,000.
+
+**B — right-sized districts joined at seams**, which is what he described, and
+what I would build. Three parts. **Stop growing the Fringe and finish it — with
+fire:** the blockers are not edge decoration, they can be brought *inward*, so
+the Ashfield's smoke ceiling eats the empty western strip and the Grey Run takes
+the south-west corner. Nothing built is touched, no save breaks, and the
+walkable Fringe drops from 21,437 tiles to around 12,000 with nearly all of it
+near something. Then the rule for everything after: **do not build a rectangle
+and then look for things to put in it — pick a real place with a real boundary
+and build all of it.** And the proof: **an airfield is a fence around exactly
+the content you build**, so Field 12 becomes its own ~90×70 area rather than a
+band bolted onto a map that already has 26,000 tiles of nothing.
+
+**Recommendation: B, plus the cheap half of A.** Finish and shrink the Fringe's
+edges, widen the spine into the M7 so there is an inward, build Field 12 in its
+own fence. The curved streets and density falloff go on the shelf for **Ring 4**,
+which is not built and can be drawn that way from the first line — far cheaper
+than re-cutting a live map to prove it.
+
+Five open questions, the sharpest being whether taking ~9,000 walkable tiles of
+bare ground away behind fire and water is acceptable. *(My lean: do it — the map
+gets smaller and the world gets bigger.)*
