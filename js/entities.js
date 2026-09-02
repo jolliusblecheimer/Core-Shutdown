@@ -35,6 +35,14 @@ const player = {
   respawnX: 6.5, respawnY: 26.5, respawnArea: 'junkyard', homeSet: false,
 };
 
+// EVERY FIELD A RUN OWNS, AS A RUN STARTS WITH IT. Taken here, once, before
+// anything has touched it — so "what a new run looks like" is defined by the
+// literal above and not by a hand-written list in another file that goes stale
+// the first time a field is added here. `resetRun()` in js/save.js pours it
+// back. (`mods` is deliberately not in it: mods.js has not loaded yet, and
+// freshMods() is the only thing that should ever build that.)
+const PLAYER_DEFAULTS = JSON.parse(JSON.stringify(player));
+
 // melee outranges the Scrapper's reach (1.15) — spacing is the skill.
 // The knife punches through metal: higher damage, stabbing attack.
 // The rifle is not a faster pistol: it hits nearly twice as hard and its round

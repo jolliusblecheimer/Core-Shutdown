@@ -115,22 +115,43 @@ function migrate(d) {
   return d;
 }
 
-function wipeSave() {
-  try { localStorage.removeItem(saveKey()); } catch (e) {}
-  // a new run owes nothing — otherwise starting over in the same page session
-  // would carry the last run's ledger and quietly skip its back-payments
-  granted = {};
-  // and it certainly does not start with the last run's parts on its rifle
+// A NEW RUN OWES THE OLD ONE NOTHING.
+//
+// This used to clear the milestone ledger and the rifle's parts, and that was
+// all — because a page load cleared everything else for free, and nobody had
+// started over WITHOUT one. Choosing [N] in the same session actually handed
+// the new traveller the whole previous run: the rifle, the scrap, the rounds,
+// the Compactor already dead, the camp's map already read, and every tutorial
+// already seen. A "new game" that begins with the first quest finished is not
+// a new game.
+//
+// Every field is poured back from PLAYER_DEFAULTS, captured in js/entities.js
+// from the literal itself, so adding a field to the player cannot leave a hole
+// here. The rest is the handful of globals a run keeps outside that object.
+function resetRun() {
+  Object.assign(player, JSON.parse(JSON.stringify(PLAYER_DEFAULTS)));
   player.mods = freshMods();
   modsChanged();
-  // AND IT HAS NOT BEEN ANYWHERE. Fog and map thumbnails both live in memory,
-  // and neither was cleared here — so wiping the run and starting over without
-  // reloading the page handed the new traveller the old one's explored ground,
-  // in the world and on the map both. Fog of war is the one thing in the game
-  // that is only ever about what THIS run has seen.
+  playerName = '';
+  granted = {};
+  mission.state = 'none';
+  bossDefeated = false;
+  campMapRead = false;
+  ScrapperStats.kills = 0;
+  ScrapperStats.techPity = 0;
+  Tut.active = null;
+  Tut.done = {};
+  // and it has not been anywhere: the world's remembered state, the fog, and
+  // the map's pictures of that fog
+  for (const id of Object.keys(areaState)) delete areaState[id];
   for (const id of Object.keys(exploredByArea)) delete exploredByArea[id];
   for (const id of Object.keys(mapThumbs)) delete mapThumbs[id];
   initFog(currentArea);          // `explored` still pointed at the old array
+}
+
+function wipeSave() {
+  try { localStorage.removeItem(saveKey()); } catch (e) {}
+  resetRun();
 }
 
 const num = (v, fallback) => (typeof v === 'number' && isFinite(v)) ? v : fallback;
@@ -233,8 +254,7 @@ function loadFogAndThumbs(fogData) {
     initFog(id);                                   // sized from what was just built
     exploredByArea[id] = fogFromString(fogData[id], fogW * fogH);
     explored = exploredByArea[id];
-    for (let i = 0; i < explored.length; i++)
-      if (explored[i]) { buildMapThumb(id); break; }
+    buildMapThumb(id);          // which refuses an area with nothing explored
   }
 }
 

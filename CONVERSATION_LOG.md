@@ -2839,3 +2839,52 @@ Verified the way Laurens actually hits it: play the yard, the Fringe and the
 camp, save, **reload the page**, `[E] continue` from the title, press `M` — the
 Fringe and the junkyard are both there, in proportion. Migration of v1 and v2
 saves, area round trips and the systems pass all still come back clean.
+
+### The title screen shows where you logged out
+**Laurens** (screenshot of the title screen over the junkyard): *"This is the
+screen when reentering the game, it shows the junkyard at the start, make it so
+it shows where you logged out."*
+
+The title renders the live world behind its wash, and the live world at boot is
+whatever `buildJunkyard()` left standing there — so a run twelve hours deep into
+the Fringe was welcomed back by a picture of the tutorial yard, the one place
+the traveller had most certainly moved on from.
+
+**The save is not applied at the title, and must not be** — pressing `[N]`
+instead has to start a run that owes the old one nothing. So `previewSaveArea()`
+stands the CAMERA where the save left off and no more: it builds that area,
+unpacks its fog, restores what the area remembers, puts the people back in it
+and stands the traveller where they logged out. No inventory, no mission, no
+machines. Everything it touches is either loaded properly by `[E]` or cleared by
+`[N]`. Unpacking the fog there also fills in the world map's thumbnails before
+the player has pressed anything.
+
+**And then the thing underneath it.** Making the player state visible at the
+title meant asking what `[N] NEW GAME` actually resets — and the answer was
+almost nothing. `wipeSave()` cleared the milestone ledger and the rifle's parts;
+that was the whole of it, because a page load had always cleared the rest for
+free and nobody had started over *without* one. Measured it: wipe a run carrying
+a rifle, 88 scrap, 30 rounds, a dead Compactor and a read map table, and the new
+run began with **every one of them**. A new game that starts with the first
+quest finished is not a new game.
+
+`resetRun()` pours the player back from `PLAYER_DEFAULTS` — captured in
+`js/entities.js` from the literal itself, so adding a field to the player cannot
+leave a hole in the reset — and clears the run's other globals: the mission, the
+boss, the map table, the kill and pity counters, the tutorials, every area's
+remembered state, the fog and the map's thumbnails.
+
+**One last leak, found by testing the whole flow through the real UI.** After
+the wipe, walking into the prologue photographed the area being left on the way
+out — blank fog and all — so the new run's world map had an empty rectangle
+labelled THE FRINGE on it. A thumbnail existing is what makes the map draw an
+area, frame it and name it, and the map's one promise is that it shows nowhere
+you have not been. `buildMapThumb` refuses an area with nothing explored now,
+which is the rule in one place rather than a check at each call site.
+
+Verified end to end: log out in the Fringe, in Candlelight and in the junkyard —
+each one is the backdrop on return, with the camp's seven survivors behind the
+title where that is where you left. `[E]` continues into the right area with the
+run intact; `[N]` → confirm → prologue starts with nothing owned, no scrap, no
+boss down, no fog, no thumbnails, no name, and the save gone from storage. The
+bugcheck, the systems pass and the map input suite all still come back clean.

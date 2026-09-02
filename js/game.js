@@ -379,6 +379,16 @@ function buildMapThumb(areaId) {
   // A memory is not a district. It never gets a thumbnail, so it can never be
   // drawn, framed by the zoom floor, or counted as somewhere you have been.
   if (Areas[areaId] && Areas[areaId].memory) return;
+  // NEITHER IS GROUND YOU HAVE NOT WALKED. A thumbnail existing is what makes
+  // the world map draw an area's rectangle, frame it and label it — so an
+  // all-fog area would be an empty box with a name on it, on a map whose one
+  // promise is that it shows nowhere you have not been. Starting a new run in
+  // the same page session used to do exactly that: the wipe cleared the
+  // thumbnails, then walking into the prologue photographed the area being
+  // left on the way out, blank fog and all.
+  let seen = false;
+  for (let i = 0; i < explored.length; i++) if (explored[i]) { seen = true; break; }
+  if (!seen) { delete mapThumbs[areaId]; return; }
   mapThumbs[areaId] = c;
 }
 
@@ -3618,6 +3628,43 @@ function drawHUD() {
     ptext('rebooting...', VIEW_W / 2, VIEW_H / 2 + 6, 8, '#e8d9c0', 'center');
   }
 }
+
+// ---------- THE TITLE'S BACKDROP: where you actually left off ----------
+// The title screen renders the live world behind its wash, and the live world
+// at boot is whatever `buildJunkyard()` left standing there. So a run twelve
+// hours deep into the Fringe was welcomed back by a picture of the tutorial
+// yard — the one place the traveller had most certainly moved on from.
+//
+// The save is NOT applied here, and must not be: pressing [N] instead has to
+// start a run that owes the old one nothing. This stands the camera where the
+// save left off and no more. It builds that area, unpacks its fog — which
+// fills in the world map's thumbnails as a side effect, ready before the player
+// has pressed anything — restores what that area remembers, and puts the
+// traveller where they logged out. No inventory, no mission, no machines: every
+// one of those is either loaded properly by [E] or cleared by [N].
+//
+// It runs down here rather than beside `loadSaveData()` at the top of the file
+// because `exploredByArea` and `mapThumbs` are `const` declarations halfway
+// down it, and reaching them earlier is a temporal dead zone, not a value.
+function previewSaveArea(d) {
+  const id = Areas[d.area] && !Areas[d.area].memory ? d.area : 'junkyard';
+  loadFogAndThumbs(d.fog);
+  for (const k of Object.keys(d.areas || {})) areaState[k] = d.areas[k];
+  currentArea = id;
+  Areas[id].build();
+  initFog(id);
+  buildMinimap();
+  loadAreaItems(id);
+  restoreArea(id);
+  buildFolk(Areas[id].folk);
+  const p = d.player || {};
+  const ok = typeof p.x === 'number' && typeof p.y === 'number' &&
+             p.x > 1 && p.y > 1 && p.x < MAP_W - 1 && p.y < MAP_H - 1;
+  player.x = ok ? p.x : MAP_W / 2;
+  player.y = ok ? p.y : MAP_H / 2;
+  camInit = false;               // the camera snaps to them on the first frame
+}
+if (pendingSave && !window.ARENA_MODE) previewSaveArea(pendingSave);
 
 // ---------- fixed-timestep loop ----------
 let last = performance.now(), acc = 0;

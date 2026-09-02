@@ -500,3 +500,22 @@ Also fixed: fog used to be decoded with a hardcoded `fringe ? 200x150 : 32x32`
 guess, which would have mis-decoded any future area of another size. And
 `wipeSave()` did not clear fog or thumbnails, so wiping and starting over in the
 same page session gave the new run the old run's explored ground.
+
+## Title backdrop and what a new run is, 2026-09-02
+- **The title screen shows the area you logged out in.** `previewSaveArea()` at
+  the end of `js/game.js` builds that area, unpacks its fog, restores what it
+  remembers and stands the traveller where they left — the camera only. The save
+  itself is still not applied until `[E]`, because `[N]` has to be able to start
+  clean. Filling the fog there also has the world map's thumbnails ready before
+  the player presses anything.
+- **`[N] NEW GAME` now actually starts a new run.** `wipeSave()` cleared the
+  milestone ledger and the rifle's parts and nothing else, so starting over
+  without reloading the page kept the rifle, the scrap, the rounds, the dead
+  Compactor, the read map table and every tutorial. `resetRun()` in `js/save.js`
+  pours the player back from `PLAYER_DEFAULTS` (captured in `js/entities.js`
+  from the literal, so a new field cannot be forgotten) and clears the mission,
+  the boss, the map table, the counters, the tutorials, area state, fog and
+  thumbnails.
+- **`buildMapThumb` refuses an area with nothing explored.** A thumbnail is what
+  makes the world map draw, frame and name an area; a blank one is a promise the
+  fog contract does not allow.
