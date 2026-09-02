@@ -3069,3 +3069,96 @@ the two captures, and `performance.now()`, because the Bailiff's lamp pulses in
 the same screen column as its badge.)
 
 Bugcheck, systems and hunted suites all still clean.
+
+### Brainstorming the next expansion — Field 12
+**Laurens:** *"Start brainstorming the next map expansion, the next area, the
+vibe, buildings, quests, NPCs, upgrades, all of that in detail."*
+
+**There was already a plan for which area is next** — `design/the-road-north.md`,
+written 2026-08-22 and still unbuilt: Q2 at Candlelight, the north frontier,
+Field 12, the Underpass, then Ring 4. That still stands and this does not
+replace it. What it never had is the layer underneath: what the place feels
+like, what is inside the buildings, who the people are, what you do there.
+`design/field-twelve.md` is that, and it covers N1–N4 only — Ring 4 is a
+separate project and is not costed.
+
+**The pitch in one line: Ring 5 has been a game about corridors, and Field 12 is
+the game's first sky.** Everything built so far — the yard, the church corridor,
+the streets — is a space with something standing between you and what is hunting
+you, and the occlusion system, the crouch and the whole stealth loop assume
+walls. An airfield has none. That is the reason to build it and the reason it is
+the riskiest thing on the board. It is not *deeper* than the Fringe — depth is
+Ring 4's job — it is **wider and colder**: the same ring seen from the one place
+in it with a horizon.
+
+**The vibe.** Cold grey-blue tint, the first cold tint in the game, quietly
+foreshadowing the Core two rings early. Pre-dawn. Concrete instead of brick,
+grass through the cracks. The ambient drone **drops out** — every other area has
+a machine hum under it, and its absence says the machines here are visiting
+rather than resident. Three lights only: the tower beacon sweeping an empty
+runway for aircraft that stopped coming a year ago, the recovery detail's work
+lamps in the middle of all that dark, and hazard strobes on the fuel bowsers.
+
+**Two ideas I would defend hardest:**
+- **The loop is the quest marker.** The broadcast Q2 finds on the church radio
+  is audible in the world, from the wreck's dead transmitter, and gets louder as
+  you approach. A WebAudio gain on a positional source — the system exists — and
+  the objective becomes diegetic.
+- **The beacon sweep raises detection.** A light crossing you in the open pushes
+  the meter; crouching halves it; cover is nothing at all. It gives Ring 5 the
+  surveillance pressure it is not allowed to have as cameras (those are Ring
+  2's), gives open ground a rhythm instead of a flat risk, and gives the player
+  something to read and time. And S2 lets you switch it off for good.
+
+**Buildings**, each with a reason to enter: Hangar 1 is the nest and **pays
+nothing** — one deliberate disappointment per area teaches that the world is not
+a checklist. Hangar 2 is the store and has someone's abandoned bedroll in it.
+The **control tower** is its own indoor area, the crypt trick again, and its cab
+is where the player stands higher than they have since the prologue and sees
+**the Core** — `skyline: true` and `Sprites.cityFar` already exist and only the
+prologue uses them. Silent when it happens. No line, no bubble.
+
+**The new enemy: the rust drone**, the Flyer role `GAME_PLAN.md` has listed since
+day one and never built. Circle → mark → swoop → recover, with the mark drawn as
+a laser dot tracking to your feet (the rifle's laser box already draws exactly
+that) and the rotor housing glowing amber on recovery — what glows amber can be
+hurt, applied to something in the air. **The threat is not damage, it is that it
+ignores your habits**: a whole ring spent learning to break line of sight, and a
+drone does not care about the heap you are behind. It gets its own build phase,
+because altitude, no ground collision, melee reach and the cover tests that
+assume feet on a tile are all real work.
+
+**The people.** The Lamp gets **Wren** — young, fast, the only person alive who
+has been inside Field 12 and out, who sells the last rifle rounds before Ring 4
+and knows about the tower's fire stair — and **Oz**, who keeps the fire, will
+not go past the fence, and has been hearing the loop for a year and stopped
+hearing it: *"It's a year old. Everything's a year old."* And **Field 12 itself
+has no living people**, which is the point: one dead man in a shed, three tapes,
+and a squad doing a job.
+
+**Quests.** Q2 ends with a *bearing, not a marker* — Ivar says which direction
+the loop comes from, the player has already seen the control tower on the
+skyline, and those two facts meet in the player's head rather than in a quest
+log. Q3 is the runway, the recovery detail and the slate, and it is **not
+required to be a fight**. Three side quests: fetch Wren's pack (teaches the
+hangars), the dead man's three tapes (whose reward is the beacon breaker — an
+optional collectible that changes how the area plays), and Oz's windbreak, which
+is `GAME_PLAN.md`'s "survivors improve the camp" in its smallest possible form:
+one kill, one prop swap, one visible change, proven here before Station 9 needs
+the full version.
+
+**Two roads north**, and this is the structural idea worth arguing about. Both
+already exist on the map: up the spine you meet the Lamp first and Wren briefs
+you, then you enter by the quiet west breach — the *prepared* run. Up the mid
+street you arrive at the vehicle gate dead ahead of the wreck with nothing told
+to you — the *cold* run. Both complete, neither wrong, the world never comments.
+It costs nothing because both entrances were already planned.
+
+**Upgrades:** the gun-camera optic (tower) and the recoil-braced stock (off the
+Magistrate, via S3) — **alternatives, not additions**, since both slots already
+hold a part, so the bench stays a set of choices. Both go in `MILESTONE_GRANTS`.
+No armour: armour is Ring 4's and that stays decided.
+
+Eight open questions at the end, the sharpest being whether the rust drone
+should preview over the Fringe first so Field 12 is one new thing and not two.
+*(My lean: yes.)*
