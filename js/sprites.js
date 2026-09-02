@@ -1223,6 +1223,23 @@ function outlined(src) {
       px(g, 1, 1, 2, 1, '#b6ecb6');
       Sprites.icoQuest = outlined(c); }
 
+    // YOU. The map used to draw the traveller's actual sprite here whenever it
+    // was zoomed in — a seventeen-pixel person standing on a flat plan of roads
+    // and rooftops, at a scale nothing else on the map was drawn at. A map says
+    // where you are with a symbol, so this is one: the iso tile you are standing
+    // on, outlined, with its middle lit. White, because white has always meant
+    // "you" on the minimap and nothing else on either map is allowed to use it.
+    Sprites.icoYou = icon7(g => {
+      px(g, 3, 0, 1, 1, '#ffffff');
+      px(g, 2, 1, 1, 1, '#ffffff'); px(g, 4, 1, 1, 1, '#ffffff');
+      px(g, 1, 2, 1, 1, '#ffffff'); px(g, 5, 2, 1, 1, '#ffffff');
+      px(g, 0, 3, 1, 1, '#ffffff'); px(g, 6, 3, 1, 1, '#ffffff');
+      px(g, 1, 4, 1, 1, '#ffffff'); px(g, 5, 4, 1, 1, '#ffffff');
+      px(g, 2, 5, 1, 1, '#ffffff'); px(g, 4, 5, 1, 1, '#ffffff');
+      px(g, 3, 6, 1, 1, '#ffffff');
+      px(g, 3, 3, 1, 1, '#ffffff');                      // the tile you are on
+    });
+
     // scrap bit
     const s = makeCanvas(5, 5), sg = s.getContext('2d');
     px(sg, 1, 1, 3, 3, '#8a8a92');

@@ -2963,3 +2963,40 @@ own rectangle — which is exactly where the gate is.
 
 Verified with the map open at ring scale and framed on the junkyard, the pin
 clicked to read its blurb, and the systems and map-input suites clean.
+
+### The you-are-here marker, and the text that would not sit still
+**Laurens:** *"Change the you are here icon, the character standing there looks
+out of place."* — and mid-way: *"So also the you are there text interferes with
+other things so change that too while you're at it."*
+
+**The marker.** The map drew the traveller's actual sprite once the zoom passed
+1 — a seventeen-pixel person standing on a flat plan of roads and rooftops, at a
+scale nothing else on the map was drawn at, and morphing into a 3px dot the
+moment you pulled back. A marker that changes what it IS with the zoom is two
+markers. It is one symbol at every zoom now: `Sprites.icoYou`, the iso tile you
+are standing on, outlined like every other pin and the same size as them, in
+white — the colour that has always meant "you" on the minimap and that nothing
+else on either map is allowed to use. A slow ping goes out from it, drawn a
+pixel at a time as a 2:1 diamond, because `ctx.arc` would put grey fringes on a
+game made of pixels.
+
+**The text.** "YOU ARE HERE" was printed under the marker wherever the marker
+happened to be, so it laid itself across roads, over an area's own name, and
+through whatever else was on that spot. Text pinned to a moving point has
+nowhere safe to go. It is gone — and the district labels do the job instead, by
+drawing **the area you are standing in in white**. That names every district and
+answers "where am I" with one thing rather than two, and it cannot collide with
+the marker because it sits above its own area. The label is skipped while you
+have clicked into an area, where the header above already names it.
+
+**Two smaller collisions fixed with it.** A district whose rectangle was mostly
+off-frame used to clamp its name to the edge of the view and write it across
+whatever district WAS on screen — "THE JUNKYARD" over the middle of the Fringe.
+Names are centred on the part of their own area you can actually see now, and an
+area with almost none of it in frame does not get to write on top of one that
+is. And because a name can be wider than its district — THE JUNKYARD is fifty
+pixels of text on a twenty-six pixel square — every label sits on a dark plate,
+so it reads as a label on the map rather than as marks in the ground.
+
+Checked at ring scale, framed on an area, and zoomed close; the systems, map
+input and bugcheck suites all clean.

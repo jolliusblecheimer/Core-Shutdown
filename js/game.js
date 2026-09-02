@@ -3348,14 +3348,32 @@ function drawHUD() {
                          Math.round(d.w2 * U) + 2 * U, Math.round(d.h2 * U) + 2 * U);
       }
     }
-    // names, once an area is small enough to need telling apart. Never the one
-    // you are standing in — the title bar and YOU ARE HERE both say that
-    // already, and printing it a third time stacked it under its own title.
+    // Names, once an area is small enough to need telling apart — and the one
+    // you are standing in is named in WHITE, which is how the map says "you"
+    // now that no text follows the marker around. It is skipped only while you
+    // have clicked into an area, where the header above already names it and a
+    // second copy would sit directly under the first.
     if (z < 1) for (const d of drawn) {
-      if (d.id === currentArea) continue;
+      const you = d.id === currentArea;
+      if (you && MapUI.focus) continue;
+      // A NAME BELONGS OVER ITS OWN GROUND. The label used to be clamped to the
+      // edge of the view, so an area mostly off-frame slid its name sideways
+      // across whatever district WAS on screen — "THE JUNKYARD" written over
+      // the middle of the Fringe. It is centred on the part of the area you can
+      // actually see now, and an area with almost none of it in frame does not
+      // get to write on top of one that is.
+      const vx0 = Math.max(0, d.ox2), vx1 = Math.min(MAP_VIEW_W, d.ox2 + d.w2);
+      if (vx1 - vx0 < Math.min(d.w2, 40) * 0.5) continue;
       const lw = ptWidth(d.def.name, 7);
-      const lx = Math.max(lw / 2 + 4, Math.min(MAP_VIEW_W - lw / 2 - 4, d.ox2 + d.w2 / 2));
-      ptext(d.def.name, lx, Math.max(MAP_TOP, d.oy2 - 9), 7, 'rgba(232,217,192,0.55)', 'center');
+      const lx = Math.max(lw / 2 + 4, Math.min(MAP_VIEW_W - lw / 2 - 4, (vx0 + vx1) / 2));
+      const ly = Math.max(MAP_TOP, d.oy2 - 9);
+      // A name wider than its own district has nowhere to go but over its
+      // neighbour — THE JUNKYARD is fifty pixels of text on a twenty-six pixel
+      // square. A plate under it keeps it reading as a label on the map rather
+      // than as marks in the ground it is lying across.
+      uiRect(lx - lw / 2 - 2, ly - 1, lw + 4, 9, 'rgba(8,10,12,0.72)');
+      ptext(d.def.name, lx, ly, 7,
+            you ? 'rgba(255,255,255,0.85)' : 'rgba(232,217,192,0.55)', 'center');
     }
 
     // ---- the places, at a FIXED pixel size whatever the zoom. What changes
@@ -3389,20 +3407,42 @@ function drawHUD() {
       MapUI.questHit = { x: qx2, y: qy2 };
     } else MapUI.questHit = null;
 
-    // ---- you. The full traveller while the map is close, a dot once it isn't
+    // ---- YOU. One symbol at every zoom.
+    // This used to draw the traveller's actual sprite once the map was close
+    // enough — a seventeen-pixel person standing on a flat plan of roads and
+    // rooftops, at a scale nothing else on the map was drawn at, and morphing
+    // into a 3px dot the moment you pulled back. A marker that changes what it
+    // IS with the zoom is two markers. It is the tile symbol now, the same size
+    // as every pin, with a slow ping going out from it so you can find yourself
+    // on the ring without hunting.
     const cw = currentAreaDef().world;
     const pxm = sx2(cw.x + player.x), pym = sy2(cw.y + player.y);
-    if (z >= 1) {
-      const pim = Sprites.player[0];
+    {
+      // the ping: an iso diamond, drawn a pixel at a time because the whole
+      // game is pixels and ctx.arc would put grey fringes on it
+      const t = (gameTime * 0.8) % 1;
+      const rr = 4 + t * 8;
+      uictx.globalAlpha = (1 - t) * 0.5;
+      for (let i = 0; i <= rr; i++) {
+        const dy = (rr - i) / 2;
+        uiRect(pxm + i, pym + dy, 1, 1, '#ffffff');
+        uiRect(pxm + i, pym - dy, 1, 1, '#ffffff');
+        uiRect(pxm - i, pym + dy, 1, 1, '#ffffff');
+        uiRect(pxm - i, pym - dy, 1, 1, '#ffffff');
+      }
+      uictx.globalAlpha = 1;
+      const yi = Sprites.icoYou;
       uictx.imageSmoothingEnabled = false;
-      uictx.drawImage(pim, Math.round(pxm - pim.width / 2) * U, Math.round(pym - pim.height + 3) * U,
-                      pim.width * U, pim.height * U);
-    } else {
-      uiRect(pxm - 1.5, pym - 1.5, 3, 3, '#ffffff');
-      const yw = ptWidth('YOU ARE HERE', 7);
-      ptext('YOU ARE HERE', Math.max(yw / 2 + 4, Math.min(MAP_VIEW_W - yw / 2 - 4, pxm)),
-            pym + 5, 7, 'rgba(255,255,255,0.75)', 'center');
+      uictx.drawImage(yi, Math.round(pxm - yi.width / 2) * U, Math.round(pym - yi.height / 2) * U,
+                      yi.width * U, yi.height * U);
     }
+    // NO FLOATING LABEL. "YOU ARE HERE" was printed under the marker wherever
+    // the marker happened to be, so it laid itself across roads, over an area's
+    // own name, and through whatever else was on that spot. Text pinned to a
+    // moving point has nowhere safe to go. The district labels below say it
+    // instead, by drawing the one you are standing in in white — the colour
+    // that has always meant you — which names every area AND answers "where am
+    // I" in one thing rather than two.
 
     // What you are looking at: a place if you picked one, the area you have
     // clicked into, and otherwise the ring — the areas label themselves down on
