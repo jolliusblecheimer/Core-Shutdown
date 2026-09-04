@@ -648,6 +648,34 @@ the garage and shopfront styles and came out with rows of glazing and a fascia
 board. `BUILD_STYLE.A` (tall blank corrugated) and `W` (retaining wall) exist for
 buildings whose point is that they are blank.
 
+### THE NORTH HAS PEOPLE IN IT — E6-E8, awaiting approval
+`design/north-content.md` is the plan. **On the branch, not on `main`.**
+
+- **Wren and Osgood at the Lamp** (`FOLK.lamp`, `STOCK.wren`), round a drum fire
+  that is the only warm light in three areas. NOT a camp: no bed, no bench, no
+  medbay, no respawn anchor.
+- **Enterable buildings** — both hangars, the tower's ground floor, the tender
+  shed. **Hollowing the collision is not enough**: a building is one
+  pre-rendered volume, so emptying its tiles left the player standing inside a
+  closed box. The volume itself fades now (`enterable` on the prop, the
+  rectangle on `Areas[id].roofs`). Third use of the shack's idea, so it is a
+  list on the area rather than a special case.
+- **Q2 · the long aerial** (Ivar → the school mast → the ladder on St Martin's →
+  the loop), **Q3 · the recording** (arriving in Field 12 gives it → the wreck
+  core → `AUTH: E.VANN`), **S1 · Wren's pack**, **S2 · three tapes**.
+- **`Quests`** is saved and merged onto `QUEST_DEFAULTS`, so adding q4 later
+  cannot break a live run.
+- **Two rifle parts** — the gun-camera optic (`flags.mark`, a new draw hook) and
+  the recoil-braced stock (`flags.spreadMul`). Both in `MILESTONE_GRANTS`.
+  **The ledger asks `player.mods.owned`, not `player.owned`** — that is where
+  `givePart` writes, and asking the wrong one made the grant re-pay forever.
+- `USABLE` is no longer gated on `indoors`: a mast in a school yard and a wreck
+  on a runway are the same interaction and must not need a roof over them.
+
+**NOT built: the rust drones (E4) and the beacon (E5).** Field 12 has no enemies.
+S3 needs the Magistrate from E4. It is a place with three quests in it, not yet
+a dangerous one.
+
 ### Outstanding
 - Crash barriers along the spine's edges (F4) — not built; ~200 props for what
   the gantries already say.

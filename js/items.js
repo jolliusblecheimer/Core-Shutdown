@@ -214,6 +214,23 @@ const ITEMS = {
 // `when` that earns it, a `has` if the player could already own it, and a
 // `give`. That is all — the load path picks it up.
 const MILESTONE_GRANTS = [
+  // ---- THE NORTH. A run that has already done this work when the parts ship
+  // is handed them once, through the ledger. Unique keepables only, never the
+  // ammunition: you cannot tell "spent it" from "never got it".
+  {
+    id: 'f12-guncam',
+    name: 'GUN-CAMERA OPTIC',
+    when: () => typeof Quests !== 'undefined' && Quests.q3 === 'done',
+    has: () => !!player.mods.owned.optGunCam,
+    give: () => { givePart('optGunCam'); },
+  },
+  {
+    id: 'f12-braced',
+    name: 'RECOIL-BRACED STOCK',
+    when: () => typeof Quests !== 'undefined' && (Quests.s2 || 0) >= 3,
+    has: () => !!player.mods.owned.stkBraced,
+    give: () => { givePart('stkBraced'); },
+  },
   {
     id: 'marek-pistol',
     name: 'SCRAP PISTOL',

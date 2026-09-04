@@ -47,6 +47,8 @@ function saveGame() {
       campMap: typeof campMapRead !== 'undefined' ? campMapRead : false,
       // and so does every milestone back-payment
       granted: { ...granted },
+      // the north's chain, flat and shallow so it merges onto defaults cleanly
+      quests: { ...Quests },
     };
     localStorage.setItem(saveKey(), JSON.stringify(d));
   } catch (e) { /* storage full or blocked - play on without saving */ }
@@ -134,6 +136,7 @@ function resetRun() {
   modsChanged();
   playerName = '';
   granted = {};
+  Quests = Object.assign({}, QUEST_DEFAULTS);
   mission.state = 'none';
   bossDefeated = false;
   campMapRead = false;
@@ -336,6 +339,10 @@ function applySave(d) {
     player.x = safe.x; player.y = safe.y;
   }
 
+  // MERGED ONTO DEFAULTS, NEVER REPLACED (rule 6). A save written before the
+  // north existed has no `quests` at all and arrives with everything at 'none';
+  // a save written before q4 exists gets q4's default the day it ships.
+  Quests = Object.assign({}, QUEST_DEFAULTS, d.quests || {});
   Object.assign(Tut.done, d.tut || {});
   // robots re-enter fresh (never saved mid-chase)
   if (mission.state !== 'none' && currentAreaDef().hasScrapper) spawnScrappers();
@@ -355,6 +362,7 @@ function applySave(d) {
   // coming back gave you the room, the fires and the chests, and nobody in it.
   // Everyone who stands in an area is decided in this one place now.
   buildFolk(currentAreaDef().folk);
+  questsOnEnter(currentArea);
 
   // And last, because it has to read the finished state: settle anything a
   // milestone owes this run. See MILESTONE_GRANTS in js/items.js.

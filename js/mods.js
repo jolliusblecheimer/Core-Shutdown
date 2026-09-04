@@ -104,6 +104,30 @@ const PARTS = {
           'that is most of the trick: the gun sits still and comes back to ' +
           'the shoulder faster.',
   },
+
+  // ---- THE NORTH'S TWO. Both slots already hold something, so these are
+  // ALTERNATIVES, not additions — the bench stays a set of choices.
+  optGunCam: {
+    slot: 'optic', gun: 'rifle', name: 'Gun-camera optic',
+    cost: { tech: 3, scrap: 10 },
+    flags: { mark: 4.0 },
+    note: 'the last thing you hit stays visible',
+    desc: 'A recording head off a surveillance mount, clamped where the sights ' +
+          'were. It keeps drawing what you last hit for four seconds after it ' +
+          'goes behind something — which on open ground, where you lose things ' +
+          'to distance rather than to walls, is the difference between a second ' +
+          'shot and a guess.',
+  },
+  stkBraced: {
+    slot: 'stock', gun: 'rifle', name: 'Recoil-braced stock',
+    cost: { tech: 2, scrap: 12 },
+    stats: { shake: -0.8 },
+    flags: { spreadMul: 0.55 },
+    note: 'a burst goes where the first round went',
+    desc: 'A machine that fired in threes needed the third round to land where ' +
+          'the first one did, so it was built with a brace instead of a ' +
+          'shoulder. Bolted to a rifle it does the same job for the same reason.',
+  },
 };
 
 // WHAT COMES OFF WHAT. The two parts no camp can make are carried by the

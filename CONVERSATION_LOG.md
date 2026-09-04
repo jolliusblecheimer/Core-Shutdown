@@ -3587,3 +3587,42 @@ is a corridor with a secret; a tunnel with two ends is a road.
 
 Walked both ways, every hop landing on standable ground. Underpass walkable
 359 → 376. All suites green.
+
+---
+
+## "add all questlines items and npcs entreable buildings — plan it all, code it, then ask for feedback before pushing"
+
+Planned in `design/north-content.md`, coded, verified, **and held on the branch
+for approval**. E6–E8 of the expansion spec.
+
+**People.** Wren and Osgood at the Lamp, round a drum fire — the only warm light
+in three areas — with Wren's counter behind it. Ivar at Candlelight gives Q2;
+he was already in the camp, so the quest folded into the person who was there
+rather than adding a second Ivar. A harness printing the folk list twice is the
+only reason that got caught.
+
+**Enterable buildings.** Both hangars, the tower's ground floor, the tender
+shed. First attempt hollowed the collision and left the art alone, so you walked
+inside and stood under a closed box with the whole shed drawn over your head —
+a building is ONE pre-rendered volume and emptying its tiles does not open it.
+The volume fades now. Third use of the shack's idea, so it is a list on the area.
+
+**Quests.** Q2 (Ivar → school mast → the ladder on St Martin's → the loop, which
+names a direction and never a place), Q3 (arriving in Field 12 is the whole
+briefing → the wreck core → `AUTH: E.VANN`, a thought bubble and nothing else),
+S1 (Wren's pack opens her rifle rounds), S2 (three tapes of a night shift that
+ended). The chain walks end to end with no dead objective and no null in the
+column.
+
+**Two parts** — the gun-camera optic and the recoil-braced stock — both in the
+ledger, verified to back-pay exactly once. The grants were asking
+`player.owned` when `givePart` writes to `player.mods.owned`, which would have
+re-paid them forever.
+
+**Not built, deliberately: the rust drones and the beacon.** Field 12 has no
+enemies. S3 needs the Magistrate from that phase. It is a place with three
+quests in it and is not yet dangerous, and the docs say so.
+
+Two sprite bugs found by looking: the crash tender's canvas was too small and
+clipped it into a red wedge on the floor, and the school mast was specified at a
+coordinate that is inside the school building.

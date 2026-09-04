@@ -881,6 +881,19 @@ function restoreArea(id) {
   for (const p of props) if (p.type === 'chest' && opened.has(p.gx + ',' + p.gy)) p.open = true;
 }
 
+// Q3 IS GIVEN BY ARRIVING. Nobody hands it to you: the loop is audible inside
+// the fence and the work lamps at the wreck are visible from the gate, and that
+// is the whole briefing. Called from enterArea and from a save that loads
+// straight into the field.
+function questsOnEnter(id) {
+  if (typeof Quests === 'undefined') return;
+  if (id === 'field12' && Quests.q3 === 'none') {
+    Quests.q3 = 'given';
+    think('loop', 'The loop is louder in here. It is coming off the runway.');
+    if (typeof saveGame === 'function') saveGame();
+  }
+}
+
 function enterArea(id, entry) {
   stashArea();
   currentArea = id;
@@ -903,6 +916,7 @@ function enterArea(id, entry) {
   if (Areas[id].hasDroids) spawnFringeSquads();
   else clearDroids();
   buildFolk(Areas[id].folk);
+  questsOnEnter(id);
   if (entry) {
     player.x = entry.x; player.y = entry.y;
     if (!canStand(player.x, player.y, player.r)) {
@@ -1734,7 +1748,7 @@ function render() {
     const s = isoToScreen(p.gx + 0.5, p.gy + 0.5);
     // volumes sort by their south corner: anything in front of that draws over
     const depth = (p.type === 'building' || p.type === 'canopy' || p.type === 'gantry' ||
-                   p.type === 'wreckDrone')
+                   p.type === 'wreckDrone' || p.type === 'tender')
       ? isoToScreen(p.foot[0] + p.foot[2], p.foot[1] + p.foot[3]).y - 1
       : (p.foot ? s.y + (p.foot[2] + p.foot[3]) * 4 : s.y);
     draws.push({ depth, draw: () => drawProp(p, s.x - ox, s.y - oy) });
@@ -1802,10 +1816,10 @@ function render() {
       addLight(s.x - ox, s.y - oy - 5, 0, 10, '255,190,90', 0.25);
     }});
   }
-  const TUN = currentAreaDef().edges && currentAreaDef().edges.tunnels;
-  if (TUN) {
+  const TUN = areaRoofs().filter(t => !t.noSlab);
+  if (TUN.length) {
     for (const t of TUN) {
-      const LIFT = 40;                       // under the deck, over the road
+      const LIFT = t.lift || 40;             // under the deck, over the road
       const c1 = isoToScreen(t.x0, t.y0), c2 = isoToScreen(t.x1 + 1, t.y0);
       const c3 = isoToScreen(t.x1 + 1, t.y1 + 1), c4 = isoToScreen(t.x0, t.y1 + 1);
       draws.push({ depth: c3.y + 3, draw: () => {
@@ -1931,6 +1945,26 @@ function render() {
     ctx.lineWidth = 1;
     ctx.globalAlpha = 1;
     addLight(rx, ry, 0, 34 * (1 - p * 0.4), '255,150,70', 0.7 * (1 - p));
+  }
+
+  // THE GUN CAMERA'S MARK. Drawn after everything in the world and before the
+  // grade, so it survives whatever is standing in front of it — that is the
+  // entire point of the part. A ring on the ground and a tick above the head,
+  // fading out as the four seconds run down.
+  if (typeof Mark !== 'undefined' && Mark.at && Mark.t > 0 &&
+      !(Mark.at.dead || Mark.at.state === 'dead')) {
+    const m = Mark.at, s = isoToScreen(m.x, m.y);
+    const mx = s.x - ox, my = s.y - oy;
+    const a = Math.min(1, Mark.t / 1.2) * 0.85;
+    ctx.globalAlpha = a;
+    ctx.strokeStyle = '#7fe0b0'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.ellipse(mx, my, 9, 4.5, 0, 0, Math.PI * 2); ctx.stroke();
+    const bob = Math.sin(gameTime * 4) * 1.5;
+    ctx.beginPath();
+    ctx.moveTo(mx - 3, my - 26 + bob); ctx.lineTo(mx, my - 22 + bob);
+    ctx.lineTo(mx + 3, my - 26 + bob);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
   }
 
   drawEdgeWeather(ox, oy);
@@ -2289,10 +2323,17 @@ function updateBurning(dt) {
 // beam across the mouth and the shadow it throws on the road under it — and
 // the roof fades out as you go in, the same way the shack's does, because you
 // still have to be able to see yourself in there.
+// THE THIRD USE OF ONE IDEA. The shack has had a fading roof since the yard was
+// built, the underpass got one when it stopped being a cutting, and Field 12's
+// four buildings are the same thing again — so it is a list on the area now
+// rather than a special case per place.
+function areaRoofs() {
+  const d = currentAreaDef();
+  const tun = (d.edges && d.edges.tunnels) || [];
+  return tun.concat(d.roofs || []);
+}
 function insideTunnel(x, y) {
-  const T = currentAreaDef().edges && currentAreaDef().edges.tunnels;
-  if (!T) return false;
-  for (const t of T)
+  for (const t of areaRoofs())
     if (x > t.x0 - 0.5 && x < t.x1 + 1.5 && y > t.y0 - 0.5 && y < t.y1 + 1.5) return true;
   return false;
 }
@@ -2415,8 +2456,14 @@ function drawProp(p, x, y) {
     const bs = Sprites.makeBuilding(p.foot[2], p.foot[3], p.kind, p.seed);
     const a = isoToScreen(p.foot[0], p.foot[1]);
     const bx = Math.round(a.x - lastOx - bs.ax), by = Math.round(a.y - lastOy - bs.ay);
+    // A BUILDING YOU CAN GO INSIDE fades while you are inside it, or you are
+    // standing in a closed box with the whole shed drawn over your head.
+    const inIt = p.enterable && player.x > p.foot[0] && player.x < p.foot[0] + p.foot[2] &&
+                                player.y > p.foot[1] && player.y < p.foot[1] + p.foot[3];
+    if (inIt) ctx.globalAlpha = roofAlpha;
     ctx.drawImage(bs.img, bx, by);
-    blocks(bx, by, bs.img.width, bs.img.height);
+    ctx.globalAlpha = 1;
+    if (!inIt) blocks(bx, by, bs.img.width, bs.img.height);
     return;
   }
   if (T === 'canopy') { drawRoof(p); return; }
@@ -2622,6 +2669,46 @@ function drawProp(p, x, y) {
     img = set[p.v % set.length];
     oyOff = img.oy;
     drawShadow(x, y + 1, 14);
+  }
+  else if (T === 'mast')   { img = p.taken ? Sprites.mastBare : Sprites.mast;
+                             oyOff = -56; drawShadow(x, y, 5); }
+  else if (T === 'ladder') { img = Sprites.ladder; oyOff = -44; drawShadow(x, y, 4); }
+  else if (T === 'drumFire') {
+    img = Sprites.drumFire; oyOff = -26; drawShadow(x, y, 5);
+    // the one warm light in three areas, and it has to flicker like the braziers
+    const fl = 0.82 + 0.18 * Math.sin(gameTime * 9 + p.gx * 2.1) * Math.sin(gameTime * 3.7 + p.gy);
+    addLight(x, y - 14, 0, 46 * fl, '255,170,70', 0.42 * fl);
+  }
+  else if (T === 'tarp')      { img = Sprites.tarp;      oyOff = -30; drawShadow(x, y, 6); }
+  else if (T === 'handCart')  { img = Sprites.handCart;  oyOff = -20; drawShadow(x, y, 9); }
+  else if (T === 'bedroll')   { img = Sprites.bedroll;   oyOff = -12; drawShadow(x, y, 9); }
+  else if (T === 'coldFire')  { img = Sprites.coldFire;  oyOff = -10; drawShadow(x, y, 7); }
+  else if (T === 'dutyDesk')  { img = Sprites.dutyDesk;  oyOff = -18; drawShadow(x, y, 10); }
+  else if (T === 'breaker')   { img = Sprites.breakerBox; oyOff = -20; drawShadow(x, y, 5); }
+  else if (T === 'tape')      { img = Sprites.tapeIcon;  oyOff = -10; drawShadow(x, y, 5); }
+  else if (T === 'wrensPack') { img = Sprites.wrensPack; oyOff = -18; drawShadow(x, y, 6); }
+  else if (T === 'deadCrew')  { img = Sprites.deadCrew;  oyOff = -20; drawShadow(x, y, 8); }
+  else if (T === 'pallet')    { img = Sprites.pallet;    oyOff = -12; drawShadow(x, y, 9); }
+  else if (T === 'tug')       { img = Sprites.tug;       oyOff = -20; drawShadow(x, y, 11); }
+  else if (T === 'tender') {
+    // five tiles by two, anchored on its own north corner like the wreck
+    const im = Sprites.tender;
+    const a = isoToScreen(p.foot[0], p.foot[1]);
+    ctx.drawImage(im, Math.round(a.x - lastOx - im.ox), Math.round(a.y - lastOy - im.oy));
+    return;
+  }
+  // THE WRECK CORE is a hatch on the hull, not an object standing beside it:
+  // the wreck's own volume is what you see, and this is the open panel in it.
+  else if (T === 'wreckCore') {
+    ctx.fillStyle = p.taken ? 'rgba(10,10,9,0.85)' : 'rgba(16,18,17,0.8)';
+    ctx.fillRect(Math.round(x - 7), Math.round(y - 12), 14, 8);
+    if (!p.taken) {
+      ctx.fillStyle = '#4a8f6a';
+      ctx.fillRect(Math.round(x - 2), Math.round(y - 9), 2, 2);
+      addLight(x, y - 8, 0, 12, '90,200,150',
+               0.18 + 0.10 * Math.sin(gameTime * 2.2));
+    }
+    return;
   }
   else if (T === 'apronLamp') { img = Sprites.apronLamp; oyOff = -46; drawShadow(x, y, 4); }
   else if (T === 'workLamp')  { img = Sprites.workLamp;  oyOff = -24; drawShadow(x, y, 4); }

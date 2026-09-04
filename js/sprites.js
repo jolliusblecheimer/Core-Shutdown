@@ -3958,6 +3958,171 @@ function outlined(src) {
     Sprites.wreckDrone = wreckDrone();
   })();
 
+  // ---- THE NORTH'S FITTINGS ---------------------------------------------
+  // Uprights, every one of them, so the angle rule lets them be drawn straight.
+  (function () {
+    const mast = () => {                       // the school's aerial mast
+      const c = makeCanvas(18, 56), g = c.getContext('2d');
+      px(g, 8, 6, 3, 46, '#6a6e72');
+      px(g, 8, 6, 1, 46, '#83878b');
+      px(g, 5, 50, 9, 3, '#4a4e52');
+      for (let i = 0; i < 6; i++) px(g, 6, 12 + i * 7, 7, 1, '#4a4e52');
+      px(g, 9, 0, 1, 8, '#8d9195');            // the long aerial itself
+      for (let i = 0; i < 4; i++) px(g, 5 + (i % 2) * 8, 2 + i * 2, 5, 1, '#8d9195');
+      return outlined(c);
+    };
+    const mastBare = () => {                   // after you have taken it
+      const c = makeCanvas(18, 56), g = c.getContext('2d');
+      px(g, 8, 10, 3, 42, '#6a6e72');
+      px(g, 8, 10, 1, 42, '#83878b');
+      px(g, 5, 50, 9, 3, '#4a4e52');
+      for (let i = 0; i < 5; i++) px(g, 6, 16 + i * 7, 7, 1, '#4a4e52');
+      px(g, 8, 8, 3, 2, '#3a3e42');
+      return outlined(c);
+    };
+    const ladder = () => {                     // bolted up the church's west front
+      const c = makeCanvas(12, 44), g = c.getContext('2d');
+      px(g, 2, 0, 2, 42, '#6a5a44'); px(g, 8, 0, 2, 42, '#6a5a44');
+      for (let i = 0; i < 9; i++) px(g, 2, 4 + i * 4, 8, 1, '#7d6b50');
+      px(g, 1, 41, 10, 2, '#4a4034');
+      return outlined(c);
+    };
+    const drumFire = () => {                   // the warmest thing in three areas
+      const c = makeCanvas(16, 26), g = c.getContext('2d');
+      px(g, 3, 10, 10, 14, '#5a4a38');
+      px(g, 3, 10, 3, 14, '#6d5b45');
+      px(g, 3, 10, 10, 1, '#7d6a50');
+      px(g, 3, 14, 10, 1, '#463a2c'); px(g, 3, 19, 10, 1, '#463a2c');
+      px(g, 5, 6, 6, 5, '#e08a24');            // the fire in the top of it
+      px(g, 6, 3, 4, 4, '#ffb84a');
+      px(g, 7, 1, 2, 3, '#ffe08a');
+      return outlined(c);
+    };
+    const tarp = () => {
+      const c = makeCanvas(20, 30), g = c.getContext('2d');
+      px(g, 1, 4, 2, 25, '#5a5348'); px(g, 16, 4, 2, 25, '#5a5348');
+      px(g, 1, 3, 17, 12, '#5e6152');
+      px(g, 1, 3, 17, 2, '#6f7361');
+      for (let i = 0; i < 4; i++) px(g, 3 + i * 4, 15, 3, 3, '#4c4f42');
+      return outlined(c);
+    };
+    const handCart = () => {
+      const c = makeCanvas(22, 20), g = c.getContext('2d');
+      px(g, 3, 6, 16, 7, '#5f5346');
+      px(g, 3, 6, 16, 1, '#736550');
+      px(g, 2, 13, 3, 5, '#2e2a26'); px(g, 16, 13, 3, 5, '#2e2a26');
+      px(g, 17, 1, 2, 6, '#4a4038');
+      return outlined(c);
+    };
+    const bedroll = () => {
+      const c = makeCanvas(22, 12), g = c.getContext('2d');
+      px(g, 2, 4, 18, 6, '#4e5348');
+      px(g, 2, 4, 18, 1, '#5f6558');
+      px(g, 3, 2, 6, 4, '#6a6152');
+      return outlined(c);
+    };
+    const coldFire = () => {
+      const c = makeCanvas(18, 10), g = c.getContext('2d');
+      for (let i = 0; i < 8; i++) px(g, 2 + i * 2, 4 + ((i % 3) | 0), 2, 2, '#4a453e');
+      px(g, 5, 5, 8, 2, '#2a2622');
+      px(g, 7, 4, 3, 1, '#3d3833');
+      return outlined(c);
+    };
+    const dutyDesk = () => {
+      const c = makeCanvas(24, 18), g = c.getContext('2d');
+      px(g, 2, 5, 20, 8, '#57503f');
+      px(g, 2, 5, 20, 1, '#6a6250');
+      px(g, 3, 13, 3, 4, '#3f3a30'); px(g, 18, 13, 3, 4, '#3f3a30');
+      px(g, 6, 2, 9, 4, '#3a3f45');            // a dead screen on it
+      px(g, 7, 3, 7, 2, '#1c2024');
+      return outlined(c);
+    };
+    const breaker = () => {
+      const c = makeCanvas(14, 20), g = c.getContext('2d');
+      px(g, 2, 2, 10, 14, '#5a5e62');
+      px(g, 2, 2, 10, 1, '#6d7175');
+      px(g, 4, 5, 6, 8, '#33373b');
+      px(g, 6, 6, 2, 5, '#b8452c');            // the handle, and it is down
+      px(g, 3, 16, 8, 1, '#43474b');
+      return outlined(c);
+    };
+    const tape = () => {
+      const c = makeCanvas(14, 10), g = c.getContext('2d');
+      px(g, 2, 2, 10, 6, '#4a4038');
+      px(g, 2, 2, 10, 1, '#5d5145');
+      px(g, 4, 4, 2, 2, '#22201d'); px(g, 8, 4, 2, 2, '#22201d');
+      px(g, 3, 7, 8, 1, '#d8d2c2');
+      return outlined(c);
+    };
+    const wrensPack = () => {
+      const c = makeCanvas(18, 18), g = c.getContext('2d');
+      px(g, 3, 4, 12, 12, '#4e5a3f');
+      px(g, 3, 4, 12, 1, '#5f6c4c');
+      px(g, 3, 9, 12, 1, '#3b452f');
+      px(g, 6, 1, 6, 4, '#424c35');
+      px(g, 7, 11, 4, 3, '#6a6152');
+      return outlined(c);
+    };
+    const deadCrew = () => {
+      const c = makeCanvas(20, 20), g = c.getContext('2d');
+      px(g, 5, 6, 10, 12, '#5a3f2c');          // the coat
+      px(g, 5, 6, 10, 1, '#6b4c35');
+      px(g, 6, 2, 7, 6, '#4a4038');            // and what is left of him
+      px(g, 7, 3, 5, 4, '#2a2622');
+      px(g, 4, 10, 3, 6, '#5a3f2c'); px(g, 13, 10, 3, 6, '#5a3f2c');
+      px(g, 8, 14, 5, 4, '#3a3f45');           // the dictaphone in his lap
+      px(g, 9, 15, 3, 1, '#8d9195');
+      return outlined(c);
+    };
+    const tender = () => {                     // the only warm colour on the field
+      // SIZE THE CANVAS TO THE PROJECTION, not to a guess. At 88x40 the body
+      // ran off the bottom and the cab off the top, and what was left read as a
+      // red wedge lying on the floor. Width has to cover (u-v) at both extremes
+      // and height has to cover (u+v)*8 plus the tallest thing on it.
+      const OX = 32, OY = 30;
+      const c = makeCanvas(112, 88), g = c.getContext('2d');
+      const P = (u, v, h) => [(u - v) * 16 + OX, (u + v) * 8 - h + OY];
+      const quad = (u0, v0, u1, v1, h, col) =>
+        isoFill(g, [P(u0, v0, h), P(u1, v0, h), P(u1, v1, h), P(u0, v1, h)], col);
+      const side = (u0, v0, u1, v1, h0, h1, col) =>
+        isoFill(g, [P(u0, v0, h0), P(u1, v1, h0), P(u1, v1, h1), P(u0, v0, h1)], col);
+      side(0.1, 1.85, 4.7, 1.85, 1, 17, '#9c3a22');
+      side(0.1, 0.15, 4.7, 0.15, 1, 17, '#782c19');
+      quad(0.1, 0.15, 4.7, 1.85, 17, '#b0472a');
+      side(0.1, 1.85, 0.1, 1.85, 17, 26, '#8c331e');        // the cab
+      quad(0.2, 0.3, 1.5, 1.7, 26, '#bd5232');
+      isoFill(g, [P(1.5, 0.3, 26), P(1.5, 1.7, 26), P(1.5, 1.7, 17), P(1.5, 0.3, 17)], '#232a30');
+      quad(2.0, 0.5, 4.4, 1.5, 19, '#7d7466');              // the monitor deck
+      for (let i = 0; i < 3; i++) quad(2.2 + i * 0.8, 0.4, 2.5 + i * 0.8, 1.6, 18, '#5e5a50');
+      for (const u of [0.5, 3.9]) side(u, 1.9, u + 0.7, 1.9, 0, 7, '#1a1c1f');
+      const out = outlined(c);
+      out.ox = OX + 1; out.oy = OY + 1;       // anchored on its own north corner
+      return out;
+    };
+    Sprites.mast = mast(); Sprites.mastBare = mastBare();
+    Sprites.ladder = ladder(); Sprites.drumFire = drumFire();
+    Sprites.tarp = tarp(); Sprites.handCart = handCart();
+    Sprites.bedroll = bedroll(); Sprites.coldFire = coldFire();
+    Sprites.dutyDesk = dutyDesk(); Sprites.breakerBox = breaker();
+    Sprites.tapeIcon = tape(); Sprites.wrensPack = wrensPack();
+    Sprites.deadCrew = deadCrew(); Sprites.tender = tender();
+    Sprites.pallet = (() => {
+      const c = makeCanvas(24, 12), g = c.getContext('2d');
+      for (let i = 0; i < 5; i++) px(g, 2 + i * 4, 3, 3, 6, '#6a5a44');
+      px(g, 2, 3, 20, 1, '#7d6b50'); px(g, 2, 8, 20, 2, '#4e4234');
+      return outlined(c);
+    })();
+    Sprites.tug = (() => {
+      const c = makeCanvas(30, 20), g = c.getContext('2d');
+      px(g, 4, 5, 20, 8, '#4a5a4e');
+      px(g, 4, 5, 20, 1, '#5b6c5e');
+      px(g, 8, 1, 9, 5, '#3c4a40');
+      px(g, 3, 13, 4, 5, '#22262a'); px(g, 19, 13, 5, 5, '#22262a');
+      px(g, 24, 7, 4, 2, '#3a3f45');
+      return outlined(c);
+    })();
+  })();
+
   // ---- THE M7 GANTRY ---------------------------------------------------
   // The map had no INWARD: nothing on it said which way the Core was. This is
   // the answer — a sign gantry over the spine, still carrying the board that

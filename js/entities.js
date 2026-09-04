@@ -266,6 +266,27 @@ const npc = { x: 21.5, y: 6.5, animT: 0, frame: 0 };
 // Nobody here learns the player's name. Traveller, stranger, or nothing.
 let folk = [];
 const FOLK = {
+  // THE LAMP. Two people in a maintenance recess under a dead motorway, and it
+  // is NOT A CAMP and must not become one: no beds, no bench, no medbay, no
+  // respawn anchor. One counter, one fire, two people. Its whole job is a
+  // shape — this is as far as anybody sane goes, and you are about to go past
+  // it. Nobody here learns the traveller's name either.
+  lamp: [
+    { key: 'wren', name: 'WREN', x: 6.5, y: 10.5, stock: 'wren', verb: 'TRADE', lines: [
+        ["You came up the spine. Nobody comes up the spine.",
+         "There's a field north of here with a fence round it. I've been in.",
+         "Don't stand still where the light goes. That's it, that's the advice."],
+        "Two of them. Out the roof, not the doors. I was under the wing before I heard the second one.",
+        "Stair's on the north face of the tower. Outside. The inside one's under water.",
+        "I'd go back for the pack. I'm not going back for the pack." ] },
+    { key: 'oz', name: 'OSGOOD', x: 8.5, y: 12.5, lines: [
+        ["Fire's free. Sit if you're sitting.",
+         "Wren goes out. I keep the fire. It's a fair split.",
+         "Whatever's up that tunnel, it's not for me."],
+        "I had a radio. Still have it. Stopped listening about a year ago.",
+        "It's a year old, friend. Everything's a year old.",
+        "If you come back, come back before dark. If you don't, that's your business." ] },
+  ],
   camp: [
     { key: 'vesna', name: 'VESNA', x: 7.5, y: 13.5, lines: [
       "Door stays shut after dark. That is the one rule that matters.",
@@ -300,10 +321,33 @@ const FOLK = {
       "Stand by the drum a while. Nobody gets asked anything until they're warm.",
       "This place was cold for a year before we got the stove in.",
       "I'll trade you fair. I'm too old to be clever about it." ] },
-    { key: 'ivar', name: 'IVAR', x: 7.5, y: 2.5, lines: [
-      "You came up the sign road. People only do that with nothing left.",
-      "Read the table. Everything this camp knows about the ring is on it.",
-      "We don't ask what you did before. Nobody here would like the answer." ] },
+    // IVAR was already the camp's radio and is now the only person in the game
+    // who names a DIRECTION rather than a place. His own three lines are still
+    // what he says to somebody the camp has nothing to ask of; the job only
+    // exists once the map table has been read.
+    { key: 'ivar', name: 'IVAR', x: 7.5, y: 2.5, lines: () => {
+        if (Quests.q2 === 'none' && campMapRead) {
+          Quests.q2 = 'given';
+          if (typeof saveGame === 'function') saveGame();
+          return [["We hear the whole ring on this set and we can't answer any of it.",
+                   "There's a mast in the school yard, east of here. Long aerial on it.",
+                   "Bring me that and I'll put us on the air. Or find out who else is."]];
+        }
+        if (Quests.q2 === 'given') return [
+          "School's on the east cross. Big pale block with a yard behind it.",
+          "Machines standing in that yard, last anybody looked. Standing, not doing." ];
+        if (Quests.q2 === 'mast') return [
+          "That's the one. Get it up high — the west front has a ladder on it.",
+          "Higher than the roof, or it hears nothing but the roof." ];
+        if (Quests.q2 === 'done') return [
+          "That's not a person. That's a machine that never got told to stop.",
+          "It's north. That's the whole of what I can give you. North.",
+          "Don't thank me for it." ];
+        return [
+          "You came up the sign road. People only do that with nothing left.",
+          "Read the table. Everything this camp knows about the ring is on it.",
+          "We don't ask what you did before. Nobody here would like the answer." ];
+      } },
     // Tam keeps the camp's counter. He never asks where you came from — he
     // only knows what came up the road, which is that the way in is clear.
     { key: 'tam', name: 'TAM', x: 6.5, y: 6.5, stock: 'tam', lines: [
@@ -407,8 +451,145 @@ function readMapTable() {
 }
 // Fittings you can use. Each one answers twice: with `ask` it returns the
 // prompt, without it, it does the thing.
+// ---------------------------------------------------------------------
+// THE NORTH'S QUEST FITTINGS
+// Each one is a prop with a `type` in USABLE below, placed by hand in map.js
+// and keyed by POSITION in the save like every other world object, so a map
+// edit can never shuffle which one you already took.
+// ---------------------------------------------------------------------
+function takeAerial(p) {
+  if (p.taken) { startDialog(["Bare mast. The aerial's on my back."]); return; }
+  p.taken = true;
+  player.inv.aerial = 1;
+  Quests.q2 = 'mast';
+  showMsg('LONG AERIAL — taken off the mast', 3);
+  SFX.pickup();
+  spawnSparks(p.gx + 0.5, p.gy + 0.5, 6, ['#c9c9d2', '#ffd27a']);
+  saveGame();
+}
+function mountAerial(p) {
+  if (Quests.q2 === 'done') {
+    startDialog(["The aerial is up, and the loop is still going round.",
+                 "It will still be going round long after anybody stops listening."]);
+    return;
+  }
+  if (Quests.q2 !== 'mast') {
+    startDialog(["A steel ladder bolted up the west front, above the portal.",
+                 "It goes to the parapet. There is nothing up there to fetch."]);
+    return;
+  }
+  player.inv.aerial = 0;
+  Quests.q2 = 'done';
+  showMsg('Aerial mounted. The set has something to listen with.', 3);
+  SFX.tech();
+  // THE LOOP. Not a person. Half of it is missing and the half that is left has
+  // been going round for a year, and it does not say where — it says WHICH WAY.
+  startDialog([
+    "The set finds it in under a minute, and then will not let it go.",
+    "\"...ALL STATIONS. THE CORRECTION IS IN PROGRESS. DO NOT—\"",
+    "\"...REMAIN WHERE YOU ARE. DO NOT ATTEMPT—\"",
+    "\"...ALL STATIONS. THE CORRECTION IS IN—\"",
+    "IVAR: That's not a person. That's a machine that never got told to stop.",
+    "IVAR: It's north. Strong enough that it's close. North, and that's all I have." ]);
+  saveGame();
+}
+function takeWrensPack(p) {
+  if (p.taken) { startDialog(["Where it was. She can have the rest herself."]); return; }
+  p.taken = true;
+  Quests.s1 = 'done';
+  player.inv.scrap += 6;
+  showMsg("WREN'S PACK — and six scrap in the bottom of it", 3);
+  SFX.loot();
+  saveGame();
+}
+// THE SLATE. The recovery detail was working the wreck outside-in and had not
+// reached the core, which is the only reason this is still here.
+function takeSlate(p) {
+  if (p.taken) { startDialog(["Opened up, and emptied. Nothing else in there for me."]); return; }
+  p.taken = true;
+  Quests.q3 = 'slate';
+  player.inv.slate = 1;
+  showMsg('A SLATE, out of the core. Still has charge in it.', 3);
+  SFX.tech();
+  saveGame();
+  // The footage, and then his head splits. No dialogue after it and no
+  // explanation: Q8 owns the answer and this must not leak a word of it.
+  startDialog([
+    "The slate wakes up on the last thing it recorded.",
+    "A street from above. Ordinary. Middle of an ordinary evening.",
+    "Then every machine in the frame turns its head. All of them. At once.",
+    "Not one after another. Not a wave. In the same second, across a whole city.",
+    "The overlay in the corner of the frame reads:",
+    "        AUTH: E.VANN" ]);
+  Quests.q3 = 'done';
+  think('vann', 'That was not a fault. Somebody sent that.');
+  addShake(6);
+  player.flash = Math.max(player.flash, 0.3);
+  saveGame();
+}
+// S2. Three tapes of a night shift that ended, and not one of them mentions the
+// Correction, WARDEN, or anything the traveller is chasing.
+const TAPES = {
+  shed: ["TAPE, labelled in marker: 22:40",
+         "\"Tender two is out on the north stand, we're holding here.\"",
+         "\"They've got one more coming in and then that's the night.\"",
+         "\"Tell Marlow the kettle's his problem, I'm not doing it twice.\""],
+  pen:  ["TAPE, labelled: 23:15",
+         "\"He's still trying to line up. Nobody's talking to him.\"",
+         "\"I said nobody's talking to him. Tower's reading clearances at a wall.\"",
+         "\"...he's going round again. That's the fourth time.\""],
+  cab:  ["TAPE, no label. The last one on the spool.",
+         "\"Field twelve, field twelve, any station.\"",
+         "\"I have you on the boards and I have nothing else. I'm reading it out anyway.\"",
+         "\"Runway one-two, wind calm, surface wet. You're cleared to land.\"",
+         "\"You're cleared to land. Somebody's saying it.\""],
+};
+function playTape(p) {
+  if (p.taken) { startDialog(["Already heard it. It does not get better."]); return; }
+  p.taken = true;
+  Quests.s2 = Math.min(3, (Quests.s2 || 0) + 1);
+  SFX.uiOpen();
+  const lines = TAPES[p.tape].slice();
+  if (Quests.s2 >= 3) {
+    lines.push("That is all three of them, and none of them knew.");
+    lines.push("There is a brace in his kit off something that fired in threes.");
+    player.inv.tech += 1; player.inv.scrap += 8;
+    if (!player.mods.owned.stkBraced) givePart('stkBraced');
+    showMsg('The last shift  ·  RECOIL-BRACED STOCK  ·  +1 tech  +8 scrap', 3.5);
+  }
+  startDialog(lines);
+  saveGame();
+}
+// THE DEAD MAN in the tender shed. He is S2's giver and he says nothing.
+function readDeadCrew(p) {
+  if (!p.read) {
+    p.read = true;
+    Quests.s2 = Math.max(Quests.s2 || 0, 0);
+    saveGame();
+  }
+  const found = Quests.s2 || 0;
+  startDialog([
+    "A fire crewman, in his coat, sat against the wheel of his own appliance.",
+    "He did not go anywhere, and he had a year to.",
+    "A dictaphone in his lap, and a box of tapes beside it — " + found + " of 3 played." ]);
+}
+
 const USABLE = {
   mapTable: (p, ask) => ask ? 'E — read the map' : readMapTable(),
+  // the north's fittings
+  mast: (p, ask) => ask ? (p.taken ? 'bare' : 'E — take the aerial') : takeAerial(p),
+  ladder: (p, ask) => ask
+    ? (Quests.q2 === 'mast' ? 'E — mount the aerial' : 'E — look') : mountAerial(p),
+  wrensPack: (p, ask) => ask ? (p.taken ? 'empty' : 'E — take the pack') : takeWrensPack(p),
+  wreckCore: (p, ask) => ask ? (p.taken ? 'empty' : 'E — open the core') : takeSlate(p),
+  tape: (p, ask) => ask ? (p.taken ? 'played' : 'E — play the tape') : playTape(p),
+  deadCrew: (p, ask) => ask ? 'E — look' : readDeadCrew(p),
+  breaker: (p, ask) => ask ? 'E — look' : startDialog([
+    "A breaker in a steel box, and somebody has written BEACON on it in chalk.",
+    (Quests.s2 || 0) >= 3
+      ? "The tower crew's last tape said it runs on its own once it's lit."
+      : "The handle is stiff with a year of damp. It would take some working.",
+    "Whatever it feeds is not turning at the moment." ]),
   chest: (p, ask) => ask ? (p.open ? 'empty' : 'E — open') : openChest(p),
   strongbox: (p, ask) => ask ? 'locked' : startDialog([
     "Padlocked, and the key is not in this room.",
@@ -542,6 +723,18 @@ const mission = { state: 'none' };   // none -> active -> complete -> turned
 //
 // `detail` is the forward-looking line: what you are about to do, in the
 // traveller's voice. `log` is the same step in the past tense, for the ledger.
+// THE NORTH'S QUEST STATE. One flat object, merged onto these defaults on load
+// (rule 6), so adding q4 later cannot break a live run and a save written
+// before any of this existed simply arrives with everything at 'none'.
+//
+//   q2: none -> given -> mast -> mounted -> done      the long aerial
+//   q3: none -> given -> slate -> done                the recording
+//   s1: none -> given -> done                         what Wren left
+//   s2: 0..3                                          the last shift, in tapes
+//   s3: none -> given -> done                         nothing left to cut (E4)
+const QUEST_DEFAULTS = { q2: 'none', q3: 'none', s1: 'none', s2: 0, s3: 'none' };
+let Quests = Object.assign({}, QUEST_DEFAULTS);
+
 const OBJECTIVES = [
   { id: 'marek', title: () => 'Talk to the survivor',
     area: 'junkyard', x: 21.5, y: 7.5,
@@ -575,6 +768,38 @@ const OBJECTIVES = [
     area: 'fringe', x: 56, y: 68,
     detail: 'Somebody painted the signs after. Follow them west and there is a church people live in.',
     log: "Followed the signs west to St Martin's." },
+  // REACHING THE CAMP ASKS NOTHING OF YOU. There is a real gap between walking
+  // into Candlelight and Ivar having a job — the player is meant to look round
+  // the camp, trade, and find the map table. This row is that gap: silent while
+  // you are in it, and in the ledger afterwards because it is where the first
+  // act ends.
+  { id: 'settled', title: () => 'Rest at the shelter', silent: true,
+    area: 'candlelight', x: 6.5, y: 13.5,
+    detail: '',
+    log: 'Reached St Martin\'s, and the people living in it.' },
+  // ---- THE NORTH. Everything past the camp, in the order the chain reaches it.
+  { id: 'aerial', title: () => 'Fetch the long aerial',
+    area: 'fringe', x: 119.5, y: 61.5,
+    detail: 'Ivar says the camp hears the whole ring and cannot answer it. There is a mast in the school yard.',
+    log: 'Took the long aerial off the school mast.' },
+  { id: 'mount', title: () => "Mount the aerial on St Martin's",
+    area: 'fringe', x: 56, y: 68,
+    detail: 'A length of aluminium and a coil of coax. There is a ladder up the west front.',
+    log: "Bolted the aerial to the church's west front." },
+  { id: 'northbound', title: () => 'Follow the signal north',
+    area: 'fringe', x: 92, y: 20,
+    detail: 'Something is still transmitting, from the night it happened, on a machine nobody told to stop. It is north of here.',
+    log: 'Followed the loop north, under the viaduct.' },
+  { id: 'theWreck', title: () => 'Reach the wreck on the runway',
+    area: 'field12', x: 46, y: 27,
+    detail: 'The loop is louder inside the fence. Whatever is repeating it came down on that runway.',
+    log: 'Reached the wreck, and took the slate out of it.' },
+  // THE HEADACHE IS NEVER MARKED. What he saw on that slate is not a place you
+  // can walk to, and a dot pointing anywhere would be the game explaining it.
+  { id: 'seen', title: () => 'Understand what you saw', silent: true,
+    area: 'field12', x: 46, y: 27,
+    detail: '',
+    log: 'Watched a city turn at once, on a command with a name on it.' },
 ];
 
 // `gateProp` only exists while the junkyard is the area that is built, and the
@@ -586,7 +811,14 @@ const yardGateOpen = () => currentArea !== 'junkyard' || !!(gateProp && gateProp
 // Read top-down so the furthest evidence always wins — a save that arrives with
 // the boss dead can never report the errand it skipped as still outstanding.
 function questRank() {
-  if (campMapRead)                  return 6;   // past the end: the chain is quiet
+  // The north, furthest evidence first — same rule as everything below it.
+  if (Quests.q3 === 'done')         return 12;  // past the end again, and quiet
+  if (Quests.q3 === 'slate')        return 11;  // the headache. Silent.
+  if (Quests.q3 === 'given')        return 10;
+  if (Quests.q2 === 'done')         return 9;
+  if (Quests.q2 === 'mast')         return 8;
+  if (Quests.q2 === 'given')        return 7;
+  if (campMapRead)                  return 6;   // settled at the camp, nothing asked
   if (bossDefeated)                 return 5;
   if (yardGateOpen())               return 4;
   if (mission.state === 'turned')   return 3;
@@ -717,7 +949,10 @@ function updatePlayer(dt) {
     player.burstT -= dt;
     const G = activeGun();
     while (player.burst > 0 && player.burstT <= 0) {
-      if (player.dead > 0 || player.reloadT > 0 || !fireRound(G, G.spread)) {
+      // the braced stock multiplies whatever spread the barrel has, so the two
+      // barrels finally have genuinely different best builds
+      const spr = G.spread * (G.spreadMul || 1);
+      if (player.dead > 0 || player.reloadT > 0 || !fireRound(G, spr)) {
         player.burst = 0;                     // dead, reloading, or simply empty
         break;
       }
@@ -887,12 +1122,13 @@ function updateItems(dt) {
     consider(npc, 'npc', Math.hypot(player.x - npc.x, player.y - npc.y), 1.3);
   for (const f of folk)
     consider(f, 'folk', Math.hypot(player.x - f.x, player.y - f.y), 1.4);
-  // the camp's fittings you can actually use
-  if (currentAreaDef().indoors) {
-    for (const p of props) {
-      if (!USABLE[p.type]) continue;
-      consider(p, 'fitting', propDist(p), 1.4);
-    }
+  // The camp's fittings you can actually use — and the north's, which are
+  // OUTDOORS. This was gated on `indoors` back when every usable thing was a
+  // piece of furniture in the church; a mast in a school yard and a wreck on a
+  // runway are the same interaction and must not need a roof over them.
+  for (const p of props) {
+    if (!USABLE[p.type]) continue;
+    consider(p, 'fitting', propDist(p), 1.4);
   }
   // the yard gate (main game only, never during the fight or cutscene)
   if (!window.ARENA_MODE && currentArea === 'junkyard' && !GateCine.active &&
@@ -1168,6 +1404,20 @@ const partRow = (id) => ({
 const partRows = (...ids) => (player.owned.rifle ? ids.map(partRow) : []);
 
 const STOCK = {
+  // WREN. What she has on her is not much, and the rifle rounds are behind her
+  // pack — she will not sell what she is not carrying. S1 opens the second row,
+  // and it is the LAST rifle ammunition before Ring 4.
+  wren: () => [
+    { label: '6 pistol rounds', icon: () => Sprites.ammo, cost: { scrap: 6 },
+      buy: () => { giveRounds('pistol', 6); showMsg('Bought 6 pistol rounds'); } },
+    ...(Quests.s1 === 'done' ? [
+      { label: '12 rifle rounds', icon: () => Sprites.ammoRifle, cost: { scrap: 14 },
+        sold: () => !player.owned.rifle, soldText: 'Nothing to put them in',
+        buy: () => { giveRounds('rifle', 12); showMsg('Bought 12 rifle rounds'); } },
+    ] : []),
+    { label: 'snack bar', icon: () => Sprites.snackIcon, cost: { scrap: 5 },
+      buy: () => { player.inv.snack++; showMsg('Bought a snack bar  (H to eat)'); } },
+  ],
   marek: [
     { label: 'snack bar', icon: () => Sprites.snackIcon, cost: { scrap: 4 },
       buy: () => { player.inv.snack++; showMsg('Bought a snack bar  (H to eat)'); } },
@@ -1366,7 +1616,23 @@ function updateExplosions(dt) {
   }
 }
 
+// THE GUN CAMERA. It remembers the last thing a round of yours landed on, and
+// the renderer keeps drawing that thing's outline until the mark expires —
+// through anything in the way. It is worth a slot on OPEN GROUND, where what
+// you lose a target to is distance rather than a wall, and worth nothing at all
+// in a street: exactly the trade the airfield exists to offer.
+const Mark = { at: null, t: 0 };
+function markTarget(e) {
+  const G = gunStats(player.gun);
+  if (!G.mark) return;
+  Mark.at = e; Mark.t = G.mark;
+}
+
 function updateBullets(dt) {
+  if (Mark.t > 0) {
+    Mark.t -= dt;
+    if (Mark.t <= 0) Mark.at = null;
+  }
   for (let i = bullets.length - 1; i >= 0; i--) {
     const b = bullets[i];
     b.life -= dt;
@@ -1400,6 +1666,7 @@ function updateBullets(dt) {
         spawnSparks(b.x, b.y, 6, ['#ffd27a', '#ffb02e', '#8a8a92']);
         addShake(0.8);
         SFX.hitMetal();
+        markTarget(sc);
         if (sc.hp <= 0) killScrapper(sc);
         break;                          // one bullet, one machine
       }
@@ -1411,6 +1678,7 @@ function updateBullets(dt) {
         if (Math.hypot(b.x - bd.x, b.y - bd.y) >= 0.45) continue;
         hit = true;
         banditHit(bd, b.dmg || 10, b.vx * 0.1, b.vy * 0.1, false);
+        markTarget(bd);
         break;                          // one bullet, one raider
       }
     }

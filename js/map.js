@@ -1038,6 +1038,27 @@ function buildFringe() {
   for (const ax of [84, 74, 64])
     decals.push({ gx: ax, gy: 73.6, type: 'arrowXm' });
 
+  // ---------- THE SCHOOL MAST, and the ladder up St Martin's ----------
+  // Q2's two ends. The mast is in the school yard, which is a playground the
+  // landmark pass already cleared; the ladder is bolted to the cathedral's west
+  // front, above the portal, where the trail's last sign leaves you looking.
+  const mastAt = (mx, my) => {
+    if (heavy[my][mx]) return false;
+    solid[my][mx] = true;
+    props.push({ gx: mx, gy: my, type: 'mast' });
+    return true;
+  };
+  // The school block is (108,56) 22x11, so its yard is the playground strip the
+  // landmark pass paves south of it. 119,61 is INSIDE the building — the spec's
+  // coordinate was written before the school had a footprint.
+  if (!mastAt(119, 70)) { mastAt(118, 70) || mastAt(120, 70) || mastAt(119, 71); }
+  {
+    // the west front faces SOUTH, so the ladder stands on the parvis in front
+    // of it — one tile east of the door, where nothing else is
+    const lx = 58, ly = 68;
+    if (!solid[ly][lx]) { solid[ly][lx] = true; props.push({ gx: lx, gy: ly, type: 'ladder' }); }
+  }
+
   // ---------- THE M7: GIVING THE MAP AN INWARD ----------
   // The Fringe was a box: four edges and nothing anywhere on it saying which
   // way the Core is. The spine IS the M7 — the radial motorway every ring
@@ -1454,6 +1475,19 @@ function buildUnderpass() {
     ground[y][x] = 18;                       // poured slab, not road
   }
   addBuildingProp({ x0: 0, y0: 6, w: 4, h: 2, kind: 'W' });
+  // THE LAMP. A tarp, a drum fire and a counter, and that is the whole of it —
+  // no bed, no bench, no medbay, no respawn anchor. It is a shape, not a camp:
+  // this is as far as anybody sane goes.
+  const lampPut = (x, y, type, extra) => {
+    if (solid[y][x] || heavy[y][x]) return;
+    solid[y][x] = true;
+    props.push(Object.assign({ gx: x, gy: y, type }, extra || {}));
+  };
+  lampPut(7, 12, 'drumFire');
+  lampPut(5, 9, 'crate'); lampPut(5, 12, 'crate');
+  lampPut(9, 9, 'handCart');
+  lampPut(4, 10, 'tarp');
+
   // THE DEAD CAR — the one obstacle, and the only cover if anything follows
   // you in. Along the tunnel, so it takes its 'y' variant.
   props.push({ gx: 9, gy: 24, type: 'car', v: 2, dir: 'y', foot: [9, 23, 1, 3] });
@@ -1560,12 +1594,32 @@ function buildField12() {
   const door = (x0, x1, y) => {
     for (let x = x0; x <= x1; x++) { solid[y][x] = false; heavy[y][x] = false; ground[y][x] = 18; }
   };
+  // BUILDINGS YOU GO INSIDE. `box` fills the whole footprint solid and then the
+  // interior is hollowed back out, so the volume still draws as one pre-rendered
+  // box (the rule) and the inside of it is floor. The roof is a slab that fades
+  // as you step under it — the shack's mechanism, and the underpass's.
+  const ROOFS = [];
+  // HOLLOWING THE COLLISION IS NOT ENOUGH. A building is ONE pre-rendered
+  // volume (the rule), so emptying its tiles let the player walk in and left
+  // them standing inside a closed box — the whole shed drawn over the top of
+  // them. So the volume itself is what fades: the prop is tagged `enterable`,
+  // the rectangle goes on the area's roof list, and the renderer drops it to
+  // roofAlpha while you are in it. Same idea as the shack, applied to a volume
+  // instead of to a separate roof card.
+  const hollow = (x0, y0, w, h) => {
+    for (let y = y0 + 1; y < y0 + h - 1; y++) for (let x = x0 + 1; x < x0 + w - 1; x++) {
+      solid[y][x] = false; heavy[y][x] = false; ground[y][x] = 18;
+    }
+    ROOFS.push({ x0: x0 + 1, y0: y0 + 1, x1: x0 + w - 2, y1: y0 + h - 2, noSlab: true });
+    const vol = props[props.length - 1];
+    if (vol && vol.type === 'building') vol.enterable = true;
+  };
   box(6, 5, 15, 9, 'A');                       // HANGAR 1 — the nest
-  door(12, 15, 13);
+  hollow(6, 5, 15, 9); door(12, 15, 13);
   box(50, 5, 15, 9, 'A');                      // HANGAR 2 — the store
-  door(57, 57, 13);                            // half-open: one tile passable
+  hollow(50, 5, 15, 9); door(57, 57, 13);      // half-open: one tile passable
   box(80, 5, 8, 9, 'O');                       // the control tower
-  door(83, 84, 13);
+  hollow(80, 5, 8, 9); door(83, 84, 13);
   // blast pens: three-sided, opening north
   for (const px2 of [12, 34]) {
     box(px2, 38, 10, 2, 'W');                  // the back wall
@@ -1573,7 +1627,35 @@ function buildField12() {
     box(px2 + 8, 34, 2, 4, 'W');
   }
   box(8, 50, 12, 7, 'G');                      // crash tender shed
-  door(19, 19, 53);
+  hollow(8, 50, 12, 7); door(19, 19, 53);
+  Areas.field12.roofs = ROOFS;
+
+  // ---- WHAT IS INSIDE THEM ----
+  const put = (x, y, type, extra) => {
+    if (x < 1 || y < 1 || x >= W - 1 || y >= H - 1) return;
+    if (heavy[y][x]) return;
+    solid[y][x] = true;
+    props.push(Object.assign({ gx: x, gy: y, type }, extra || {}));
+  };
+  // HANGAR 1 — the nest. Deliberately almost empty: the vents in its roof are
+  // where the drones come out, and the floor has to be clear for that fight.
+  put(9, 8, 'crate'); put(10, 11, 'pallet'); put(17, 7, 'tug'); put(18, 10, 'barrel');
+  // HANGAR 2 — the store. Somebody camped in here, once, and left in a hurry.
+  put(60, 9, 'wrensPack');                     // S1
+  put(54, 8, 'chest', { open: false, loot: 'crypt', part: 'optGunCam' });
+  put(56, 10, 'bedroll'); put(58, 11, 'coldFire');
+  put(62, 7, 'crate'); put(63, 10, 'pallet'); put(52, 11, 'barrel');
+  // THE CONTROL TOWER — the stair is under water, so the cab is E8's. What is
+  // on this floor is the duty desk, the breaker, and the last tape.
+  put(82, 8, 'dutyDesk'); put(85, 8, 'breaker'); put(84, 10, 'tape', { tape: 'cab' });
+  put(86, 11, 'crate');
+  // THE CRASH TENDER SHED — the appliance, the man who stayed with it, and the
+  // first tape. The only warm colour on the whole field is that appliance.
+  props.push({ gx: 13, gy: 53, type: 'tender', foot: [11, 52, 5, 2] });
+  for (let x = 11; x <= 15; x++) for (let y = 52; y <= 53; y++) solid[y][x] = true;
+  put(10, 55, 'deadCrew'); put(9, 52, 'tape', { tape: 'shed' }); put(17, 55, 'barrel');
+  // and the second tape, dropped in a blast pen by somebody who was listening
+  put(16, 37, 'tape', { tape: 'pen' });
 
   // fuel bowsers — four tankers, and every one of them goes up
   for (let i = 0; i < 4; i++) {
@@ -1587,6 +1669,11 @@ function buildField12() {
   // the whole area is about. Work lamps still standing round it.
   for (let y = 26; y <= 28; y++) for (let x = 44; x <= 48; x++) solid[y][x] = true;
   props.push({ gx: 46, gy: 27, type: 'wreckDrone', foot: [44, 26, 5, 3] });
+  // The core is the one part of it the recovery detail had not reached. It
+  // stands on the wreck's own footprint, so it is interacted with by walking
+  // up to the hull rather than by finding a hotspot.
+  props.push({ gx: 45, gy: 29, type: 'wreckCore', foot: [44, 29, 5, 1] });
+  for (let x = 44; x <= 48; x++) solid[29][x] = true;
   for (const [lx, ly] of [[42, 25], [49, 25], [46, 30]]) {
     if (solid[ly][lx]) continue;
     solid[ly][lx] = true;
@@ -2046,7 +2133,7 @@ const Areas = {
     safeSpawn: { x: 10.5, y: 30.5 },       // the lane, south of the dead car
     indoors: true,                          // lit by what comes through the cracks
     hasScrapper: false, hasBoss: false, hasNpc: false, hasBandits: false,
-    hasDroids: false,
+    hasDroids: false, folk: 'lamp',
     tint: '#b9bfc4',                        // wet concrete, and no warmth in it
     makeItems: () => ([
       { type: 'snack', x: 12.5, y: 20.5, bob: 1.1 },
