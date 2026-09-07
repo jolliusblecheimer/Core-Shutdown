@@ -3958,6 +3958,195 @@ function outlined(src) {
     Sprites.wreckDrone = wreckDrone();
   })();
 
+  // ---- MILITARY HARDWARE -------------------------------------------------
+  // Aircraft and armour, every one of them built in TILE SPACE and projected —
+  // the same construction as the cathedral, the viaduct deck and the wreck. A
+  // thing this long lying on an iso floor cannot be a sheared rectangle: shear
+  // maps the along-axis and leaves the across-axis alone, and a wing is all
+  // across-axis. The rig below is that construction, factored out once.
+  function isoRig(L, Wd, HH, pad) {
+    const P0 = pad || 4;
+    const OX = Math.ceil(Wd * 16) + P0, OY = HH + P0;
+    const c = makeCanvas(Math.ceil((L + Wd) * 16) + P0 * 2,
+                         Math.ceil((L + Wd) * 8) + HH + P0 * 2 + 4);
+    const g = c.getContext('2d');
+    const P = (u, v, h) => [(u - v) * 16 + OX, (u + v) * 8 - h + OY];
+    // a slab: its top, its near flank and its near end, which is all the camera
+    // can see of a box in this projection
+    const box = (u0, v0, u1, v1, h0, h1, top, side, end) => {
+      isoFill(g, [P(u0, v1, h0), P(u1, v1, h0), P(u1, v1, h1), P(u0, v1, h1)], side);
+      isoFill(g, [P(u1, v0, h0), P(u1, v1, h0), P(u1, v1, h1), P(u1, v0, h1)], end);
+      isoFill(g, [P(u0, v0, h1), P(u1, v0, h1), P(u1, v1, h1), P(u0, v1, h1)], top);
+    };
+    const flat = (u0, v0, u1, v1, h, col) =>
+      isoFill(g, [P(u0, v0, h), P(u1, v0, h), P(u1, v1, h), P(u0, v1, h)], col);
+    const finish = () => { const out = outlined(c); out.ox = OX + 1; out.oy = OY + 1; return out; };
+    return { g, P, box, flat, finish };
+  }
+
+  (function () {
+    // THE TRANSPORT. Nine tiles of high-wing freighter with four engines on it,
+    // and the biggest single object in the game.
+    const transport = () => {
+      const R = isoRig(9, 5, 46);
+      const HULL = '#5d6157', HULL_D = '#43473f', TOP = '#6c7065';
+      // wing first: it is BEHIND the fuselage from this camera, and it spans
+      // the full width, which is what makes the thing read as an aeroplane
+      R.box(2.6, 0.0, 5.0, 5.0, 26, 29, '#666a5f', '#4a4e45', '#4a4e45');
+      for (const v of [0.7, 1.5, 3.5, 4.3]) {      // four engine nacelles
+        R.box(2.1, v, 3.4, v + 0.5, 22, 28, '#585c53', '#3f433b', '#3f433b');
+        R.flat(2.05, v + 0.05, 2.15, v + 0.45, 25, '#2a2d27');
+      }
+      // fuselage
+      R.box(0.4, 1.9, 8.2, 3.1, 6, 26, TOP, HULL, HULL_D);
+      R.flat(0.6, 1.95, 7.9, 3.05, 26.5, '#767a6e');       // spine highlight
+      for (let i = 0; i < 9; i++)                          // cabin windows
+        R.flat(1.2 + i * 0.72, 3.08, 1.5 + i * 0.72, 3.12, 21, '#1d2126');
+      // the tail: fin and tailplane, at the rear (low u)
+      R.box(0.35, 2.35, 1.1, 2.65, 26, 46, '#666a5f', '#484c43', '#484c43');
+      R.box(0.4, 1.2, 1.3, 3.8, 40, 42, '#5f6359', '#464a41', '#464a41');
+      R.flat(0.5, 2.4, 1.0, 2.6, 46.5, '#7a7e71');
+      // nose, and the gear under it
+      R.box(8.2, 2.1, 8.9, 2.9, 10, 22, TOP, HULL, '#4e5249');
+      for (const [u, v] of [[7.6, 2.5], [3.2, 1.2], [3.2, 3.8]])
+        R.box(u, v - 0.15, u + 0.3, v + 0.15, 0, 7, '#2a2d27', '#1c1f1a', '#1c1f1a');
+      return R.finish();
+    };
+
+    // THE INTERCEPTOR. Six tiles, low wing, one engine, canopy pushed back.
+    const jet = (burnt) => {
+      const R = isoRig(6, 4, 30);
+      const A = burnt ? '#3a352f' : '#5a6058', B = burnt ? '#26221e' : '#41463f';
+      const T = burnt ? '#454039' : '#6a7067';
+      R.box(0.5, 1.75, 5.4, 2.25, 4, 16, T, A, B);           // fuselage
+      if (!burnt) R.box(1.4, 0.0, 3.2, 4.0, 10, 12, '#606659', '#454a41', '#454a41');
+      else        R.box(1.4, 1.9, 3.2, 4.0, 10, 12, '#3d382f', '#282420', '#282420');
+      R.box(0.6, 1.85, 1.5, 2.15, 16, 30, T, A, B);          // fin
+      R.box(0.7, 1.1, 1.4, 2.9, 24, 26, T, A, B);            // tailplane
+      R.flat(2.6, 1.85, 3.9, 2.15, 16.5, burnt ? '#141210' : '#20262e');   // canopy
+      if (!burnt) R.flat(2.7, 1.9, 3.3, 2.1, 17, '#3c4a58');
+      R.box(5.4, 1.85, 5.9, 2.15, 6, 13, B, B, '#1c1f1a');   // nose cone
+      for (const [u, v] of [[4.6, 2.0], [2.2, 1.3], [2.2, 2.7]])
+        R.box(u, v - 0.12, u + 0.25, v + 0.12, 0, 5, '#242721', '#17190f', '#17190f');
+      if (burnt) {                                            // and what fire does
+        R.flat(1.8, 1.8, 4.2, 2.2, 16.6, 'rgba(12,10,9,0.55)');
+        R.flat(2.4, 1.85, 3.6, 2.15, 16.8, '#100e0d');
+      }
+      return R.finish();
+    };
+
+    // THE TANK. Four tiles of hull on tracks, a turret, and a gun that is
+    // pointed at the gate — which tells you which way they expected it to come.
+    const tank = (gunless) => {
+      const R = isoRig(4.2, 2.6, 30);
+      const HULL = '#4f5346', HULL_D = '#383b31', TOP = '#5c6053';
+      R.box(0.2, 0.15, 4.0, 0.75, 0, 9, '#262822', '#1a1c17', '#1a1c17');   // tracks
+      R.box(0.2, 1.85, 4.0, 2.45, 0, 9, '#2c2e27', '#1a1c17', '#1a1c17');
+      for (let i = 0; i < 7; i++) {                                          // road wheels
+        R.flat(0.5 + i * 0.5, 1.86, 0.8 + i * 0.5, 2.44, 9.5, '#33362e');
+      }
+      R.box(0.35, 0.4, 3.9, 2.2, 9, 17, TOP, HULL, HULL_D);                  // hull
+      R.flat(0.6, 0.5, 3.6, 2.1, 17.5, '#666a5b');
+      R.box(1.3, 0.85, 3.0, 1.75, 17, 25, '#5f6355', HULL, HULL_D);          // turret
+      R.flat(1.5, 0.95, 2.8, 1.65, 25.5, '#6d7162');
+      if (!gunless) R.box(2.9, 1.18, 4.9, 1.42, 20, 23, '#4a4e42', '#33362d', '#2a2c25');
+      else { R.box(2.9, 1.2, 3.3, 1.4, 20, 23, '#2a2c25', '#1c1e18', '#1c1e18');
+             R.flat(3.2, 1.15, 3.5, 1.45, 22, '#141210'); }
+      R.flat(1.7, 1.0, 2.2, 1.3, 26, '#3a3e34');                              // hatch
+      return R.finish();
+    };
+
+    // THE RADAR. A lattice tower with a dish that does not turn any more.
+    const radar = () => {
+      const c = makeCanvas(34, 72), g = c.getContext('2d');
+      for (const dx of [10, 22]) {
+        px(g, dx, 18, 2, 50, '#5a5e62');
+        px(g, dx, 18, 1, 50, '#6d7175');
+      }
+      for (let i = 0; i < 8; i++) {
+        px(g, 10, 22 + i * 6, 14, 1, '#4a4e52');
+        for (let k = 0; k < 6; k++) px(g, 11 + k * 2, 23 + i * 6 + k, 1, 1, '#43474b');
+      }
+      px(g, 6, 64, 22, 4, '#3f4347');
+      px(g, 14, 12, 6, 8, '#54585c');                    // the pedestal
+      g.fillStyle = '#8d9195';                           // and the dish, face on
+      g.beginPath(); g.ellipse(17, 9, 12, 8, -0.35, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#6a6e72';
+      g.beginPath(); g.ellipse(17, 9, 9, 6, -0.35, 0, Math.PI * 2); g.fill();
+      px(g, 16, 6, 2, 6, '#b0b4b8');
+      return outlined(c);
+    };
+    Sprites.acTransport = transport();
+    Sprites.acJet = jet(false);
+    Sprites.acJetBurnt = jet(true);
+    Sprites.tank = tank(false);
+    Sprites.tankHulk = tank(true);
+    Sprites.radarMast = radar();
+  })();
+
+  // ---- THE PERIMETER'S OWN FURNITURE -------------------------------------
+  // Razor coil and a warning board LIE ALONG the fence, so both come in an 'x'
+  // and a 'y' variant and both are built in tile space rather than sheared: a
+  // coil has depth, and a shear leaves the across-axis alone.
+  (function () {
+    const coil = (along) => {
+      const L = 3, Wd = 0.5, HH = 9;
+      const OX = Math.ceil((along === 'x' ? Wd : L) * 16) + 3, OY = HH + 6;
+      const c = makeCanvas(Math.ceil((L + Wd) * 16) + 6,
+                           Math.ceil((L + Wd) * 8) + HH + 10);
+      const g = c.getContext('2d');
+      const P = (t, v, h) => {
+        const a = t * L, b = v * Wd;
+        const wx = along === 'x' ? a : b, wy = along === 'x' ? b : a;
+        return [(wx - wy) * 16 + OX, (wx + wy) * 8 - h + OY];
+      };
+      // three turns of coil: a run of loops, each an ellipse standing on edge
+      g.strokeStyle = '#9aa0a6'; g.lineWidth = 1;
+      for (let i = 0; i <= 14; i++) {
+        const t = i / 14;
+        const [cx, cy] = P(t, 0.5, HH - 4);
+        g.beginPath(); g.ellipse(cx, cy, 4, 5, 0, 0, Math.PI * 2); g.stroke();
+      }
+      // and the barbs, which is what says razor rather than rope
+      g.fillStyle = '#c9cdd2';
+      for (let i = 0; i <= 14; i++) {
+        const [cx, cy] = P(i / 14, 0.5, HH + 1);
+        g.fillRect(cx | 0, cy | 0, 1, 2);
+      }
+      const out = outlined(c);
+      out.ox = OX + 1; out.oy = OY + 1;
+      return out;
+    };
+    const flat = (along) => {                  // fence pushed over outwards
+      const c = makeCanvas(52, 26), g = c.getContext('2d');
+      const dir = along === 'x' ? 1 : -1;
+      for (let i = 0; i < 40; i++) {
+        const yy = 6 + (dir > 0 ? i * 0.5 : (20 - i * 0.5));
+        g.fillStyle = 'rgba(140,146,152,0.55)';
+        g.fillRect(6 + i, yy, 1, 3);
+        if (i % 4 === 0) { g.fillStyle = 'rgba(90,96,102,0.7)'; g.fillRect(6 + i, yy - 2, 1, 5); }
+      }
+      const out = outlined(c);
+      out.ox = 6; out.oy = 6;
+      return out;
+    };
+    const board = (along) => {                 // MOD PROPERTY. KEEP OUT.
+      const c = makeCanvas(20, 30), g = c.getContext('2d');
+      px(g, 9, 12, 2, 16, '#5a5e62');
+      px(g, 7, 26, 6, 2, '#43474b');
+      px(g, 2, 2, 16, 11, '#b9b2a0');
+      px(g, 2, 2, 16, 1, '#cfc8b6');
+      px(g, 3, 3, 14, 3, '#8a2f22');           // the red band
+      for (let i = 0; i < 4; i++) px(g, 4 + i * 3, 8, 2, 1, '#3f3a31');
+      for (let i = 0; i < 5; i++) px(g, 3 + i * 3, 10, 2, 1, '#3f3a31');
+      const out = outlined(c);
+      return along === 'x' ? sheared(out, 1) : sheared(out, -1);
+    };
+    Sprites.razor = { x: coil('x'), y: coil('y') };
+    Sprites.razorDown = { x: flat('x'), y: flat('y') };
+    Sprites.warnBoard = { x: board('x'), y: board('y') };
+  })();
+
   // ---- THE NORTH'S FITTINGS ---------------------------------------------
   // Uprights, every one of them, so the angle rule lets them be drawn straight.
   (function () {

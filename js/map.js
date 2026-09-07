@@ -1559,9 +1559,15 @@ function buildField12() {
   // taxiway guide off the apron
   for (let y = 16; y < RW_Y0; y++) decals.push({ gx: 46, gy: y, type: 'rwGuide' });
 
-  // ---- THE FENCE, and two ways through it ----
-  // The junkyard's own chain-link, already proven. Two openings and no others;
-  // the flood fill in the verification note is what says so.
+  // ---- THE PERIMETER ----
+  // A MILITARY FIELD DOES NOT HAVE A FENCE, IT HAS A PERIMETER. Two lines with
+  // a sterile strip between them: chain-link and razor on the outside, concrete
+  // anti-vehicle blocks on the inside, and two tiles of open ground in between
+  // with NOTHING in it, which is what makes it sterile. Nothing is ever placed
+  // in that strip — the beacon sweeps it when E5 ships, and cover in there
+  // would take that away before it arrives.
+  //
+  // The flood fill still says two ways through and no others.
   const GATE_X0 = 44, GATE_X1 = 48;           // vehicle gate, south
   const BREACH_Y0 = 44, BREACH_Y1 = 48;       // west breach
   const run = (tiles, axis) => {
@@ -1571,17 +1577,59 @@ function buildField12() {
   };
   const rowX = (y, x0, x1) => Array.from({ length: x1 - x0 + 1 }, (_, i) => [x0 + i, y]);
   const colY = (x, y0, y1) => Array.from({ length: y1 - y0 + 1 }, (_, i) => [x, y0 + i]);
+  // the outer line, on the map's own rim
   run(rowX(0, 0, W - 1), 'x');
   run(rowX(H - 1, 0, GATE_X0 - 1), 'x');
   run(rowX(H - 1, GATE_X1 + 1, W - 1), 'x');
   run(colY(0, 0, BREACH_Y0 - 1), 'y');
   run(colY(0, BREACH_Y1 + 1, H - 1), 'y');
   run(colY(W - 1, 0, H - 1), 'y');
-  // the gate's own posts, and the chain that was cut lying in the grass
+  // razor coil along the top of it, and the warning boards
+  for (let x = 2; x < W - 2; x += 3) {
+    decals.push({ gx: x + 0.5, gy: 0.9, type: 'crack' });
+    props.push({ gx: x, gy: 0, type: 'razor', dir: 'x' });
+    props.push({ gx: x, gy: H - 1, type: 'razor', dir: 'x' });
+  }
+  for (let y = 2; y < H - 2; y += 3) {
+    props.push({ gx: 0, gy: y, type: 'razor', dir: 'y' });
+    props.push({ gx: W - 1, gy: y, type: 'razor', dir: 'y' });
+  }
+  for (const [sx, sy, sd] of [[20, 0, 'x'], [70, 0, 'x'], [0, 24, 'y'], [0, 96, 'y'],
+                              [30, H - 1, 'x'], [76, H - 1, 'x'], [W - 1, 30, 'y'], [W - 1, 100, 'y']])
+    props.push({ gx: sx, gy: sy, type: 'warnBoard', dir: sd });
+
+  // THE INNER LINE — concrete blocks, three tiles in, with the sterile strip
+  // between. Broken only where the two ways through are.
+  const IN = 3;
+  const blockLine = (tiles) => {
+    for (const [x, y] of tiles) {
+      if (x < 0 || y < 0 || x >= W || y >= H || solid[y][x]) continue;
+      solid[y][x] = true; heavy[y][x] = true;
+      props.push({ gx: x, gy: y, type: 'conBlock', dir: (y === IN || y === H - 1 - IN) ? 'x' : 'y' });
+    }
+  };
+  blockLine(rowX(IN, IN, GATE_X0 - 2).filter((_, i) => i % 2 === 0));
+  blockLine(rowX(IN, GATE_X1 + 2, W - 1 - IN).filter((_, i) => i % 2 === 0));
+  blockLine(rowX(H - 1 - IN, IN, GATE_X0 - 2).filter((_, i) => i % 2 === 0));
+  blockLine(rowX(H - 1 - IN, GATE_X1 + 2, W - 1 - IN).filter((_, i) => i % 2 === 0));
+  blockLine(colY(IN, IN, BREACH_Y0 - 2).filter((_, i) => i % 2 === 0));
+  blockLine(colY(IN, BREACH_Y1 + 2, H - 1 - IN).filter((_, i) => i % 2 === 0));
+  blockLine(colY(W - 1 - IN, IN, H - 1 - IN).filter((_, i) => i % 2 === 0));
+
+  // THE VEHICLE GATE — the loud way in. A chicane of blocks you walk round,
+  // and a tank parked across half of it with its gun blown off, which is the
+  // first thing anybody coming up the mid street sees.
   props.push({ gx: GATE_X0 - 1, gy: H - 1, type: 'post', big: true });
   props.push({ gx: GATE_X1 + 1, gy: H - 1, type: 'post', big: true });
+  for (const [cx, cy] of [[GATE_X0, H - 4], [GATE_X0 + 1, H - 4], [GATE_X1 - 1, H - 6], [GATE_X1, H - 6]]) {
+    if (solid[cy][cx]) continue;
+    solid[cy][cx] = true; heavy[cy][cx] = true;
+    props.push({ gx: cx, gy: cy, type: 'conBlock', dir: 'x' });
+  }
   // the breach: the fence went down outwards and a path is worn through it
   for (let y = BREACH_Y0; y <= BREACH_Y1; y++) ground[y][1] = 2;
+  for (let y = BREACH_Y0; y <= BREACH_Y1; y += 2)
+    props.push({ gx: 2, gy: y, type: 'razorDown', dir: 'y' });
 
   // ---- THE STRUCTURES ----
   const box = (x0, y0, w, h, kind) => {
@@ -1654,8 +1702,11 @@ function buildField12() {
   props.push({ gx: 13, gy: 53, type: 'tender', foot: [11, 52, 5, 2] });
   for (let x = 11; x <= 15; x++) for (let y = 52; y <= 53; y++) solid[y][x] = true;
   put(10, 55, 'deadCrew'); put(9, 52, 'tape', { tape: 'shed' }); put(17, 55, 'barrel');
-  // and the second tape, dropped in a blast pen by somebody who was listening
-  put(16, 37, 'tape', { tape: 'pen' });
+  // and the second tape, dropped in a blast pen by somebody who was listening.
+  // 16,37 is INSIDE the interceptor parked in that pen — the aircraft went in
+  // after the tape did and sealed it. It sits between the aircraft and the
+  // pen's east arm now, which is where you would sit to listen to it.
+  put(19, 36, 'tape', { tape: 'pen' });
 
   // fuel bowsers — four tankers, and every one of them goes up
   for (let i = 0; i < 4; i++) {
@@ -1688,6 +1739,25 @@ function buildField12() {
   // the windsock, still turning, and the only thing that moves in the wind
   solid[20][90] = true;
   props.push({ gx: 90, gy: 20, type: 'windsock' });
+
+  // ---- THE HARDWARE ----
+  // What was on the field the night it stopped, and has been on it since.
+  const hardware = (x0, y0, w, h, kind) => {
+    for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) {
+      if (x < 0 || y < 0 || x >= W || y >= H) continue;
+      solid[y][x] = true;
+    }
+    props.push({ gx: x0, gy: y0, type: 'hardware', kind, foot: [x0, y0, w, h] });
+  };
+  hardware(26, 17, 9, 5, 'acTransport');       // the transport, on the north apron
+  hardware(14, 35, 5, 3, 'acJet');             // an interceptor in blast pen A
+  hardware(60, 40, 6, 4, 'acJetBurnt');        // and one that did not get away
+  hardware(70, 55, 5, 3, 'tank');              // the vehicle park, facing the gate
+  hardware(70, 60, 5, 3, 'tank');
+  // and one at the gate — BESIDE it, not across it. Across it, its footprint
+  // covered the tile everything on this field is reached from.
+  hardware(GATE_X1 + 1, H - 7, 5, 3, 'tankHulk');
+  if (!solid[20][74]) { solid[20][74] = true; props.push({ gx: 74, gy: 20, type: 'radarMast' }); }
 
   // ---- dressing ----
   const free = (x, y) => x > 3 && y > 3 && x < W - 3 && y < H - 3 &&
@@ -2146,7 +2216,7 @@ const Areas = {
     ],
   },
   field12: {
-    id: 'field12', name: 'FIELD 12', build: buildField12,
+    id: 'field12', name: 'AIRFIELD 12', build: buildField12,
     world: { x: 60, y: -74 },
     safeSpawn: { x: 46.5, y: 66.5 },       // inside the vehicle gate
     indoors: false, skyline: false,         // NO far-city band: see map-shape.md

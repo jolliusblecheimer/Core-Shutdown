@@ -1748,7 +1748,8 @@ function render() {
     const s = isoToScreen(p.gx + 0.5, p.gy + 0.5);
     // volumes sort by their south corner: anything in front of that draws over
     const depth = (p.type === 'building' || p.type === 'canopy' || p.type === 'gantry' ||
-                   p.type === 'wreckDrone' || p.type === 'tender')
+                   p.type === 'wreckDrone' || p.type === 'tender' ||
+                   p.type === 'hardware')
       ? isoToScreen(p.foot[0] + p.foot[2], p.foot[1] + p.foot[3]).y - 1
       : (p.foot ? s.y + (p.foot[2] + p.foot[3]) * 4 : s.y);
     draws.push({ depth, draw: () => drawProp(p, s.x - ox, s.y - oy) });
@@ -2669,6 +2670,29 @@ function drawProp(p, x, y) {
     img = set[p.v % set.length];
     oyOff = img.oy;
     drawShadow(x, y + 1, 14);
+  }
+  // razor coil and a flattened fence LIE ALONG the wire, so both take their
+  // axis variant and both carry their own anchor
+  // AIRCRAFT AND ARMOUR are anchored on their own north corner like a building,
+  // because they are footprints rather than posts — the sprite carries its
+  // own iso construction and its own ox/oy.
+  else if (T === 'hardware') {
+    const im = Sprites[p.kind];
+    if (!im) return;
+    const a = isoToScreen(p.foot[0], p.foot[1]);
+    ctx.drawImage(im, Math.round(a.x - lastOx - im.ox), Math.round(a.y - lastOy - im.oy));
+    blocks(Math.round(a.x - lastOx - im.ox), Math.round(a.y - lastOy - im.oy), im.width, im.height);
+    return;
+  }
+  else if (T === 'radarMast') { img = Sprites.radarMast; oyOff = -72; drawShadow(x, y, 8); }
+  else if (T === 'razor' || T === 'razorDown') {
+    const im = Sprites[T][p.dir === 'y' ? 'y' : 'x'];
+    ctx.drawImage(im, Math.round(x - im.ox), Math.round(y - im.oy));
+    return;
+  }
+  else if (T === 'warnBoard') {
+    img = Sprites.warnBoard[p.dir === 'y' ? 'y' : 'x'];
+    oyOff = -30; drawShadow(x, y, 4);
   }
   else if (T === 'mast')   { img = p.taken ? Sprites.mastBare : Sprites.mast;
                              oyOff = -56; drawShadow(x, y, 5); }

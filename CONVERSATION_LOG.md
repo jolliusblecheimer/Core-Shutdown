@@ -3626,3 +3626,32 @@ quests in it and is not yet dangerous, and the docs say so.
 Two sprite bugs found by looking: the crash tender's canvas was too small and
 clipped it into a red wedge on the floor, and the school mast was specified at a
 coordinate that is inside the school building.
+
+---
+
+## "make it a military airstrip · harder fence · buildings, planes and tanks · enemies · explain what's there · plan and start building"
+
+Plan in `design/airfield-twelve.md`, five phases M1–M5. **M1 and M2 built; M3–M5
+are next.** On the branch, `main` untouched.
+
+**M1 — the perimeter.** A military field does not have a fence, it has a
+perimeter: chain-link and razor coil on the outer line, concrete anti-vehicle
+blocks on an inner line three tiles in, and a **sterile strip** between them with
+nothing in it — which is what makes it sterile, and where the beacon will sweep
+when E5 ships. Warning boards, a chicane at the vehicle gate, and a tank with
+its gun blown off parked beside it. Still exactly two ways through: flood fill
+with both sealed is still **0**.
+
+**M2 — the hardware.** A transport (9×5, high wing, four engines — the biggest
+object in the game), two interceptors (one burnt), three tanks with their guns
+pointed at the gate, and a radar mast. All built in tile space and projected,
+factored through one `isoRig()` helper: a wing is all across-axis and a shear
+leaves the across-axis alone.
+
+Renamed to **AIRFIELD 12**; the id stays `field12` so nothing in the save moves.
+
+Two placement bugs caught by the harnesses rather than by eye: the gate tank's
+footprint covered the tile the whole field is flood-filled from, and the
+interceptor parked in blast pen A **sealed an S2 tape inside itself**.
+
+Props 413 → 687. Frame cost at the wreck 15.1 ms, inside the band.
