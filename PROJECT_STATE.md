@@ -649,7 +649,7 @@ board. `BUILD_STYLE.A` (tall blank corrugated) and `W` (retaining wall) exist fo
 buildings whose point is that they are blank.
 
 ### THE NORTH HAS PEOPLE IN IT — E6-E8, awaiting approval
-`design/north-content.md` is the plan. **On the branch, not on `main`.**
+`design/north-content.md` is the plan. **Reviewed and merged to `main` — live.**
 
 - **Wren and Osgood at the Lamp** (`FOLK.lamp`, `STOCK.wren`), round a drum fire
   that is the only warm light in three areas. NOT a camp: no bed, no bench, no
@@ -672,9 +672,10 @@ buildings whose point is that they are blank.
 - `USABLE` is no longer gated on `indoors`: a mast in a school yard and a wreck
   on a runway are the same interaction and must not need a roof over them.
 
-**NOT built: the rust drones (E4) and the beacon (E5).** Field 12 has no enemies.
-S3 needs the Magistrate from E4. It is a place with three quests in it, not yet
-a dangerous one.
+**NOT built: the rust drones (E4) and the beacon (E5).** At this point in the
+build Field 12 still had no enemies and S3 was waiting on a Magistrate — both
+answered by AIRFIELD 12 below, which put a ground patrol on the field instead of
+waiting for the flyers.
 
 ### Outstanding
 - Crash barriers along the spine's edges (F4) — not built; ~200 props for what
@@ -683,7 +684,7 @@ a dangerous one.
   ids were renumbered to **15/16/17** because 12/13/14 are ash/water/deck now.
 
 ## AIRFIELD 12 — a military field with teeth, 2026-09-02
-`design/airfield-twelve.md`, M1–M5. **On the branch, not on `main`.**
+`design/airfield-twelve.md`, M1–M5. **Reviewed and merged to `main` — live.**
 
 - **A perimeter, not a fence.** Two lines with a **sterile strip** between them —
   nothing is ever placed in that strip, and it is the ground the beacon sweeps

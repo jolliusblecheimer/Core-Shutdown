@@ -3680,3 +3680,27 @@ Oz asks, the Magistrate carries the plate, and the tarp comes down for a steel
 wall. The recoil-braced stock moved back to S3 where the spec had it.
 
 Props 413 → 701, frame cost 13.6–14.8 ms with everything live. All suites green.
+
+---
+
+## "Do you have all the questlines so i know what to do" / "Is it on the prototype?" / "Ok push it pls"
+
+Gave the full walkthrough off the live build: the twelve-row main chain with
+coordinates, the two asymmetric routes north, S1 (Wren's pack, Hangar 2), S2
+(three tapes — shed, blast pen, tower cab), S3 (Oz and the Magistrate), the
+ordnance bunker and the key on the duty officer, and the five sentry positions.
+
+Then answered honestly that **none of it was on the prototype**: `main` was still
+at f90ed77 and stopped at "Reach the shelter" — no `FOLK.lamp`, no `js/sentry.js`,
+the area still named `FIELD 12`. Three commits were branch-only, held back
+because of the standing "ask for feedback before pushing".
+
+Laurens approved. Re-ran `smoke`, `quests`, `sentry`, `f12` and `audit2` against
+the branch before shipping rather than trusting the earlier run — all green, no
+console errors, nothing hidden or unreachable — then merged to `main` and pushed.
+**The git link now has the whole north**: Wren and Oz, the four enterable
+buildings, Q2, Q3, S1, S2, S3, AIRFIELD 12 with its perimeter, hardware, locked
+bunker, five sentry guns and the twelve-droid recovery detail.
+
+Still not built, and now the top of the list: the rust drones (E4) and the
+beacon sweep (E5).
