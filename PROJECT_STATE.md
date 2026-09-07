@@ -681,3 +681,28 @@ a dangerous one.
   the gantries already say.
 - `design/expansion-build-spec.md` (Field 12) is written and costed. Its ground
   ids were renumbered to **15/16/17** because 12/13/14 are ash/water/deck now.
+
+## AIRFIELD 12 — a military field with teeth, 2026-09-02
+`design/airfield-twelve.md`, M1–M5. **On the branch, not on `main`.**
+
+- **A perimeter, not a fence.** Two lines with a **sterile strip** between them —
+  nothing is ever placed in that strip, and it is the ground the beacon sweeps
+  when E5 ships. Razor coil, warning boards, a chicane and a tank at the gate.
+- **Hardware**: a transport (9×5, the biggest object in the game), two
+  interceptors, three tanks, a radar mast. All through one `isoRig()` helper —
+  a wing is all across-axis, and a shear leaves the across-axis alone.
+- **The ordnance bunker is the only shut door on the field.** The blast door
+  stands IN the wall, never on the approach tile in front of it. `Quests.bunker`
+  saves it.
+- **SENTRY GUNS** — `js/sentry.js`. Fixed, four states, and **only the amber
+  housing can be hurt**: the Compactor's rule used a second time, so it asks the
+  player to already know it. Five of them; **none at the west breach**, which is
+  what makes Wren's route worth knowing. Dead ones saved by position.
+- **Patrol routes are per area** (`Areas[id].routes`) — they were hardcoded to
+  the Fringe, which is why the airfield could not have a patrol at all. Four
+  squads, 12 droids, a heavy one working the wreck.
+- **S3** runs: Oz asks → the Magistrate carries the plate → the tarp comes down
+  and a steel wall goes up, and he hands over the recoil-braced stock.
+
+Props on the field 413 → 701. Frame cost 13.6–14.8 ms with the detail alive and
+five guns up. **Still not built: the rust drones and the beacon sweep.**

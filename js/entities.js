@@ -265,6 +265,15 @@ const npc = { x: 21.5, y: 6.5, animT: 0, frame: 0 };
 // be re-tested to get six more people standing in a church.
 // Nobody here learns the player's name. Traveller, stranger, or nothing.
 let folk = [];
+const DEFAULT_OZ_LINES = [
+  ["Fire's free. Sit if you're sitting.",
+   "Wren goes out. I keep the fire. It's a fair split.",
+   "Whatever's up that tunnel, it's not for me."],
+  "I had a radio. Still have it. Stopped listening about a year ago.",
+  "It's a year old, friend. Everything's a year old.",
+  "If you come back, come back before dark. If you don't, that's your business.",
+];
+
 const FOLK = {
   // THE LAMP. Two people in a maintenance recess under a dead motorway, and it
   // is NOT A CAMP and must not become one: no beds, no bench, no medbay, no
@@ -279,13 +288,35 @@ const FOLK = {
         "Two of them. Out the roof, not the doors. I was under the wing before I heard the second one.",
         "Stair's on the north face of the tower. Outside. The inside one's under water.",
         "I'd go back for the pack. I'm not going back for the pack." ] },
-    { key: 'oz', name: 'OSGOOD', x: 8.5, y: 12.5, lines: [
-        ["Fire's free. Sit if you're sitting.",
-         "Wren goes out. I keep the fire. It's a fair split.",
-         "Whatever's up that tunnel, it's not for me."],
-        "I had a radio. Still have it. Stopped listening about a year ago.",
-        "It's a year old, friend. Everything's a year old.",
-        "If you come back, come back before dark. If you don't, that's your business." ] },
+    // OSGOOD. He keeps the fire, and S3 is the one thing he ever asks for —
+    // GAME_PLAN §6's "survivors improve the camp" in its smallest provable
+    // form: one kill, one prop swap, one visible change to the place.
+    { key: 'oz', name: 'OSGOOD', x: 8.5, y: 12.5, lines: () => {
+        if (Quests.s3 === 'given' && player.inv.shieldPlate) {
+          Quests.s3 = 'done';
+          player.inv.shieldPlate = 0;
+          if (!player.mods.owned.stkBraced) givePart('stkBraced');
+          if (typeof saveGame === 'function') saveGame();
+          return [["That is the one. That is exactly the one.",
+                   "Give me a night with it and there is a wall here instead of a sheet.",
+                   "There's a brace off the same machine in that plate's mounting.",
+                   "Take it. I have no use for anything that fires."]];
+        }
+        if (Quests.s3 === 'given') return [
+          "Big one. Carries a plate on its arm like a door.",
+          "I am not asking you to go and get it. I am saying if it happens." ];
+        if (Quests.s3 === 'done') return [
+          "Wall's up. Fire's bigger. I sleep with my back to a steel plate now.",
+          "Best thing anybody's done for this hole since I got here." ];
+        if (Quests.q3 !== 'none' && Quests.s3 === 'none') {
+          Quests.s3 = 'given';
+          if (typeof saveGame === 'function') saveGame();
+          return [["You went in there and came back. Nobody does the second half.",
+                   "There's a big one on that field. Plate on its arm like a door.",
+                   "If it ever stops moving — bring me the plate. That's all."]];
+        }
+        return DEFAULT_OZ_LINES;
+      } },
   ],
   camp: [
     { key: 'vesna', name: 'VESNA', x: 7.5, y: 13.5, lines: [
@@ -552,14 +583,72 @@ function playTape(p) {
   const lines = TAPES[p.tape].slice();
   if (Quests.s2 >= 3) {
     lines.push("That is all three of them, and none of them knew.");
-    lines.push("There is a brace in his kit off something that fired in threes.");
+    lines.push("Somebody kept them all. Nobody ever came for them.");
     player.inv.tech += 1; player.inv.scrap += 8;
-    if (!player.mods.owned.stkBraced) givePart('stkBraced');
-    showMsg('The last shift  ·  RECOIL-BRACED STOCK  ·  +1 tech  +8 scrap', 3.5);
+    showMsg('The last shift, all three tapes  ·  +1 tech  +8 scrap', 3);
   }
   startDialog(lines);
   saveGame();
 }
+// THE DUTY OFFICER, at his board in the ready room, with the bunker key on him.
+// He is the only reason the bunker is enterable and he says nothing either.
+function readDeadOfficer(p) {
+  if (!p.taken) {
+    p.taken = true;
+    player.inv.bunkerKey = 1;
+    showMsg('ORDNANCE BUNKER KEY — off the duty officer', 3);
+    SFX.loot();
+    saveGame();
+    startDialog([
+      "An officer at his board, in the chair he was sitting in.",
+      "He did not run either. Nobody on this field ran.",
+      "A ring of keys on his belt, and one of them is stamped ORD." ]);
+    return;
+  }
+  startDialog(["He has nothing else, and I have taken the only thing he had."]);
+}
+// THE STANDING ORDER BOARD. The one genuinely new piece of story on the field,
+// and deliberately ONE SENTENCE AND A DATE. It moves the question from what
+// happened to who knew, and it answers neither: Q8 owns that.
+function readOrderBoard() {
+  startDialog([
+    "A glass-fronted board, and the last thing anybody pinned to it.",
+    "        STANDING ORDER 114",
+    "        ALL AIRCRAFT GROUNDED",
+    "        PENDING CIVIL AUTHORITY",
+    "The date on it is the day of the Longest Night.",
+    "Posted in the morning. Before any of it." ]);
+  think('order', 'Somebody grounded a squadron that morning. Somebody knew.');
+}
+// THE BLAST DOOR. The only shut door on this field.
+function openBlastDoor() {
+  if (Quests.bunker === 'open') {
+    startDialog(["Open, and I have had what was in it."]);
+    return;
+  }
+  if (!player.inv.bunkerKey) {
+    startDialog([
+      "A steel blast door, shut, and it has been shut for a year.",
+      "There is a lock on it and no way round it that I can see.",
+      "Somebody on this field had the key to this." ]);
+    return;
+  }
+  Quests.bunker = 'open';
+  player.inv.bunkerKey = 0;
+  showMsg('The bunker is open.', 2.5);
+  SFX.tech();
+  addShake(3);
+  saveGame();
+  // cut the doorway now, without rebuilding the area under the player's feet
+  for (let x = 30; x <= 31; x++) {
+    solid[53][x] = false; heavy[53][x] = false; ground[53][x] = 18;
+  }
+  buildAO();
+  buildSpatialIndex();
+  startDialog(["The key turns, and the door comes off its seal with a noise",
+               "that carries further across open ground than I would like."]);
+}
+
 // THE DEAD MAN in the tender shed. He is S2's giver and he says nothing.
 function readDeadCrew(p) {
   if (!p.read) {
@@ -584,6 +673,12 @@ const USABLE = {
   wreckCore: (p, ask) => ask ? (p.taken ? 'empty' : 'E — open the core') : takeSlate(p),
   tape: (p, ask) => ask ? (p.taken ? 'played' : 'E — play the tape') : playTape(p),
   deadCrew: (p, ask) => ask ? 'E — look' : readDeadCrew(p),
+  deadOfficer: (p, ask) => ask ? (p.taken ? 'E — look' : 'E — search him') : readDeadOfficer(p),
+  orderBoard: (p, ask) => ask ? 'E — read the board' : readOrderBoard(),
+  blastDoor: (p, ask) => ask
+    ? (Quests.bunker === 'open' ? 'open'
+       : player.inv.bunkerKey ? 'E — unlock the bunker' : 'locked')
+    : openBlastDoor(p),
   breaker: (p, ask) => ask ? 'E — look' : startDialog([
     "A breaker in a steel box, and somebody has written BEACON on it in chalk.",
     (Quests.s2 || 0) >= 3
@@ -732,7 +827,8 @@ const mission = { state: 'none' };   // none -> active -> complete -> turned
 //   s1: none -> given -> done                         what Wren left
 //   s2: 0..3                                          the last shift, in tapes
 //   s3: none -> given -> done                         nothing left to cut (E4)
-const QUEST_DEFAULTS = { q2: 'none', q3: 'none', s1: 'none', s2: 0, s3: 'none' };
+const QUEST_DEFAULTS = { q2: 'none', q3: 'none', s1: 'none', s2: 0, s3: 'none',
+                         bunker: 'shut' };
 let Quests = Object.assign({}, QUEST_DEFAULTS);
 
 const OBJECTIVES = [
@@ -1024,6 +1120,10 @@ function updatePlayer(dt) {
         }
       }
     }
+    // a sentry is bolted to a post inside the same arc, and the same amber rule
+    // decides whether the swing lands — a melee-only player has to be able to
+    // answer one, and has to wake it first like everybody else
+    if (typeof sentryMeleeHit === 'function') sentryMeleeHit(player.x, player.y, m.range, m.dmg);
     // one swing, every machine standing in the arc - fighting two at once is
     // the point of the pair, so the pipe has to be able to catch both
     for (const sc of scrappers) {
@@ -1671,6 +1771,7 @@ function updateBullets(dt) {
         break;                          // one bullet, one machine
       }
     }
+    if (!hit && typeof sentryBulletHit === 'function' && sentryBulletHit(b)) hit = true;
     if (!hit && typeof droidBulletHit === 'function' && droidBulletHit(b)) hit = true;
     if (!hit) {
       for (const bd of bandits) {

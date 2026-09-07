@@ -193,9 +193,13 @@ function snapWaypoint(x, y) {
   return null;
 }
 
+// ROUTES ARE PER AREA NOW. They were hardcoded to the Fringe, which meant the
+// airfield could not have a patrol on it at all — and the one squad the north
+// actually needs is the RECOVERY DETAIL working the wreck.
 function spawnFringeSquads() {
   clearDroids();
-  for (const r of FRINGE_ROUTES) {
+  const routes = (currentAreaDef().routes) || FRINGE_ROUTES;
+  for (const r of routes) {
     const pts = r.pts.map(p => snapWaypoint(p[0], p[1]));
     if (pts.some(p => !p)) {
       console.warn('HHD: route dropped, no standable ground near', r.pts);
@@ -505,6 +509,14 @@ function killDroid(d) {
   spawnSmoke(d.x, d.y, 6);
   addShake(2.5);
   SFX.robotDie();
+  // S3. The Magistrate is the only machine in the ring carrying a plate big
+  // enough to be a wall, and Oz has been looking at a tarp for a year.
+  if (d.type === 'magistrate' && typeof Quests !== 'undefined' &&
+      Quests.s3 === 'given' && !player.inv.shieldPlate) {
+    player.inv.shieldPlate = 1;
+    showMsg('SHIELD PLATE — off the Magistrate', 3);
+    if (typeof saveGame === 'function') saveGame();
+  }
   const sq = d.squad;
   if (sq && sq.members.every(m => m.state === 'dead')) {
     sq.respawnT = SQUAD_RESPAWN;

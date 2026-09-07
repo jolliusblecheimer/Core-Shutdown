@@ -1486,7 +1486,11 @@ function buildUnderpass() {
   lampPut(7, 12, 'drumFire');
   lampPut(5, 9, 'crate'); lampPut(5, 12, 'crate');
   lampPut(9, 9, 'handCart');
-  lampPut(4, 10, 'tarp');
+  // S3'S VISIBLE CHANGE. One kill, one prop swap: the tarp comes down and a
+  // Magistrate's shield plate goes up in its place. It is the smallest provable
+  // version of GAME_PLAN §6 — survivors improve the place they live in — and
+  // the whole point is that you can SEE it from the doorway.
+  lampPut(4, 10, (Quests && Quests.s3 === 'done') ? 'shieldWall' : 'tarp');
 
   // THE DEAD CAR — the one obstacle, and the only cover if anything follows
   // you in. Along the tunnel, so it takes its 'y' variant.
@@ -1676,6 +1680,26 @@ function buildField12() {
   }
   box(8, 50, 12, 7, 'G');                      // crash tender shed
   hollow(8, 50, 12, 7); door(19, 19, 53);
+
+  // ---- THE MILITARY BUILDINGS ----
+  box(28, 5, 16, 8, 'O');                      // SQUADRON BLOCK — the ready room
+  hollow(28, 5, 16, 8); door(34, 36, 12);
+  box(38, 64, 4, 4, 'W');                      // GUARD POST, at the vehicle gate
+  hollow(38, 64, 4, 4); door(39, 40, 67);
+  // THE ORDNANCE BUNKER. Half-buried, thick, and the only door on this field
+  // that is shut. The key is on the duty officer and nowhere else.
+  box(26, 48, 10, 6, 'W');
+  hollow(26, 48, 10, 6);
+  // The door stands IN the bunker's south wall, which `box` has already made
+  // solid — so shut costs nothing and open is the same `door()` cut every other
+  // building uses. It must not stand on the tile in FRONT of the wall: that is
+  // the approach, and blocking it walls the door off from the person with the
+  // key.
+  const BUNK_DOOR = [30, 31], BUNK_Y = 53;
+  if (Quests && Quests.bunker === 'open') door(BUNK_DOOR[0], BUNK_DOOR[1], BUNK_Y);
+  props.push({ gx: BUNK_DOOR[0], gy: BUNK_Y, type: 'blastDoor',
+               foot: [BUNK_DOOR[0], BUNK_Y, 2, 1] });
+
   Areas.field12.roofs = ROOFS;
 
   // ---- WHAT IS INSIDE THEM ----
@@ -1690,7 +1714,7 @@ function buildField12() {
   put(9, 8, 'crate'); put(10, 11, 'pallet'); put(17, 7, 'tug'); put(18, 10, 'barrel');
   // HANGAR 2 — the store. Somebody camped in here, once, and left in a hurry.
   put(60, 9, 'wrensPack');                     // S1
-  put(54, 8, 'chest', { open: false, loot: 'crypt', part: 'optGunCam' });
+  put(54, 8, 'chest', { open: false, loot: 'mre' });
   put(56, 10, 'bedroll'); put(58, 11, 'coldFire');
   put(62, 7, 'crate'); put(63, 10, 'pallet'); put(52, 11, 'barrel');
   // THE CONTROL TOWER — the stair is under water, so the cab is E8's. What is
@@ -1702,6 +1726,16 @@ function buildField12() {
   props.push({ gx: 13, gy: 53, type: 'tender', foot: [11, 52, 5, 2] });
   for (let x = 11; x <= 15; x++) for (let y = 52; y <= 53; y++) solid[y][x] = true;
   put(10, 55, 'deadCrew'); put(9, 52, 'tape', { tape: 'shed' }); put(17, 55, 'barrel');
+  // THE SQUADRON BLOCK — the ready room, the duty officer, and the one piece of
+  // new story on this field: a standing order with a date on it.
+  put(31, 8, 'deadOfficer');
+  put(35, 6, 'orderBoard');
+  put(38, 9, 'dutyDesk'); put(41, 10, 'crate'); put(30, 11, 'bedroll');
+  // THE GUARD POST — a rack and a log nobody signed after that night
+  put(39, 65, 'crate'); put(40, 66, 'dutyDesk');
+  // THE ORDNANCE BUNKER — the best loot on the field, behind the only shut door
+  put(28, 50, 'chest', { open: false, loot: 'crypt', part: 'optGunCam' });
+  put(33, 50, 'crate'); put(34, 51, 'barrel'); put(29, 51, 'pallet');
   // and the second tape, dropped in a blast pen by somebody who was listening.
   // 16,37 is INSIDE the interceptor parked in that pen — the aircraft went in
   // after the tape did and sealed it. It sits between the aircraft and the
@@ -2221,7 +2255,30 @@ const Areas = {
     safeSpawn: { x: 46.5, y: 66.5 },       // inside the vehicle gate
     indoors: false, skyline: false,         // NO far-city band: see map-shape.md
     hasScrapper: false, hasBoss: false, hasNpc: false, hasBandits: false,
-    hasDroids: false,                       // the drones are E4, and not built
+    // THE PERIMETER'S TEETH. [x, y, facing] — facing is the middle of a 150°
+    // arc, and it is the ground each gun was bolted down to cover. TWO on the
+    // vehicle gate and NONE on the west breach: that asymmetry is what makes
+    // the loud way loud and Wren's way worth knowing about.
+    hasDroids: true,
+    // THE RECOVERY DETAIL. A heavy squad — which is what puts a Magistrate on
+    // the field — working the wreck, and three lighter patrols on the perimeter
+    // road and the vehicle park. The spec's rule holds: this does not have to
+    // be a fight. The pens, the bowsers, the wing and the blast doors are all
+    // there, and the slate can be taken while they work.
+    routes: [
+      { comp: 'heavy',    pts: [[46, 33], [30, 20], [46, 33]] },   // the wreck ↔ the apron
+      { comp: 'standard', pts: [[70, 47], [70, 20]] },             // east perimeter
+      { comp: 'standard', pts: [[24, 47], [24, 20]] },             // west perimeter
+      { comp: 'light',    pts: [[68, 58], [46, 58]] },             // the vehicle park
+    ],
+    hasSentries: true,
+    sentries: [
+      [42, 66, Math.PI / 2],                // the gate, west side, facing south
+      [50, 66, Math.PI / 2],                // the gate, east side
+      [33, 55, Math.PI / 2],                // over the ordnance bunker's door
+      [83, 14, Math.PI / 2],                // the tower, covering the apron
+      [50, 30, Math.PI],                    // the wreck, facing back down the runway
+    ],
     tint: '#e4e2dc',                        // bleached grey. Not blue.
     makeItems: () => ([
       { type: 'ammo', gun: 'rifle', x: 27.5, y: 52.5, amount: 12, bob: 0.4 },

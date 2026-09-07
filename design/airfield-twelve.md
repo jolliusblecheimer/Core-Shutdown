@@ -149,7 +149,7 @@ neither of them says a word:
 |---|---|---|---|
 | **The slate** | the wreck's core | **Q3** | The footage. `AUTH: E.VANN`, and then his head splits |
 | **Wren's pack** | Hangar 2 | **S1** | Opens her rifle rounds — the last resupply before Ring 4 |
-| **Three tapes** | shed · blast pen · tower cab | **S2** | The recoil-braced stock, and what the breaker is |
+| **Three tapes** | shed · blast pen · tower cab | **S2** | Tech, scrap, and what the breaker is |
 | **The bunker key** | the duty officer | — | Opens the ordnance bunker |
 | **The shield plate** | the Magistrate | **S3** | Oz bolts it to the Lamp: the tarp comes down, a steel wall goes up, the fire burns bigger |
 | **The gun-camera optic** | ordnance bunker | — | The reward for the key |
@@ -195,3 +195,64 @@ make it dangerous.
 | A sentry cannot be damaged while asleep, and can while lit | new `sentry.js` |
 | A dead sentry stays dead across a save | `sentry.js` |
 | Frame cost at the wreck with the detail alive and five sentries up | `cost.js` — measure **there**, not in the quiet |
+
+---
+
+## 9. BUILT — M1 to M5
+
+### M3 — the buildings
+
+| | Footprint | |
+|---|---|---|
+| **Squadron block** | 28,5 16×8 | The ready room. **The duty officer** and **the standing order board** |
+| **Guard post** | 38,64 4×4 | At the vehicle gate |
+| **Ordnance bunker** | 26,48 10×6 | **The only shut door on the field.** The gun-camera optic is in it |
+
+The blast door stands **in the bunker's south wall**, not on the tile in front of
+it — the first version stood in the approach and walled the door off from the
+person holding the key. `Quests.bunker` saves it, so it stays open across a
+rebuild. Verified: shut → reachable **false** · no key → stays shut · key off the
+officer → opens, key spent → reachable **true** · after a rebuild → still true.
+
+### M4 — the sentries
+
+`js/sentry.js`. Five guns, none of them at the west breach.
+
+| Verified | |
+|---|---|
+| Asleep, shot | **40 → 40 hp.** Dull plate rings and nothing happens |
+| Woken by entering its arc | `sleep → spin` |
+| Lit, shot | **40 → 30 hp** |
+| Runs its states | `spin → track → fire`, six rounds down the line |
+| Killed | saved by position, still dead after a rebuild and a restore |
+| Its arc | drawn on the ground while it is awake, so you can see where it cannot reach |
+
+**What glows amber can be hurt; dull plate cannot** — the Compactor's rule, used
+a second time, so the sentry asks you to already know it rather than teaching it.
+Melee reaches one under the same rule, so a melee-only run has an answer.
+
+### M5 — the recovery detail, and S3
+
+Patrol routes are **per area** now (`Areas[id].routes`); they were hardcoded to
+the Fringe, which is why the airfield could not have a patrol on it at all. Four
+squads: a **heavy** one — which is what puts a Magistrate on the field — working
+the wreck, two on the perimeter road, one in the vehicle park. **12 droids.**
+
+**S3** runs end to end: Oz asks once you have been in and come back → the
+Magistrate carries the plate → bring it back and the **tarp comes down, a steel
+wall goes up**, and he hands over the recoil-braced stock that was in its
+mounting. The stock moved back to S3 where the spec had it; S2's payoff is the
+tech, the scrap and what the tapes say.
+
+### Measured
+
+| | |
+|---|---|
+| Props on the field | 413 → **701** |
+| Ways in, both openings sealed | **0**, unchanged |
+| Frame cost — wreck / gate / transport / park / corner | 14.79 / 13.68 / 14.46 / 13.59 / 13.59 ms |
+
+`f12`, `qprops`, `quests`, `sentry`, `audit2`, `smoke`, `hunted`, `verifycut`
+and `cost` all green, no console errors.
+
+**Still not built:** the rust drones (E4's flyers) and the beacon sweep (E5).

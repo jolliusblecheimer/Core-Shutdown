@@ -4288,6 +4288,89 @@ function outlined(src) {
       out.ox = OX + 1; out.oy = OY + 1;       // anchored on its own north corner
       return out;
     };
+    // the duty officer: the same shape as the crewman, in a different coat
+    const deadOfficer = () => {
+      const c = makeCanvas(20, 20), g = c.getContext('2d');
+      px(g, 5, 6, 10, 12, '#3a4450');
+      px(g, 5, 6, 10, 1, '#4a5563');
+      px(g, 6, 2, 7, 6, '#4a4038');
+      px(g, 7, 3, 5, 4, '#2a2622');
+      px(g, 4, 10, 3, 6, '#3a4450'); px(g, 13, 10, 3, 6, '#3a4450');
+      px(g, 6, 9, 3, 1, '#a08a4a');              // the braid on his cuff
+      px(g, 11, 14, 4, 3, '#8a7a4a');            // and the ring of keys
+      return outlined(c);
+    };
+    const orderBoard = () => {
+      const c = makeCanvas(26, 30), g = c.getContext('2d');
+      px(g, 3, 2, 20, 20, '#4a4038');
+      px(g, 5, 4, 16, 16, '#b9b2a0');
+      px(g, 5, 4, 16, 1, '#cfc8b6');
+      px(g, 7, 7, 12, 1, '#3f3a31');
+      px(g, 7, 10, 12, 1, '#3f3a31');
+      px(g, 7, 13, 9, 1, '#3f3a31');
+      px(g, 7, 17, 6, 1, '#8a2f22');             // the date, underlined in red
+      px(g, 11, 22, 4, 6, '#3a332c');
+      return outlined(c);
+    };
+    const blastDoor = () => {                    // two tiles wide, along +x
+      const R = isoRig(2, 0.6, 26);
+      R.box(0, 0, 2, 0.6, 0, 26, '#5a5e58', '#494d47', '#3a3e39');
+      R.flat(0.05, 0.62, 1.95, 0.66, 24, '#6b6f68');
+      for (let i = 0; i < 4; i++) R.flat(0.2 + i * 0.45, 0.61, 0.4 + i * 0.45, 0.67, 20, '#3d413c');
+      R.flat(0.9, 0.61, 1.1, 0.67, 12, '#8a7a4a');   // the wheel handle
+      return R.finish();
+    };
+    // THE SENTRY. A post, a traverse ring, and a housing with two barrels in
+    // it. The housing is drawn SEPARATELY from the post so the renderer can
+    // light it and rotate nothing — a gun that can only be hurt while it glows
+    // has to be unmistakable at a glance, from any distance, in one frame.
+    const sentryPost = () => {
+      const c = makeCanvas(18, 40), g = c.getContext('2d');
+      px(g, 6, 12, 5, 26, '#4a4e52');
+      px(g, 6, 12, 2, 26, '#5d6165');
+      px(g, 3, 36, 12, 3, '#3a3e42');
+      px(g, 4, 37, 10, 1, '#2c3034');
+      px(g, 4, 10, 10, 3, '#565a5e');           // the traverse ring
+      px(g, 4, 10, 10, 1, '#6a6e72');
+      return outlined(c);
+    };
+    const sentryHead = (lit) => {
+      const c = makeCanvas(22, 16), g = c.getContext('2d');
+      const B = lit ? '#6a5a3a' : '#4e5256', T = lit ? '#7d6a44' : '#5e6266';
+      px(g, 4, 4, 12, 8, B);
+      px(g, 4, 4, 12, 1, T);
+      px(g, 4, 4, 3, 8, T);
+      px(g, 15, 6, 6, 2, '#3a3e42');            // the two barrels
+      px(g, 15, 9, 6, 2, '#3a3e42');
+      px(g, 1, 6, 3, 5, B);                     // and the box on the back
+      if (lit) {                                 // AMBER MEANS OPEN
+        px(g, 6, 6, 8, 4, '#e08a24');
+        px(g, 7, 7, 6, 2, '#ffb84a');
+        px(g, 8, 7, 3, 1, '#ffe08a');
+      } else {
+        px(g, 6, 6, 8, 4, '#3a3e42');
+      }
+      return outlined(c);
+    };
+    const shieldWall = () => {              // a Magistrate's plate, bolted upright
+      const c = makeCanvas(22, 32), g = c.getContext('2d');
+      px(g, 2, 4, 18, 24, '#4e545c');
+      px(g, 2, 4, 18, 2, '#646b74');
+      px(g, 2, 4, 4, 24, '#5b626a');
+      px(g, 4, 9, 14, 1, '#3a3f45'); px(g, 4, 17, 14, 1, '#3a3f45');
+      for (const [bx, by] of [[4, 6], [17, 6], [4, 25], [17, 25]])
+        px(g, bx, by, 2, 2, '#7c8490');
+      px(g, 8, 12, 6, 5, '#2f353c');          // the scorch where it took a hit
+      px(g, 1, 28, 20, 3, '#33383e');
+      return outlined(c);
+    };
+    Sprites.shieldWall = shieldWall();
+    Sprites.sentryPost = sentryPost();
+    Sprites.sentryHead = sentryHead(false);
+    Sprites.sentryHeadLit = sentryHead(true);
+    Sprites.deadOfficer = deadOfficer();
+    Sprites.orderBoard = orderBoard();
+    Sprites.blastDoor = blastDoor();
     Sprites.mast = mast(); Sprites.mastBare = mastBare();
     Sprites.ladder = ladder(); Sprites.drumFire = drumFire();
     Sprites.tarp = tarp(); Sprites.handCart = handCart();

@@ -781,6 +781,9 @@ function beingHunted() {
   // share a single memory, so a squad counts for as long as any of it stands.
   for (const sq of squads)
     if (onYou(sq) && sq.members.some(m => m.state !== 'dead')) return true;
+  // a gun that has woken up and is traversing onto you is hunting you by any
+  // definition the rest of this function uses
+  if (typeof sentryHunting === 'function' && sentryHunting()) return true;
   return false;
 }
 
@@ -838,6 +841,8 @@ function snapshotArea() {
     deadBandits: collectDeadBandits(),
     // a chest you emptied stays empty when you come back through the door
     openChests: props.filter(p => p.type === 'chest' && p.open).map(p => p.gx + ',' + p.gy),
+    // and a gun you knocked off its post stays off it
+    deadSentries: typeof collectDeadSentries === 'function' ? collectDeadSentries() : [],
   };
 }
 // A raider you killed stays killed. Respawning them would turn a roadblock
@@ -865,6 +870,7 @@ function restoreBandits(id) {
 function restoreArea(id) {
   const st = areaState[id];
   if (!st) return;
+  if (typeof restoreSentries === 'function') restoreSentries(id);
   const dead = new Set(st.deadBarrels || []);
   for (const b of boomBarrels) {
     if (b.alive && dead.has(b.gx + ',' + b.gy)) {
@@ -915,6 +921,8 @@ function enterArea(id, entry) {
   // squads rebuild on entry — enemies are never persisted (see save.js)
   if (Areas[id].hasDroids) spawnFringeSquads();
   else clearDroids();
+  if (Areas[id].sentries) { clearSentries(); for (const t of Areas[id].sentries) addSentry(t[0], t[1], t[2]); }
+  else clearSentries();
   buildFolk(Areas[id].folk);
   questsOnEnter(id);
   if (entry) {
@@ -1278,6 +1286,7 @@ function update(dt) {
       updateDroids(dt);
       updateItems(dt);
       updateBurning(dt);
+      updateSentries(dt);
       checkExits(dt);
       markExplored(player.x, player.y, 9);
     }
@@ -1817,6 +1826,14 @@ function render() {
       addLight(s.x - ox, s.y - oy - 5, 0, 10, '255,190,90', 0.25);
     }});
   }
+  if (currentAreaDef().hasSentries) {
+    for (const sn of sentries) {
+      const s = isoToScreen(sn.x, sn.y);
+      const sx = s.x - ox, sy = s.y - oy;
+      if (sx < -60 || sx > VIEW_W + 60 || sy < -80 || sy > VIEW_H + 60) continue;
+      draws.push({ depth: s.y, draw: () => drawSentry(sn, sx, sy) });
+    }
+  }
   const TUN = areaRoofs().filter(t => !t.noSlab);
   if (TUN.length) {
     for (const t of TUN) {
@@ -2339,6 +2356,69 @@ function insideTunnel(x, y) {
   return false;
 }
 
+// A GUN THAT CAN ONLY BE HURT WHILE IT GLOWS has to say so from any distance,
+// in one frame, without a tutorial. Dull plate and no light while it sleeps;
+// amber housing, a lamp, and a suspicion meter the moment it wakes — the same
+// eye the scrappers and the raiders use, because it is the same question.
+function drawSentry(s, x, y) {
+  if (s.dead) {
+    ctx.drawImage(Sprites.sentryPost, Math.round(x - 9), Math.round(y - 40));
+    ctx.globalAlpha = 0.7;
+    const im = Sprites.sentryHead;
+    ctx.drawImage(im, Math.round(x - 4), Math.round(y - 10));
+    ctx.globalAlpha = 1;
+    return;
+  }
+  drawShadow(x, y, 6);
+  const lit = s.state === 'spin' || s.state === 'track' || s.state === 'fire';
+  // THE ARC IT WAS BOLTED DOWN FACING, on the ground, while it is awake. This
+  // is the thing you plan against: you can see where it cannot reach.
+  if (lit) {
+    // TWO GUNS COVER THE GATE and their arcs overlap on it, so each one has to
+    // be light enough that the pair still reads as ground rather than as a wall
+    // of red. It is a danger zone you plan against, not a fill.
+    ctx.globalAlpha = s.state === 'fire' ? 0.11 : 0.07;
+    ctx.fillStyle = s.state === 'fire' ? '#c9452c' : '#e08a24';
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    for (let a = -1.31; a <= 1.31; a += 0.13) {
+      const ang = s.face + a, R = 11;
+      const p2 = isoToScreen(s.x + Math.cos(ang) * R, s.y + Math.sin(ang) * R);
+      ctx.lineTo(p2.x - lastOx, p2.y - lastOy);
+    }
+    ctx.closePath(); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+  ctx.drawImage(Sprites.sentryPost, Math.round(x - 9), Math.round(y - 40));
+  const head = lit ? Sprites.sentryHeadLit : Sprites.sentryHead;
+  // the housing sits on the ring and leans the way it is traversing
+  const lean = Math.cos(s.aim) * 3;
+  ctx.drawImage(head, Math.round(x - 11 + lean), Math.round(y - 42));
+  if (s.hitFlash > 0) {
+    ctx.globalAlpha = 0.8; ctx.globalCompositeOperation = 'lighter';
+    ctx.drawImage(head, Math.round(x - 11 + lean), Math.round(y - 42));
+    ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+  }
+  if (lit) addLight(x, y - 34, 0, 26, '236,150,60', 0.35);
+  // THE RED LINE. Its whole telegraph, and the reason the fight is spatial:
+  // you dodge by not being on it.
+  if (s.state === 'track' || s.state === 'fire') {
+    const R = 14;
+    const e = isoToScreen(s.x + Math.cos(s.aim) * R, s.y + Math.sin(s.aim) * R);
+    ctx.strokeStyle = s.state === 'fire' ? 'rgba(255,90,60,0.85)' : 'rgba(255,90,60,0.45)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x, y - 34); ctx.lineTo(e.x - lastOx, e.y - lastOy);
+    ctx.stroke();
+  }
+  // and the same eye everything else that can notice you uses
+  if (s.state !== 'sleep') {
+    const f = s.state === 'spin' ? Math.min(1, s.t / 1.1)
+            : s.state === 'track' ? 0.6 + 0.4 * Math.min(1, s.t / 0.6) : 1;
+    drawSuspicion(x, y - 50, f);
+  }
+}
+
 function drawEdgeWeather(ox, oy) {
   const E = currentAreaDef().edges;
   if (!E || Trans.active) return;
@@ -2704,6 +2784,7 @@ function drawProp(p, x, y) {
     addLight(x, y - 14, 0, 46 * fl, '255,170,70', 0.42 * fl);
   }
   else if (T === 'tarp')      { img = Sprites.tarp;      oyOff = -30; drawShadow(x, y, 6); }
+  else if (T === 'shieldWall'){ img = Sprites.shieldWall; oyOff = -32; drawShadow(x, y, 7); }
   else if (T === 'handCart')  { img = Sprites.handCart;  oyOff = -20; drawShadow(x, y, 9); }
   else if (T === 'bedroll')   { img = Sprites.bedroll;   oyOff = -12; drawShadow(x, y, 9); }
   else if (T === 'coldFire')  { img = Sprites.coldFire;  oyOff = -10; drawShadow(x, y, 7); }
@@ -2712,6 +2793,16 @@ function drawProp(p, x, y) {
   else if (T === 'tape')      { img = Sprites.tapeIcon;  oyOff = -10; drawShadow(x, y, 5); }
   else if (T === 'wrensPack') { img = Sprites.wrensPack; oyOff = -18; drawShadow(x, y, 6); }
   else if (T === 'deadCrew')  { img = Sprites.deadCrew;  oyOff = -20; drawShadow(x, y, 8); }
+  else if (T === 'deadOfficer'){ img = Sprites.deadOfficer; oyOff = -20; drawShadow(x, y, 8); }
+  else if (T === 'orderBoard'){ img = Sprites.orderBoard; oyOff = -30; drawShadow(x, y, 6); }
+  else if (T === 'blastDoor') {
+    const im = Sprites.blastDoor;
+    const a = isoToScreen(p.foot[0], p.foot[1]);
+    ctx.globalAlpha = Quests.bunker === 'open' ? 0.35 : 1;
+    ctx.drawImage(im, Math.round(a.x - lastOx - im.ox), Math.round(a.y - lastOy - im.oy));
+    ctx.globalAlpha = 1;
+    return;
+  }
   else if (T === 'pallet')    { img = Sprites.pallet;    oyOff = -12; drawShadow(x, y, 9); }
   else if (T === 'tug')       { img = Sprites.tug;       oyOff = -20; drawShadow(x, y, 11); }
   else if (T === 'tender') {

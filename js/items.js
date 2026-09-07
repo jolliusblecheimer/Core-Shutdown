@@ -227,7 +227,7 @@ const MILESTONE_GRANTS = [
   {
     id: 'f12-braced',
     name: 'RECOIL-BRACED STOCK',
-    when: () => typeof Quests !== 'undefined' && (Quests.s2 || 0) >= 3,
+    when: () => typeof Quests !== 'undefined' && Quests.s3 === 'done',
     has: () => !!player.mods.owned.stkBraced,
     give: () => { givePart('stkBraced'); },
   },

@@ -3655,3 +3655,28 @@ footprint covered the tile the whole field is flood-filled from, and the
 interceptor parked in blast pen A **sealed an S2 tape inside itself**.
 
 Props 413 → 687. Frame cost at the wreck 15.1 ms, inside the band.
+
+---
+
+## "Go build" — AIRFIELD 12, M3 to M5
+
+**M3 — the buildings.** Squadron block with the duty officer and the standing
+order board, a guard post at the gate, and the ordnance bunker: the only shut
+door on the field, opened by a key that is on the officer and nowhere else. The
+blast door first stood on the tile in FRONT of the wall, which walled the door
+off from the person holding the key; it stands in the wall now.
+
+**M4 — the sentries.** `js/sentry.js`. Fixed guns, four states, and only the
+amber housing can be hurt — the Compactor's rule, used a second time, so a
+sentry asks the player to already know it rather than teaching it. Verified:
+shot asleep 40→40, shot lit 40→30, states run spin→track→fire, six rounds down
+the line, dead ones saved by position and still dead after a rebuild. Melee
+reaches one under the same rule. **None at the west breach.**
+
+**M5 — the detail and S3.** Patrol routes are per area now; they were hardcoded
+to the Fringe, which is why the airfield could not have a patrol on it at all.
+Four squads, twelve droids, a heavy one working the wreck. S3 runs end to end:
+Oz asks, the Magistrate carries the plate, and the tarp comes down for a steel
+wall. The recoil-braced stock moved back to S3 where the spec had it.
+
+Props 413 → 701, frame cost 13.6–14.8 ms with everything live. All suites green.
