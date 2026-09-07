@@ -3704,3 +3704,30 @@ bunker, five sentry guns and the twelve-droid recovery detail.
 
 Still not built, and now the top of the list: the rust drones (E4) and the
 beacon sweep (E5).
+
+---
+
+## "Redesign the whole map, put much work and thought in it"
+
+Measured the Fringe before proposing anything, and the first hypothesis died on
+contact: I assumed it was too open, and **it is tighter than Field 12** — mean
+distance to a wall 3.05 against 3.48, max 11 against 12. The geometry is sound
+and the plan does not touch the street network.
+
+What is actually wrong is that it is **empty**. Objects within a screenful,
+median: Junkyard **79**, Field 12 **24**, the Fringe **7**. The emptiest point
+(178,31) has nothing at all within twelve tiles. 60% of the walkable ground sits
+in 10×10 cells holding one object or none. 82 buildings and not one opens. Two
+POIs in thirty thousand tiles.
+
+And the worst fact: the player enters at the far east corner, which is the
+hollow half — 191 to 268 BFS steps to anywhere, **40 to 56 seconds of walking**
+at SPEED 4.0, through the thinnest ground on the map.
+
+Wrote `design/map-redesign.md`: keep every street and every building where it
+is (the RNG rule and rule 6 both demand it), add seven districts each with a
+fabric, a landmark and a reason, add the missing **alley** scale, and put the
+richest ground where the player comes in. Additive only — Phase 0 is a freeze
+test that proves nothing existing moved.
+
+Awaiting approval before building.
