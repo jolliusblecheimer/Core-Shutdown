@@ -1532,6 +1532,46 @@ function buildUnderpass() {
 // them is an axis-aligned rectangle — they are built in tile space and
 // projected. See the RUNWAY PAINT block in js/sprites.js.
 // ---------------------------------------------------------------------
+// WHICH TILES A PIECE OF HARDWARE ACTUALLY STANDS ON.
+// The footprint rectangle is what the sprite is DRAWN from; it is not what the
+// thing occupies. Aircraft are mostly air. This walks the footprint, asks the
+// sprite's own alpha whether anything is painted over each tile's centre, and
+// returns only the tiles that are — so the hitbox is the aeroplane and not the
+// box the aeroplane was delivered in. Cached per kind and size; the answer
+// cannot change without the art changing.
+const HW_MASK = {};
+function hardwareTiles(kind, w, h) {
+  const key = kind + ':' + w + 'x' + h;
+  if (HW_MASK[key]) return HW_MASK[key];
+  const all = [];
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) all.push([x, y]);
+  const im = (typeof Sprites !== 'undefined') && Sprites[kind];
+  if (!im || !im.width) { HW_MASK[key] = all; return all; }
+  const c = document.createElement('canvas');
+  c.width = im.width; c.height = im.height;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  g.drawImage(im, 0, 0);
+  const d = g.getImageData(0, 0, im.width, im.height).data;
+  const anchor = isoToScreen(0, 0);
+  const out = [];
+  for (const [dx, dy] of all) {
+    const s = isoToScreen(dx + 0.5, dy + 0.5);
+    const px = Math.round(s.x - (anchor.x - im.ox));
+    const py = Math.round(s.y - (anchor.y - im.oy));
+    let hit = false;
+    // a tile counts as occupied if the sprite paints anything just above its
+    // centre — that band is where a body standing on the tile would be
+    for (let oy = -6; oy <= 2 && !hit; oy++) for (let ox = -3; ox <= 3 && !hit; ox++) {
+      const qx = px + ox, qy = py + oy;
+      if (qx < 0 || qy < 0 || qx >= im.width || qy >= im.height) continue;
+      if (d[(qy * im.width + qx) * 4 + 3] > 40) hit = true;
+    }
+    if (hit) out.push([dx, dy]);
+  }
+  HW_MASK[key] = out.length ? out : all;      // never let a thing become walk-through
+  return HW_MASK[key];
+}
+
 function buildField12() {
   const rng = mulberry32(120012);
   resetMap(F12_W, F12_H, rng);
@@ -1725,8 +1765,15 @@ function buildField12() {
   put(58, 29, 'deadScav');
 
   // ---- WHAT IS PARKED ON IT ----
+  // COLLISION IS WHAT THE SPRITE ACTUALLY COVERS, not its bounding box. An
+  // aircraft is mostly air: measured, the transport had 13 tiles of solid
+  // nothing round it, the helicopter 11 of its 20 — over half its hitbox was
+  // empty sky, and you bounced off a wing that was not there. The mask is read
+  // off the sprite's own alpha, so it can never drift from the art, and you can
+  // now walk under a wing, which is cover the field wanted anyway.
   const hardware = (x0, y0, w, h, kind) => {
-    for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) {
+    for (const [dx, dy] of hardwareTiles(kind, w, h)) {
+      const x = x0 + dx, y = y0 + dy;
       if (x < 0 || y < 0 || x >= W || y >= H) continue;
       solid[y][x] = true;
     }
@@ -2324,6 +2371,11 @@ const Areas = {
     id: 'field12', name: 'AIRFIELD 12', build: buildField12,
     world: { x: 60, y: -50 },
     safeSpawn: { x: 58.5, y: 32.5 },       // inside the gate, CLEAR of its zone
+    // DYING HERE PUTS YOU BACK INSIDE THE WIRE, NOT IN THE FRINGE. Respawn is
+    // normally the last bed slept in, which is two areas away — the swarm
+    // killed you on the apron and you woke up outside the perimeter having
+    // lost the whole approach. The gate apron is the field's own checkpoint.
+    deathSpawn: { x: 58.5, y: 32.5 },
     indoors: false, skyline: false,         // NO far-city band: see map-shape.md
     hasScrapper: false, hasNpc: false, hasBandits: false,
     // THE HHD RECOVERY DETAIL IS GONE, and so is `routes`. Two kinds of droid —
@@ -2378,6 +2430,9 @@ const Areas = {
     // 2.5s safety in checkExits arms it under your feet — stand still to look
     // around on arrival and the game sends you straight back down.
     safeSpawn: { x: 8.5, y: 7.5 },
+    // and dying up here leaves you up here — the stair down is three steps
+    // away, so this costs the fight, never the climb.
+    deathSpawn: { x: 8.5, y: 7.5 },
     indoors: true, skyline: false,
     hasScrapper: false, hasBoss: true, hasNpc: false, hasBandits: false,
     hasDroids: false, hasWatch: false, hasSentries: false,

@@ -553,3 +553,98 @@ was unreachable because the buildings were.
 | cameras that can see | **7 of 7** |
 | patrols that move | **4 of 4** |
 | frame cost | **9.1–9.8 ms** |
+
+---
+
+## 15. Four more, from a real run
+
+### 1. No robot inside a building
+The patrols walked through the hangars. `mpSees` and the movement step both took
+the world at face value, and the world says a hangar floor is standable — which
+it is, for the player. Interiors are a different space: they are the cover the
+whole stealth layer is built on, and something that can end the run cannot be
+allowed to walk into your hiding place.
+
+`inARoom(x, y)` in `js/watch.js` reads the area's own `roofs` list — the same
+rectangles that fade the volume when you step inside — and:
+
+- **an MP will not step into one.** Both axes of the movement step now require
+  `!inARoom(...)`, so a patrol slides along a wall rather than through it.
+- **a shot fired inside one does not call them.** `watchNoise` returns early. The
+  noise radius is 22 tiles and a hangar is not 22 tiles of open air; a pistol
+  fired in a closed room used to bring three patrols to the door.
+
+Measured over **2,400 frames × 4 patrols**: zero frames with an MP inside an
+interior, all four still walking their legs, and a shot fired in the control
+room changes no patrol's state.
+
+### 2. The hitboxes are the aeroplanes now
+The footprint rectangle is what a sprite is **drawn** from. It was also what it
+**collided** with, and an aircraft is mostly air. Measured before the fix:
+
+| | box | solid | actually painted | empty collision |
+|---|---|---|---|---|
+| transport | 9×4 | 36 | 23 | **13** |
+| light prop | 6×5 | 30 | 19 | **11** |
+| helicopter | 5×4 | 20 | 9 | **11** |
+| burnt jet | 6×4 | 24 | 17 | **7** |
+
+Over half the helicopter's hitbox was empty sky. You bounced off a wing that was
+not there.
+
+`hardwareTiles(kind, w, h)` renders the sprite once, projects each tile centre
+back into sprite space and asks the sprite's **own alpha** whether anything is
+painted there. Only the tiles that are painted become solid. It is cached per
+kind and size, and it can never drift from the art, because it *is* the art.
+
+Every piece of hardware now matches its own drawing exactly. **You can walk
+under a wing** — which is cover the apron wanted anyway.
+
+### 3. The route, drawn
+`design/airfield-route.png` is a plan of the field with the route on it. Nothing
+on it is hand-placed: ground, collision, building footprints, the seven camera
+cones and the four patrol lines are read out of the running game, and the line
+itself is a Dijkstra solved over the same collision the player walks on, with
+cones priced at 55 and patrol corridors at 22 against a step of 1. The pins are
+snapped onto that solved line, so the picture cannot describe a route the game
+does not have.
+
+The shortest possible walk from the gate to the tower door, straight through
+everything, is **72 steps**. Kept out of the cones, it is **104**, and it goes:
+gate → east behind the vehicle park → across the runway → **the east gap** →
+west along the apron → **the alley between Hangar 1 and Hangar 2** → behind the
+hangars along the north wire → down Hangar 1's west side → the tower door → the
+stair.
+
+The east gap wins over the west one because the west approach crosses more
+cone. That was not designed; it fell out of where the cameras stand, and it is
+the better answer — the loud way in makes you cross the whole field.
+
+### 4. Dying on the airstrip
+Two faults, one symptom.
+
+**`resetProvostFight` claimed every death on the field.** It tested only
+`provost.active`, which is true from the moment you step through the vehicle
+gate. Swarmed on the runway thirty tiles from the control room, you were dropped
+at the tower door and told the thing had settled back onto its cradle. It now
+tests `provostInPlay()` — off its cradle, or you in the room with it.
+
+**And everything else went to the bed**, which for this field is two areas away
+in the Fringe. An area may now name a `deathSpawn`; dying in that area uses it
+instead of the last bed. Airfield 12 names the gate apron, the tower cab names
+itself.
+
+| died | wakes |
+|---|---|
+| mid-runway | the gate apron, inside the wire |
+| at the blast pens | the gate apron |
+| in the control room, fighting | the tower door — the fight retries |
+| in the tower cab | the cab — the fight retries |
+| anywhere with no `deathSpawn` | the last bed, unchanged |
+
+### Also found
+The quest suite's bunker check was flooding from `[31,44]` — a tile on the old
+96×72 field — so `reach()` always answered false and two assertions had been
+passing by accident. Pointed at the real bunker it passes honestly: shut, it is
+unreachable; unlocked, it is reachable; and it stays open across a rebuild.
+`openBlastDoor`'s fallback footprint was the old address too.

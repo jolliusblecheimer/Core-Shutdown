@@ -668,7 +668,7 @@ function openBlastDoor(p) {
   // 30..31 at y53, which was the bunker's address on the old 96x72 field — the
   // rebuild moved the bunker and this went on unsealing bare ground in the
   // middle of the apron, and threw on a map where row 53 no longer exists.
-  const f = (p && p.foot) || [47, 31, 2, 1];
+  const f = (p && p.foot) || [25, 30, 2, 1];
   for (let y = f[1]; y < f[1] + f[3]; y++)
     for (let x = f[0]; x < f[0] + f[2]; x++) {
       if (!solid[y]) continue;
@@ -1015,6 +1015,20 @@ function updatePlayer(dt) {
       if (typeof resetProvostFight === 'function' && resetProvostFight()) return;
       if (typeof resetArchivistFight === 'function' && resetArchivistFight()) return;
       player.hp = player.maxHp; player.iframes = 1.2;
+      // WHERE YOU WAKE UP AFTER DYING HERE. Respawn is normally the last bed
+      // you slept in, which for the airfield is two areas away — you were
+      // killed on the field and woke up back in the Fringe, having lost the
+      // whole walk. An area may name its own `deathSpawn`, and dying IN that
+      // area uses it instead of the bed.
+      const A = currentAreaDef();
+      if (A && A.deathSpawn) {
+        player.x = A.deathSpawn.x; player.y = A.deathSpawn.y;
+        if (!canStand(player.x, player.y, player.r)) {
+          const safe = findSafeSpot(player.x, player.y);
+          if (safe) { player.x = safe.x; player.y = safe.y; }
+        }
+        return;
+      }
       // Waking up somewhere else is an area change like any other, so it goes
       // through the same fade that walking through a door does — otherwise the
       // world would cut, and a cut here reads as a crash.

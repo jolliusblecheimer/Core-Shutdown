@@ -712,6 +712,7 @@ five guns up. **Still not built: the rust drones and the beacon sweep.**
 `design/airfield-rebuild.md`. **On `main`.**
 
 - **64×48 = 3,072 tiles**, down from 96×72 = 6,912. An airfield is not a village.
+  *(Superseded by the strip below — 96×36. Kept for the record.)*
   The runway still runs 55 tiles because that is the one dimension that cannot
   come in. The id stays `field12`, so no save changes areas — but **every
   coordinate inside it moved**, which is what `findSafeSpot` and `safeSpawn` are
@@ -742,6 +743,44 @@ five guns up. **Still not built: the rust drones and the beacon sweep.**
   Both run during play now, and the HUD stands down under a letterbox.
 
 Frame cost **13.6–14.8 ms → 9.8–11.0 ms**. Two ways in, both sealed → 0.
+
+### Outstanding
+- The rust drones (E4) and the beacon sweep (E5) are still not built.
+- `design/map-redesign.md` — the Fringe density plan — is written and approved-
+  pending. Nothing of it has been built.
+
+## AIRFIELD 12 AS A STRIP — laid out to the reference, 2026-09-08
+`design/airfield-rebuild.md` §§8–15. **On the branch, going to `main`.**
+
+- **96 × 36 = 3,456 tiles, a 3:1 plot.** An airfield is a strip, not a square:
+  runway down the long axis, **everything built on one side of it**, open sand
+  and cacti on the other. Thresholds 23 / 05.
+- **The apron fence** runs the full width at y15 between the runway and the
+  apron with **exactly two gaps**, x19–21 and x78–80. Sealing both leaves **0**
+  tiles reachable north of it, so they are the only ways onto the built side.
+- **All eight buildings are enterable** — squadron block, control tower, three
+  hangars, tender shed, guard post, and the ordnance bunker once its door is
+  unlocked. The recording is at the **top of the tower**, up a stair from the
+  control room, which is why crossing the field *is* the area.
+- **THE ARCHIVIST** (`js/archivist.js`) — the mini-boss in the cab, on the rack.
+  Damageable only while it is plugged in; off the rack it is armoured and comes
+  for you. The recording cannot be pulled while it lives.
+- **The fence has two characters**: north and east are wire with razor, the deep
+  sides; south and west are concrete blocks and warning boards, the approach
+  sides. No razor within reach of either opening.
+- **Hardware collision is the sprite's own alpha** (`hardwareTiles`), not its
+  bounding box. Aircraft are mostly air — the helicopter had 11 empty tiles of
+  its 20 — and you can now walk under a wing.
+- **The patrols stay out of the buildings.** `inARoom()` reads the area's `roofs`
+  list: an MP will not step into an interior, and a shot fired inside one does
+  not call them.
+- **Dying on the field keeps you on the field.** An area may name a
+  `deathSpawn`; Airfield 12 names the gate apron and the cab names itself. The
+  boss reset now tests `provostInPlay()` rather than "is the boss alive in this
+  area", which had been claiming every death anywhere on the plot.
+- **The route is drawn**: `design/airfield-route.png`, solved over the real
+  collision with the real cones, 72 steps at the shortest and 104 kept out of
+  sight.
 
 ### Outstanding
 - The rust drones (E4) and the beacon sweep (E5) are still not built.

@@ -3908,3 +3908,50 @@ way is not just safer, it is shorter. The seven cameras sit on that route rather
 than scattered, and none is at the breach.
 
 9.1–9.8 ms. All suites clean.
+
+---
+
+## Session — four fixes from a real run, and a picture of the route
+
+**Laurens:** "1. im gebäude soll es keinen robotter haben 2. Die flugzeuge haben
+eine viel grössere hitbox als sie gross sind 3. Zeige mir ein bild von der route
+4. Wenn man auf dem airstrip stirbt wird man ausserhalb gerespawnt"
+
+**No robot inside a building.** The patrols walked through the hangars — the
+movement step took the world at face value, and a hangar floor is standable.
+Interiors are the cover the whole stealth layer rests on. `inARoom()` reads the
+area's own `roofs` list; an MP will not step into one, and a shot fired inside
+one no longer calls them (the noise radius is 22 tiles and a closed room is not
+22 tiles of open air). Watched for 2,400 frames × 4 patrols: zero frames inside,
+all four still walking.
+
+**The hitboxes.** The footprint rectangle is what a sprite is *drawn* from; it
+was also what it collided with, and an aircraft is mostly air. The transport had
+13 tiles of solid nothing round it, the helicopter 11 of its 20 — over half its
+hitbox was empty sky, and you bounced off a wing that was not there.
+`hardwareTiles()` reads the sprite's **own alpha** and makes solid only the
+tiles that are actually painted. Every piece of hardware now matches its drawing
+exactly, and you can walk under a wing.
+
+**The picture** is `design/airfield-route.png`. Nothing on it is hand-placed:
+ground, collision, footprints, the seven cone shapes and the four patrol lines
+come out of the running game, and the route is a Dijkstra over the same
+collision the player walks on with the cones priced high — so it cannot show a
+route the game does not have. Shortest walk gate → tower door is 72 steps; kept
+out of the cones it is 104, out east behind the vehicle park, across the runway,
+through the east gap, west along the apron, up the alley between Hangar 1 and
+Hangar 2, along the north wire and down onto the tower door.
+
+**Dying on the airstrip** was two faults. `resetProvostFight` tested only
+`provost.active`, which is true from the moment you come through the gate — so
+being swarmed on the runway dropped you at the tower door with a line about the
+cradle. It tests `provostInPlay()` now. And every other death went to the last
+bed, two areas away in the Fringe; an area may name a `deathSpawn`, and the
+field names the gate apron, the cab names itself. Four death cases proved in a
+real run.
+
+Found on the way: the quest suite's bunker check was flooding from a tile on the
+old 96×72 map, so two assertions had been passing by accident. Pointed at the
+real bunker it passes honestly.
+
+All suites clean, no console errors.

@@ -96,6 +96,14 @@ function provostEngaged() {
   return false;
 }
 
+// IS THE FIGHT ACTUALLY RUNNING? Engagement is a room test, and a room test
+// alone is not enough once it has torn loose and followed you out of the door.
+// Still on its cradle and you are elsewhere on the field = not the fight.
+function provostInPlay() {
+  if (!provost.active || provost.state === 'dead') return false;
+  return provost.state !== 'dock' || provostEngaged();
+}
+
 // docked: the plate faces the room, so any angle lands.
 // loose:  the plate is on its back, so the round has to come from behind it.
 function provostVulnerableFrom(wx, wy) {
@@ -263,8 +271,14 @@ function killProvost() {
 
 // A death in this room retries the fight rather than the run — the same
 // contract the Compactor has.
+//
+// IN THIS ROOM. `provost.active` is true from the moment you step through the
+// vehicle gate, so testing only that made this claim EVERY death on the field:
+// swarmed on the runway thirty tiles away and you were dropped at the tower
+// door, told the thing had settled back onto its cradle. The field's own
+// `deathSpawn` handles those; this handles the fight.
 function resetProvostFight() {
-  if (!provost.active || provost.state === 'dead') return false;
+  if (!provostInPlay()) return false;
   const A = currentAreaDef();
   if (!A || A.bossKind !== 'provost') return false;
   foeBullets.length = 0;

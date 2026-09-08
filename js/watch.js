@@ -149,8 +149,21 @@ const mpSees = (m) =>
 // ---------------------------------------------------------------------
 // noise — a shot is the loudest decision you can make on this field
 // ---------------------------------------------------------------------
+// A ROOM IS NOT PATROLLED. These units hold the field, not the buildings —
+// walking one into a hangar puts an unkillable machine in a room the player
+// went in to loot, with no way past it. Interiors are exactly the rectangles on
+// the area's roof list, which is the same list that makes them enterable.
+function inARoom(x, y) {
+  const A = currentAreaDef();
+  for (const r of (A.roofs || []))
+    if (x >= r.x0 - 0.4 && x <= r.x1 + 1.4 && y >= r.y0 - 0.4 && y <= r.y1 + 1.4) return true;
+  return false;
+}
+
 function watchNoise(x, y) {
   if (Watch.networkDown) return;
+  // a shot fired from INSIDE a building draws them to the doorway, not through it
+  if (inARoom(x, y)) return;
   let best = null, bd = WATCH.noise;
   for (const m of mps) {
     const d = Math.hypot(m.x - x, m.y - y);
@@ -215,8 +228,8 @@ function updateWatch(dt) {
         // it walks round what it cannot walk through, one axis at a time,
         // the same way every other body in this game does
         const bx = m.x, by = m.y;
-        if (canStand(nx, m.y, m.r)) m.x = nx;
-        if (canStand(m.x, ny, m.r)) m.y = ny;
+        if (canStand(nx, m.y, m.r) && !inARoom(nx, m.y)) m.x = nx;
+        if (canStand(m.x, ny, m.r) && !inARoom(m.x, ny)) m.y = ny;
         faceToward(m, dx, dy, dt);
         // AND IT CANNOT GET STUCK FOREVER. Two of the four original patrols
         // spent the entire game pressed against geometry they could not get
