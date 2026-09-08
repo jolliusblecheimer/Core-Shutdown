@@ -215,6 +215,7 @@ function outlined(src) {
   // the atlas has specified since it was drawn. See design/finish-the-fringe.md.
   Sprites.ash = []; Sprites.water = []; Sprites.deck = []; Sprites.scorch = [];
   Sprites.tunnel = []; Sprites.runway = []; Sprites.apron = [];
+  Sprites.sand = []; Sprites.grit = [];
   for (let i = 0; i < 6; i++) {
     // THE ASHFIELD, west: a tank farm that caught fire on the Longest Night and
     // never went out. THIS TILE HAS TO SAY "FIRE" ON ITS OWN. The first version
@@ -288,6 +289,21 @@ function outlined(src) {
     if (rng() < 0.22) { const r = (rng()*TILE_H)|0; dpx(ap.g, (rng()*22)|0, r, 4, '#524f46'); }
     if (rng() < 0.12) { const r = (rng()*TILE_H)|0; dpx(ap.g, (rng()*26)|0, r, 3, '#2a2622'); }
     Sprites.apron.push(ap.c);
+
+    // SAND. The field stands in desert, not on a verge — the plot is a strip of
+    // pale grit with scrub on it and the runway laid straight down the middle.
+    // Warm and light, so the asphalt reads as a hard black line across it.
+    const sd = tileBase('#b9a279');
+    sprinkle(sd.g, 26, ['#c6b088', '#a8926c', '#cdb992']);
+    if (rng() < 0.40) { const r = (rng()*TILE_H)|0; dpx(sd.g, (rng()*24)|0, r, 5, '#ab9670'); }
+    if (rng() < 0.25) { const r = (rng()*TILE_H)|0; dpx(sd.g, (rng()*22)|0, r, 3, '#d3c09b'); }
+    Sprites.sand.push(sd.c);
+
+    // and the scraped dirt round the tower, where the ground was worked
+    const dz = tileBase('#8a6f4e');
+    sprinkle(dz.g, 20, ['#7d6446', '#997b57', '#6f5940']);
+    if (rng() < 0.3) { const r = (rng()*TILE_H)|0; dpx(dz.g, (rng()*24)|0, r, 5, '#6b563c'); }
+    Sprites.grit.push(dz.c);
   }
 
   // road paint, laid as decals
@@ -4076,9 +4092,62 @@ function outlined(src) {
       px(g, 16, 6, 2, 6, '#b0b4b8');
       return outlined(c);
     };
+    // A LIGHT PROP at the west threshold — high wing, one engine, fixed gear.
+    // The small aircraft in the reference picture.
+    const prop = () => {
+      const R = isoRig(5.5, 4.5, 24);
+      const A = '#8d9398', B = '#6c7276', T = '#a6acb0';
+      R.box(0.6, 2.05, 4.6, 2.45, 4, 13, T, A, B);            // fuselage
+      R.box(1.7, 0.4, 2.9, 4.1, 13, 15, '#9aa0a4', '#767c80', '#767c80'); // high wing
+      R.box(0.7, 2.1, 1.4, 2.4, 13, 24, T, A, B);             // fin
+      R.box(0.8, 1.4, 1.5, 3.1, 20, 22, T, A, B);             // tailplane
+      R.flat(3.0, 2.1, 4.0, 2.4, 13.5, '#25303a');            // glazing
+      R.box(4.6, 2.1, 5.0, 2.4, 6, 11, B, B, '#33383a');      // cowling
+      R.box(5.0, 2.22, 5.15, 2.28, 2, 15, '#3f4447', '#2c3033', '#2c3033'); // prop
+      for (const [u, v] of [[2.2, 1.5], [2.2, 3.0], [1.1, 2.25]])
+        R.box(u, v - 0.1, u + 0.2, v + 0.1, 0, 4, '#2b2f31', '#1b1e1f', '#1b1e1f');
+      return R.finish();
+    };
+    // AND A HELICOPTER on the pad — the other aircraft in the picture.
+    const heli = () => {
+      const R = isoRig(4.5, 3.5, 30);
+      const A = '#525c47', B = '#3a4232', T = '#6a7659';
+      R.box(0.9, 1.2, 2.9, 2.4, 4, 14, T, A, B);              // cabin
+      R.flat(1.9, 1.25, 2.85, 2.35, 14.4, '#232c1f');         // canopy glass
+      R.box(0.1, 1.65, 1.0, 1.95, 8, 12, T, A, B);            // tail boom
+      R.box(0.1, 1.7, 0.45, 1.9, 12, 22, T, A, B);            // fin
+      R.box(0.15, 1.2, 0.4, 2.4, 18, 19, A, B, B);            // tailplane
+      // the rotor, flat over the top: two blades crossed
+      R.flat(-0.6, 1.75, 4.4, 1.85, 20, '#2b3226');
+      R.flat(1.85, -0.4, 1.95, 4.0, 20, '#2b3226');
+      R.box(1.8, 1.7, 2.0, 1.9, 14, 20, '#3a4232', '#2b3226', '#2b3226');  // mast
+      for (const [u, v] of [[1.2, 1.15], [1.2, 2.45], [2.6, 1.15], [2.6, 2.45]])
+        R.box(u, v - 0.08, u + 0.16, v + 0.08, 0, 4, '#2b3226', '#1b2018', '#1b2018');
+      return R.finish();
+    };
+    // A FUEL BOWSER. The old code parked `bus` here and called it a bowser, so
+    // a yellow school bus sat on a military apron — the single most out-of-place
+    // object on the field. A tank barrel on a chassis, in service drab.
+    const bowser = () => {
+      const R = isoRig(3.4, 1.9, 22);
+      const A = '#5b5f4c', B = '#3f4335', T = '#6d7259';
+      R.box(0.2, 0.35, 3.2, 0.6, 0, 5, '#242620', '#17190f', '#17190f');   // wheels
+      R.box(0.2, 1.3, 3.2, 1.55, 0, 5, '#242620', '#17190f', '#17190f');
+      R.box(0.15, 0.3, 3.25, 1.6, 5, 8, B, B, B);                          // chassis
+      R.box(0.5, 0.4, 2.5, 1.5, 8, 17, T, A, B);                           // the tank barrel
+      R.flat(0.5, 0.4, 2.5, 1.5, 17.2, '#7a806a');
+      R.box(1.3, 0.85, 1.7, 1.05, 17, 19, '#8a9078', A, A);                // the filler dome
+      R.box(2.5, 0.45, 3.2, 1.45, 8, 16, T, A, B);                         // the cab
+      R.flat(2.9, 0.5, 3.2, 1.4, 16.2, '#25303a');
+      R.box(0.3, 0.8, 0.6, 1.1, 9, 12, B, B, '#2a2d24');                   // the hose reel
+      return R.finish();
+    };
+    Sprites.bowser = bowser();
     Sprites.acTransport = transport();
     Sprites.acJet = jet(false);
     Sprites.acJetBurnt = jet(true);
+    Sprites.acProp = prop();
+    Sprites.heli = heli();
     Sprites.tank = tank(false);
     Sprites.tankHulk = tank(true);
     Sprites.radarMast = radar();
@@ -4481,6 +4550,35 @@ function outlined(src) {
       px(g, 16, 2, 2, 26, '#3a4046');            // the mullion
       return outlined(c);
     };
+    // DESERT SCRUB. The picture is full of it and it is what says "this field
+    // stands in nothing" without a line of dialogue.
+    const cactus = (big) => {
+      const c = makeCanvas(16, big ? 30 : 20), g = c.getContext('2d');
+      const H = big ? 30 : 20;
+      const G = '#4e6b42', GH = '#628253', GD = '#3a5231';
+      px(g, 6, H - 20, 4, 20, G);
+      px(g, 6, H - 20, 1, 20, GH);
+      px(g, 9, H - 20, 1, 20, GD);
+      if (big) {                                   // two arms, at different heights
+        px(g, 2, H - 16, 4, 2, G); px(g, 2, H - 22, 2, 8, G); px(g, 2, H - 22, 1, 8, GH);
+        px(g, 10, H - 12, 4, 2, G); px(g, 12, H - 18, 2, 8, G); px(g, 12, H - 18, 1, 8, GH);
+      } else {
+        px(g, 10, H - 13, 3, 2, G); px(g, 11, H - 17, 2, 6, G);
+      }
+      for (let i = 0; i < 4; i++) px(g, 7, H - 18 + i * 4, 2, 1, GD);
+      return outlined(c);
+    };
+    const scrub = () => {
+      const c = makeCanvas(14, 9), g = c.getContext('2d');
+      for (const [x, y, w, h] of [[1,5,3,3],[5,3,4,5],[9,5,4,3],[4,6,3,2]])
+        px(g, x, y, w, h, '#6b6a42');
+      px(g, 5, 3, 4, 1, '#87855a');
+      return outlined(c);
+    };
+    Sprites.cactus = cactus(true);
+    Sprites.cactusSmall = cactus(false);
+    Sprites.scrub = scrub();
+
     Sprites.rack = rack();
     Sprites.stairUp = stair(true);
     Sprites.stairDown = stair(false);
@@ -4771,6 +4869,10 @@ function outlined(src) {
       1: [[1,0,2,5],[0,0,2,1],[0,4,3,5]],
       2: [[0,0,3,1],[2,0,3,3],[0,2,3,3],[0,2,1,5],[0,4,3,5]],
       3: [[0,0,3,1],[0,2,3,3],[0,4,3,5],[2,0,3,5]],
+      // 5 was missing, and the reference picture paints 23 / 05 on the
+      // thresholds — a runway number is a bearing and its reciprocal, so the
+      // pair of digits the table carries has to match whatever is painted.
+      5: [[0,0,3,1],[0,0,1,3],[0,2,3,3],[2,2,3,5],[0,4,3,5]],
     };
     const number = (a, b2) => {
       const marks = [];
@@ -4785,8 +4887,27 @@ function outlined(src) {
       });
       return paint(4, 7, marks, PW);
     };
+    // 23 at one threshold and its reciprocal 05 at the other, which is what the
+    // reference picture has painted on it.
     Sprites.decals.rwNum12 = number(1, 2);
     Sprites.decals.rwNum30 = number(3, 0);
+    Sprites.decals.rwNum23 = number(2, 3);
+    Sprites.decals.rwNum05 = number(0, 5);
+    // THE HELIPAD. A ring and an H, laid flat on the apron — projected with the
+    // same Q() the runway numbers use, never a pasted rectangle (the angle rule).
+    Sprites.decals.helipad = (() => {
+      const marks = [];
+      const ring = 2.6, cx = 3.0, cy = 3.0;
+      for (let i = 0; i < 28; i++) {                 // the circle, as short chords
+        const a0 = (i / 28) * Math.PI * 2, a1 = ((i + 0.7) / 28) * Math.PI * 2;
+        marks.push([cx + Math.cos(a0) * ring, cy + Math.sin(a0) * ring,
+                    cx + Math.cos(a1) * ring, cy + Math.sin(a1) * ring]);
+      }
+      marks.push([cx - 1.1, cy - 0.9, cx + 1.1, cy - 0.9]);   // the H
+      marks.push([cx - 1.1, cy + 0.9, cx + 1.1, cy + 0.9]);
+      marks.push([cx - 0.1, cy - 0.9, cx + 0.1, cy + 0.9]);
+      return paint(6, 6, marks, PW);
+    })();
   })();
 
   // =====================================================================

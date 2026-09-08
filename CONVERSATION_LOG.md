@@ -3832,3 +3832,39 @@ the hand-built interiors, dropping a crate on the tile the stair lands on.
 
 Cameras that can see: 0 of 5 → 7 of 7. Patrols that move: 2 of 4 → 4 of 4.
 Frame cost 9.8–11.0 → 8.4–9.4 ms. All eight suites clean.
+
+---
+
+## The layout picture — the airfield rebuilt to it
+
+The picture arrived, and the thing it changed was the **shape**. 64×48 was the
+right size and the wrong one: an airfield is a **strip**. It is 96×36 now — a
+3:1 plot with the runway straight down the long axis, everything built on ONE
+side of it, and open desert on the other, which is the reference's whole
+composition and a completely different place to walk.
+
+Laid out west to east as in the picture: threshold **23** and a light prop, the
+squadron block, **the control tower**, the transport, **three hangars**, fuel
+bowsers, **the helipad and its helicopter**, **the vehicle park**, threshold
+**05** — and the whole south half open sand with cacti.
+
+New ground (sand, worked grit) so the runway reads as a hard black line across
+pale desert, and new sprites for the prop, the helicopter, the bowser, the
+cacti, the helipad marking and the 23/05 numbers — which needed a `5` glyph the
+digit table had never had.
+
+**The bus.** The fuel bowsers had always been drawn with the `bus` sprite, so a
+yellow school bus had been sitting on a military apron the whole time. There is
+a real bowser now.
+
+Two placement faults, both caught by checks written earlier: the spawn sat
+inside its own gate trigger zone (arrive, stand still, get sent back to the
+Fringe), and two cameras had a reach of 0.0 — one with the scavenger's body a
+stride in front of it, one mounted *inside the transport*.
+
+One deliberate departure: the reference tower is slender; ours is a 14×9 block
+because the control room inside it is a boss arena, and at the picture's
+proportions that fight would be a corridor.
+
+2,506 walkable, 2,480 reachable from the gate, both ways in sealed → 0, all
+seven cameras seeing, 9.7–11.6 ms. Eight suites clean.

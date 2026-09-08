@@ -404,3 +404,72 @@ cannot. Verified: plugged 120→100, loose 100→100, the cycle runs
 **The whole-map layout.** The picture referred to in the request did not arrive —
 there was no image attached and nothing landed in the repo. Everything above is
 independent of it; the layout itself is not started.
+
+---
+
+## 13. THE LAYOUT — built to the reference, 2026-09-08
+
+The picture arrived. It changed the **shape**, which turned out to matter more
+than the size.
+
+### An airfield is a strip, not a square
+| | |
+|---|---|
+| was | 64 × 48 — right size, wrong shape |
+| is | **96 × 36 = 3,456 tiles**, a 3:1 strip |
+
+**The runway runs the whole long axis and everything built stands on ONE side of
+it.** The other side is open desert. That is the reference picture's entire
+composition and it is a different place to walk: a strip you cross, not a square
+you wander round.
+
+### What is on it, west to east, as in the picture
+| | where |
+|---|---|
+| Threshold **23**, piano keys, a light prop parked off it | x5–20 |
+| Squadron block (the duty officer, the order board) | x10–21, north |
+| **The control tower** — the objective | x30–43, north |
+| The transport on the apron | x24–32 |
+| **Three hangars** in a row | x46–78, north |
+| Fuel bowsers | x64–71 |
+| **The helipad and its helicopter** | x79–84 |
+| **The vehicle park**, three hulls | x82–92, south-east |
+| Threshold **05** | x86–91 |
+| Ordnance bunker · tender shed · guard post · blast pen | south side |
+| Open sand, cacti and scrub | the whole south half |
+
+New ground: **sand** and **worked grit**, so the asphalt reads as a hard black
+line laid across pale desert. New sprites: a light prop, a helicopter, a fuel
+bowser, saguaro cacti and scrub, the helipad marking, and the **23 / 05**
+thresholds — which needed a `5` glyph the DIGIT table had never had.
+
+### The bus
+The "fuel bowsers" had always been drawn with the `bus` sprite — **a yellow
+school bus, on a military apron**, the single most out-of-place object on the
+field. There is a real bowser now: a tank barrel on a service-drab chassis.
+
+### Two placement faults the harnesses caught again
+- **The spawn sat inside its own gate trigger zone** — arrive, stand still for
+  2.5 s, and the gate sends you back to the Fringe. Caught by the check written
+  for exactly this last session.
+- **Cacti and a body were growing in front of lenses.** Two cameras had a reach
+  of 0.0 — one had the scavenger's body a stride in front of it, one was mounted
+  *inside the transport*. Each camera's mount and the first three tiles of its
+  sightline are reserved before anything is scattered, and `camtest` prints all
+  seven reaches so it cannot regress quietly.
+
+### One deliberate departure from the picture
+The reference tower is tall and slender. Ours is a **14 × 9 block** because the
+control room inside it is a boss arena — at the picture's proportions the
+Provost fight would be a corridor. The tower reads as a control building with a
+cab on top rather than a mast, and the cab is its own area either way.
+The curved-roof hangar in the reference is a plain corrugated shed here;
+`BUILD_STYLE` has no barrel roof yet.
+
+### Measured
+| | |
+|---|---|
+| walkable | 2,506, of which **2,480 reachable from the gate** |
+| ways in, both sealed | **0** — still exactly two |
+| cameras that can see | **7 of 7**, reaches 1.8–11 |
+| frame cost | **9.7–11.6 ms** |

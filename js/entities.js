@@ -938,13 +938,13 @@ const OBJECTIVES = [
     detail: 'Something is still transmitting, from the night it happened, on a machine nobody told to stop. It is north of here.',
     log: 'Followed the loop north, under the viaduct.' },
   { id: 'theWreck', title: () => 'Get to the top of the tower',
-    area: 'field12', x: 28, y: 9,
+    area: 'field12', x: 33, y: 6,
     detail: 'The loop is coming off the tower, not the runway. Everything this field ever saw was written to a rack up there.',
     log: 'Got up the tower, and took the recording off the rack.' },
   // THE HEADACHE IS NEVER MARKED. What he saw on that slate is not a place you
   // can walk to, and a dot pointing anywhere would be the game explaining it.
   { id: 'seen', title: () => 'Understand what you saw', silent: true,
-    area: 'field12', x: 28, y: 9,
+    area: 'field12', x: 33, y: 6,
     detail: '',
     log: 'Watched a city turn at once, on a command with a name on it.' },
 ];

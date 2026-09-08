@@ -266,6 +266,7 @@ function buildTilesets() {
   TILESETS[14] = Sprites.deck;  TILESETS[15] = Sprites.scorch;
   TILESETS[16] = Sprites.tunnel; TILESETS[17] = Sprites.runway;
   TILESETS[18] = Sprites.apron;
+  TILESETS[19] = Sprites.sand;  TILESETS[20] = Sprites.grit;
 }
 buildTilesets();
 
@@ -3062,6 +3063,9 @@ function drawProp(p, x, y) {
   else if (T === 'stairDown') { img = Sprites.stairDown; oyOff = -14; }
   else if (T === 'cabGlass')  { img = Sprites.cabGlass; oyOff = -26; }
   else if (T === 'deadScav')  { img = Sprites.deadScav; oyOff = -12; drawShadow(x, y, 9); }
+  else if (T === 'cactus')    { img = Sprites.cactus;      oyOff = -28; drawShadow(x, y, 5); }
+  else if (T === 'cactusSmall'){ img = Sprites.cactusSmall; oyOff = -18; drawShadow(x, y, 4); }
+  else if (T === 'scrub')     { img = Sprites.scrub;       oyOff = -6; }
   else if (T === 'blastDoor') {
     const im = Sprites.blastDoor;
     const a = isoToScreen(p.foot[0], p.foot[1]);
