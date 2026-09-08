@@ -722,6 +722,102 @@ function droidMeleeHit(m, ps) {
     return { img, ox: Math.round(img.width / 2), oy: img.height - 2 };
   };
 
+  // ---- MP: military police. The heaviest thing that walks, and the only
+  // machine in the game with NO amber on it anywhere, in any state. That
+  // absence is the design: "what glows amber can be hurt" is a rule the player
+  // has held since the Compactor, and an MP simply never satisfies it. It is
+  // darker than an HHD too — issued to a different service — so the silhouette
+  // says "not one of the ones you have been killing" before the plate does.
+  function mpFrame(step, alert) {
+    // DARKER AND HARDER THAN AN HHD. The first pass used a mid grey and on wet
+    // tarmac at night the thing read as a pale floating slab with a blue slot
+    // in it — no legs, no shoulders, no machine. It is a gunmetal green-grey
+    // now, with the panel lines actually cut in, and the legs are lighter than
+    // the ground instead of the same colour as it.
+    const PL = '#5a6169', PL_H = '#78818b', PL_S = '#414850', PL_D = '#2c3138';
+    const LEG = '#4a5158';
+    const c = makeCanvas(24, 32), g = c.getContext('2d');
+    px(g, 4, 28 - step, 7, 4, DARK2);              // heavy feet
+    px(g, 13, 28 + step, 7, 4, DARK2);
+    px(g, 5, 20 - step, 6, 9, LEG);                // armoured legs, readable
+    px(g, 5, 20 - step, 2, 9, PL_S);
+    px(g, 13, 20 + step, 6, 9, LEG);
+    px(g, 13, 20 + step, 2, 9, PL_S);
+    px(g, 4, 17, 16, 4, PL_S);                     // hip block
+    px(g, 4, 18, 16, 1, PL_D);
+    px(g, 3, 7, 18, 11, PL);                       // slab torso
+    px(g, 3, 7, 18, 1, PL_H);
+    px(g, 3, 12, 18, 1, PL_D);                     // a cut panel line
+    px(g, 11, 8, 2, 9, PL_D);                      // and a deep centre seam
+    chevron(g, 5, 9);
+    px(g, 0, 7, 4, 8, PL_S);                       // pauldrons, squared off
+    px(g, 0, 7, 4, 1, PL_H);
+    px(g, 20, 7, 4, 8, PL_S);
+    px(g, 20, 7, 4, 1, PL_H);
+    px(g, 9, 5, 6, 2, PL_D);                       // a NECK, so the head reads
+    px(g, 6, 0, 12, 5, PL);                        // helmet, wide and flat
+    px(g, 6, 0, 12, 1, PL_H);
+    px(g, 5, 3, 14, 2, PL_S);                      // the brow it looks out under
+    visor(g, 8, 3, 8);
+    // the lamp it looks at you with, on the shoulder. COLD — nothing warm
+    // lives on this machine, because warm means you could hurt it.
+    px(g, 20, 10, 4, 4, PL_D);
+    px(g, 21, 11, 3, 2, alert ? CORE : CORE_D);
+    return c;
+  }
+
+  // ---- THE PROVOST: bigger again, and the ONE with the plate open. Docked,
+  // the opening faces the room; loose, it is on his back. The amber is drawn
+  // as a separate overlay so the renderer can put it on whichever side the
+  // fight says it is on.
+  function provostFrame(step, loose) {
+    const PL = '#5f646a', PL_H = '#7a8087', PL_S = '#464b50';
+    const c = makeCanvas(32, 40), g = c.getContext('2d');
+    px(g, 6, 36 - step, 8, 4, DARK2);
+    px(g, 18, 36 + step, 8, 4, DARK2);
+    px(g, 7, 26 - step, 7, 10, DARK);
+    px(g, 18, 26 + step, 7, 10, DARK);
+    px(g, 6, 22, 20, 5, PL_S);
+    px(g, 4, 9, 24, 14, PL);                       // the slab
+    px(g, 4, 9, 24, 1, PL_H);
+    chevron(g, 7, 12);
+    px(g, 1, 9, 4, 8, PL_S);                       // pauldrons
+    px(g, 27, 9, 4, 8, PL_S);
+    px(g, 10, 2, 12, 7, PL);
+    px(g, 10, 2, 12, 1, PL_H);
+    px(g, 9, 5, 14, 2, PL_S);
+    visor(g, 11, 5, 10);
+    // the arm cannon it fires down its own cone with
+    px(g, 26, 15, 6, 6, DARK);
+    px(g, 26, 17, 6, 2, loose ? CORE : CORE_D);
+    return c;
+  }
+  // THE OPEN PLATE. Amber, and the only amber on this field — which is exactly
+  // why it is the only thing on this field that can be killed.
+  // SMALL. At 16x14 on a 32-wide body this was half his width, and on screen
+  // the amber square swallowed the machine — you could see the weak point and
+  // not the thing it was in. It is a hatch in his chest, not a windscreen.
+  function provostCore() {
+    const c = makeCanvas(10, 8), g = c.getContext('2d');
+    px(g, 1, 1, 8, 6, '#2a2018');                  // the cavity behind it
+    px(g, 2, 2, 6, 4, '#e08a24');
+    px(g, 3, 3, 4, 2, '#ffb84a');
+    px(g, 4, 3, 2, 1, '#ffe08a');
+    px(g, 0, 0, 10, 1, '#8a6a3a');                 // the plate, hinged back
+    px(g, 0, 7, 10, 1, '#8a6a3a');
+    return c;
+  }
+  Sprites.mp = {
+    walk: [pack(mpFrame(0, false)), pack(mpFrame(1, false))],
+    act: pack(mpFrame(0, true)),
+  };
+  Sprites.provost = {
+    dock: [pack(provostFrame(0, false)), pack(provostFrame(1, false))],
+    loose: [pack(provostFrame(0, true)), pack(provostFrame(1, true))],
+    dead: pack(wreck(30, 16)),
+    core: outlined(provostCore()),
+  };
+
   Sprites.droids = {
     bailiff: {
       walk: [pack(bailiffFrame(0, false)), pack(bailiffFrame(1, false))],

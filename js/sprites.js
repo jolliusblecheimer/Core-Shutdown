@@ -4364,6 +4364,92 @@ function outlined(src) {
       px(g, 1, 28, 20, 3, '#33383e');
       return outlined(c);
     };
+    // ---- THE WATCH ----------------------------------------------------
+    // A camera on a post. Two states, and the state is the LENS: dark when it
+    // is only looking, red when it has you. The housing never changes, because
+    // a housing that changed would read as damage.
+    const camPost = (on) => {
+      const c = makeCanvas(16, 34), g = c.getContext('2d');
+      px(g, 6, 10, 4, 22, '#4a4e52');           // the post
+      px(g, 6, 10, 2, 22, '#5d6165');
+      px(g, 3, 31, 10, 3, '#3a3e42');
+      px(g, 4, 4, 9, 6, '#54585c');             // the housing
+      px(g, 4, 4, 9, 1, '#6a6e72');
+      px(g, 4, 4, 2, 6, '#616569');
+      px(g, 12, 6, 3, 3, on ? '#c9452c' : '#2c3034');   // the lens
+      if (on) px(g, 13, 7, 1, 1, '#ff8a6a');
+      px(g, 7, 1, 3, 3, '#4a4e52');             // the bracket it hangs from
+      return outlined(c);
+    };
+    // A DEAD ONE HANGS. The housing drops on its bracket and the lens is out,
+    // so a camera you have shot reads as dealt with from across the apron.
+    const camDead = () => {
+      const c = makeCanvas(16, 34), g = c.getContext('2d');
+      px(g, 6, 10, 4, 22, '#43474b');
+      px(g, 3, 31, 10, 3, '#3a3e42');
+      px(g, 5, 7, 6, 8, '#3f4347');             // hanging, nose down
+      px(g, 5, 7, 6, 1, '#4c5054');
+      px(g, 6, 14, 3, 2, '#23272b');            // the empty socket
+      px(g, 7, 1, 3, 3, '#4a4e52');
+      return outlined(c);
+    };
+    // THE MONITOR BANK. Every screen is a camera feed, and when the Provost
+    // dies they all go out — which is how the player learns the network was
+    // his and not the building's.
+    const monitors = (on) => {
+      const c = makeCanvas(30, 26), g = c.getContext('2d');
+      px(g, 2, 6, 26, 16, '#3f4449');
+      px(g, 2, 6, 26, 2, '#4e545a');
+      px(g, 2, 21, 26, 3, '#33383d');
+      for (let i = 0; i < 3; i++) {
+        const sx = 4 + i * 8;
+        px(g, sx, 9, 6, 5, on ? '#2b4a52' : '#23272b');
+        if (on) { px(g, sx + 1, 10, 4, 1, '#5fa8b8'); px(g, sx + 1, 12, 2, 1, '#3d7d8c'); }
+      }
+      px(g, 3, 16, 24, 4, '#2f343a');           // the desk under them
+      return outlined(c);
+    };
+    // THE CHARGING CRADLE — the reason the boss can be hurt at all. It reads as
+    // a socket with a thing plugged into it, and the amber is the charge.
+    // FLAT. The first version stood two arms up either side and the Provost
+    // docked in it disappeared into his own furniture — a boss you cannot read
+    // the silhouette of. It is a floor socket now: he stands clear above it,
+    // and the live contact under his feet is what says he is plugged in.
+    const cradle = () => {
+      const c = makeCanvas(40, 18), g = c.getContext('2d');
+      px(g, 3, 6, 34, 7, '#3d4247');            // the pad
+      px(g, 3, 6, 34, 2, '#4d5359');
+      px(g, 5, 13, 30, 3, '#2f343a');           // its shadowed skirt
+      px(g, 6, 3, 5, 4, '#4a5056');             // two low kerbs, not arms
+      px(g, 29, 3, 5, 4, '#4a5056');
+      px(g, 7, 3, 3, 1, '#585f66');
+      px(g, 30, 3, 3, 1, '#585f66');
+      px(g, 15, 8, 10, 3, '#e08a24');           // the contact, live
+      px(g, 16, 9, 8, 1, '#ffb84a');
+      px(g, 18, 9, 4, 1, '#ffe08a');
+      return outlined(c);
+    };
+    // THE SCAVENGER. What the first-sight beat leaves behind, and the only
+    // human shape on the field that is not in uniform.
+    const deadScav = () => {
+      const c = makeCanvas(24, 16), g = c.getContext('2d');
+      px(g, 4, 8, 15, 5, '#4b4034');            // face down, arms out
+      px(g, 4, 8, 15, 1, '#5c503f');
+      px(g, 2, 9, 3, 2, '#3f362c');
+      px(g, 18, 10, 4, 2, '#3f362c');
+      px(g, 7, 6, 5, 3, '#6a5c48');             // a pack he did not drop
+      px(g, 13, 12, 7, 2, '#3a332a');
+      px(g, 5, 13, 12, 2, '#2e2822');
+      return outlined(c);
+    };
+    Sprites.camPost = camPost(false);
+    Sprites.camPostOn = camPost(true);
+    Sprites.camDead = camDead();
+    Sprites.monitors = monitors(true);
+    Sprites.monitorsOff = monitors(false);
+    Sprites.cradle = cradle();
+    Sprites.deadScav = deadScav();
+
     Sprites.shieldWall = shieldWall();
     Sprites.sentryPost = sentryPost();
     Sprites.sentryHead = sentryHead(false);

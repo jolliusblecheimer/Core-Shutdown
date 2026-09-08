@@ -134,6 +134,15 @@ const SFX = (() => {
     robotDie() { noise(0.25, 0.3, 'lowpass', 900); tone('sawtooth', 300, 50, 0.4, 0.2); tone('square', 700, 100, 0.2, 0.1, 0.05); },
     charge() { tone('sawtooth', 220, 640, 0.4, 0.1); },
     alert() { tone('square', 960, 960, 0.08, 0.2); tone('square', 960, 960, 0.08, 0.2, 0.12); },
+    // THE KLAXON. Not the raiders' shout and not a machine's alert chirp — a
+    // two-tone that belongs to a building, because what has just noticed you
+    // on Airfield 12 is the building and not the thing in front of you.
+    alarm() {
+      tone('square', 620, 620, 0.34, 0.22);
+      tone('square', 465, 465, 0.34, 0.22, 0.30);
+      tone('square', 620, 620, 0.34, 0.18, 0.62);
+      noise(0.9, 0.06, 'lowpass', 500);
+    },
     rage() { tone('sawtooth', 95, 45, 1.0, 0.3); noise(0.7, 0.25, 'lowpass', 700); tone('square', 180, 60, 0.5, 0.12, 0.15); },
     absorb() { tone('sine', 180, 760, 1.3, 0.12); noise(1.0, 0.06, 'bandpass', 900); },
     absorbTick() { tone('triangle', 620, 900, 0.08, 0.12); },

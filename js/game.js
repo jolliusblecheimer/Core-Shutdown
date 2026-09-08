@@ -784,6 +784,7 @@ function beingHunted() {
   // a gun that has woken up and is traversing onto you is hunting you by any
   // definition the rest of this function uses
   if (typeof sentryHunting === 'function' && sentryHunting()) return true;
+  if (typeof watchHunting === 'function' && watchHunting()) return true;
   return false;
 }
 
@@ -798,6 +799,18 @@ function beingHunted() {
 // behind the fill — so the machines that hunt you in packs were the ones whose
 // meter you had to learn separately. Three copies of a rule is how the third
 // one drifts. `cx` is the middle of the badge and `ay` the top of the eye.
+// The HUD twin of drawSuspicion. The world one paints on the 320x180 canvas
+// with `ctx`; the HUD is the high-res overlay, and mixing the two puts a
+// four-times-too-small eye in the corner of the screen.
+function drawSuspicionUI(cx, ay, alert) {
+  const a = Math.min(1, alert);
+  uiRect(cx - 14, ay - 2, 28, 7, 'rgba(0,0,0,0.55)');
+  uiRect(cx - 12, ay, 3, 3, '#e8eef5');
+  uiRect(cx - 11, ay + 1, 1, 1, '#1a1c22');
+  uiRect(cx - 6, ay + 1, 16, 2, '#3a3e48');
+  uiRect(cx - 6, ay + 1, Math.round(16 * a), 2, a > 0.7 ? '#ff5a3c' : '#e8eef5');
+}
+
 function drawSuspicion(cx, ay, alert) {
   const a = Math.min(1, alert);
   ctx.fillStyle = 'rgba(0,0,0,0.55)';
@@ -843,6 +856,8 @@ function snapshotArea() {
     openChests: props.filter(p => p.type === 'chest' && p.open).map(p => p.gx + ',' + p.gy),
     // and a gun you knocked off its post stays off it
     deadSentries: typeof collectDeadSentries === 'function' ? collectDeadSentries() : [],
+    // and a camera you shot out stays out
+    deadCameras: typeof collectDeadCameras === 'function' ? collectDeadCameras() : [],
   };
 }
 // A raider you killed stays killed. Respawning them would turn a roadblock
@@ -898,6 +913,50 @@ function questsOnEnter(id) {
     think('loop', 'The loop is louder in here. It is coming off the runway.');
     if (typeof saveGame === 'function') saveGame();
   }
+  if (id === 'field12' && typeof Watch !== 'undefined' && !Watch.firstSight && !Watch.networkDown)
+    firstSight();
+}
+
+// ---------------------------------------------------------------------
+// THE FIRST SIGHT — how he finds out, and it is SHOWN, not said
+// ---------------------------------------------------------------------
+// The rule of this field is "do not be seen, and there is no fighting them".
+// A line of dialogue would state it; a tutorial card would insult it. So the
+// first time the player comes through the gate, the camera holds and they
+// watch it happen to somebody else. Four seconds, no text, no input taken
+// away for longer than that — and afterwards there is a body out there they
+// can walk up to and search.
+function firstSight() {
+  Watch.firstSight = true;
+  const bx = 32, by = 38;                    // where the scavenger is caught
+  swarmBots.length = 0;
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2 + 0.3;
+    swarmBots.push({ x: bx + Math.cos(a) * 9, y: by + Math.sin(a) * 9,
+                     fx: -Math.cos(a), fy: -Math.sin(a) });
+  }
+  playCine([
+    // he breaks cover and runs. The camera is on him, not on the player.
+    { dur: 2.2, cam: [bx, by + 1], zoom: 1.35,
+      enter: () => { SFX.uiOpen(); } },
+    // they come. Nothing is said about it because nothing needs to be.
+    { dur: 2.6, cam: [bx, by], zoom: 1.3,
+      tick: (t, dt) => {
+        for (const sb of swarmBots) {
+          const dx = bx - sb.x, dy = by - sb.y, d = Math.hypot(dx, dy);
+          if (d > 1.3) {
+            const step = 3.2 * dt;
+            sb.x += (dx / d) * step; sb.y += (dy / d) * step;
+            sb.fx = dx / d; sb.fy = dy / d;
+          }
+        }
+      } },
+    { dur: 1.4, cam: [bx, by], zoom: 1.3,
+      enter: () => { addShake(3); SFX.die(); } },
+  ], () => {
+    swarmBots.length = 0;
+    think('watched', 'They did not chase him. They were already everywhere he was going.');
+  });
 }
 
 function enterArea(id, entry) {
@@ -923,6 +982,10 @@ function enterArea(id, entry) {
   else clearDroids();
   if (Areas[id].sentries) { clearSentries(); for (const t of Areas[id].sentries) addSentry(t[0], t[1], t[2]); }
   else clearSentries();
+  // THE WATCH — cameras and military police. Like squads, these rebuild on
+  // entry rather than persisting; only what you have DESTROYED is remembered.
+  if (typeof spawnWatch === 'function') spawnWatch();
+  if (typeof spawnProvostFor === 'function') spawnProvostFor(id);
   buildFolk(Areas[id].folk);
   questsOnEnter(id);
   if (entry) {
@@ -1277,7 +1340,16 @@ function update(dt) {
       Input.pressed[k] = false;
     updateParticles(dt);
   } else {
+    // A SCRIPTED BEAT DURING PLAY. `updateCine` used to be called only in the
+    // prologue branch, so a cutscene fired from the world — the swarm, the
+    // first sight — would start and then never advance a frame. It runs here
+    // too now, and it freezes what a boss cutscene freezes.
+    if (Cine.active) {
+      if (Input.pressed['Escape']) { Input.pressed['Escape'] = false; skipCine(); }
+      updateCine(dt);
+    }
     const bossCine = GateCine.active || Trans.active ||
+      (Cine.active && !Cine.control) ||
       (boss.active && (boss.state === 'cine2' || boss.state === 'cine3'));
     if (!bossCine) {
       updatePlayer(dt);
@@ -1287,12 +1359,14 @@ function update(dt) {
       updateItems(dt);
       updateBurning(dt);
       updateSentries(dt);
+      updateWatch(dt);
       checkExits(dt);
       markExplored(player.x, player.y, 9);
     }
     updateTransition(dt);
     updateGateCine(dt);
     updateBoss(dt);
+    updateProvost(dt);
     updateNpc(dt);
     updateBullets(dt);
     updateFoeBullets(dt);
@@ -1834,6 +1908,29 @@ function render() {
       draws.push({ depth: s.y, draw: () => drawSentry(sn, sx, sy) });
     }
   }
+  // ---- THE WATCH ----
+  if (currentAreaDef().hasWatch) {
+    for (const c of cameras) {
+      const s = isoToScreen(c.x, c.y);
+      const sx = s.x - ox, sy = s.y - oy;
+      if (sx < -70 || sx > VIEW_W + 70 || sy < -90 || sy > VIEW_H + 70) continue;
+      draws.push({ depth: s.y, draw: () => drawCamera(c, sx, sy) });
+    }
+    for (const m of mps) {
+      const s = isoToScreen(m.x, m.y);
+      const sx = s.x - ox, sy = s.y - oy;
+      if (sx < -70 || sx > VIEW_W + 70 || sy < -90 || sy > VIEW_H + 70) continue;
+      draws.push({ depth: s.y, draw: () => drawMP(m, sx, sy) });
+    }
+    for (const b of swarmBots) {
+      const s = isoToScreen(b.x, b.y);
+      draws.push({ depth: s.y, draw: () => drawMP(b, s.x - ox, s.y - oy, true) });
+    }
+  }
+  if (provost.active) {
+    const s = isoToScreen(provost.x, provost.y);
+    draws.push({ depth: s.y, draw: () => drawProvost(s.x - ox, s.y - oy) });
+  }
   const TUN = areaRoofs().filter(t => !t.noSlab);
   if (TUN.length) {
     for (const t of TUN) {
@@ -2360,6 +2457,118 @@ function insideTunnel(x, y) {
 // in one frame, without a tutorial. Dull plate and no light while it sleeps;
 // amber housing, a lamp, and a suspicion meter the moment it wakes — the same
 // eye the scrappers and the raiders use, because it is the same question.
+// ---------------------------------------------------------------------
+// THE WATCH — what it sees, drawn on the ground where you can plan against it
+// ---------------------------------------------------------------------
+// ONE CONE DRAWER for cameras, MP units and the Provost, so all three speak
+// the same language: pale while it is only looking, amber while it is filling,
+// red when it has you. The player learns to read one shape, not three.
+function drawCone(wx, wy, aim, half, range, heat, x, y) {
+  // A COLD CONE IS THE ONE THAT MATTERS. The first version faded it to the
+  // sentries' 0.07 when nothing was happening, and on wet tarmac at night that
+  // is invisible — which took the whole point away, because the cone you plan
+  // against is the one that has NOT seen you yet. It is lit at all times, and
+  // the heat only changes its colour and how hard it burns.
+  const hot = heat > 0.98, warm = heat > 0.02;
+  ctx.fillStyle = hot ? '#c9452c' : warm ? '#e08a24' : '#7fb0c8';
+  ctx.globalAlpha = hot ? 0.34 : 0.15 + heat * 0.13;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  const pts = [];
+  for (let a = -half; a <= half + 0.001; a += half / 9) {
+    const p2 = isoToScreen(wx + Math.cos(aim + a) * range, wy + Math.sin(aim + a) * range);
+    pts.push([p2.x - lastOx, p2.y - lastOy]);
+    ctx.lineTo(p2.x - lastOx, p2.y - lastOy);
+  }
+  ctx.closePath(); ctx.fill();
+  // and an edge along the far arc, so it reads as a BOUNDARY you can stand
+  // just outside of rather than as a smudge
+  ctx.globalAlpha = hot ? 0.75 : 0.4 + heat * 0.3;
+  ctx.strokeStyle = hot ? '#ff7a5c' : warm ? '#ffb84a' : '#a8d6ea';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(pts[0][0], pts[0][1]);
+  for (const q of pts) ctx.lineTo(q[0], q[1]);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+
+// how hot this particular watcher is: only the one actually holding you drives
+// the colour, so a cone you are merely near stays cold and readable
+function watcherHeat(o) {
+  if (typeof Watch === 'undefined' || Watch.networkDown) return 0;
+  return (Watch.by && Watch.by.o === o) ? Watch.seen : 0;
+}
+
+function drawCamera(c, x, y) {
+  if (c.dead) {
+    ctx.drawImage(Sprites.camDead, Math.round(x - 8), Math.round(y - 34));
+    return;
+  }
+  const down = typeof Watch !== 'undefined' && Watch.networkDown;
+  if (!down) drawCone(c.x, c.y, c.aim, WATCH.camArc, WATCH.camRange, watcherHeat(c), x, y);
+  drawShadow(x, y, 4);
+  const img = down ? Sprites.camPost : Sprites.camPostOn;
+  ctx.drawImage(img, Math.round(x - 8), Math.round(y - 34));
+  if (!down) addLight(x, y - 28, 0, 12, '201,69,44', 0.22);
+}
+
+function drawMP(m, x, y, swarm) {
+  const down = typeof Watch !== 'undefined' && Watch.networkDown;
+  if (!down && !swarm) {
+    const aim = Math.atan2(m.fy, m.fx);
+    const range = player.crouch ? WATCH.mpRangeCrouch : WATCH.mpRange;
+    drawCone(m.x, m.y, aim, WATCH.mpArc, range, watcherHeat(m), x, y);
+  }
+  drawShadow(x, y, 8);
+  const set = Sprites.mp;
+  const frame = swarm ? set.act : set.walk[((m.t || 0) * 3 | 0) % 2];
+  ctx.drawImage(frame.img, Math.round(x - frame.ox), Math.round(y - frame.oy));
+  if (m.hitFlash > 0) {
+    // it rings. A white flash and nothing else — no damage number, no stagger,
+    // because nothing happened.
+    ctx.globalAlpha = 0.55; ctx.globalCompositeOperation = 'lighter';
+    ctx.drawImage(frame.img, Math.round(x - frame.ox), Math.round(y - frame.oy));
+    ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+  }
+  if (!down) addLight(x, y - 20, 0, 14, '111,211,255', 0.18);
+}
+
+function drawProvost(x, y) {
+  const p = provost;
+  if (p.state === 'dead') {
+    const d = Sprites.provost.dead;
+    ctx.globalAlpha = Math.max(0.4, 1 - p.deadT * 0.05);
+    ctx.drawImage(d.img, Math.round(x - d.ox), Math.round(y - d.oy));
+    ctx.globalAlpha = 1;
+    return;
+  }
+  // its own cone, and the meter it fills is the SAME meter the field uses —
+  // being caught in here is being caught, and it calls the same swarm
+  drawCone(p.x, p.y, p.aim, PROV.arc, PROV.range,
+           Math.min(1, p.lock / PROV.lockTime), x, y);
+  drawShadow(x, y, 13);
+  const set = Sprites.provost;
+  const frames = p.state === 'loose' ? set.loose : set.dock;
+  const f = frames[(p.anim * 3 | 0) % 2];
+  ctx.drawImage(f.img, Math.round(x - f.ox), Math.round(y - f.oy));
+  // THE OPEN PLATE. Docked it faces the room; loose it is on his back, and
+  // where it is drawn is the honest answer to "where do I shoot".
+  const core = Sprites.provost.core;
+  const back = p.state === 'loose'
+    ? isoToScreen(p.x - p.fx * 0.55, p.y - p.fy * 0.55)
+    : isoToScreen(p.x, p.y);
+  const bx = back.x - lastOx, by = back.y - lastOy;
+  ctx.drawImage(core, Math.round(bx - core.width / 2),
+                Math.round(by - (p.state === 'loose' ? 26 : 30)));
+  addLight(bx, by - 24, 0, 18, '236,150,60', 0.30);
+  if (p.hitFlash > 0) {
+    ctx.globalAlpha = 0.7; ctx.globalCompositeOperation = 'lighter';
+    ctx.drawImage(f.img, Math.round(x - f.ox), Math.round(y - f.oy));
+    ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+  }
+}
+
 function drawSentry(s, x, y) {
   if (s.dead) {
     ctx.drawImage(Sprites.sentryPost, Math.round(x - 9), Math.round(y - 40));
@@ -2795,6 +3004,14 @@ function drawProp(p, x, y) {
   else if (T === 'deadCrew')  { img = Sprites.deadCrew;  oyOff = -20; drawShadow(x, y, 8); }
   else if (T === 'deadOfficer'){ img = Sprites.deadOfficer; oyOff = -20; drawShadow(x, y, 8); }
   else if (T === 'orderBoard'){ img = Sprites.orderBoard; oyOff = -30; drawShadow(x, y, 6); }
+  // THE MONITORS go out with the Provost. Every screen in the room is a camera
+  // feed, so their going dark is how the player learns the network was HIS.
+  else if (T === 'monitors')  {
+    img = (typeof Watch !== 'undefined' && Watch.networkDown) ? Sprites.monitorsOff : Sprites.monitors;
+    oyOff = -24; drawShadow(x, y, 12);
+  }
+  else if (T === 'cradle')    { img = Sprites.cradle;   oyOff = -10; drawShadow(x, y, 16); }
+  else if (T === 'deadScav')  { img = Sprites.deadScav; oyOff = -12; drawShadow(x, y, 9); }
   else if (T === 'blastDoor') {
     const im = Sprites.blastDoor;
     const a = isoToScreen(p.foot[0], p.foot[1]);
@@ -3488,6 +3705,13 @@ function drawHUD() {
   // with a health bar in the corner of it stops being a letterbox.
   if (GameState === 'prologue') { drawCineOverlay(); return; }
 
+  // A SCRIPTED BEAT DURING PLAY GETS THE SAME TREATMENT, for the reason the
+  // prologue states: a letterbox with a health bar in the corner of it stops
+  // being a letterbox. The swarm and the first sight are shots, so while one
+  // is running and the player has no sticks, the HUD, the minimap and the
+  // thought bubble all stand down.
+  if (GameState === 'playing' && Cine.active && !Cine.control) { drawCineOverlay(); return; }
+
   if (GameState !== 'playing') {
     const blink = ((gameTime * 1.6) | 0) % 2 === 0;
 
@@ -3756,6 +3980,25 @@ function drawHUD() {
     uiRect(VIEW_W / 2 - 84, 19, 168, 3, '#3a1410');
     uiRect(VIEW_W / 2 - 84, 19, Math.round(168 * Math.max(0, boss.hp) / boss.maxHp), 3, '#ff5040');
   }
+  if (typeof provost !== 'undefined' && provost.active && provost.state !== 'dead' &&
+      provostEngaged()) {
+    ptext(provost.name, VIEW_W / 2, 6, 8, '#ff5040', 'center');
+    uiRect(VIEW_W / 2 - 86, 17, 172, 7, 'rgba(0,0,0,0.6)');
+    uiRect(VIEW_W / 2 - 84, 19, 168, 3, '#3a1410');
+    uiRect(VIEW_W / 2 - 84, 19, Math.round(168 * Math.max(0, provost.hp) / provost.maxHp), 3, '#ff5040');
+  }
+
+  // ---- THE DETECTION METER ----
+  // The same eye the scrappers use, because it means the same thing: something
+  // is deciding whether it has seen you. On this field the end of the fill is
+  // not a fight, and the word under it is the only place the game says so.
+  if (typeof Watch !== 'undefined' && Watch.seen > 0.02 && !Watch.swarm &&
+      currentAreaDef().hasWatch && !Watch.networkDown) {
+    const cx = VIEW_W / 2, ay = VIEW_H - 44;
+    drawSuspicionUI(cx, ay, Watch.seen);
+    if (Watch.seen > 0.55)
+      ptext('SEEN', cx, ay - 12, 8, Watch.seen > 0.85 ? '#ff5a3c' : '#e8a24a', 'center');
+  }
 
   // thought bubble — the traveller's inner voice
   if (Thoughts.t > 0 && player.dead <= 0) {
@@ -3794,8 +4037,15 @@ function drawHUD() {
     uiRect(mx2, my2 + gap + 1, 1, len, rc);
   }
 
-  // mission objective (top-left) — from the same `obj` the minimap dot uses
-  if (obj) {
+  // Mission objective (top-left) — from the same `obj` the minimap dot uses.
+  // A BOSS NAME OWNS THAT ROW. Both are drawn at y 6-8 and a long objective
+  // runs straight through the name, so while a boss bar is up the objective
+  // stands down: during a boss fight there is only one thing to do anyway.
+  const bossBarUp = (boss.active && boss.state !== 'hidden' && boss.state !== 'dead' &&
+                     boss.state !== 'reveal') ||
+                    (typeof provost !== 'undefined' && provost.active &&
+                     provost.state !== 'dead' && provostEngaged());
+  if (obj && !bossBarUp) {
     ptext('*', 8, 8, 8, '#ffd27a');
     ptext(obj.title, 16, 8, 8);
   }
@@ -4226,6 +4476,11 @@ function drawHUD() {
     ptext('SYSTEM FAILURE', VIEW_W / 2, VIEW_H / 2 - 12, 14, '#ff5a3c', 'center');
     ptext('rebooting...', VIEW_W / 2, VIEW_H / 2 + 6, 8, '#e8d9c0', 'center');
   }
+
+  // THE LETTERBOX AND THE FADE, over the top of all of it. Same reason as the
+  // update above: this was reachable only from the prologue branch, so a
+  // cutscene fired in the world had no bars and never went to black.
+  if (Cine.active || Cine.fade > 0.001) drawCineOverlay();
 }
 
 // ---------- THE TITLE'S BACKDROP: where you actually left off ----------

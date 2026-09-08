@@ -1,3 +1,9 @@
+> **SUPERSEDED, 2026-09-07.** The field was rebuilt at 64×48 and the recovery
+> detail, the Magistrate and two of the five sentries were taken off it.
+> See `design/airfield-rebuild.md`. What is below is the plan the *old* 96×72
+> field was built to, kept because its reasoning about the perimeter, the
+> hardware and the amber rule still holds.
+
 # AIRFIELD 12 — the military plan
 
 Written 2026-09-02 in answer to *"make it a military airstrip, make it difficult

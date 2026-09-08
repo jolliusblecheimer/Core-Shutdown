@@ -133,6 +133,10 @@ function fireRound(G, spread) {
   });
   addShake(G.shake);
   SFX.shot();
+  // A SHOT IS THE LOUDEST DECISION YOU CAN MAKE ON THAT FIELD. Anywhere else
+  // this is a no-op; on Airfield 12 it walks the nearest unit to where you
+  // stood, which is what makes shooting a camera a trade instead of a freebie.
+  if (typeof watchNoise === 'function') watchNoise(player.x, player.y);
   return true;
 }
 
@@ -282,9 +286,16 @@ const FOLK = {
   // it. Nobody here learns the traveller's name either.
   lamp: [
     { key: 'wren', name: 'WREN', x: 6.5, y: 10.5, stock: 'wren', verb: 'TRADE', lines: [
+        // SHE SAYS THE RULE OUT LOUD, once, before you have any way to test it.
+        // The field then shows it to you (the first sight) and the scavenger's
+        // notebook writes it down. Three layers, and only this one is dialogue.
         ["You came up the spine. Nobody comes up the spine.",
          "There's a field north of here with a fence round it. I've been in.",
-         "Don't stand still where the light goes. That's it, that's the advice."],
+         "Don't let them see you. That's the whole of it — there's no fighting them.",
+         "I've watched people try. It isn't a fight, it's an answer."],
+        ["The tall ones in the grey plate don't challenge you and they don't chase.",
+         "They just all arrive. Every one on the field, at once, wherever you are.",
+         "Crouch, keep something between you and the lights, and don't be greedy."],
         "Two of them. Out the roof, not the doors. I was under the wing before I heard the second one.",
         "Stair's on the north face of the tower. Outside. The inside one's under water.",
         "I'd go back for the pack. I'm not going back for the pack." ] },
@@ -303,7 +314,8 @@ const FOLK = {
                    "Take it. I have no use for anything that fires."]];
         }
         if (Quests.s3 === 'given') return [
-          "Big one. Carries a plate on its arm like a door.",
+          "The one in the tower. The one the rest of them answer to.",
+          "It wears a plate on its arm like a door, and it's plugged in up there.",
           "I am not asking you to go and get it. I am saying if it happens." ];
         if (Quests.s3 === 'done') return [
           "Wall's up. Fire's bigger. I sleep with my back to a steel plate now.",
@@ -617,11 +629,13 @@ function readOrderBoard() {
     "        ALL AIRCRAFT GROUNDED",
     "        PENDING CIVIL AUTHORITY",
     "The date on it is the day of the Longest Night.",
-    "Posted in the morning. Before any of it." ]);
+    "Posted in the morning. Before any of it.",
+    "Underneath, in a different hand, in pencil:",
+    "        MP PATROLS ARMED. DO NOT APPROACH. THEY DO NOT CHALLENGE." ]);
   think('order', 'Somebody grounded a squadron that morning. Somebody knew.');
 }
 // THE BLAST DOOR. The only shut door on this field.
-function openBlastDoor() {
+function openBlastDoor(p) {
   if (Quests.bunker === 'open') {
     startDialog(["Open, and I have had what was in it."]);
     return;
@@ -639,10 +653,17 @@ function openBlastDoor() {
   SFX.tech();
   addShake(3);
   saveGame();
-  // cut the doorway now, without rebuilding the area under the player's feet
-  for (let x = 30; x <= 31; x++) {
-    solid[53][x] = false; heavy[53][x] = false; ground[53][x] = 18;
-  }
+  // Cut the doorway now, without rebuilding the area under the player's feet.
+  // THE COORDINATES COME OFF THE DOOR ITSELF. They used to be written here as
+  // 30..31 at y53, which was the bunker's address on the old 96x72 field — the
+  // rebuild moved the bunker and this went on unsealing bare ground in the
+  // middle of the apron, and threw on a map where row 53 no longer exists.
+  const f = (p && p.foot) || [47, 31, 2, 1];
+  for (let y = f[1]; y < f[1] + f[3]; y++)
+    for (let x = f[0]; x < f[0] + f[2]; x++) {
+      if (!solid[y]) continue;
+      solid[y][x] = false; heavy[y][x] = false; ground[y][x] = 18;
+    }
   buildAO();
   buildSpatialIndex();
   startDialog(["The key turns, and the door comes off its seal with a noise",
@@ -663,6 +684,18 @@ function readDeadCrew(p) {
     "A dictaphone in his lap, and a box of tapes beside it — " + found + " of 3 played." ]);
 }
 
+// THE SCAVENGER. What the first sight leaves behind, and the only place on the
+// field the rule is actually stated — by somebody who worked it out too late.
+function readDeadScav(p) {
+  if (!p.read) { p.read = true; saveGame(); }
+  startDialog([
+    "A scavenger, face down on the apron, still wearing his pack.",
+    "Nothing has taken anything off him. They were not here for that.",
+    "A notebook in the pack, and the last page is one line, gone over twice:",
+    "        THE PLATE. DON'T BOTHER. JUST DON'T BE SEEN." ]);
+  think('scavNote', 'He wrote it twice. He wanted whoever found him to believe it.');
+}
+
 const USABLE = {
   mapTable: (p, ask) => ask ? 'E — read the map' : readMapTable(),
   // the north's fittings
@@ -673,6 +706,7 @@ const USABLE = {
   wreckCore: (p, ask) => ask ? (p.taken ? 'empty' : 'E — open the core') : takeSlate(p),
   tape: (p, ask) => ask ? (p.taken ? 'played' : 'E — play the tape') : playTape(p),
   deadCrew: (p, ask) => ask ? 'E — look' : readDeadCrew(p),
+  deadScav: (p, ask) => ask ? 'E — search him' : readDeadScav(p),
   deadOfficer: (p, ask) => ask ? (p.taken ? 'E — look' : 'E — search him') : readDeadOfficer(p),
   orderBoard: (p, ask) => ask ? 'E — read the board' : readOrderBoard(),
   blastDoor: (p, ask) => ask
@@ -828,7 +862,7 @@ const mission = { state: 'none' };   // none -> active -> complete -> turned
 //   s2: 0..3                                          the last shift, in tapes
 //   s3: none -> given -> done                         nothing left to cut (E4)
 const QUEST_DEFAULTS = { q2: 'none', q3: 'none', s1: 'none', s2: 0, s3: 'none',
-                         bunker: 'shut' };
+                         bunker: 'shut', provost: 'alive' };
 let Quests = Object.assign({}, QUEST_DEFAULTS);
 
 const OBJECTIVES = [
@@ -961,6 +995,7 @@ function updatePlayer(dt) {
     if (player.dead <= 0) {
       // a boss fight resets itself — you retry it, you don't redo the run
       if (typeof resetBossFight === 'function' && resetBossFight()) return;
+      if (typeof resetProvostFight === 'function' && resetProvostFight()) return;
       player.hp = player.maxHp; player.iframes = 1.2;
       // Waking up somewhere else is an area change like any other, so it goes
       // through the same fade that walking through a door does — otherwise the
@@ -1124,6 +1159,9 @@ function updatePlayer(dt) {
     // decides whether the swing lands — a melee-only player has to be able to
     // answer one, and has to wake it first like everybody else
     if (typeof sentryMeleeHit === 'function') sentryMeleeHit(player.x, player.y, m.range, m.dmg);
+    // the same swing, and the same plate: it reaches an MP and does nothing
+    if (typeof mpMeleeHit === 'function') mpMeleeHit(player.x, player.y, m.range);
+    if (typeof provostMeleeHit === 'function') provostMeleeHit(player.x, player.y, m.range, m.dmg);
     // one swing, every machine standing in the arc - fighting two at once is
     // the point of the pair, so the pipe has to be able to catch both
     for (const sc of scrappers) {
@@ -1771,6 +1809,12 @@ function updateBullets(dt) {
         break;                          // one bullet, one machine
       }
     }
+    if (!hit && typeof provostBulletHit === 'function' && provostBulletHit(b)) hit = true;
+    // MILITARY PLATE STOPS EVERYTHING. These two consume the round and return
+    // true without ever taking damage, which is the whole of "you cannot fight
+    // them" — no flag, no special case in the damage code, just plate.
+    if (!hit && typeof mpBulletHit === 'function' && mpBulletHit(b)) hit = true;
+    if (!hit && typeof cameraBulletHit === 'function' && cameraBulletHit(b)) hit = true;
     if (!hit && typeof sentryBulletHit === 'function' && sentryBulletHit(b)) hit = true;
     if (!hit && typeof droidBulletHit === 'function' && droidBulletHit(b)) hit = true;
     if (!hit) {

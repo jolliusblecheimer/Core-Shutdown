@@ -707,3 +707,43 @@ waiting for the flyers.
 
 Props on the field 413 → 701. Frame cost 13.6–14.8 ms with the detail alive and
 five guns up. **Still not built: the rust drones and the beacon sweep.**
+
+## AIRFIELD 12, REBUILT — smaller, military, and watched, 2026-09-07
+`design/airfield-rebuild.md`. **On `main`.**
+
+- **64×48 = 3,072 tiles**, down from 96×72 = 6,912. An airfield is not a village.
+  The runway still runs 55 tiles because that is the one dimension that cannot
+  come in. The id stays `field12`, so no save changes areas — but **every
+  coordinate inside it moved**, which is what `findSafeSpot` and `safeSpawn` are
+  for, and quest *state* is flags rather than positions so nothing in progress
+  was lost.
+- **THE WATCH** (`js/watch.js`) — five cameras and four military-police patrols.
+  Cones are **drawn on the ground and lit at all times**: the cone you plan
+  against is the one that has not seen you yet, so fading a cold one to the
+  sentries' alpha made it invisible and took the feature away.
+- **NOTHING ON THAT FIELD CAN BE FOUGHT.** An MP unit has no `hp` field at all —
+  not a flag, not an exception in the damage code. It is never amber, and *what
+  glows amber can be hurt; dull plate cannot* is the Compactor's rule, kept. The
+  HHD recovery detail left, because two kinds of droid — one you fight, one you
+  cannot — blunts the only rule the area has.
+- **Being held in a cone for 0.85 s calls THE SWARM**: six units in from every
+  edge, letterbox, black, dead. Unskippable the first time only.
+- **He is told three ways, and the one that teaches is shown**: Wren warns him
+  before he ever goes, a scripted beat on arrival has it happen to a scavenger
+  in front of him, and the body is out there to search afterwards.
+- **THE PROVOST** (`js/provost.js`) — the boss, in the control room, and the one
+  exception to the field's rule *because the exception is visible*: he is docked
+  with his back plate open. Docked, the plate faces the room; **loose, it is on
+  his back and only shots from behind land**. His own cone calls the swarm on
+  you, in there. Killing him takes the whole network down — every camera blind,
+  every unit stopped — and drops the plate S3 wants.
+- `updateCine` and `drawCineOverlay` were reachable **only from the prologue
+  branch**: any cutscene fired from the world started and never advanced a frame.
+  Both run during play now, and the HUD stands down under a letterbox.
+
+Frame cost **13.6–14.8 ms → 9.8–11.0 ms**. Two ways in, both sealed → 0.
+
+### Outstanding
+- The rust drones (E4) and the beacon sweep (E5) are still not built.
+- `design/map-redesign.md` — the Fringe density plan — is written and approved-
+  pending. Nothing of it has been built.

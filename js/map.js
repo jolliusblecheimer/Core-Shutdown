@@ -1425,7 +1425,12 @@ function buildFringe() {
 // come out on the airfield. They join, so neither way round is the wrong one.
 // =====================================================================
 const UNDER_W = 20, UNDER_H = 36;
-const F12_W = 96, F12_H = 72;
+// AN AIRFIELD IS NOT A VILLAGE. This was 96x72 = 6912 tiles, 23% of the Fringe,
+// and it walked like a district rather than like an installation. At 64x48 it is
+// 3072 tiles — a tenth of the Fringe — and the runway still runs 55 tiles,
+// which is the one dimension that cannot come in without it ceasing to be a
+// runway. See design/airfield-rebuild.md.
+const F12_W = 64, F12_H = 48;
 
 // ---------------------------------------------------------------------
 // THE UNDERPASS — 20 x 36. A corridor, and every tile of it is tunnel,
@@ -1536,8 +1541,8 @@ function buildField12() {
     ground[y][x] = rng() < 0.62 ? 6 : 2;
     groundVar[y][x] = (rng() * 6) | 0;
   }
-  const RW_Y0 = 24, RW_Y1 = 30;               // the runway
-  const AP = [[14, 22], [32, 44]];            // apron north and south of it
+  const RW_Y0 = 18, RW_Y1 = 23;               // the runway
+  const AP = [[12, 17], [24, 33]];            // apron north and south of it
   for (let y = 0; y < H; y++) for (let x = 4; x < W - 4; x++) {
     if (y >= RW_Y0 && y <= RW_Y1) ground[y][x] = 17;
     else if (AP.some(([a, b]) => y >= a && y <= b)) ground[y][x] = 18;
@@ -1547,33 +1552,23 @@ function buildField12() {
   for (let y = 2; y < H - 2; y++) { ground[y][2] = 18; ground[y][W - 3] = 18; }
 
   // ---- the paint ----
-  // centreline down the runway, three tiles on, two off
   for (let x = 6; x < W - 8; x += 5) decals.push({ gx: x, gy: RW_Y0 + 3, type: 'rwCentre' });
-  // edge lines, both sides, laid a tile at a time
   for (let x = 5; x < W - 6; x++) {
     decals.push({ gx: x, gy: RW_Y0, type: 'rwEdge' });
     decals.push({ gx: x, gy: RW_Y1, type: 'rwEdge' });
   }
-  // threshold piano keys at both ends, running ACROSS the runway
   for (const bx of [5, 6, 7, W - 9, W - 8, W - 7])
     decals.push({ gx: bx, gy: RW_Y0 + 1.5, type: 'rwBar' });
-  // and the numbers the runway is called by
   decals.push({ gx: 10, gy: RW_Y0 + 0.2, type: 'rwNum12' });
   decals.push({ gx: W - 16, gy: RW_Y0 + 0.2, type: 'rwNum30' });
-  // taxiway guide off the apron
-  for (let y = 16; y < RW_Y0; y++) decals.push({ gx: 46, gy: y, type: 'rwGuide' });
+  for (let y = 14; y < RW_Y0; y++) decals.push({ gx: 32, gy: y, type: 'rwGuide' });
 
   // ---- THE PERIMETER ----
-  // A MILITARY FIELD DOES NOT HAVE A FENCE, IT HAS A PERIMETER. Two lines with
-  // a sterile strip between them: chain-link and razor on the outside, concrete
-  // anti-vehicle blocks on the inside, and two tiles of open ground in between
-  // with NOTHING in it, which is what makes it sterile. Nothing is ever placed
-  // in that strip — the beacon sweeps it when E5 ships, and cover in there
-  // would take that away before it arrives.
-  //
-  // The flood fill still says two ways through and no others.
-  const GATE_X0 = 44, GATE_X1 = 48;           // vehicle gate, south
-  const BREACH_Y0 = 44, BREACH_Y1 = 48;       // west breach
+  // Two lines with a sterile strip between them: chain-link and razor outside,
+  // concrete anti-vehicle blocks inside, and open ground between with NOTHING
+  // in it, which is what makes it sterile. Two ways through and no others.
+  const GATE_X0 = 29, GATE_X1 = 33;           // vehicle gate, south
+  const BREACH_Y0 = 29, BREACH_Y1 = 33;       // west breach
   const run = (tiles, axis) => {
     if (!tiles.length) return;
     wallRun(tiles, fenceKinds(tiles.length), axis, false, true, true);
@@ -1581,14 +1576,12 @@ function buildField12() {
   };
   const rowX = (y, x0, x1) => Array.from({ length: x1 - x0 + 1 }, (_, i) => [x0 + i, y]);
   const colY = (x, y0, y1) => Array.from({ length: y1 - y0 + 1 }, (_, i) => [x, y0 + i]);
-  // the outer line, on the map's own rim
   run(rowX(0, 0, W - 1), 'x');
   run(rowX(H - 1, 0, GATE_X0 - 1), 'x');
   run(rowX(H - 1, GATE_X1 + 1, W - 1), 'x');
   run(colY(0, 0, BREACH_Y0 - 1), 'y');
   run(colY(0, BREACH_Y1 + 1, H - 1), 'y');
   run(colY(W - 1, 0, H - 1), 'y');
-  // razor coil along the top of it, and the warning boards
   for (let x = 2; x < W - 2; x += 3) {
     decals.push({ gx: x + 0.5, gy: 0.9, type: 'crack' });
     props.push({ gx: x, gy: 0, type: 'razor', dir: 'x' });
@@ -1598,12 +1591,10 @@ function buildField12() {
     props.push({ gx: 0, gy: y, type: 'razor', dir: 'y' });
     props.push({ gx: W - 1, gy: y, type: 'razor', dir: 'y' });
   }
-  for (const [sx, sy, sd] of [[20, 0, 'x'], [70, 0, 'x'], [0, 24, 'y'], [0, 96, 'y'],
-                              [30, H - 1, 'x'], [76, H - 1, 'x'], [W - 1, 30, 'y'], [W - 1, 100, 'y']])
+  for (const [sx, sy, sd] of [[14, 0, 'x'], [46, 0, 'x'], [0, 16, 'y'], [0, 40, 'y'],
+                              [18, H - 1, 'x'], [50, H - 1, 'x'], [W - 1, 20, 'y'], [W - 1, 38, 'y']])
     props.push({ gx: sx, gy: sy, type: 'warnBoard', dir: sd });
 
-  // THE INNER LINE — concrete blocks, three tiles in, with the sterile strip
-  // between. Broken only where the two ways through are.
   const IN = 3;
   const blockLine = (tiles) => {
     for (const [x, y] of tiles) {
@@ -1620,9 +1611,8 @@ function buildField12() {
   blockLine(colY(IN, BREACH_Y1 + 2, H - 1 - IN).filter((_, i) => i % 2 === 0));
   blockLine(colY(W - 1 - IN, IN, H - 1 - IN).filter((_, i) => i % 2 === 0));
 
-  // THE VEHICLE GATE — the loud way in. A chicane of blocks you walk round,
-  // and a tank parked across half of it with its gun blown off, which is the
-  // first thing anybody coming up the mid street sees.
+  // THE VEHICLE GATE — the loud way in: a chicane you walk round, and a tank
+  // with its gun blown off parked BESIDE the opening, never across it.
   props.push({ gx: GATE_X0 - 1, gy: H - 1, type: 'post', big: true });
   props.push({ gx: GATE_X1 + 1, gy: H - 1, type: 'post', big: true });
   for (const [cx, cy] of [[GATE_X0, H - 4], [GATE_X0 + 1, H - 4], [GATE_X1 - 1, H - 6], [GATE_X1, H - 6]]) {
@@ -1646,18 +1636,9 @@ function buildField12() {
   const door = (x0, x1, y) => {
     for (let x = x0; x <= x1; x++) { solid[y][x] = false; heavy[y][x] = false; ground[y][x] = 18; }
   };
-  // BUILDINGS YOU GO INSIDE. `box` fills the whole footprint solid and then the
-  // interior is hollowed back out, so the volume still draws as one pre-rendered
-  // box (the rule) and the inside of it is floor. The roof is a slab that fades
-  // as you step under it — the shack's mechanism, and the underpass's.
   const ROOFS = [];
-  // HOLLOWING THE COLLISION IS NOT ENOUGH. A building is ONE pre-rendered
-  // volume (the rule), so emptying its tiles let the player walk in and left
-  // them standing inside a closed box — the whole shed drawn over the top of
-  // them. So the volume itself is what fades: the prop is tagged `enterable`,
-  // the rectangle goes on the area's roof list, and the renderer drops it to
-  // roofAlpha while you are in it. Same idea as the shack, applied to a volume
-  // instead of to a separate roof card.
+  // Hollowing the collision is not enough — a building is ONE pre-rendered
+  // volume, so the volume itself is what fades as you step into it.
   const hollow = (x0, y0, w, h) => {
     for (let y = y0 + 1; y < y0 + h - 1; y++) for (let x = x0 + 1; x < x0 + w - 1; x++) {
       solid[y][x] = false; heavy[y][x] = false; ground[y][x] = 18;
@@ -1666,39 +1647,43 @@ function buildField12() {
     const vol = props[props.length - 1];
     if (vol && vol.type === 'building') vol.enterable = true;
   };
-  box(6, 5, 15, 9, 'A');                       // HANGAR 1 — the nest
-  hollow(6, 5, 15, 9); door(12, 15, 13);
-  box(50, 5, 15, 9, 'A');                      // HANGAR 2 — the store
-  hollow(50, 5, 15, 9); door(57, 57, 13);      // half-open: one tile passable
-  box(80, 5, 8, 9, 'O');                       // the control tower
-  hollow(80, 5, 8, 9); door(83, 84, 13);
-  // blast pens: three-sided, opening north
-  for (const px2 of [12, 34]) {
-    box(px2, 38, 10, 2, 'W');                  // the back wall
-    box(px2, 34, 2, 4, 'W');                   // and the two arms
-    box(px2 + 8, 34, 2, 4, 'W');
-  }
-  box(8, 50, 12, 7, 'G');                      // crash tender shed
-  hollow(8, 50, 12, 7); door(19, 19, 53);
-
-  // ---- THE MILITARY BUILDINGS ----
-  box(28, 5, 16, 8, 'O');                      // SQUADRON BLOCK — the ready room
-  hollow(28, 5, 16, 8); door(34, 36, 12);
-  box(38, 64, 4, 4, 'W');                      // GUARD POST, at the vehicle gate
-  hollow(38, 64, 4, 4); door(39, 40, 67);
-  // THE ORDNANCE BUNKER. Half-buried, thick, and the only door on this field
-  // that is shut. The key is on the duty officer and nowhere else.
-  box(26, 48, 10, 6, 'W');
-  hollow(26, 48, 10, 6);
-  // The door stands IN the bunker's south wall, which `box` has already made
-  // solid — so shut costs nothing and open is the same `door()` cut every other
-  // building uses. It must not stand on the tile in FRONT of the wall: that is
-  // the approach, and blocking it walls the door off from the person with the
-  // key.
-  const BUNK_DOOR = [30, 31], BUNK_Y = 53;
+  // --- the north line: two hangars and the tower between them ---
+  box(5, 5, 12, 7, 'A');                       // HANGAR 1 — the nest
+  hollow(5, 5, 12, 7); door(10, 12, 11);
+  box(46, 5, 12, 7, 'A');                      // HANGAR 2 — the store
+  hollow(46, 5, 12, 7); door(52, 52, 11);      // half-open: one tile passable
+  // THE CONTROL TOWER. The room the whole field is administered from, and the
+  // only room on it where killing something is allowed. See §5 of the plan.
+  // 14x9, which gives a 12x7 floor: the first version was 8x6 and a boss with
+  // a sweeping cone in a room that size is not a fight, it is a corridor.
+  box(26, 4, 14, 9, 'O');
+  hollow(26, 4, 14, 9); door(32, 33, 12);
+  // --- the south line ---
+  box(6, 26, 14, 6, 'O');                      // SQUADRON BLOCK — the ready room
+  hollow(6, 26, 14, 6); door(12, 14, 31);
+  box(6, 35, 10, 6, 'G');                      // CRASH TENDER SHED
+  hollow(6, 35, 10, 6); door(11, 11, 40);
+  // GUARD POST — beside the vehicle gate's approach, never IN it. The first
+  // version sat at x28-31,y41-44 and its west wall stood on 31,44, which is the
+  // tile the gate entry and safeSpawn both land on: the whole field was
+  // unreachable from its own front door.
+  box(22, 39, 4, 4, 'W');
+  hollow(22, 39, 4, 4); door(23, 24, 39);
+  // THE ORDNANCE BUNKER — the only shut door on the field. The key is on the
+  // duty officer and nowhere else. The door stands IN the south wall, never on
+  // the approach tile in front of it.
+  box(44, 26, 9, 6, 'W');
+  hollow(44, 26, 9, 6);
+  const BUNK_DOOR = [47, 48], BUNK_Y = 31;
   if (Quests && Quests.bunker === 'open') door(BUNK_DOOR[0], BUNK_DOOR[1], BUNK_Y);
   props.push({ gx: BUNK_DOOR[0], gy: BUNK_Y, type: 'blastDoor',
                foot: [BUNK_DOOR[0], BUNK_Y, 2, 1] });
+  // blast pens: three-sided, opening north
+  for (const px2 of [20, 34]) {
+    box(px2, 36, 8, 2, 'W');                   // the back wall
+    box(px2, 32, 2, 4, 'W');                   // and the two arms
+    box(px2 + 6, 32, 2, 4, 'W');
+  }
 
   Areas.field12.roofs = ROOFS;
 
@@ -1709,73 +1694,69 @@ function buildField12() {
     solid[y][x] = true;
     props.push(Object.assign({ gx: x, gy: y, type }, extra || {}));
   };
-  // HANGAR 1 — the nest. Deliberately almost empty: the vents in its roof are
-  // where the drones come out, and the floor has to be clear for that fight.
-  put(9, 8, 'crate'); put(10, 11, 'pallet'); put(17, 7, 'tug'); put(18, 10, 'barrel');
-  // HANGAR 2 — the store. Somebody camped in here, once, and left in a hurry.
-  put(60, 9, 'wrensPack');                     // S1
-  put(54, 8, 'chest', { open: false, loot: 'mre' });
-  put(56, 10, 'bedroll'); put(58, 11, 'coldFire');
-  put(62, 7, 'crate'); put(63, 10, 'pallet'); put(52, 11, 'barrel');
-  // THE CONTROL TOWER — the stair is under water, so the cab is E8's. What is
-  // on this floor is the duty desk, the breaker, and the last tape.
-  put(82, 8, 'dutyDesk'); put(85, 8, 'breaker'); put(84, 10, 'tape', { tape: 'cab' });
-  put(86, 11, 'crate');
-  // THE CRASH TENDER SHED — the appliance, the man who stayed with it, and the
-  // first tape. The only warm colour on the whole field is that appliance.
-  props.push({ gx: 13, gy: 53, type: 'tender', foot: [11, 52, 5, 2] });
-  for (let x = 11; x <= 15; x++) for (let y = 52; y <= 53; y++) solid[y][x] = true;
-  put(10, 55, 'deadCrew'); put(9, 52, 'tape', { tape: 'shed' }); put(17, 55, 'barrel');
-  // THE SQUADRON BLOCK — the ready room, the duty officer, and the one piece of
-  // new story on this field: a standing order with a date on it.
-  put(31, 8, 'deadOfficer');
-  put(35, 6, 'orderBoard');
-  put(38, 9, 'dutyDesk'); put(41, 10, 'crate'); put(30, 11, 'bedroll');
-  // THE GUARD POST — a rack and a log nobody signed after that night
-  put(39, 65, 'crate'); put(40, 66, 'dutyDesk');
+  // HANGAR 1 — the nest. Deliberately almost empty.
+  put(7, 7, 'crate'); put(8, 9, 'pallet'); put(14, 7, 'tug'); put(15, 9, 'barrel');
+  // HANGAR 2 — the store. Somebody camped in here once and left in a hurry.
+  put(52, 8, 'wrensPack');                     // S1
+  put(48, 7, 'chest', { open: false, loot: 'mre' });
+  put(50, 9, 'bedroll'); put(54, 9, 'coldFire');
+  put(56, 7, 'crate'); put(47, 9, 'pallet');
+  // THE CONTROL ROOM — monitors round the walls, a charging cradle in the
+  // middle, and the Provost in it. The desk, the breaker and the last tape are
+  // in here too: this is the room the night shift ended in.
+  for (const mx of [29, 31, 35, 37]) put(mx, 5, 'monitors', { dir: 'x' });
+  put(27, 10, 'dutyDesk'); put(38, 6, 'breaker'); put(27, 6, 'tape', { tape: 'cab' });
+  put(38, 10, 'crate');
+  // The cradle is NOT solid — the fight happens round it, and a blocked centre
+  // in a room this size would make the boss unflankable, which is the whole of
+  // phase two.
+  props.push({ gx: 32, gy: 7, type: 'cradle', foot: [31, 6, 3, 2] });
+  // THE CRASH TENDER SHED — the appliance and the man who stayed with it.
+  props.push({ gx: 10, gy: 37, type: 'tender', foot: [8, 36, 5, 2] });
+  for (let x = 8; x <= 12; x++) for (let y = 36; y <= 37; y++) solid[y][x] = true;
+  put(8, 39, 'deadCrew'); put(13, 39, 'tape', { tape: 'shed' }); put(14, 36, 'barrel');
+  // THE SQUADRON BLOCK — the duty officer, and a standing order with a date.
+  put(9, 28, 'deadOfficer');
+  put(13, 27, 'orderBoard');
+  put(16, 29, 'dutyDesk'); put(18, 28, 'crate'); put(8, 30, 'bedroll');
+  // THE GUARD POST
+  put(23, 41, 'crate'); put(24, 40, 'dutyDesk');
   // THE ORDNANCE BUNKER — the best loot on the field, behind the only shut door
-  put(28, 50, 'chest', { open: false, loot: 'crypt', part: 'optGunCam' });
-  put(33, 50, 'crate'); put(34, 51, 'barrel'); put(29, 51, 'pallet');
-  // and the second tape, dropped in a blast pen by somebody who was listening.
-  // 16,37 is INSIDE the interceptor parked in that pen — the aircraft went in
-  // after the tape did and sealed it. It sits between the aircraft and the
-  // pen's east arm now, which is where you would sit to listen to it.
-  put(19, 36, 'tape', { tape: 'pen' });
+  put(46, 28, 'chest', { open: false, loot: 'crypt', part: 'optGunCam' });
+  put(50, 28, 'crate'); put(51, 29, 'barrel'); put(45, 29, 'pallet');
+  // the second tape, in the mouth of blast pen A where somebody sat to listen
+  put(23, 32, 'tape', { tape: 'pen' });
 
-  // fuel bowsers — four tankers, and every one of them goes up
-  for (let i = 0; i < 4; i++) {
-    const bx = 62 + i * 4;
-    if (bx + 2 >= W) break;
-    for (let k = 0; k < 3; k++) solid[36][bx + k] = true;
-    props.push({ gx: bx + 1, gy: 36, type: 'bus', dir: 'x', foot: [bx, 36, 3, 1] });
-    boomBarrels.push({ gx: bx + 1, gy: 36, dead: false, r: 3 });
+  // THE SCAVENGER. He is the reason the player knows the rule: the first-sight
+  // beat runs the moment you come through the gate, and this is what is left.
+  // Dead centre of the approach, so it cannot be missed on the way north.
+  put(32, 38, 'deadScav');
+
+  // fuel bowsers — two tankers, and both of them go up
+  for (const bx of [43, 47]) {
+    for (let k = 0; k < 3; k++) solid[34][bx + k] = true;
+    props.push({ gx: bx + 1, gy: 34, type: 'bus', dir: 'x', foot: [bx, 34, 3, 1] });
+    boomBarrels.push({ gx: bx + 1, gy: 34, dead: false, r: 3 });
   }
-  // THE WRECK — the news drone that came down on the runway, and the thing
-  // the whole area is about. Work lamps still standing round it.
-  for (let y = 26; y <= 28; y++) for (let x = 44; x <= 48; x++) solid[y][x] = true;
-  props.push({ gx: 46, gy: 27, type: 'wreckDrone', foot: [44, 26, 5, 3] });
-  // The core is the one part of it the recovery detail had not reached. It
-  // stands on the wreck's own footprint, so it is interacted with by walking
-  // up to the hull rather than by finding a hotspot.
-  props.push({ gx: 45, gy: 29, type: 'wreckCore', foot: [44, 29, 5, 1] });
-  for (let x = 44; x <= 48; x++) solid[29][x] = true;
-  for (const [lx, ly] of [[42, 25], [49, 25], [46, 30]]) {
+  // THE WRECK — the news drone that came down, and the thing Q3 is about.
+  for (let y = 24; y <= 26; y++) for (let x = 26; x <= 30; x++) solid[y][x] = true;
+  props.push({ gx: 28, gy: 25, type: 'wreckDrone', foot: [26, 24, 5, 3] });
+  props.push({ gx: 27, gy: 27, type: 'wreckCore', foot: [26, 27, 5, 1] });
+  for (let x = 26; x <= 30; x++) solid[27][x] = true;
+  for (const [lx, ly] of [[24, 24], [32, 24], [28, 28]]) {
     if (solid[ly][lx]) continue;
     solid[ly][lx] = true;
     props.push({ gx: lx, gy: ly, type: 'workLamp' });
   }
-  // dead floodlight masts along the apron — unlit, every one of them
-  for (const [lx, ly] of [[26, 16], [44, 16], [62, 16], [26, 44], [44, 44], [70, 44]]) {
+  // dead floodlight masts along both aprons — unlit, every one of them
+  for (const [lx, ly] of [[15, 17], [41, 17], [56, 17], [18, 24], [40, 30], [56, 24]]) {
     if (solid[ly][lx]) continue;
     solid[ly][lx] = true;
     props.push({ gx: lx, gy: ly, type: 'apronLamp' });
   }
-  // the windsock, still turning, and the only thing that moves in the wind
-  solid[20][90] = true;
-  props.push({ gx: 90, gy: 20, type: 'windsock' });
+  if (!solid[16][59]) { solid[16][59] = true; props.push({ gx: 59, gy: 16, type: 'windsock' }); }
 
   // ---- THE HARDWARE ----
-  // What was on the field the night it stopped, and has been on it since.
   const hardware = (x0, y0, w, h, kind) => {
     for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) {
       if (x < 0 || y < 0 || x >= W || y >= H) continue;
@@ -1783,20 +1764,41 @@ function buildField12() {
     }
     props.push({ gx: x0, gy: y0, type: 'hardware', kind, foot: [x0, y0, w, h] });
   };
-  hardware(26, 17, 9, 5, 'acTransport');       // the transport, on the north apron
-  hardware(14, 35, 5, 3, 'acJet');             // an interceptor in blast pen A
-  hardware(60, 40, 6, 4, 'acJetBurnt');        // and one that did not get away
-  hardware(70, 55, 5, 3, 'tank');              // the vehicle park, facing the gate
-  hardware(70, 60, 5, 3, 'tank');
-  // and one at the gate — BESIDE it, not across it. Across it, its footprint
-  // covered the tile everything on this field is reached from.
+  hardware(17, 13, 9, 5, 'acTransport');       // the transport, on the north apron
+  hardware(21, 33, 5, 3, 'acJet');             // an interceptor in blast pen A
+  hardware(52, 32, 6, 4, 'acJetBurnt');        // and one that did not get away
+  hardware(46, 41, 5, 3, 'tank');              // the vehicle park, facing the gate
+  hardware(53, 41, 5, 3, 'tank');
   hardware(GATE_X1 + 1, H - 7, 5, 3, 'tankHulk');
-  if (!solid[20][74]) { solid[20][74] = true; props.push({ gx: 74, gy: 20, type: 'radarMast' }); }
+  if (!solid[15][44]) { solid[15][44] = true; props.push({ gx: 44, gy: 15, type: 'radarMast' }); }
+
+  // ---- THE WATCH ----
+  // Camera posts. The cone each one sweeps is DRAWN ON THE GROUND, always, so
+  // the field is something you read and plan against rather than something that
+  // surprises you. Note there is none at the west breach: that asymmetry is
+  // what makes Wren's way worth knowing about, and it is the same promise the
+  // sentries kept.
+  const CAMS = [
+    // [x, y, centre bearing, half-sweep, facing arc, range]
+    // NOT ON 31,44 — that is the tile the gate entry and safeSpawn both land on,
+    // and a camera post is solid, so putting one there sealed the whole field
+    // off from its own front door. Two tiles west, covering the same ground.
+    [28, 44, -Math.PI / 2, 0.55],              // the gate, looking north up the approach
+    [16, 11,  Math.PI / 4, 0.50],              // hangar 1's corner, over the west apron
+    [41, 13,  Math.PI / 2, 0.60],              // beside the tower, down the apron
+    [45, 11,  Math.PI * 0.75, 0.50],           // hangar 2's corner
+    [43, 31,  Math.PI, 0.45],                  // the bunker's approach
+  ];
+  // The post itself is drawn from `cameras[]`, not from props, because the
+  // lens has a state and the cone has to be drawn under it — the same reason
+  // the sentries are drawn from their own list.
+  for (const [cx, cy] of CAMS) { if (!solid[cy][cx]) solid[cy][cx] = true; }
+  Areas.field12.cameras = CAMS;
 
   // ---- dressing ----
   const free = (x, y) => x > 3 && y > 3 && x < W - 3 && y < H - 3 &&
                          !solid[y][x] && !heavy[y][x] && ground[y][x] !== 17;
-  for (let i = 0; i < 46; i++) {
+  for (let i = 0; i < 34; i++) {
     const x = 4 + ((rng() * (W - 8)) | 0), y = 4 + ((rng() * (H - 8)) | 0);
     const r = rng();
     if (!free(x, y)) continue;
@@ -1804,7 +1806,7 @@ function buildField12() {
     props.push({ gx: x, gy: y, type: r < 0.3 ? 'crate' : r < 0.55 ? 'barrel'
                               : r < 0.75 ? 'barrelTipped' : r < 0.9 ? 'debris' : 'girder' });
   }
-  for (let i = 0; i < 700; i++) {
+  for (let i = 0; i < 420; i++) {
     const x = 1 + rng() * (W - 2), y = 1 + rng() * (H - 2);
     const r = rng();
     if (solid[y | 0][x | 0]) continue;
@@ -2196,7 +2198,7 @@ const Areas = {
       // the dark and the screen fades. The spine comes out in the Underpass and
       // the mid street on the airfield.
       { x0: 28.4, y0: 12.4, x1: 32.6, y1: 15.6, to: 'underpass', entry: { x: 10.5, y: 31.5 } },
-      { x0: 90.4, y0: 12.4, x1: 94.6, y1: 15.6, to: 'field12', entry: { x: 46.5, y: 67.5 } },
+      { x0: 90.4, y0: 12.4, x1: 94.6, y1: 15.6, to: 'field12', entry: { x: 31.5, y: 44.5 } },
     ],
   },
   // THE PROLOGUE. A real area, not a set of painted cards — which is the whole
@@ -2246,48 +2248,52 @@ const Areas = {
       // in the south mouth, out the north end. Both ends of a tunnel, and
       // nothing in the side walls but the service bay.
       { x0: 7.4, y0: 33.4, x1: 12.6, y1: 35.6, to: 'fringe', entry: { x: 30.5, y: 16.5 } },
-      { x0: 7.4, y0: 0, x1: 12.6, y1: 2.6, to: 'field12', entry: { x: 3.5, y: 46.5 } },
+      { x0: 7.4, y0: 0, x1: 12.6, y1: 2.6, to: 'field12', entry: { x: 3.5, y: 31.5 } },
     ],
   },
   field12: {
     id: 'field12', name: 'AIRFIELD 12', build: buildField12,
-    world: { x: 60, y: -74 },
-    safeSpawn: { x: 46.5, y: 66.5 },       // inside the vehicle gate
+    world: { x: 60, y: -50 },
+    safeSpawn: { x: 31.5, y: 44.5 },       // inside the vehicle gate
     indoors: false, skyline: false,         // NO far-city band: see map-shape.md
-    hasScrapper: false, hasBoss: false, hasNpc: false, hasBandits: false,
-    // THE PERIMETER'S TEETH. [x, y, facing] — facing is the middle of a 150°
-    // arc, and it is the ground each gun was bolted down to cover. TWO on the
-    // vehicle gate and NONE on the west breach: that asymmetry is what makes
-    // the loud way loud and Wren's way worth knowing about.
-    hasDroids: true,
-    // THE RECOVERY DETAIL. A heavy squad — which is what puts a Magistrate on
-    // the field — working the wreck, and three lighter patrols on the perimeter
-    // road and the vehicle park. The spec's rule holds: this does not have to
-    // be a fight. The pens, the bowsers, the wing and the blast doors are all
-    // there, and the slate can be taken while they work.
-    routes: [
-      { comp: 'heavy',    pts: [[46, 33], [30, 20], [46, 33]] },   // the wreck ↔ the apron
-      { comp: 'standard', pts: [[70, 47], [70, 20]] },             // east perimeter
-      { comp: 'standard', pts: [[24, 47], [24, 20]] },             // west perimeter
-      { comp: 'light',    pts: [[68, 58], [46, 58]] },             // the vehicle park
+    hasScrapper: false, hasNpc: false, hasBandits: false,
+    // THE HHD RECOVERY DETAIL IS GONE, and so is `routes`. Two kinds of droid —
+    // one you fight and one you cannot — blunts the only rule this area has.
+    // Nothing on this field can be fought now except the Provost, and S3's
+    // shield plate comes off him instead of off a Magistrate.
+    hasDroids: false,
+    // THE WATCH. Military police units patrol these; NONE of them can be hurt,
+    // because none of them ever glows amber. Being held in a cone fills the
+    // meter, and a full meter is the swarm. See js/watch.js.
+    hasWatch: true,
+    mpRoutes: [
+      [[8, 21], [56, 21]],                  // the length of the runway
+      [[20, 28], [50, 28]],                 // the south apron, past the bunker
+      [[20, 15], [50, 15]],                 // the north apron, past the transport
+      [[8, 44], [56, 44]],                  // the perimeter road, south side
     ],
+    // THE BOSS. In the room the field is watched from, docked and open.
+    hasBoss: true, bossKind: 'provost', bossAt: { x: 32.5, y: 8.0 },
+    // A sentry LIGHTS AMBER and can be killed. Keeping three of them beside
+    // four things that cannot is what stops the MP rule reading as "the game
+    // just says no" — the contrast is the teaching.
     hasSentries: true,
     sentries: [
-      [42, 66, Math.PI / 2],                // the gate, west side, facing south
-      [50, 66, Math.PI / 2],                // the gate, east side
-      [33, 55, Math.PI / 2],                // over the ordnance bunker's door
-      [83, 14, Math.PI / 2],                // the tower, covering the apron
-      [50, 30, Math.PI],                    // the wreck, facing back down the runway
+      [27, 44, Math.PI / 2],                // the gate, west side, facing south
+      [35, 44, Math.PI / 2],                // the gate, east side
+      [43, 32, Math.PI / 2],                // over the ordnance bunker's door
     ],
     tint: '#e4e2dc',                        // bleached grey. Not blue.
     makeItems: () => ([
-      { type: 'ammo', gun: 'rifle', x: 27.5, y: 52.5, amount: 12, bob: 0.4 },
-      { type: 'snack', x: 63.5, y: 39.5, bob: 1.7 },
+      // 45,29 is the pallet's tile — the item was sealed under it. 48,29 is
+      // the open floor between the chest and the crate.
+      { type: 'ammo', gun: 'rifle', x: 48.5, y: 29.5, amount: 12, bob: 0.4 },
+      { type: 'snack', x: 55.5, y: 21.5, bob: 1.7 },
     ]),
     exits: [
       // the vehicle gate south, and the west breach onto the Underpass
-      { x0: 43.4, y0: 69.4, x1: 48.6, y1: 71.6, to: 'fringe', entry: { x: 92.5, y: 16.5 } },
-      { x0: 0.4, y0: 44.4, x1: 2.6, y1: 48.6, to: 'underpass', entry: { x: 9.5, y: 5.5 } },
+      { x0: 29.4, y0: 45.4, x1: 33.6, y1: 47.6, to: 'fringe', entry: { x: 92.5, y: 16.5 } },
+      { x0: 0.4, y0: 29.4, x1: 2.6, y1: 33.6, to: 'underpass', entry: { x: 9.5, y: 5.5 } },
     ],
   },
   candlelight: {

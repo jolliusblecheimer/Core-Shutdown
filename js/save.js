@@ -49,6 +49,12 @@ function saveGame() {
       granted: { ...granted },
       // the north's chain, flat and shallow so it merges onto defaults cleanly
       quests: { ...Quests },
+      // WHAT HE KNOWS AND WHAT HE BROKE. `swarmSeen` is what makes the death
+      // cutscene skippable from the second time; `networkDown` is a whole area
+      // having changed state and must outlive the walk home.
+      watch: typeof Watch !== 'undefined'
+        ? { swarmSeen: Watch.swarmSeen, networkDown: Watch.networkDown, firstSight: Watch.firstSight }
+        : undefined,
     };
     localStorage.setItem(saveKey(), JSON.stringify(d));
   } catch (e) { /* storage full or blocked - play on without saving */ }
@@ -137,6 +143,7 @@ function resetRun() {
   playerName = '';
   granted = {};
   Quests = Object.assign({}, QUEST_DEFAULTS);
+  if (typeof Watch !== 'undefined') Object.assign(Watch, WATCH_DEFAULTS);
   mission.state = 'none';
   bossDefeated = false;
   campMapRead = false;
@@ -343,6 +350,9 @@ function applySave(d) {
   // north existed has no `quests` at all and arrives with everything at 'none';
   // a save written before q4 exists gets q4's default the day it ships.
   Quests = Object.assign({}, QUEST_DEFAULTS, d.quests || {});
+  // merged onto defaults exactly like the quests are, so a save written before
+  // the airfield was watched loads without knowing the field is watched
+  if (typeof Watch !== 'undefined') Object.assign(Watch, WATCH_DEFAULTS, d.watch || {});
   Object.assign(Tut.done, d.tut || {});
   // robots re-enter fresh (never saved mid-chase)
   if (mission.state !== 'none' && currentAreaDef().hasScrapper) spawnScrappers();

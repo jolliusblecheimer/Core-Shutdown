@@ -3731,3 +3731,60 @@ richest ground where the player comes in. Additive only — Phase 0 is a freeze
 test that proves nothing existing moved.
 
 Awaiting approval before building.
+
+---
+
+## "Rebuild it smaller, focus on the military, add the seen-and-swarmed rule, cameras with cones, and make the boss one of these droids in the control room"
+
+Plan first (`design/airfield-rebuild.md`), then built it, then pushed.
+
+**The field is half the size**: 96×72 → **64×48**, 6,912 tiles → 3,072. The
+runway still runs 55 tiles because that is the one dimension that cannot come in
+without it ceasing to be a runway. Every quest was re-placed on the new
+coordinates and the whole chain still runs end to end.
+
+**Nothing on that field can be fought.** The MP units have **no `hp` field at
+all** — no flag, no exception in the damage code. They are never amber, and
+*what glows amber can be hurt; dull plate cannot* is the rule the player has held
+since the Compactor. The HHD recovery detail left the field: two kinds of droid,
+one you fight and one you cannot, blunts the only rule the area has. **S3's plate
+comes off the Provost now**, which gives that side quest a climax.
+
+**The cones are drawn on the ground and lit at all times.** The first pass faded
+a cold cone to the sentries' alpha and on wet tarmac it was invisible — which
+took the whole feature away, because the cone you plan against is the one that
+has *not* seen you yet.
+
+**Held in a cone for 0.85 s and the swarm comes**: six units in from every edge,
+letterbox, black, dead. Not instant — at four tiles a second, instant detection
+is a coin toss rather than stealth. Unskippable the first time only.
+
+**He is told three ways and the one that teaches is shown**: Wren warns him
+before he goes, a scripted beat on arrival has it happen to a scavenger in front
+of him, and the body is out there to search.
+
+**THE PROVOST** is in the control room, and he is the one exception *because the
+exception is visible*: docked, back plate open, amber. Docked the plate faces the
+room; **loose it is on his back and only shots from behind land**. His own cone
+calls the swarm on you, in there. Killing him takes the network down — every
+camera blind, every unit stopped.
+
+### What the harnesses caught that eyes would not
+- The guard post's wall stood on **31,44** — the tile the gate entry *and*
+  `safeSpawn` land on. Then the gate camera was put on the same tile and did it
+  again. There is a standing check for it now, across every area.
+- `openBlastDoor` still cut its doorway at the *old* field's address (30..31,
+  y53). It threw on a map with no row 53. It reads the door's own footprint now.
+- `updateCine`/`drawCineOverlay` were reachable **only from the prologue
+  branch** — a cutscene fired from the world started and never advanced a frame.
+
+### What only looking caught
+- The amber plate was 16×14 on a 32-wide body and swallowed the machine.
+- The cradle stood arms up either side and the boss vanished into his own
+  furniture.
+- The MP read as a pale floating slab with no legs.
+- The boss bar hung across the screen from 36 tiles away, through the objective.
+- The swarm started 15 tiles out and only entered frame in the last half second.
+
+Frame cost **13.6–14.8 ms → 9.8–11.0 ms**. Two ways in, both sealed → 0. All
+suites green.
