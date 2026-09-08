@@ -3868,3 +3868,43 @@ proportions that fight would be a corridor.
 
 2,506 walkable, 2,480 reachable from the gate, both ways in sealed → 0, all
 seven cameras seeing, 9.7–11.6 ms. Eight suites clean.
+
+---
+
+## Seven fixes: the aircraft, the fence, the interiors and the route
+
+**All the aircraft were wrong in the same way.** Screen depth here is u+v, and
+every fixed-wing sprite drew its whole wing *after* the fuselage — so the wing
+painted over the body and each aircraft read as a plate stuck on a tube. A wing
+that spans a fuselage needs three passes: far half, fuselage, near half. One
+`plane()` helper owns that now and the transport, interceptor and light prop are
+built from one symmetric spec. **The tank's barrel was clipped off its own
+canvas** — the rig was sized 4.2 and the gun drawn to 4.9 — which is why every
+tank was a featureless slab.
+
+**The plane in a building** was the burnt interceptor standing in the perimeter,
+plus the transport overlapping the tower and the pen's jet overlapping the pen.
+`check.js` now compares every hardware footprint to every building and the fence.
+
+**The weird thing in the middle**: no invisible walls at all — it was the
+gunless tanks and the yellow school bus that had been standing in for a fuel
+bowser since the field was built.
+
+**The fence** ran wire, razor and concrete on every side at once, including
+across both openings. Two characters now: north and east are wire with razor;
+south and west, the approach sides, are concrete and warning boards. **No razor
+anywhere near an opening** — you walk in, you don't climb in.
+
+**Every building opens.** The north row had been laid across the inner concrete
+line, which left blocks standing inside the finished rooms; they start clear of
+it now and all eight are enterable and reachable.
+
+**The route.** A new apron fence runs the full width between the runway and the
+apron with exactly two gaps — far west and far east. Sealing both leaves zero
+tiles reachable north of it. From the vehicle gate the tower door is **72 steps**:
+across open runway under two cones, east to the far gap, then the whole length of
+the apron back west past every hangar. From Wren's breach it is **45**. The quiet
+way is not just safer, it is shorter. The seven cameras sit on that route rather
+than scattered, and none is at the breach.
+
+9.1–9.8 ms. All suites clean.

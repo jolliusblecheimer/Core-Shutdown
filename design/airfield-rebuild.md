@@ -473,3 +473,83 @@ The curved-roof hangar in the reference is a plain corrugated shed here;
 | ways in, both sealed | **0** — still exactly two |
 | cameras that can see | **7 of 7**, reaches 1.8–11 |
 | frame cost | **9.7–11.6 ms** |
+
+---
+
+## 14. THE FIX PASS — aircraft, fence, interiors and the route, 2026-09-08
+
+### 1. Every aircraft was drawn wrong, and all in the same way
+Screen depth in this projection is **u + v**, and smaller is further away. Every
+fixed-wing sprite drew its **whole wing after the fuselage**, so the wing painted
+straight over the body and the aircraft read as a plate stuck on the side of a
+tube. That is why they all looked lopsided.
+
+A wing that spans the fuselage has to go down in three passes — **far half,
+fuselage, near half** — and `plane()` owns that ordering now, so the transport,
+the interceptor and the light prop are all built from one symmetric spec and
+cannot drift apart again.
+
+**The tank had no gun.** Its barrel is drawn out to u = 4.9 on a rig sized for
+L = 4.2, so it was clipped off the edge of its own canvas and every tank on the
+field was a featureless green slab.
+
+### 2. A plane in a building
+`acJetBurnt` sat at x88–93 with the inner block line at x93 — it was standing in
+the fence. The transport overlapped the tower and the pen's interceptor
+overlapped the pen's own arms. `check.js` compares every hardware footprint
+against every building and against the perimeter, so this class is caught now.
+
+### 3. The thing in the middle
+No invisible walls — the checker found zero. What was there to see was **the
+tanks with their guns clipped off** and a **yellow school bus** doing duty as a
+fuel bowser. Both fixed.
+
+### 4 & 5. The fence had no idea what it was
+It ran chain-link, razor coil *and* concrete blocks along every side at once,
+including **across both openings**. It has two characters now:
+
+| | |
+|---|---|
+| **North and east** — the deep sides, backing onto desert | wire, with razor coil |
+| **South and west** — the approach sides, where vehicles came | concrete blocks and warning boards |
+
+and **no razor within reach of either opening**. You walk in; you do not climb
+in. Razor 65 → 33, concrete 83 → 37.
+
+### 6. Every building opens
+The north buildings had been laid across the inner concrete row, which left
+blocks standing inside the finished rooms. They start at y3 now, clear of it, and
+all eight are enterable and reachable: squadron block, control tower, three
+hangars, tender shed, guard post — and the ordnance bunker, which is reachable
+the moment its door is unlocked and sealed until then, by design.
+
+### 7. THE ROUTE — and it is a walk now
+**The apron fence.** A wire line at y15, the full width of the plot, between the
+runway and the apron, with **exactly two gaps** — x19–21 at the west end and
+x78–80 at the east. Sealing both leaves **0 tiles reachable north of it**, so
+they are the only ways through.
+
+| | steps to the tower door |
+|---|---|
+| **The vehicle gate** (the loud way) | **72** — north across open runway under two cones, east to the far gap, then the whole length of the apron back west past every hangar |
+| **The west breach** (Wren's way) | **45** |
+
+That gap is the asymmetry made concrete: the quiet way is not just safer, it is
+shorter, and the player who listened to Wren feels it.
+
+The seven cameras are placed **along that route** rather than scattered: the gate
+approach, the runway crossing, both gaps, the long apron run, the last stretch to
+the tower door, and the vehicle park. Still **none at the west breach**. Four
+patrols walk the runway, the apron, the runway's south edge and the perimeter
+road. The questline is unchanged and runs end to end — it was never broken, it
+was unreachable because the buildings were.
+
+### Measured
+| | |
+|---|---|
+| walkable | 2,540, **2,511 reachable** |
+| apron fence with both gaps sealed | **0** north of it |
+| ways onto the field, both sealed | **0** — still exactly two |
+| cameras that can see | **7 of 7** |
+| patrols that move | **4 of 4** |
+| frame cost | **9.1–9.8 ms** |

@@ -4003,58 +4003,89 @@ function outlined(src) {
   (function () {
     // THE TRANSPORT. Nine tiles of high-wing freighter with four engines on it,
     // and the biggest single object in the game.
+    // ---- HOW AN AIRCRAFT IS DRAWN IN THIS PROJECTION -------------------
+    // Screen depth is u+v: SMALLER IS FURTHER AWAY. So a wing that spans the
+    // fuselage has to be drawn in three passes — FAR HALF, then the fuselage,
+    // then the NEAR HALF — or the whole wing paints over the body and the
+    // aircraft reads as a plate stuck on the side of a tube. Every fixed-wing
+    // sprite on this field had exactly that fault, which is what made them all
+    // look lopsided. `plane()` below owns the ordering so they cannot drift.
+    //
+    // Everything is symmetric about vc, the fuselage centreline.
+    const plane = (R, S) => {
+      const vc = S.vc, hb = S.body;
+      const A = S.a, B = S.b, T = S.t;
+      const halfB = S.bodyW / 2, halfW = S.span / 2;
+      // 1. FAR wing and FAR tailplane (smaller v)
+      R.box(S.wu0, vc - halfW, S.wu1, vc - halfB, S.wh, S.wh + S.wt, T, A, A);
+      if (S.tp) R.box(S.tu0, vc - S.tp, S.tu1, vc - halfB, S.th, S.th + 1.5, T, A, A);
+      // 2. the fuselage, and the fin standing on it
+      R.box(S.fu0, vc - halfB, S.fu1, vc + halfB, hb, hb + S.bodyH, T, A, B);
+      if (S.glass) R.flat(S.gu0, vc - halfB * 0.8, S.gu1, vc + halfB * 0.8, hb + S.bodyH + 0.3, S.glass);
+      R.box(S.fnu0, vc - halfB * 0.55, S.fnu1, vc + halfB * 0.55, hb + S.bodyH, S.finH, T, A, B);
+      // 3. NEAR wing and NEAR tailplane (larger v), which sit in front of it
+      R.box(S.wu0, vc + halfB, S.wu1, vc + halfW, S.wh, S.wh + S.wt, T, A, A);
+      if (S.tp) R.box(S.tu0, vc + halfB, S.tu1, vc + S.tp, S.th, S.th + 1.5, T, A, A);
+      // 4. engines, in pairs, far one first
+      for (const off of (S.eng || [])) {
+        R.box(S.eu0, vc - off - S.ew, S.eu1, vc - off + S.ew, S.wh - S.ed, S.wh + S.ed, T, B, B);
+        R.box(S.eu0, vc + off - S.ew, S.eu1, vc + off + S.ew, S.wh - S.ed, S.wh + S.ed, T, B, B);
+      }
+      // 5. undercarriage
+      for (const [u, off] of (S.gear || [])) {
+        R.box(u, vc - off - 0.12, u + 0.28, vc - off + 0.12, 0, hb, '#2b2e28', '#1b1e19', '#1b1e19');
+        R.box(u, vc + off - 0.12, u + 0.28, vc + off + 0.12, 0, hb, '#2b2e28', '#1b1e19', '#1b1e19');
+      }
+    };
+
+    // THE TRANSPORT. Nine tiles of high-wing freighter with four engines on it,
+    // and the biggest single object in the game.
     const transport = () => {
       const R = isoRig(9, 5, 46);
-      const HULL = '#5d6157', HULL_D = '#43473f', TOP = '#6c7065';
-      // wing first: it is BEHIND the fuselage from this camera, and it spans
-      // the full width, which is what makes the thing read as an aeroplane
-      R.box(2.6, 0.0, 5.0, 5.0, 26, 29, '#666a5f', '#4a4e45', '#4a4e45');
-      for (const v of [0.7, 1.5, 3.5, 4.3]) {      // four engine nacelles
-        R.box(2.1, v, 3.4, v + 0.5, 22, 28, '#585c53', '#3f433b', '#3f433b');
-        R.flat(2.05, v + 0.05, 2.15, v + 0.45, 25, '#2a2d27');
-      }
-      // fuselage
-      R.box(0.4, 1.9, 8.2, 3.1, 6, 26, TOP, HULL, HULL_D);
-      R.flat(0.6, 1.95, 7.9, 3.05, 26.5, '#767a6e');       // spine highlight
-      for (let i = 0; i < 9; i++)                          // cabin windows
-        R.flat(1.2 + i * 0.72, 3.08, 1.5 + i * 0.72, 3.12, 21, '#1d2126');
-      // the tail: fin and tailplane, at the rear (low u)
-      R.box(0.35, 2.35, 1.1, 2.65, 26, 46, '#666a5f', '#484c43', '#484c43');
-      R.box(0.4, 1.2, 1.3, 3.8, 40, 42, '#5f6359', '#464a41', '#464a41');
-      R.flat(0.5, 2.4, 1.0, 2.6, 46.5, '#7a7e71');
-      // nose, and the gear under it
-      R.box(8.2, 2.1, 8.9, 2.9, 10, 22, TOP, HULL, '#4e5249');
-      for (const [u, v] of [[7.6, 2.5], [3.2, 1.2], [3.2, 3.8]])
-        R.box(u, v - 0.15, u + 0.3, v + 0.15, 0, 7, '#2a2d27', '#1c1f1a', '#1c1f1a');
+      plane(R, {
+        vc: 2.5, a: '#5d6355', b: '#41463c', t: '#767c6b',
+        fu0: 0.7, fu1: 8.3, body: 7, bodyH: 11, bodyW: 1.2,
+        gu0: 7.0, gu1: 8.1, glass: '#232c33',
+        span: 5.0, wu0: 3.2, wu1: 5.0, wh: 17, wt: 1.4,
+        fnu0: 0.8, fnu1: 2.0, finH: 34,
+        tp: 1.9, tu0: 0.9, tu1: 1.9, th: 30,
+        eng: [1.1, 2.0], eu0: 3.4, eu1: 4.9, ew: 0.34, ed: 1.1,
+        gear: [[1.6, 0.9], [5.2, 0.9]],
+      });
       return R.finish();
     };
 
-    // THE INTERCEPTOR. Six tiles, low wing, one engine, canopy pushed back.
+    // AN INTERCEPTOR. Low wing, one engine, a canopy. Burnt, it is the same
+    // volume with a wing gone and the fire's colours on it.
     const jet = (burnt) => {
       const R = isoRig(6, 4, 30);
       const A = burnt ? '#3a352f' : '#5a6058', B = burnt ? '#26221e' : '#41463f';
       const T = burnt ? '#454039' : '#6a7067';
-      R.box(0.5, 1.75, 5.4, 2.25, 4, 16, T, A, B);           // fuselage
-      if (!burnt) R.box(1.4, 0.0, 3.2, 4.0, 10, 12, '#606659', '#454a41', '#454a41');
-      else        R.box(1.4, 1.9, 3.2, 4.0, 10, 12, '#3d382f', '#282420', '#282420');
-      R.box(0.6, 1.85, 1.5, 2.15, 16, 30, T, A, B);          // fin
-      R.box(0.7, 1.1, 1.4, 2.9, 24, 26, T, A, B);            // tailplane
-      R.flat(2.6, 1.85, 3.9, 2.15, 16.5, burnt ? '#141210' : '#20262e');   // canopy
-      if (!burnt) R.flat(2.7, 1.9, 3.3, 2.1, 17, '#3c4a58');
-      R.box(5.4, 1.85, 5.9, 2.15, 6, 13, B, B, '#1c1f1a');   // nose cone
-      for (const [u, v] of [[4.6, 2.0], [2.2, 1.3], [2.2, 2.7]])
-        R.box(u, v - 0.12, u + 0.25, v + 0.12, 0, 5, '#242721', '#17190f', '#17190f');
-      if (burnt) {                                            // and what fire does
-        R.flat(1.8, 1.8, 4.2, 2.2, 16.6, 'rgba(12,10,9,0.55)');
-        R.flat(2.4, 1.85, 3.6, 2.15, 16.8, '#100e0d');
+      const S = {
+        vc: 2.0, a: A, b: B, t: T,
+        fu0: 0.6, fu1: 5.6, body: 4, bodyH: 12, bodyW: 0.55,
+        gu0: 2.7, gu1: 4.0, glass: burnt ? '#141210' : '#20262e',
+        span: 4.0, wu0: 1.5, wu1: 3.2, wh: 9, wt: 1.6,
+        fnu0: 0.7, fnu1: 1.6, finH: 29,
+        tp: 1.5, tu0: 0.8, tu1: 1.5, th: 23,
+        gear: [[1.9, 1.0], [4.4, 0.35]],
+      };
+      if (burnt) S.span = 0.55 * 2;              // one wing is simply gone
+      plane(R, S);
+      if (burnt) {
+        // and the near wing on its own, torn off short
+        R.box(1.5, 2.55, 3.2, 3.3, 9, 10.6, T, A, A);
+        R.flat(1.8, 1.6, 4.2, 2.4, 16.4, 'rgba(12,10,9,0.55)');
       }
+      R.box(5.6, 1.85, 6.0, 2.15, 6, 11, B, B, '#1c1f1a');    // nose cone
       return R.finish();
     };
 
-    // THE TANK. Four tiles of hull on tracks, a turret, and a gun that is
-    // pointed at the gate — which tells you which way they expected it to come.
     const tank = (gunless) => {
-      const R = isoRig(4.2, 2.6, 30);
+      // 5.2, NOT 4.2. The barrel is drawn out to u = 4.9 and the rig was sized
+      // for 4.2, so the gun was clipped off the edge of its own canvas and
+      // every tank on the field read as a featureless green slab.
+      const R = isoRig(5.2, 2.6, 30);
       const HULL = '#4f5346', HULL_D = '#383b31', TOP = '#5c6053';
       R.box(0.2, 0.15, 4.0, 0.75, 0, 9, '#262822', '#1a1c17', '#1a1c17');   // tracks
       R.box(0.2, 1.85, 4.0, 2.45, 0, 9, '#2c2e27', '#1a1c17', '#1a1c17');
@@ -4095,20 +4126,21 @@ function outlined(src) {
     // A LIGHT PROP at the west threshold — high wing, one engine, fixed gear.
     // The small aircraft in the reference picture.
     const prop = () => {
-      const R = isoRig(5.5, 4.5, 24);
-      const A = '#8d9398', B = '#6c7276', T = '#a6acb0';
-      R.box(0.6, 2.05, 4.6, 2.45, 4, 13, T, A, B);            // fuselage
-      R.box(1.7, 0.4, 2.9, 4.1, 13, 15, '#9aa0a4', '#767c80', '#767c80'); // high wing
-      R.box(0.7, 2.1, 1.4, 2.4, 13, 24, T, A, B);             // fin
-      R.box(0.8, 1.4, 1.5, 3.1, 20, 22, T, A, B);             // tailplane
-      R.flat(3.0, 2.1, 4.0, 2.4, 13.5, '#25303a');            // glazing
-      R.box(4.6, 2.1, 5.0, 2.4, 6, 11, B, B, '#33383a');      // cowling
-      R.box(5.0, 2.22, 5.15, 2.28, 2, 15, '#3f4447', '#2c3033', '#2c3033'); // prop
-      for (const [u, v] of [[2.2, 1.5], [2.2, 3.0], [1.1, 2.25]])
-        R.box(u, v - 0.1, u + 0.2, v + 0.1, 0, 4, '#2b2f31', '#1b1e1f', '#1b1e1f');
+      const R = isoRig(6, 5, 26);
+      plane(R, {
+        vc: 2.5, a: '#8d9398', b: '#6c7276', t: '#a6acb0',
+        fu0: 0.8, fu1: 4.9, body: 4, bodyH: 8, bodyW: 0.5,
+        gu0: 3.0, gu1: 4.2, glass: '#25303a',
+        span: 5.0, wu0: 2.0, wu1: 3.1, wh: 12, wt: 1.2,   // HIGH wing, over the body
+        fnu0: 0.85, fnu1: 1.6, finH: 22,
+        tp: 1.6, tu0: 0.95, tu1: 1.6, th: 17,
+        gear: [[2.2, 1.1], [1.2, 0.0]],
+      });
+      const B = '#6c7276';
+      R.box(4.9, 2.15, 5.4, 2.85, 5, 11, B, B, '#33383a');       // cowling
+      R.box(5.4, 2.44, 5.55, 2.56, 2, 15, '#3f4447', '#2c3033', '#2c3033');  // the prop disc, edge on
       return R.finish();
     };
-    // AND A HELICOPTER on the pad — the other aircraft in the picture.
     const heli = () => {
       const R = isoRig(4.5, 3.5, 30);
       const A = '#525c47', B = '#3a4232', T = '#6a7659';
