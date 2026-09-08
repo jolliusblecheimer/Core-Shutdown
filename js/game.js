@@ -986,6 +986,7 @@ function enterArea(id, entry) {
   // entry rather than persisting; only what you have DESTROYED is remembered.
   if (typeof spawnWatch === 'function') spawnWatch();
   if (typeof spawnProvostFor === 'function') spawnProvostFor(id);
+  if (typeof spawnArchivistFor === 'function') spawnArchivistFor(id);
   buildFolk(Areas[id].folk);
   questsOnEnter(id);
   if (entry) {
@@ -1367,6 +1368,7 @@ function update(dt) {
     updateGateCine(dt);
     updateBoss(dt);
     updateProvost(dt);
+    updateArchivist(dt);
     updateNpc(dt);
     updateBullets(dt);
     updateFoeBullets(dt);
@@ -1931,6 +1933,10 @@ function render() {
     const s = isoToScreen(provost.x, provost.y);
     draws.push({ depth: s.y, draw: () => drawProvost(s.x - ox, s.y - oy) });
   }
+  if (typeof archivist !== 'undefined' && archivist.active) {
+    const s = isoToScreen(archivist.x, archivist.y);
+    draws.push({ depth: s.y, draw: () => drawArchivist(s.x - ox, s.y - oy) });
+  }
   const TUN = areaRoofs().filter(t => !t.noSlab);
   if (TUN.length) {
     for (const t of TUN) {
@@ -2469,17 +2475,26 @@ function drawCone(wx, wy, aim, half, range, heat, x, y) {
   // is invisible — which took the whole point away, because the cone you plan
   // against is the one that has NOT seen you yet. It is lit at all times, and
   // the heat only changes its colour and how hard it burns.
+  //
+  // AND IT STOPS AT WALLS. Every ray is clipped by `rayReach`, the same call
+  // the detection test uses, so the shape on the ground is exactly the ground
+  // that can see you. Drawn straight through a hangar it was a promise the
+  // game did not keep, in both directions: it looked dangerous where it was
+  // safe, and safe nowhere.
   const hot = heat > 0.98, warm = heat > 0.02;
+  const N = 14;
+  const pts = [];
+  for (let i = 0; i <= N; i++) {
+    const a = -half + (2 * half) * (i / N);
+    const r = rayReach(wx, wy, aim + a, range);
+    const p2 = isoToScreen(wx + Math.cos(aim + a) * r, wy + Math.sin(aim + a) * r);
+    pts.push([p2.x - lastOx, p2.y - lastOy]);
+  }
   ctx.fillStyle = hot ? '#c9452c' : warm ? '#e08a24' : '#7fb0c8';
   ctx.globalAlpha = hot ? 0.34 : 0.15 + heat * 0.13;
   ctx.beginPath();
   ctx.moveTo(x, y);
-  const pts = [];
-  for (let a = -half; a <= half + 0.001; a += half / 9) {
-    const p2 = isoToScreen(wx + Math.cos(aim + a) * range, wy + Math.sin(aim + a) * range);
-    pts.push([p2.x - lastOx, p2.y - lastOy]);
-    ctx.lineTo(p2.x - lastOx, p2.y - lastOy);
-  }
+  for (const q of pts) ctx.lineTo(q[0], q[1]);
   ctx.closePath(); ctx.fill();
   // and an edge along the far arc, so it reads as a BOUNDARY you can stand
   // just outside of rather than as a smudge
@@ -2506,7 +2521,14 @@ function drawCamera(c, x, y) {
     return;
   }
   const down = typeof Watch !== 'undefined' && Watch.networkDown;
-  if (!down) drawCone(c.x, c.y, c.aim, WATCH.camArc, WATCH.camRange, watcherHeat(c), x, y);
+  if (!down) {
+    // FROM THE LENS. The cone is cast from the same offset eye the detection
+    // uses (`camEye`), because the mounting it is bolted to is a solid tile.
+    const e = camEye(c);
+    const es = isoToScreen(e.x, e.y);
+    drawCone(e.x, e.y, c.aim, WATCH.camArc, WATCH.camRange, watcherHeat(c),
+             es.x - lastOx, es.y - lastOy);
+  }
   drawShadow(x, y, 4);
   const img = down ? Sprites.camPost : Sprites.camPostOn;
   ctx.drawImage(img, Math.round(x - 8), Math.round(y - 34));
@@ -2532,6 +2554,30 @@ function drawMP(m, x, y, swarm) {
     ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
   }
   if (!down) addLight(x, y - 20, 0, 14, '111,211,255', 0.18);
+}
+
+function drawArchivist(x, y) {
+  const a = archivist;
+  const set = Sprites.archivist;
+  if (a.state === 'dead') {
+    ctx.globalAlpha = Math.max(0.4, 1 - a.deadT * 0.05);
+    ctx.drawImage(set.dead.img, Math.round(x - set.dead.ox), Math.round(y - set.dead.oy));
+    ctx.globalAlpha = 1;
+    return;
+  }
+  drawShadow(x, y, 9);
+  // OPEN MEANS PLUGGED IN, and plugged in is the only time it can be hurt.
+  const open = archivistOpen();
+  const frames = open ? set.open : set.closed;
+  const f = frames[(a.anim * 4 | 0) % 2];
+  ctx.drawImage(f.img, Math.round(x - f.ox), Math.round(y - f.oy));
+  if (open) addLight(x, y - 14, 0, 20, '236,150,60', 0.35);
+  else addLight(x, y - 14, 0, 12, '111,211,255', 0.18);
+  if (a.hitFlash > 0) {
+    ctx.globalAlpha = 0.7; ctx.globalCompositeOperation = 'lighter';
+    ctx.drawImage(f.img, Math.round(x - f.ox), Math.round(y - f.oy));
+    ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+  }
 }
 
 function drawProvost(x, y) {
@@ -3011,6 +3057,10 @@ function drawProp(p, x, y) {
     oyOff = -24; drawShadow(x, y, 12);
   }
   else if (T === 'cradle')    { img = Sprites.cradle;   oyOff = -10; drawShadow(x, y, 16); }
+  else if (T === 'rack')      { img = Sprites.rack;     oyOff = -30; drawShadow(x, y, 20); }
+  else if (T === 'stairUp')   { img = Sprites.stairUp;  oyOff = -14; }
+  else if (T === 'stairDown') { img = Sprites.stairDown; oyOff = -14; }
+  else if (T === 'cabGlass')  { img = Sprites.cabGlass; oyOff = -26; }
   else if (T === 'deadScav')  { img = Sprites.deadScav; oyOff = -12; drawShadow(x, y, 9); }
   else if (T === 'blastDoor') {
     const im = Sprites.blastDoor;
@@ -3980,6 +4030,15 @@ function drawHUD() {
     uiRect(VIEW_W / 2 - 84, 19, 168, 3, '#3a1410');
     uiRect(VIEW_W / 2 - 84, 19, Math.round(168 * Math.max(0, boss.hp) / boss.maxHp), 3, '#ff5040');
   }
+  if (typeof archivist !== 'undefined' && archivist.active && archivist.state !== 'dead') {
+    ptext(archivist.name, VIEW_W / 2, 6, 8, '#ff5040', 'center');
+    uiRect(VIEW_W / 2 - 70, 17, 140, 7, 'rgba(0,0,0,0.6)');
+    uiRect(VIEW_W / 2 - 68, 19, 136, 3, '#3a1410');
+    uiRect(VIEW_W / 2 - 68, 19, Math.round(136 * Math.max(0, archivist.hp) / archivist.maxHp), 3, '#ff5040');
+    // and what state it is in, because the whole fight is waiting for the window
+    ptext(archivistOpen() ? 'PLUGGED IN — HIT IT' : 'OFF THE RACK — KEEP AWAY',
+          VIEW_W / 2, 26, 7, archivistOpen() ? '#ffb84a' : '#9aa4ad', 'center');
+  }
   if (typeof provost !== 'undefined' && provost.active && provost.state !== 'dead' &&
       provostEngaged()) {
     ptext(provost.name, VIEW_W / 2, 6, 8, '#ff5040', 'center');
@@ -3992,12 +4051,13 @@ function drawHUD() {
   // The same eye the scrappers use, because it means the same thing: something
   // is deciding whether it has seen you. On this field the end of the fill is
   // not a fight, and the word under it is the only place the game says so.
-  if (typeof Watch !== 'undefined' && Watch.seen > 0.02 && !Watch.swarm &&
+  const seenNow = (typeof seenLevel === 'function') ? seenLevel() : 0;
+  if (typeof Watch !== 'undefined' && seenNow > 0.02 && !Watch.swarm &&
       currentAreaDef().hasWatch && !Watch.networkDown) {
     const cx = VIEW_W / 2, ay = VIEW_H - 44;
-    drawSuspicionUI(cx, ay, Watch.seen);
-    if (Watch.seen > 0.55)
-      ptext('SEEN', cx, ay - 12, 8, Watch.seen > 0.85 ? '#ff5a3c' : '#e8a24a', 'center');
+    drawSuspicionUI(cx, ay, seenNow);
+    if (seenNow > 0.55)
+      ptext('SEEN', cx, ay - 12, 8, seenNow > 0.85 ? '#ff5a3c' : '#e8a24a', 'center');
   }
 
   // thought bubble — the traveller's inner voice
@@ -4044,7 +4104,9 @@ function drawHUD() {
   const bossBarUp = (boss.active && boss.state !== 'hidden' && boss.state !== 'dead' &&
                      boss.state !== 'reveal') ||
                     (typeof provost !== 'undefined' && provost.active &&
-                     provost.state !== 'dead' && provostEngaged());
+                     provost.state !== 'dead' && provostEngaged()) ||
+                    (typeof archivist !== 'undefined' && archivist.active &&
+                     archivist.state !== 'dead');
   if (obj && !bossBarUp) {
     ptext('*', 8, 8, 8, '#ffd27a');
     ptext(obj.title, 16, 8, 8);
@@ -4098,7 +4160,10 @@ function drawHUD() {
 
   // floating message
   if (Msg.t > 0) {
-    ptext(Msg.text, VIEW_W / 2, 24, 8, '#ffd27a', 'center', Math.min(1, Msg.t));
+    // A BOSS BAR OWNS THE TOP OF THE SCREEN. The banner lives at y24, which is
+    // exactly where a boss health bar and its status line sit, so walking into
+    // a boss room printed the area's name straight through both of them.
+    ptext(Msg.text, VIEW_W / 2, bossBarUp ? 38 : 24, 8, '#ffd27a', 'center', Math.min(1, Msg.t));
   }
 
   }   // ---- end of the world HUD ----

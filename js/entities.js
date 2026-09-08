@@ -548,7 +548,17 @@ function takeWrensPack(p) {
 // THE SLATE. The recovery detail was working the wreck outside-in and had not
 // reached the core, which is the only reason this is still here.
 function takeSlate(p) {
-  if (p.taken) { startDialog(["Opened up, and emptied. Nothing else in there for me."]); return; }
+  if (p.taken) { startDialog(["Pulled, and nothing else on the rack is readable."]); return; }
+  // THE THING ON THE RACK IS STILL PLUGGED INTO IT. You do not get the
+  // recording by walking up to it; you get it by taking it off the machine
+  // that has been sitting on it for a year.
+  if (typeof archivist !== 'undefined' && archivist.active && archivist.state !== 'dead') {
+    startDialog([
+      "The rack is live and something is drawing off it.",
+      "It has a jack in the third bay and it has not moved in a year.",
+      "Nothing comes out of here while that is still in." ]);
+    return;
+  }
   p.taken = true;
   Quests.q3 = 'slate';
   player.inv.slate = 1;
@@ -704,6 +714,13 @@ const USABLE = {
     ? (Quests.q2 === 'mast' ? 'E — mount the aerial' : 'E — look') : mountAerial(p),
   wrensPack: (p, ask) => ask ? (p.taken ? 'empty' : 'E — take the pack') : takeWrensPack(p),
   wreckCore: (p, ask) => ask ? (p.taken ? 'empty' : 'E — open the core') : takeSlate(p),
+  rack: (p, ask) => ask
+    ? (p.taken ? 'stripped'
+       : (typeof archivist !== 'undefined' && archivist.active && archivist.state !== 'dead')
+         ? 'occupied' : 'E — pull the recording')
+    : takeSlate(p),
+  stairUp: (p, ask) => ask ? 'E — up the tower' : null,
+  stairDown: (p, ask) => ask ? 'E — back down' : null,
   tape: (p, ask) => ask ? (p.taken ? 'played' : 'E — play the tape') : playTape(p),
   deadCrew: (p, ask) => ask ? 'E — look' : readDeadCrew(p),
   deadScav: (p, ask) => ask ? 'E — search him' : readDeadScav(p),
@@ -862,7 +879,7 @@ const mission = { state: 'none' };   // none -> active -> complete -> turned
 //   s2: 0..3                                          the last shift, in tapes
 //   s3: none -> given -> done                         nothing left to cut (E4)
 const QUEST_DEFAULTS = { q2: 'none', q3: 'none', s1: 'none', s2: 0, s3: 'none',
-                         bunker: 'shut', provost: 'alive' };
+                         bunker: 'shut', provost: 'alive', archivist: 'alive' };
 let Quests = Object.assign({}, QUEST_DEFAULTS);
 
 const OBJECTIVES = [
@@ -920,14 +937,14 @@ const OBJECTIVES = [
     area: 'fringe', x: 92, y: 20,
     detail: 'Something is still transmitting, from the night it happened, on a machine nobody told to stop. It is north of here.',
     log: 'Followed the loop north, under the viaduct.' },
-  { id: 'theWreck', title: () => 'Reach the wreck on the runway',
-    area: 'field12', x: 46, y: 27,
-    detail: 'The loop is louder inside the fence. Whatever is repeating it came down on that runway.',
-    log: 'Reached the wreck, and took the slate out of it.' },
+  { id: 'theWreck', title: () => 'Get to the top of the tower',
+    area: 'field12', x: 28, y: 9,
+    detail: 'The loop is coming off the tower, not the runway. Everything this field ever saw was written to a rack up there.',
+    log: 'Got up the tower, and took the recording off the rack.' },
   // THE HEADACHE IS NEVER MARKED. What he saw on that slate is not a place you
   // can walk to, and a dot pointing anywhere would be the game explaining it.
   { id: 'seen', title: () => 'Understand what you saw', silent: true,
-    area: 'field12', x: 46, y: 27,
+    area: 'field12', x: 28, y: 9,
     detail: '',
     log: 'Watched a city turn at once, on a command with a name on it.' },
 ];
@@ -996,6 +1013,7 @@ function updatePlayer(dt) {
       // a boss fight resets itself — you retry it, you don't redo the run
       if (typeof resetBossFight === 'function' && resetBossFight()) return;
       if (typeof resetProvostFight === 'function' && resetProvostFight()) return;
+      if (typeof resetArchivistFight === 'function' && resetArchivistFight()) return;
       player.hp = player.maxHp; player.iframes = 1.2;
       // Waking up somewhere else is an area change like any other, so it goes
       // through the same fade that walking through a door does — otherwise the
@@ -1162,6 +1180,7 @@ function updatePlayer(dt) {
     // the same swing, and the same plate: it reaches an MP and does nothing
     if (typeof mpMeleeHit === 'function') mpMeleeHit(player.x, player.y, m.range);
     if (typeof provostMeleeHit === 'function') provostMeleeHit(player.x, player.y, m.range, m.dmg);
+    if (typeof archivistMeleeHit === 'function') archivistMeleeHit(player.x, player.y, m.range, m.dmg);
     // one swing, every machine standing in the arc - fighting two at once is
     // the point of the pair, so the pipe has to be able to catch both
     for (const sc of scrappers) {
@@ -1810,6 +1829,7 @@ function updateBullets(dt) {
       }
     }
     if (!hit && typeof provostBulletHit === 'function' && provostBulletHit(b)) hit = true;
+    if (!hit && typeof archivistBulletHit === 'function' && archivistBulletHit(b)) hit = true;
     // MILITARY PLATE STOPS EVERYTHING. These two consume the round and return
     // true without ever taking damage, which is the whole of "you cannot fight
     // them" — no flag, no special case in the damage code, just plate.

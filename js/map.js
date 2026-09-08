@@ -1711,6 +1711,8 @@ function buildField12() {
   // in a room this size would make the boss unflankable, which is the whole of
   // phase two.
   props.push({ gx: 32, gy: 7, type: 'cradle', foot: [31, 6, 3, 2] });
+  // THE STAIR UP. The tower has a top, and the recording is on it.
+  props.push({ gx: 28, gy: 9, type: 'stairUp' });
   // THE CRASH TENDER SHED — the appliance and the man who stayed with it.
   props.push({ gx: 10, gy: 37, type: 'tender', foot: [8, 36, 5, 2] });
   for (let x = 8; x <= 12; x++) for (let y = 36; y <= 37; y++) solid[y][x] = true;
@@ -1741,7 +1743,9 @@ function buildField12() {
   // THE WRECK — the news drone that came down, and the thing Q3 is about.
   for (let y = 24; y <= 26; y++) for (let x = 26; x <= 30; x++) solid[y][x] = true;
   props.push({ gx: 28, gy: 25, type: 'wreckDrone', foot: [26, 24, 5, 3] });
-  props.push({ gx: 27, gy: 27, type: 'wreckCore', foot: [26, 27, 5, 1] });
+  // THE WRECK IS SCENERY NOW. It came down here and it is worth looking at,
+  // but the recording is not in it — it is in the tower's rack, which is where
+  // a year of camera feed would actually be. No core to open.
   for (let x = 26; x <= 30; x++) solid[27][x] = true;
   for (const [lx, ly] of [[24, 24], [32, 24], [28, 28]]) {
     if (solid[ly][lx]) continue;
@@ -1779,25 +1783,47 @@ function buildField12() {
   // what makes Wren's way worth knowing about, and it is the same promise the
   // sentries kept.
   const CAMS = [
-    // [x, y, centre bearing, half-sweep, facing arc, range]
-    // NOT ON 31,44 — that is the tile the gate entry and safeSpawn both land on,
-    // and a camera post is solid, so putting one there sealed the whole field
-    // off from its own front door. Two tiles west, covering the same ground.
-    [28, 44, -Math.PI / 2, 0.55],              // the gate, looking north up the approach
-    [16, 11,  Math.PI / 4, 0.50],              // hangar 1's corner, over the west apron
-    [41, 13,  Math.PI / 2, 0.60],              // beside the tower, down the apron
-    [45, 11,  Math.PI * 0.75, 0.50],           // hangar 2's corner
-    [43, 31,  Math.PI, 0.45],                  // the bunker's approach
+    // AIMED ALONG OPEN GROUND, NOT INTO A WALL. The first set was mounted on
+    // building corners looking at the buildings: measured reaches of 0.3, 1.3
+    // and 1.8 tiles, so six of the seven covered essentially nothing. Every one
+    // of these is pointed down a corridor the player actually walks, and
+    // `camtest` prints the reach of each so it cannot silently regress.
+    // Still NONE at the west breach: that asymmetry is what makes Wren's way
+    // worth knowing about, and it is the same promise the guns used to keep.
+    [29, 40, -Math.PI / 2, 0.45],              // straight up the gate approach
+    [20, 24,  0,           0.45],              // the south apron, looking east
+    [50, 24,  Math.PI,     0.45],              // the south apron, looking west
+    [10, 21,  0,           0.40],              // down the runway, east
+    [52, 21,  Math.PI,     0.40],              // down the runway, west
+    [32, 13,  Math.PI / 2, 0.50],              // under the tower, looking south
+    // The bunker sits in a corner with a blast pen and two bowsers round it —
+    // every westward aim from there clipped at half a tile. This one watches
+    // the last stretch to the TOWER DOOR instead, which is what the field is
+    // actually guarding now.
+    [36, 16, -Math.PI / 2, 0.45],              // the approach to the tower door
   ];
   // The post itself is drawn from `cameras[]`, not from props, because the
   // lens has a state and the cone has to be drawn under it — the same reason
   // the sentries are drawn from their own list.
-  for (const [cx, cy] of CAMS) { if (!solid[cy][cx]) solid[cy][cx] = true; }
+  //
+  // AND IT IS NOT SOLID. A camera is a bracket and a housing on a pole; making
+  // its tile collide has caused three separate bugs and nothing else. It sealed
+  // the field off from its own front door (31,44 is the gate entry AND the
+  // safeSpawn); it stood in the middle of the runway at 10,21 and blocked both
+  // a patrol's path and its line of sight, so that patrol could never see
+  // anything down the runway it was patrolling. There is no version of this
+  // where a thin post you can brush past is worth that.
   Areas.field12.cameras = CAMS;
 
   // ---- dressing ----
+  // NOT INSIDE A ROOM. The scatter pass was dropping crates and barrels into
+  // the hangars, the squadron block, the bunker and the control room — rooms
+  // that are dressed by hand, one of which had junk land on the tile the stair
+  // puts you down on. Interiors are exactly the rectangles on ROOFS.
+  const inARoom = (x, y) => ROOFS.some(r => x >= r.x0 && x <= r.x1 && y >= r.y0 && y <= r.y1);
   const free = (x, y) => x > 3 && y > 3 && x < W - 3 && y < H - 3 &&
-                         !solid[y][x] && !heavy[y][x] && ground[y][x] !== 17;
+                         !solid[y][x] && !heavy[y][x] && ground[y][x] !== 17 &&
+                         !inARoom(x, y);
   for (let i = 0; i < 34; i++) {
     const x = 4 + ((rng() * (W - 8)) | 0), y = 4 + ((rng() * (H - 8)) | 0);
     const r = rng();
@@ -1811,6 +1837,71 @@ function buildField12() {
     const r = rng();
     if (solid[y | 0][x | 0]) continue;
     decals.push({ gx: x, gy: y, type: r < 0.42 ? 'crack' : r < 0.74 ? 'weed' : 'stain' });
+  }
+  buildAO();
+  buildSpatialIndex();
+}
+
+// ---------------------------------------------------------------------
+// THE TOWER CAB — the top of the control tower, and where the recording is
+//
+// The information used to be in a news drone that fell on the runway, which
+// meant the whole field was a walk to a prop. It is where a recording would
+// really be now: the rack at the top of the tower that every camera on this
+// field has been writing to for a year. The field is the obstacle and this is
+// the thing at the end of it.
+//
+// One room. Glass on three sides, the racks along the back, and the Archivist
+// jacked into them.
+// ---------------------------------------------------------------------
+const CAB_W = 16, CAB_H = 12;
+function buildTowerCab() {
+  const rng = mulberry32(551201);
+  resetMap(CAB_W, CAB_H, rng);
+  const W = MAP_W, H = MAP_H;
+
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    ground[y][x] = 18;                       // apron concrete, indoors
+    groundVar[y][x] = (rng() * 4) | 0;
+  }
+  // the shell. One door, in the south wall, back down the stair.
+  for (let x = 0; x < W; x++) { solid[0][x] = solid[H - 1][x] = true; heavy[0][x] = heavy[H - 1][x] = true; }
+  for (let y = 0; y < H; y++) { solid[y][0] = solid[y][W - 1] = true; heavy[y][0] = heavy[y][W - 1] = true; }
+  const runX = Array.from({ length: W }, (_, i) => [i, 0]);
+  wallRun(runX, fenceKinds(W), 'x', false, true, true);
+
+  // THE GLAZING. A cab is a room made of windows: the three outward walls read
+  // as glass with the field behind them, and the back wall is the equipment.
+  for (let x = 2; x < W - 2; x += 2) props.push({ gx: x, gy: 0, type: 'cabGlass', dir: 'x' });
+  for (let y = 2; y < H - 2; y += 2) {
+    props.push({ gx: 0, gy: y, type: 'cabGlass', dir: 'y' });
+    props.push({ gx: W - 1, gy: y, type: 'cabGlass', dir: 'y' });
+  }
+
+  const put = (x, y, type, extra) => {
+    if (x < 1 || y < 1 || x >= W - 1 || y >= H - 1) return;
+    solid[y][x] = true;
+    props.push(Object.assign({ gx: x, gy: y, type }, extra || {}));
+  };
+  // THE RACK — what the cameras wrote to, and what the Archivist is plugged
+  // into. Its own tile stays walkable: it is read from beside it, and a boss
+  // circling a solid block in a room this size would be unflankable.
+  props.push({ gx: 8, gy: 2, type: 'rack', foot: [7, 1, 3, 2] });
+  for (let x = 7; x <= 9; x++) solid[1][x] = true;
+
+  put(3, 2, 'monitors', { dir: 'x' });
+  put(12, 2, 'monitors', { dir: 'x' });
+  put(2, 5, 'dutyDesk');
+  put(13, 5, 'dutyDesk');
+  put(4, 9, 'crate');
+  put(12, 9, 'barrel');
+  // the stair back down, in the floor by the south wall
+  props.push({ gx: 8, gy: H - 2, type: 'stairDown' });
+
+  for (let i = 0; i < 60; i++) {
+    const x = 1 + rng() * (W - 2), y = 1 + rng() * (H - 2);
+    if (solid[y | 0][x | 0]) continue;
+    decals.push({ gx: x, gy: y, type: rng() < 0.5 ? 'crack' : 'stain' });
   }
   buildAO();
   buildSpatialIndex();
@@ -2266,23 +2357,25 @@ const Areas = {
     // because none of them ever glows amber. Being held in a cone fills the
     // meter, and a full meter is the swarm. See js/watch.js.
     hasWatch: true,
+    // EVERY WAYPOINT ON THIS LIST IS STANDABLE, AND THE LINE BETWEEN THEM IS
+    // WALKABLE. The first version had (20,15) inside the transport and (50,28)
+    // inside the ordnance bunker, and ran the fourth patrol along y44 — which
+    // is the inner block line. Two of the four never moved at all, and a patrol
+    // that cannot walk cannot see you. `wtest` asserts all of it now.
     mpRoutes: [
       [[8, 21], [56, 21]],                  // the length of the runway
-      [[20, 28], [50, 28]],                 // the south apron, past the bunker
-      [[20, 15], [50, 15]],                 // the north apron, past the transport
-      [[8, 44], [56, 44]],                  // the perimeter road, south side
+      [[20, 28], [40, 28]],                 // the south apron, short of the bunker
+      [[30, 17], [54, 17]],                 // the north apron, east of the transport
+      [[8, 45], [54, 45]],                  // the perimeter ROAD, not the block line
     ],
     // THE BOSS. In the room the field is watched from, docked and open.
     hasBoss: true, bossKind: 'provost', bossAt: { x: 32.5, y: 8.0 },
-    // A sentry LIGHTS AMBER and can be killed. Keeping three of them beside
-    // four things that cannot is what stops the MP rule reading as "the game
-    // just says no" — the contrast is the teaching.
-    hasSentries: true,
-    sentries: [
-      [27, 44, Math.PI / 2],                // the gate, west side, facing south
-      [35, 44, Math.PI / 2],                // the gate, east side
-      [43, 32, Math.PI / 2],                // over the ordnance bunker's door
-    ],
+    // NOTHING ON THIS FIELD FIRES A SHOT. The three sentry guns are gone: they
+    // were the only things on it that shot at you, and being shot at by a gun
+    // while being told the rule is "do not be seen" taught two rules at once.
+    // What used to be a gun at the gate is a CAMERA at the gate, and what a
+    // camera does is call the swarm.
+    hasSentries: false,
     tint: '#e4e2dc',                        // bleached grey. Not blue.
     makeItems: () => ([
       // 45,29 is the pallet's tile — the item was sealed under it. 48,29 is
@@ -2294,6 +2387,28 @@ const Areas = {
       // the vehicle gate south, and the west breach onto the Underpass
       { x0: 29.4, y0: 45.4, x1: 33.6, y1: 47.6, to: 'fringe', entry: { x: 92.5, y: 16.5 } },
       { x0: 0.4, y0: 29.4, x1: 2.6, y1: 33.6, to: 'underpass', entry: { x: 9.5, y: 5.5 } },
+      // up the tower, to the rack the recording is on
+      { x0: 27.4, y0: 8.4, x1: 29.6, y1: 10.6, to: 'towercab', entry: { x: 8.5, y: 7.5 } },
+    ],
+  },
+  // THE TOWER CAB. Reached only from the control room's stair, so getting the
+  // recording means getting across the field first — which is the whole area.
+  towercab: {
+    id: 'towercab', name: 'THE TOWER CAB', build: buildTowerCab,
+    world: { x: 88, y: -46 },              // the tower's own footprint, upstairs
+    // CLEAR OF THE STAIR, NOT ON IT. Land inside your own exit zone and the
+    // 2.5s safety in checkExits arms it under your feet — stand still to look
+    // around on arrival and the game sends you straight back down.
+    safeSpawn: { x: 8.5, y: 7.5 },
+    indoors: true, skyline: false,
+    hasScrapper: false, hasBoss: true, hasNpc: false, hasBandits: false,
+    hasDroids: false, hasWatch: false, hasSentries: false,
+    // THE MINI-BOSS, on the rack it is plugged into
+    bossKind: 'archivist', bossAt: { x: 8.5, y: 3.2 },
+    tint: '#cfd6da',                        // daylight through dirty glass
+    makeItems: () => ([]),
+    exits: [
+      { x0: 7.4, y0: 9.4, x1: 9.6, y1: 11, to: 'field12', entry: { x: 28.5, y: 11.5 } },
     ],
   },
   candlelight: {

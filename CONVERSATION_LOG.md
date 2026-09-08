@@ -3788,3 +3788,47 @@ camera blind, every unit stopped.
 
 Frame cost **13.6–14.8 ms → 9.8–11.0 ms**. Two ways in, both sealed → 0. All
 suites green.
+
+---
+
+## "Much to change" — six items, and the layout picture that did not arrive
+
+**The picture did not come through.** No image was attached to the message and
+nothing landed in the repo, so item 1's *exact layout* is not started. Everything
+else is independent of it and is built.
+
+**Why none of it worked, and it was four separate bugs.** The earlier harness
+poked `updateWatch` with forced state and passed — the exact test that passes
+while the feature is broken in play. Driving the real `update()` loop found all
+four:
+
+1. **`updateProvost` wrote `Watch.seen` every frame, and runs after
+   `updateWatch`.** A boss in a room thirty tiles away reset the whole field's
+   detection meter to zero sixty times a second. That alone is why the robots
+   "didn't see me".
+2. **No camera had ever seen anything.** A camera post was a solid tile, so its
+   line of sight started inside the thing it is bolted to and was blocked by it.
+   All five of them.
+3. **Two of four patrols never moved** — one waypoint inside the transport,
+   another inside the bunker, a third route along the inner block line.
+4. **Camera posts blocked the field** — one sealed the gate approach, another
+   stood in the middle of the runway blocking a patrol's path and its sight.
+   Cameras are not solid any more; three bugs, no benefit.
+
+Then the six asks: **nothing on the field fires a shot now** (the three sentry
+guns are gone — they were what was shooting, and being shot at while being told
+"don't be seen" teaches two rules at once); **cones stop at walls**, with the
+drawing and the detection sharing one raycast so the shape on the ground is
+exactly the ground that can see you; the cameras were re-sited because the old
+set had measured reaches of 0.3, 1.3 and 1.8 tiles; **the patrols carry a rail
+lance**; **the recording moved to the top of the tower** — `towercab` is a real
+area now, reached only by the stair in the control room; and **THE ARCHIVIST**
+guards it: plugged into the rack it is amber and mortal, off the rack it is dull
+plate and comes at you. A clock, not a duel.
+
+Two more caught by looking: the cab's entry sat inside its own exit zone, so
+arriving and standing still sent you back down; and the scatter pass was dressing
+the hand-built interiors, dropping a crate on the tile the stair lands on.
+
+Cameras that can see: 0 of 5 → 7 of 7. Patrols that move: 2 of 4 → 4 of 4.
+Frame cost 9.8–11.0 → 8.4–9.4 ms. All eight suites clean.

@@ -729,42 +729,54 @@ function droidMeleeHit(m, ps) {
   // darker than an HHD too — issued to a different service — so the silhouette
   // says "not one of the ones you have been killing" before the plate does.
   function mpFrame(step, alert) {
-    // DARKER AND HARDER THAN AN HHD. The first pass used a mid grey and on wet
-    // tarmac at night the thing read as a pale floating slab with a blue slot
-    // in it — no legs, no shoulders, no machine. It is a gunmetal green-grey
-    // now, with the panel lines actually cut in, and the legs are lighter than
-    // the ground instead of the same colour as it.
+    // DARKER AND HARDER THAN AN HHD, AND ARMED. The first pass gave it a
+    // shoulder lamp and nothing else, and a thing the game tells you not to
+    // fight has to look like the reason. It carries a RAIL LANCE across the
+    // chest: a coil stack, a long emitter, and a charge line running the length
+    // of it — and every light on it is CORE BLUE. Nothing warm lives on this
+    // machine, because warm would mean you could hurt it.
     const PL = '#5a6169', PL_H = '#78818b', PL_S = '#414850', PL_D = '#2c3138';
     const LEG = '#4a5158';
-    const c = makeCanvas(24, 32), g = c.getContext('2d');
-    px(g, 4, 28 - step, 7, 4, DARK2);              // heavy feet
-    px(g, 13, 28 + step, 7, 4, DARK2);
-    px(g, 5, 20 - step, 6, 9, LEG);                // armoured legs, readable
-    px(g, 5, 20 - step, 2, 9, PL_S);
-    px(g, 13, 20 + step, 6, 9, LEG);
-    px(g, 13, 20 + step, 2, 9, PL_S);
-    px(g, 4, 17, 16, 4, PL_S);                     // hip block
-    px(g, 4, 18, 16, 1, PL_D);
-    px(g, 3, 7, 18, 11, PL);                       // slab torso
-    px(g, 3, 7, 18, 1, PL_H);
-    px(g, 3, 12, 18, 1, PL_D);                     // a cut panel line
-    px(g, 11, 8, 2, 9, PL_D);                      // and a deep centre seam
-    chevron(g, 5, 9);
-    px(g, 0, 7, 4, 8, PL_S);                       // pauldrons, squared off
-    px(g, 0, 7, 4, 1, PL_H);
-    px(g, 20, 7, 4, 8, PL_S);
-    px(g, 20, 7, 4, 1, PL_H);
-    px(g, 9, 5, 6, 2, PL_D);                       // a NECK, so the head reads
-    px(g, 6, 0, 12, 5, PL);                        // helmet, wide and flat
-    px(g, 6, 0, 12, 1, PL_H);
-    px(g, 5, 3, 14, 2, PL_S);                      // the brow it looks out under
-    visor(g, 8, 3, 8);
-    // the lamp it looks at you with, on the shoulder. COLD — nothing warm
-    // lives on this machine, because warm means you could hurt it.
-    px(g, 20, 10, 4, 4, PL_D);
-    px(g, 21, 11, 3, 2, alert ? CORE : CORE_D);
+    const c = makeCanvas(30, 32), g = c.getContext('2d');
+    px(g, 6, 28 - step, 7, 4, DARK2);              // heavy feet
+    px(g, 15, 28 + step, 7, 4, DARK2);
+    px(g, 7, 20 - step, 6, 9, LEG);                // armoured legs, readable
+    px(g, 7, 20 - step, 2, 9, PL_S);
+    px(g, 15, 20 + step, 6, 9, LEG);
+    px(g, 15, 20 + step, 2, 9, PL_S);
+    px(g, 6, 17, 16, 4, PL_S);                     // hip block
+    px(g, 6, 18, 16, 1, PL_D);
+    px(g, 5, 7, 18, 11, PL);                       // slab torso
+    px(g, 5, 7, 18, 1, PL_H);
+    px(g, 5, 12, 18, 1, PL_D);                     // a cut panel line
+    px(g, 13, 8, 2, 9, PL_D);                      // and a deep centre seam
+    chevron(g, 7, 9);
+    px(g, 2, 7, 4, 8, PL_S);                       // pauldrons, squared off
+    px(g, 2, 7, 4, 1, PL_H);
+    px(g, 22, 7, 4, 8, PL_S);
+    px(g, 22, 7, 4, 1, PL_H);
+    px(g, 11, 5, 6, 2, PL_D);                      // a NECK, so the head reads
+    px(g, 8, 0, 12, 5, PL);                        // helmet, wide and flat
+    px(g, 8, 0, 12, 1, PL_H);
+    px(g, 7, 3, 14, 2, PL_S);                      // the brow it looks out under
+    visor(g, 10, 3, 8);
+
+    // ---- THE RAIL LANCE, held across the body, muzzle forward-right ----
+    px(g, 4, 15, 20, 3, DARK2);                    // the stock and body
+    px(g, 4, 15, 20, 1, '#3f444a');
+    px(g, 8, 13, 9, 3, PL_S);                      // the coil stack on top
+    px(g, 8, 13, 9, 1, PL_H);
+    px(g, 9, 14, 2, 1, alert ? CORE : CORE_D);     // three charge cells
+    px(g, 12, 14, 2, 1, alert ? CORE : CORE_D);
+    px(g, 15, 14, 2, 1, alert ? CORE : CORE_D);
+    px(g, 5, 16, 19, 1, alert ? CORE : CORE_D);    // the charge line down it
+    px(g, 24, 14, 6, 4, DARK);                     // the emitter housing
+    px(g, 24, 14, 6, 1, PL_S);
+    px(g, 28, 15, 2, 2, alert ? '#c9f4ff' : CORE); // and the muzzle, always lit
+    px(g, 10, 18, 3, 3, DARK);                     // the grip under it
     return c;
   }
+
 
   // ---- THE PROVOST: bigger again, and the ONE with the plate open. Docked,
   // the opening faces the room; loose, it is on his back. The amber is drawn
@@ -807,6 +819,43 @@ function droidMeleeHit(m, ps) {
     px(g, 0, 7, 10, 1, '#8a6a3a');
     return c;
   }
+  // ---- THE ARCHIVIST: small, fast, and the port on its back is the fight.
+  // Open (plugged in) it is amber and mortal; loose it is dull plate and you
+  // have no answer but distance.
+  function archFrame(step, open) {
+    const PL = '#646b73', PL_H = '#828a93', PL_S = '#484f56', PL_D = '#2f353b';
+    const c = makeCanvas(20, 24), g = c.getContext('2d');
+    px(g, 4, 21 - step, 5, 3, DARK2);
+    px(g, 11, 21 + step, 5, 3, DARK2);
+    px(g, 5, 15 - step, 4, 6, PL_S);              // short legs
+    px(g, 11, 15 + step, 4, 6, PL_S);
+    px(g, 4, 12, 12, 4, PL_S);
+    px(g, 3, 5, 14, 8, PL);                       // compact body
+    px(g, 3, 5, 14, 1, PL_H);
+    px(g, 3, 9, 14, 1, PL_D);
+    px(g, 1, 6, 2, 5, PL_S);
+    px(g, 17, 6, 2, 5, PL_S);
+    px(g, 6, 1, 8, 4, PL);                        // a low flat head
+    px(g, 6, 1, 8, 1, PL_H);
+    visor(g, 7, 2, 6);
+    // the port, dead centre of the chest — lit only while it is on the rack
+    if (open) {
+      px(g, 7, 6, 6, 3, '#2a2018');
+      px(g, 8, 6, 4, 2, '#e08a24');
+      px(g, 9, 6, 2, 1, '#ffe08a');
+    } else {
+      px(g, 7, 6, 6, 3, PL_D);
+    }
+    // and the cable, trailing back to the rack while it is plugged in
+    if (open) { px(g, 0, 8, 4, 1, '#3a4046'); px(g, 0, 9, 2, 1, '#2b3036'); }
+    return c;
+  }
+  Sprites.archivist = {
+    open:   [pack(archFrame(0, true)),  pack(archFrame(1, true))],
+    closed: [pack(archFrame(0, false)), pack(archFrame(1, false))],
+    dead:   pack(wreck(20, 11)),
+  };
+
   Sprites.mp = {
     walk: [pack(mpFrame(0, false)), pack(mpFrame(1, false))],
     act: pack(mpFrame(0, true)),

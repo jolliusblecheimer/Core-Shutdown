@@ -100,21 +100,47 @@ function restoreCameras(id) {
 // ---------------------------------------------------------------------
 // seeing
 // ---------------------------------------------------------------------
+// WHERE A CAMERA LOOKS FROM. A camera is BOLTED TO SOMETHING — a post, a
+// hangar corner, a gate pillar — and that mounting is a solid tile. So a line
+// of sight cast from the camera's own centre started inside a wall and was
+// blocked by the thing the camera is screwed to: measured, every one of the
+// five, and it meant no camera on this field had ever seen the player once.
+// The lens hangs a tile clear of its mount, on the side it is looking at.
+function camEye(c) {
+  return { x: c.x + Math.cos(c.aim) * 0.9, y: c.y + Math.sin(c.aim) * 0.9 };
+}
+
+// HOW FAR A RAY GETS BEFORE A WALL STOPS IT. One function, used by BOTH the
+// detection test and the drawing, so the cone you see is exactly the cone that
+// can see you — a cone drawn through a hangar was a promise the game did not
+// keep, in both directions.
+function rayReach(x0, y0, aim, range) {
+  const step = 0.25;
+  const cx = Math.cos(aim), cy = Math.sin(aim);
+  for (let d = step; d <= range; d += step) {
+    if (isSolid(x0 + cx * d, y0 + cy * d)) return d - step;
+  }
+  return range;
+}
+
 // One cone test for both kinds. `aim` is a bearing in radians, and cover
 // breaks it exactly the way it breaks everything else in this game.
-function coneHolds(wx, wy, aim, halfArc, range) {
+function coneHolds(ex, ey, aim, halfArc, range) {
   if (player.dead > 0 || Watch.swarm) return false;
-  const dx = player.x - wx, dy = player.y - wy;
+  const dx = player.x - ex, dy = player.y - ey;
   const d = Math.hypot(dx, dy);
   if (d > range || d < 0.001) return false;
   let a = Math.atan2(dy, dx) - aim;
   while (a > Math.PI) a -= Math.PI * 2;
   while (a < -Math.PI) a += Math.PI * 2;
   if (Math.abs(a) > halfArc) return false;
-  return losClear(wx, wy, player.x, player.y);
+  return losClear(ex, ey, player.x, player.y);
 }
-const cameraSees = (c) =>
-  !c.dead && !Watch.networkDown && coneHolds(c.x, c.y, c.aim, WATCH.camArc, WATCH.camRange);
+const cameraSees = (c) => {
+  if (c.dead || Watch.networkDown) return false;
+  const e = camEye(c);
+  return coneHolds(e.x, e.y, c.aim, WATCH.camArc, WATCH.camRange);
+};
 const mpSees = (m) =>
   !Watch.networkDown &&
   coneHolds(m.x, m.y, Math.atan2(m.fy, m.fx), WATCH.mpArc,
@@ -188,9 +214,29 @@ function updateWatch(dt) {
         const nx = m.x + (dx / d) * step, ny = m.y + (dy / d) * step;
         // it walks round what it cannot walk through, one axis at a time,
         // the same way every other body in this game does
+        const bx = m.x, by = m.y;
         if (canStand(nx, m.y, m.r)) m.x = nx;
         if (canStand(m.x, ny, m.r)) m.y = ny;
         faceToward(m, dx, dy, dt);
+        // AND IT CANNOT GET STUCK FOREVER. Two of the four original patrols
+        // spent the entire game pressed against geometry they could not get
+        // round — one waypoint was inside the transport, another inside the
+        // bunker — and a patrol that cannot walk cannot see you, so half the
+        // field's threat quietly did not exist. If it has made no real ground
+        // for three seconds it gives up on this leg and takes the next one.
+        if (Math.hypot(m.x - bx, m.y - by) > step * 0.4) m.stuck = 0;
+        else {
+          m.stuck = (m.stuck || 0) + dt;
+          if (m.stuck > 3) {
+            m.stuck = 0;
+            if (m.goX !== null) { m.goX = null; m.goY = null; }
+            else {
+              m.leg += m.dir;
+              if (m.leg >= m.route.length) { m.leg = m.route.length - 2; m.dir = -1; }
+              if (m.leg < 0) { m.leg = 1; m.dir = 1; }
+            }
+          }
+        }
       }
     } else {
       // standing and sweeping — this is when it is most dangerous, because it
@@ -340,10 +386,19 @@ function cameraBulletHit(b) {
   return false;
 }
 
+// THE ONE NUMBER THE HUD SHOWS. The field's meter and the Provost's own lock
+// are separate counters — the boss must never be able to lower the field's —
+// so whichever is further along is the one you are being told about.
+function seenLevel() {
+  const a = Watch.seen;
+  const b = (typeof provostLockFrac === 'function') ? provostLockFrac() : 0;
+  return Math.max(a, b);
+}
+
 // a cone on you counts as being hunted, like everything else that hunts you
 function watchHunting() {
   const A = currentAreaDef();
-  return !!(A && A.hasWatch && !Watch.networkDown && Watch.seen > 0.05);
+  return !!(A && A.hasWatch && !Watch.networkDown && seenLevel() > 0.05);
 }
 
 // The Provost is down. Every housing on the field goes dark at once, and the

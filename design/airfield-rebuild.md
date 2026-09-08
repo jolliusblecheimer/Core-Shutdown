@@ -316,3 +316,91 @@ both are drawn on the same row and there is only one thing to do anyway.
 `smoke`, `quests`, `sentry`, `audit2`, `wtest`, `ptest` and `f12cost2` all green,
 no console errors, network clean. Screenshots taken at the gate, the runway, a
 cone, the control room in both phases, and mid-swarm.
+
+---
+
+## 12. THE FIX PASS — 2026-09-08
+
+Six changes asked for. Five built; the sixth needs the layout picture, which did
+not arrive with the message.
+
+### Why nothing worked — four bugs, all found by running the real loop
+
+The earlier harness poked `updateWatch` with forced state and passed. That is
+exactly the test that passes while the feature is broken in play. Driving the
+actual `update()` loop found all four in twenty minutes:
+
+| | |
+|---|---|
+| **The boss zeroed the whole field** | `updateProvost` wrote `Watch.seen` directly on every frame, in both branches, and runs *after* `updateWatch`. A Provost standing in a room thirty tiles away reset the field's detection meter to zero sixty times a second. Cameras and patrols saw the player perfectly well and the meter could never rise. It keeps its own counter now and the HUD takes the larger of the two (`seenLevel`) |
+| **No camera had ever seen anything** | A camera post was a solid tile, so the line of sight cast from its own centre started *inside the thing it is bolted to* and was blocked by it. All five. The lens sits a tile clear of the mount now (`camEye`) |
+| **Two of four patrols never moved** | One waypoint was inside the transport, another inside the ordnance bunker, and a third route ran along the inner block line. A patrol that cannot walk cannot see you, so half the field's threat quietly did not exist |
+| **Camera posts blocked the field** | Solid camera tiles sealed the gate approach once and then stood in the **middle of the runway**, blocking a patrol's path *and* its sight down the runway it patrols. **A camera is no longer solid at all** — three bugs, no benefit |
+
+### 1. Cameras do not shoot; being seen calls the swarm
+Already true of cameras — but **the three sentry guns were the things firing**,
+and being shot at by a gun while being told the rule is *do not be seen* teaches
+two rules at once. They are gone. **Nothing on this field fires a shot.** What
+used to be a gun at the gate is a camera at the gate, and what a camera does is
+call the swarm.
+
+### 2. Cones stop at walls
+`rayReach` clips every ray at the first solid tile, and **the drawing and the
+detection call the same function** — so the shape on the ground is exactly the
+ground that can see you. Drawn through a hangar it was a promise the game broke
+in both directions: it looked dangerous where it was safe, and safe nowhere.
+
+Cameras were also re-sited: the old set was mounted on building corners looking
+*at* the buildings, with measured reaches of 0.3, 1.3 and 1.8 tiles. Every one is
+now aimed down a corridor the player walks, and `camtest` prints all seven
+reaches so it cannot silently regress. Still **none at the west breach**.
+
+### 3. The patrols are armed
+They carry a **rail lance** — coil stack, long emitter, a charge line down it,
+and every light on it Core blue. Nothing warm lives on an MP, because warm would
+mean you could hurt it.
+
+### 4. The recording is at the top of the tower
+Not in a drone on the runway. **`towercab` is a real area** — glass on three
+sides, the racks along the back — reached only by the stair in the control room,
+which means getting it means crossing the field. The wreck stays as scenery.
+The objective now reads *Get to the top of the tower.*
+
+### 5. THE ARCHIVIST — the mini-boss on the rack
+One room, one mechanic, and the mechanic is the field's own rule:
+
+| | |
+|---|---|
+| **plugged in** | jacked into the rack, port open, **amber and mortal**, cannot move. 3.4 s |
+| **off the rack** | pulls the jack, dull plate, nothing touches it, comes straight at you. 6 s |
+
+So it is a clock, not a duel: survive the loose phase, punish the plugged one.
+120 hp. Pull the recording while it is still jacked in and you are told why you
+cannot. Verified: plugged 120→100, loose 100→100, the cycle runs
+`plugged → pull → loose → jack → plugged`, and it stays dead across a rebuild.
+
+### Two more faults, caught by looking rather than measuring
+- **The stair bounced you straight back.** The cab's entry sat inside its own
+  exit zone, and `checkExits` arms after 2.5 s whether or not you have stepped
+  clear — so arriving and standing still to look round sent you back down. Both
+  ends land clear now, and `ptest` checks every entry in the game against every
+  destination's exit zones.
+- **The scatter pass was dressing the interiors.** Crates and barrels landed
+  inside the hangars, the bunker and the control room — one on the exact tile
+  the stair puts you down on. Interiors are the `ROOFS` rectangles and are now
+  excluded.
+- The area-name banner draws at y24, straight through every boss bar and its
+  status line. It moves down while a boss bar is up.
+
+### Measured
+| | |
+|---|---|
+| things on the field that shoot | 3 sentry guns → **0** |
+| cameras that can see | **0 of 5 → 7 of 7** |
+| patrols that move | 2 of 4 → **4 of 4** |
+| frame cost | 9.8–11.0 → **8.4–9.4 ms** |
+
+### STILL OUTSTANDING
+**The whole-map layout.** The picture referred to in the request did not arrive —
+there was no image attached and nothing landed in the repo. Everything above is
+independent of it; the layout itself is not started.

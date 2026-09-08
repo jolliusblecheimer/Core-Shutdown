@@ -4442,6 +4442,50 @@ function outlined(src) {
       px(g, 5, 13, 12, 2, '#2e2822');
       return outlined(c);
     };
+    // THE RACK the cameras wrote to, and the third bay with a jack in it.
+    const rack = () => {
+      const c = makeCanvas(44, 34), g = c.getContext('2d');
+      px(g, 3, 6, 38, 22, '#3b4046');
+      px(g, 3, 6, 38, 2, '#4d5359');
+      px(g, 3, 27, 38, 4, '#2b3036');
+      for (let i = 0; i < 4; i++) {
+        const bx = 6 + i * 9;
+        px(g, bx, 10, 7, 14, '#2d3238');
+        px(g, bx, 10, 7, 1, '#454b52');
+        for (let r = 0; r < 3; r++)
+          px(g, bx + 1, 12 + r * 4, 5, 1, i === 2 ? '#6fd3ff' : '#3a4046');
+      }
+      px(g, 24, 16, 8, 2, '#e08a24');            // the live jack, third bay
+      px(g, 30, 16, 6, 1, '#ffb84a');
+      return outlined(c);
+    };
+    // a stair is a hole in a floor with a rail beside it — no perspective tricks
+    const stair = (up) => {
+      const c = makeCanvas(26, 22), g = c.getContext('2d');
+      px(g, 2, 6, 22, 14, '#23272b');
+      for (let i = 0; i < 4; i++)
+        px(g, 4 + i * 2, 8 + i * 3, 18 - i * 4, 2, up ? '#5e646b' : '#3d4348');
+      px(g, 2, 4, 22, 2, '#4a5056');
+      px(g, 2, 4, 22, 1, '#646b73');
+      px(g, 22, 0, 2, 8, '#5e646b');             // the rail post
+      return outlined(c);
+    };
+    // the cab's glazing: a dirty pane in a frame, not a wall
+    const cabGlass = () => {
+      const c = makeCanvas(34, 30), g = c.getContext('2d');
+      px(g, 1, 2, 32, 24, '#2f3a40');
+      px(g, 3, 4, 28, 20, '#41545c');
+      px(g, 4, 5, 26, 6, '#4d626b');
+      px(g, 1, 2, 32, 2, '#5a6169');            // the frame's lit top edge
+      px(g, 1, 25, 32, 3, '#40464c');
+      px(g, 16, 2, 2, 26, '#3a4046');            // the mullion
+      return outlined(c);
+    };
+    Sprites.rack = rack();
+    Sprites.stairUp = stair(true);
+    Sprites.stairDown = stair(false);
+    Sprites.cabGlass = cabGlass();
+
     Sprites.camPost = camPost(false);
     Sprites.camPostOn = camPost(true);
     Sprites.camDead = camDead();

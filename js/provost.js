@@ -74,6 +74,13 @@ function spawnProvostFor(areaId) {
 // AMBER MEANS OPEN, and where the opening IS is the whole of phase two.
 const provostLit = (p) => p.active && p.state !== 'dead';
 
+// How far its own cone has got with you, 0..1 — read by the HUD, never written
+// back into the field's meter.
+function provostLockFrac() {
+  if (!provost.active || provost.state === 'dead') return 0;
+  return Math.min(1, provost.lock / PROV.lockTime);
+}
+
 // IS THE PLAYER ACTUALLY IN THE FIGHT? The boss bar is the fight's furniture,
 // not the area's: without this it hangs across the top of the screen from the
 // moment you come through the vehicle gate, thirty-six tiles from the room he
@@ -156,9 +163,15 @@ function updateProvost(dt) {
     while (a < -Math.PI) a += Math.PI * 2;
     inCone = Math.abs(a) <= PROV.arc && losClear(provost.x, provost.y, player.x, player.y);
   }
+  // IT KEEPS ITS OWN COUNTER AND NEVER TOUCHES THE FIELD'S.
+  // This used to write `Watch.seen` directly, every frame, in both branches —
+  // and `updateProvost` runs AFTER `updateWatch`, so a boss standing in a room
+  // thirty tiles away silently reset the whole field's detection meter to zero
+  // on every single frame. Cameras and patrols saw you perfectly well and the
+  // meter could never rise. The HUD takes the larger of the two instead; see
+  // `seenLevel()`.
   if (inCone) {
     provost.lock += dt;
-    if (typeof Watch !== 'undefined') Watch.seen = Math.min(1, provost.lock / PROV.lockTime);
     if (provost.lock >= PROV.lockTime) {
       provost.lock = 0;
       if (typeof triggerSwarm === 'function') triggerSwarm();
@@ -166,8 +179,6 @@ function updateProvost(dt) {
     }
   } else {
     provost.lock = Math.max(0, provost.lock - dt * 1.6);
-    if (typeof Watch !== 'undefined' && !Watch.swarm)
-      Watch.seen = Math.max(0, provost.lock / PROV.lockTime);
   }
 
   // ---- and it shoots, down the line it is already showing you ----
