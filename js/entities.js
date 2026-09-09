@@ -1001,9 +1001,15 @@ let Prompt = null;
 
 const SPEED = 4.0;
 
+// ONE mover for everything that walks, and it asks a different question for the
+// player. A crawl tile — the culvert under the apron fence — is a wall to every
+// droid, to line of sight and to `findSafeSpot`, and a gap to a player on their
+// belly. Dispatching here rather than at the call site means knockback, shoves
+// and the boss's pushes all obey the same rule as walking.
 function tryMove(e, dx, dy) {
-  if (dx !== 0 && canStand(e.x + dx, e.y, e.r)) e.x += dx;
-  if (dy !== 0 && canStand(e.x, e.y + dy, e.r)) e.y += dy;
+  const fits = (e === player) ? playerCanStand : canStand;
+  if (dx !== 0 && fits(e.x + dx, e.y, e.r)) e.x += dx;
+  if (dy !== 0 && fits(e.x, e.y + dy, e.r)) e.y += dy;
 }
 
 function updatePlayer(dt) {

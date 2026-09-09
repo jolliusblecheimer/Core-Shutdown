@@ -4166,6 +4166,23 @@ function outlined(src) {
     Sprites.penWallX10 = penWall(10, 'x');
     Sprites.penWallY6 = penWall(6, 'y');
 
+    // A STORM DRAIN under the apron fence. A concrete headwall with a pipe
+    // mouth in it, low enough to walk past without noticing — which is the
+    // point: the culvert is two tiles from the gate road and it is the one way
+    // through the wire that does not need you to be standing up.
+    // It LIES ALONG THE FENCE, so it is built on the rig rather than drawn as a
+    // flat rectangle: the shear is in the projection, per THE ANGLE RULE.
+    const culvert = () => {
+      const R = isoRig(1.0, 1.6, 15);
+      R.box(0, 0, 1, 1.6, 0, 11, '#9a9384', '#7b7568', '#655f55');   // the headwall
+      R.flat(0.1, 0.12, 0.9, 1.48, 11.3, '#8a8375');                 // its cap
+      R.box(0.18, 0.45, 0.82, 1.15, 0, 7.5, '#2a2723', '#141210', '#141210'); // the mouth
+      R.flat(0.24, 0.52, 0.76, 1.08, 0.4, '#0d0c0a');                // the dark inside it
+      R.box(0.05, 0.20, 0.16, 1.40, 0, 12.5, '#847e71', '#6a6459', '#57524a'); // a wing wall
+      return R.finish();
+    };
+    Sprites.culvert = culvert();
+
     // THE RADAR. A lattice tower with a dish that does not turn any more.
     const radar = () => {
       const c = makeCanvas(34, 72), g = c.getContext('2d');

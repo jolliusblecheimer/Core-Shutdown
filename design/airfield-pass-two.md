@@ -138,6 +138,50 @@ choice: go straight in on your belly under two cones, or walk twenty minutes.
 - re-measure: sealing **all five** must still leave 0 tiles reachable north
 - the route picture regenerated
 
+### BUILT — and measured, 2026-09-09
+Nine cameras, five crossings, and the grading is a fact rather than a label:
+
+| crossing | from the gate | watched |
+|---|---|---|
+| culvert *(crawl)* | 1 | **78%** |
+| bowser squeeze | 11 | **66%** |
+| east service gap | 20 | **24%** |
+| flattened wire | 22 | **21%** |
+| west gap | 37 | **3%** |
+
+"Watched" is the fraction of a full sweep in which **no lane exists** — no x in
+the opening with every exposed row unlit at the same instant. That is what a
+player times a run against.
+
+**Three of my own measurements were wrong before this held up**, and each one
+would have graded the field backwards:
+1. The first metric asked "is any tile of the gap lit". A wide sweep across a
+   three-tile opening always has one tile lit, so it scored wide openings as
+   *harder*. A player needs a clear lane, not a clear tile.
+2. The second modelled the sweep as one shared sine. The real sweep eases,
+   **holds at each end** (`camSweep*2 + camHold*2` = 6s) and every camera starts
+   on its own random offset. The harness drives `updateWatch` now and reads the
+   live `aim` — it measures the game rather than a model of it.
+3. The monotonic check was **vacuous**: the destructured `rows` shadowed the
+   results array, so it ran over an empty list and reported "grading holds:
+   true" no matter what the numbers were.
+
+And moving the bowsers to flank the squeeze **put one camera inside a fuel tank
+and another inside the helicopter** — both went blind, which in play reads as a
+cone that simply is not there. Camera sites are checked against `solid` at build
+time now, and `camtest` asks whether a camera sees anything *over its whole
+sweep* rather than at one sampled instant.
+
+**The culvert** is a new kind of tile: `crawlable`. It stays solid in `isSolid`,
+so no patrol paths through it, no cone sees down it and `findSafeSpot` will not
+put you in it — and `playerCanStand` lets a crouching player through. `tryMove`
+dispatches on whether the mover is the player, so knockback and shoves obey the
+same rule as walking. It says what it is, once, the first time you pass it.
+
+**The route is 44 steps now**, down from 72, because the near crossings exist —
+and the solver takes the flattened wire at 22 tiles rather than either near one.
+That is the trade working: the short way in is there, and it is the watched one.
+
 ---
 
 ## 4. There is still a plane in a house — and here it is

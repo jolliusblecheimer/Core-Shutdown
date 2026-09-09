@@ -3063,6 +3063,11 @@ function drawProp(p, x, y) {
   else if (T === 'stairDown') { img = Sprites.stairDown; oyOff = -14; }
   else if (T === 'cabGlass')  { img = Sprites.cabGlass; oyOff = -26; }
   else if (T === 'deadScav')  { img = Sprites.deadScav; oyOff = -12; drawShadow(x, y, 9); }
+  else if (T === 'culvert') {
+    const im = Sprites.culvert;
+    ctx.drawImage(im, Math.round(x - im.ox), Math.round(y - im.oy));
+    return;
+  }
   else if (T === 'cactus')    { img = Sprites.cactus;      oyOff = -28; drawShadow(x, y, 5); }
   else if (T === 'cactusSmall'){ img = Sprites.cactusSmall; oyOff = -18; drawShadow(x, y, 4); }
   else if (T === 'scrub')     { img = Sprites.scrub;       oyOff = -6; }
