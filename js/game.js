@@ -706,7 +706,15 @@ function drawMapColumn() {
     const obj = currentObjective();
     if (obj) {
       para(obj.title, 8, '#7ad27a', 3);
-      ptext('IN ' + Areas[obj.area].name, ix, y, 7, 'rgba(232,217,192,0.45)'); y += 12;
+      // NAME THE PLACE EVEN WHEN IT IS UNKNOWN. The map will not draw ground
+      // you have not walked, so the column is the only thing that can say where
+      // you are being sent before you have been there.
+      const seenIt = !!mapThumbs[obj.area];
+      ptext('IN ' + Areas[obj.area].name, ix, y, 7, 'rgba(232,217,192,0.45)'); y += 9;
+      // ONE LINE, NOT A LONGER ONE. "IN AIRFIELD 12 — NOT BEEN THERE" ran off
+      // the end of a 150px column; the fact belongs on its own row.
+      if (!seenIt) { ptext('NEVER BEEN THERE', ix, y, 7, 'rgba(122,210,122,0.7)'); y += 9; }
+      y += 3;
       para(obj.detail, 7, '#e8d9c0', 0);
     } else {
       // The chain runs out after the map table and there is nothing dishonest
@@ -3054,7 +3062,11 @@ function drawProp(p, x, y) {
   // THE MONITORS go out with the Provost. Every screen in the room is a camera
   // feed, so their going dark is how the player learns the network was HIS.
   else if (T === 'monitors')  {
-    img = (typeof Watch !== 'undefined' && Watch.networkDown) ? Sprites.monitorsOff : Sprites.monitors;
+    // A BROKEN BANK STAYS BROKEN, and it has to look it — the pips on the boss
+    // bar say how many are left, but the room is where you should be able to
+    // see it without reading anything.
+    const off = p.dead || (typeof Watch !== 'undefined' && Watch.networkDown);
+    img = off ? Sprites.monitorsOff : Sprites.monitors;
     oyOff = -24; drawShadow(x, y, 12);
   }
   else if (T === 'cradle')    { img = Sprites.cradle;   oyOff = -10; drawShadow(x, y, 16); }
@@ -3063,6 +3075,11 @@ function drawProp(p, x, y) {
   else if (T === 'stairDown') { img = Sprites.stairDown; oyOff = -14; }
   else if (T === 'cabGlass')  { img = Sprites.cabGlass; oyOff = -26; }
   else if (T === 'deadScav')  { img = Sprites.deadScav; oyOff = -12; drawShadow(x, y, 9); }
+  else if (T === 'culvert') {
+    const im = Sprites.culvert;
+    ctx.drawImage(im, Math.round(x - im.ox), Math.round(y - im.oy));
+    return;
+  }
   else if (T === 'cactus')    { img = Sprites.cactus;      oyOff = -28; drawShadow(x, y, 5); }
   else if (T === 'cactusSmall'){ img = Sprites.cactusSmall; oyOff = -18; drawShadow(x, y, 4); }
   else if (T === 'scrub')     { img = Sprites.scrub;       oyOff = -6; }
@@ -4049,6 +4066,18 @@ function drawHUD() {
     uiRect(VIEW_W / 2 - 86, 17, 172, 7, 'rgba(0,0,0,0.6)');
     uiRect(VIEW_W / 2 - 84, 19, 168, 3, '#3a1410');
     uiRect(VIEW_W / 2 - 84, 19, Math.round(168 * Math.max(0, provost.hp) / provost.maxHp), 3, '#ff5040');
+    // WHY YOUR SHOT DID NOT LAND. A fight whose one rule is a timing window has
+    // to say, every frame, whether the window is open — otherwise the player
+    // learns "sometimes it works", which is not a rule, it is noise.
+    const guard = provostGuardWhy();
+    ptext(guard, VIEW_W / 2, 26, 7,
+          provost.open > 0 ? '#ffb84a' : provost.state === 'dock' ? '#ff7a5a' : '#9aa4ad', 'center');
+    // and the four screens, as four pips — the other half of its health
+    for (let i = 0; i < 4; i++) {
+      const lit = i < provost.banks;
+      uiRect(VIEW_W / 2 - 20 + i * 11, 34, 8, 4, lit ? '#5ad2ff' : 'rgba(80,90,100,0.55)');
+    }
+    if (provost.dark > 0) ptext('DARK', VIEW_W / 2, 45, 7, '#5ad2ff', 'center');
   }
 
   // ---- THE DETECTION METER ----
@@ -4114,6 +4143,43 @@ function drawHUD() {
   if (obj && !bossBarUp) {
     ptext('*', 8, 8, 8, '#ffd27a');
     ptext(obj.title, 16, 8, 8);
+    // A CHEVRON AT THE EDGE OF THE SCREEN, pointing at it. Opening the map to
+    // find out which way to walk is a thing you should be able to skip, and
+    // once the objective is in an area you have not been to, the map could not
+    // tell you anyway — see the objective marker in the map block above.
+    const ow = Areas[obj.area] && Areas[obj.area].world;
+    if (ow) {
+      const cw2 = currentAreaDef().world;
+      const wx = (ow.x + obj.x) - (cw2.x + player.x);
+      const wy = (ow.y + obj.y) - (cw2.y + player.y);
+      const wd = Math.hypot(wx, wy);
+      if (wd > 6) {
+        // world -> screen direction, in the same 2:1 projection as everything
+        const sxv = (wx - wy) * 2, syv = (wx + wy);
+        const sl = Math.hypot(sxv, syv) || 1;
+        const ux = sxv / sl, uy = syv / sl;
+        const cx2 = VIEW_W / 2, cy2 = VIEW_H / 2;
+        const rx = VIEW_W / 2 - 30, ry = VIEW_H / 2 - 26;
+        const k = Math.min(rx / (Math.abs(ux) || 1e-6), ry / (Math.abs(uy) || 1e-6));
+        const ax = cx2 + ux * k;
+        let ay = cy2 + uy * k;
+        // NOT OVER THE MINIMAP. The ring puts the chevron at the screen edge,
+        // and the top right of the screen is already the minimap — the arrow
+        // landed on top of it and read as part of it.
+        if (ax > mx - 8 && ay < my + mh + 8) ay = my + mh + 14;
+        const ang = Math.atan2(uy, ux);
+        g.save();
+        g.translate(ax * U, ay * U); g.rotate(ang);
+        g.globalAlpha = 0.55 + 0.25 * Math.sin(gameTime * 3);
+        g.fillStyle = '#7ad27a';
+        g.beginPath();
+        g.moveTo(6 * U, 0); g.lineTo(-3 * U, 4 * U); g.lineTo(-1 * U, 0); g.lineTo(-3 * U, -4 * U);
+        g.closePath(); g.fill();
+        g.restore();
+        g.globalAlpha = 1;
+        ptext(String(Math.round(wd)), ax, ay + 12, 7, 'rgba(122,210,122,0.75)', 'center');
+      }
+    }
   }
 
   // street signs read themselves when you get close
@@ -4269,18 +4335,60 @@ function drawHUD() {
     // objective column beside it.
     const inMapView = (x, y) => x >= -8 && x <= MAP_VIEW_W + 4 && y >= -8 && y <= VIEW_H + 8;
 
-    // ---- the objective, over everything, and the only green on the map
-    if (mobj && Areas[mobj.area] && mapThumbs[mobj.area]) {
+    // ---- THE OBJECTIVE, over everything, and the only green on the map.
+    //
+    // IT USED TO BE SKIPPED FOR ANY AREA YOU HAD NOT WALKED. The condition was
+    // `mapThumbs[mobj.area]`, and a thumbnail only exists for explored ground —
+    // so at exactly the moment you need directions ("follow the signal north",
+    // "get to the top of the tower", both pointing at somewhere you have never
+    // stood) the map drew NOTHING AT ALL. Which is the complaint.
+    //
+    // The map still must not draw unexplored ground; that is its one promise.
+    // But it can point at it. The marker is placed whether or not the area is
+    // known, clamped to the edge of the view when it falls outside, and a
+    // dotted lead line runs to it from the YOU marker so it cannot be missed.
+    if (mobj && Areas[mobj.area]) {
       const qw = Areas[mobj.area].world;
-      const qx2 = sx2(qw.x + mobj.x), qy2 = sy2(qw.y + mobj.y);
+      const known = !!mapThumbs[mobj.area];
+      const rawX = sx2(qw.x + mobj.x), rawY = sy2(qw.y + mobj.y);
+      // CLAMP TO THE MAP'S OWN REGION, not to `inMapView`. That cull box allows
+      // eight pixels of slop off every edge, so an objective a little way off
+      // the top counted as "in view" and was drawn above the panel, where there
+      // is nothing to see it against — visible in code, invisible on screen.
+      const qx2 = Math.max(10, Math.min(MAP_VIEW_W - 10, rawX));
+      const qy2 = Math.max(MAP_TOP + 10, Math.min(VIEW_H - 16, rawY));
+      const clamped = (qx2 !== rawX || qy2 !== rawY);
       const qi = Sprites.icoQuest;
-      if (!inMapView(qx2, qy2)) { MapUI.questHit = null; }
-      else {
+      {
+      // the lead line, from you to it — cheap, and it removes all doubt
+      const cw0 = currentAreaDef().world;
+      const px0 = sx2(cw0.x + player.x), py0 = sy2(cw0.y + player.y);
+      if (inMapView(px0, py0)) {
+        uictx.save();
+        uictx.setLineDash([3 * U, 3 * U]);
+        uictx.strokeStyle = 'rgba(122,210,122,0.55)';
+        uictx.lineWidth = Math.max(1, U);
+        uictx.beginPath();
+        uictx.moveTo(px0 * U, py0 * U); uictx.lineTo(qx2 * U, qy2 * U);
+        uictx.stroke();
+        uictx.restore();
+      }
       uictx.globalAlpha = 0.7 + 0.3 * Math.sin(gameTime * 3);
       uictx.imageSmoothingEnabled = false;
       uictx.drawImage(qi, Math.round(qx2 - qi.width / 2) * U, Math.round(qy2 - qi.height / 2) * U,
                       qi.width * U, qi.height * U);
       uictx.globalAlpha = 1;
+      // GROUND YOU HAVE NOT WALKED gets a bearing and a distance instead of a
+      // place, which tells you where to go without drawing a map of it.
+      if (!known || clamped) {
+        const cw1 = currentAreaDef().world;
+        const ddx = (qw.x + mobj.x) - (cw1.x + player.x);
+        const ddy = (qw.y + mobj.y) - (cw1.y + player.y);
+        const dist = Math.round(Math.hypot(ddx, ddy));
+        // screen-up on this map is world -x-y, so the compass is the iso one
+        const bear = (ddx + ddy < 0 ? 'N' : 'S') + (ddx - ddy > 0 ? 'E' : 'W');
+        ptext(bear + ' ' + dist, qx2, qy2 + 12, 7, '#7ad27a', 'center');
+      }
       MapUI.questHit = { x: qx2, y: qy2 };
       }
     } else MapUI.questHit = null;

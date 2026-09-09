@@ -45,9 +45,11 @@ const Watch = {
   swarmSeen: false,        // saved: has the player watched it once
   networkDown: false,      // the Provost is dead; everything here is off
   warnedPlate: false,      // the "nothing gets through that plate" thought
+  sawCulvert: false,       // saved: the drain has told the player what it is
   firstSight: false,       // saved: the scripted teaching beat has played
 };
-const WATCH_DEFAULTS = { swarmSeen: false, networkDown: false, firstSight: false };
+const WATCH_DEFAULTS = { swarmSeen: false, networkDown: false, firstSight: false,
+                         sawCulvert: false };
 
 function clearWatch() {
   cameras.length = 0; mps.length = 0; swarmBots.length = 0;
@@ -280,6 +282,21 @@ function updateWatch(dt) {
   } else {
     Watch.by = null;
     Watch.seen = Math.max(0, Watch.seen - WATCH.drain * dt);
+  }
+
+  // ---- THE CULVERT TELLS YOU WHAT IT IS, ONCE.
+  // A crouch-only gap the player never learns about is not a shortcut, it is a
+  // wall with a secret. The drain is two tiles from the gate road, so anybody
+  // walking in the loud way passes it — say it the first time they do, in the
+  // traveller's voice, and never again.
+  if (!Watch.sawCulvert) {
+    for (const q of props) {
+      if (q.type !== 'culvert') continue;
+      if (Math.hypot(player.x - (q.gx + 0.5), player.y - (q.gy + 0.5)) > 2.2) continue;
+      Watch.sawCulvert = true;
+      showMsg('A storm drain, under the wire. I would have to go flat.', 3.4);
+      break;
+    }
   }
 }
 

@@ -786,3 +786,39 @@ Frame cost **13.6–14.8 ms → 9.8–11.0 ms**. Two ways in, both sealed → 0.
 - The rust drones (E4) and the beacon sweep (E5) are still not built.
 - `design/map-redesign.md` — the Fringe density plan — is written and approved-
   pending. Nothing of it has been built.
+
+## AIRFIELD 12, PASS TWO — a reason, a map that points, five ways in, a real boss, 2026-09-09
+`design/airfield-pass-two.md`. **On the branch, going to `main`.**
+
+- **A REASON TO GO.** The loop is a **muster**, still calling units in, and
+  everything that has come through the ring for a year was walking toward it.
+  Candlelight is on the path. Cutting it **halves the Fringe's patrols (8 squads
+  → 4)** — and Ivar says out loud that it fixes this district and nothing else.
+  Wren supplies the want as well as the fear: an ordnance bunker nobody has ever
+  had open, and the drain she got in through on her belly.
+- **THE MAP POINTS AT PLACES YOU HAVE NOT BEEN.** The objective marker used to
+  be gated on `mapThumbs[area]`, so at exactly the moment you needed directions
+  it drew nothing. It is clamped to the map's edge with a bearing and a
+  distance now, with a lead line from YOU, and a chevron on the HUD in play.
+- **FIVE WAYS THROUGH THE APRON FENCE**, graded by distance from the gate:
+  culvert (1 tile out, **crouch-only**, watched 78% of a sweep), bowser squeeze
+  (11, 66%), east service gap (20, 24%), flattened wire (22, 21%), west gap
+  (37, 3%). Sealing all five still leaves **0** reachable north.
+- **`crawlable`** — a new tile kind: solid to every droid, every cone and
+  `findSafeSpot`, open to a crouching player. `tryMove` dispatches on whether
+  the mover is the player.
+- **THE PROVOST REBUILT.** Docked it is **armoured** — the four monitor banks
+  are how you start the fight, and each is worth 45 of its 420. The amber opens
+  on the **recoil**, 0.5s against a 1.6s cycle. It hunts on the cameras it has
+  left; under half it goes blind and plants itself. The breaker blacks the room
+  for four seconds. Played well: dead in 17.9s for 24 rounds. Played badly: 99
+  rounds into a shut plate and the swarm at 27.8s.
+- **The blast pen is a pen** (open revetment walls, not three roofed sheds with
+  an interceptor parked on one), the tanks read as tanks, the radar dish is a
+  bowl, and `check.js` now tests what a sprite PAINTS on rather than what its
+  footprint claims — which is the test that had been missing the whole class.
+
+### Outstanding
+- The rust drones (E4) and the beacon sweep (E5) are still not built.
+- `design/map-redesign.md` — the Fringe density plan — is written and approved-
+  pending. Nothing of it has been built.

@@ -53,7 +53,8 @@ function saveGame() {
       // cutscene skippable from the second time; `networkDown` is a whole area
       // having changed state and must outlive the walk home.
       watch: typeof Watch !== 'undefined'
-        ? { swarmSeen: Watch.swarmSeen, networkDown: Watch.networkDown, firstSight: Watch.firstSight }
+        ? { swarmSeen: Watch.swarmSeen, networkDown: Watch.networkDown,
+            firstSight: Watch.firstSight, sawCulvert: Watch.sawCulvert }
         : undefined,
     };
     localStorage.setItem(saveKey(), JSON.stringify(d));

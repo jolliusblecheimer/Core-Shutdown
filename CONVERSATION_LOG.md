@@ -3955,3 +3955,55 @@ old 96×72 map, so two assertions had been passing by accident. Pointed at the
 real bunker it passes honestly.
 
 All suites clean, no console errors.
+
+---
+
+## Session — six asks, and four of my own hypotheses killed on the way
+
+**Laurens:** "1. give the player a good reason to go to the military field 2.
+When pressing m show where the next quest is located 3. Also at the only spot
+where i can pass there is a camera, make multiple places i can go through, the
+closer to the entrance the more dificult 4. There is still a plane in a house
+5. There is still a lot of stuff overlapping and looking wierd check all. 6. the
+bossbattle is easy and super wierd rethink the whole fight"
+
+Planned first (`design/airfield-pass-two.md`), approved with one correction from
+Laurens that made it better: **shutting the field down only stops them in the
+Fringe, not overall.** It is *a* base of operations, not *the* one, and nobody
+in the game is allowed to say otherwise.
+
+**The plane in the house** was the blast pen: three `makeBuilding` volumes with
+roofs on them, and the interceptor drawn standing on top of one. Every footprint
+check passed because the footprints never overlapped — the *sprites* did. So the
+first thing built was the measurement: read the sprite's alpha, ask which tiles
+it actually paints. That found the jet in both pen arms and the transport a tile
+inside the squadron block. It is section 1 of `check.js` now.
+
+**The visual sweep** found real faults and, checked one by one, killed four of
+my own: the helicopter's "detached rotor mast" was a fence post standing behind
+it, the "amber outline" round the tower's grit was the dialogue box border, the
+apron fence does not cross the helipad, and the cactus scatter already excluded
+tarmac. What was real: the pens, the tanks (a green loaf — the hull was drawn
+wider than its own tracks, so nothing below the deck line survived), and the
+radar dish (two flat ellipses, a lollipop).
+
+**Five ways through the wire**, graded so the near ones cost you: a crouch-only
+culvert one tile from the gate (watched 78% of a sweep), the bowser squeeze at
+11 (66%), the east gap at 20 (24%), the flattened wire at 22 (21%), the west gap
+at 37 (3%). Sealing all five still leaves nothing reachable north. Getting that
+grading to be *true* took three attempts at the measurement, and each earlier
+version graded the field backwards.
+
+**The boss.** The old fight was free in both halves and the room took no part.
+Now: docked it is armoured and the four monitor banks are the way in; the amber
+opens on the recoil, not on an angle; it hunts on the cameras it has left; the
+breaker blacks the room for four seconds. A bot that plays the design kills it
+in 17.9s for 24 rounds. A bot that walks at it holding the trigger puts 99
+rounds into a shut plate and gets swarmed.
+
+**The reason and the map.** Ivar's deduction now lands where the loop is heard,
+and the payoff is measurable: 8 squads in the Fringe become 4. The map points at
+Airfield 12 before you have ever been there, which it flatly could not do
+before — the objective marker was gated on having a thumbnail of the area.
+
+All suites green, no console errors.

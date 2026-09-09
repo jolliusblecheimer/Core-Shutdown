@@ -298,6 +298,16 @@ const FOLK = {
          "Crouch, keep something between you and the lights, and don't be greedy."],
         "Two of them. Out the roof, not the doors. I was under the wing before I heard the second one.",
         "Stair's on the north face of the tower. Outside. The inside one's under water.",
+        // THE WANT, not just the fear. Her warning already existed; without
+        // something the player actively wants at the far end, the walk north is
+        // still only curiosity with a hazard attached.
+        ["There's an ordnance bunker on the south side with a blast door on it.",
+         "Nobody has ever had that open. Not us, not the ones before us.",
+         "Whatever they left in there, it's still in there.",
+         "The duty officer had the key on him. He's still at his desk."],
+        ["And there's a drain under the wire by the vehicle gate. Storm drain.",
+         "I got in that way once. On my belly, and I did not enjoy it.",
+         "It comes up right under their noses, mind. Your choice which you'd rather."],
         "I'd go back for the pack. I'm not going back for the pack." ] },
     // OSGOOD. He keeps the fire, and S3 is the one thing he ever asks for —
     // GAME_PLAN §6's "survivors improve the camp" in its smallest provable
@@ -382,8 +392,19 @@ const FOLK = {
         if (Quests.q2 === 'mast') return [
           "That's the one. Get it up high — the west front has a ladder on it.",
           "Higher than the roof, or it hears nothing but the roof." ];
+        // THE PAYOFF. A reason has to be paid or it was never a reason: the
+        // ring gets quieter, and the man who worked out why says so — and says,
+        // again, exactly how far it goes.
+        if (Quests.q3 === 'done') return [
+          "The set's been quiet for two days. Two days, traveller.",
+          "Whatever you did up there, they've stopped walking through us.",
+          "Don't mistake it for winning. There'll be a dozen more of those,",
+          "still shouting, in districts I'll never see. This one's just ours again.",
+          "That's the size of it. It's enough." ];
         if (Quests.q2 === 'done') return [
-          "That's not a person. That's a machine that never got told to stop.",
+          "It's a muster and it's still calling them in. Every one that came",
+          "through here was walking to it, and we're only in the way.",
+          "Shut it up and they stop coming HERE. Here, and nowhere else.",
           "It's north. That's the whole of what I can give you. North.",
           "Don't thank me for it." ];
         return [
@@ -533,6 +554,22 @@ function mountAerial(p) {
     "\"...REMAIN WHERE YOU ARE. DO NOT ATTEMPT—\"",
     "\"...ALL STATIONS. THE CORRECTION IS IN—\"",
     "IVAR: That's not a person. That's a machine that never got told to stop.",
+    // THE REASON TO GO NORTH. It used to end here, on "it is north, and that is
+    // all I have" — which is a direction, not a reason. Nobody's is at stake in
+    // a noise. What Ivar works out is a CAUSE: the loop is a muster, and the
+    // machines that have been walking into the ring for a year have been
+    // walking TOWARD IT. Candlelight is on the path. That is why the camp keeps
+    // losing people, and it is something the player can go and switch off.
+    "IVAR: But listen to what it's saying. ALL STATIONS. That's not a warning.",
+    "IVAR: That's a muster. It's still calling them in.",
+    "IVAR: Every machine that's come through here in a year was walking to it.",
+    "IVAR: We're not on anybody's list, traveller. We're just in the way.",
+    // AND IT ONLY FIXES THE FRINGE. Said out loud, by the person who worked it
+    // out, so the player never believes they have won a war by switching off
+    // one rack in one tower.
+    "IVAR: Shut it up and they stop coming HERE. Here. Not anywhere else.",
+    "IVAR: There'll be a dozen more of those still shouting, and I can't reach them.",
+    "IVAR: But I can get this district back, and that's more than I had yesterday.",
     "IVAR: It's north. Strong enough that it's close. North, and that's all I have." ]);
   saveGame();
 }
@@ -730,12 +767,17 @@ const USABLE = {
     ? (Quests.bunker === 'open' ? 'open'
        : player.inv.bunkerKey ? 'E — unlock the bunker' : 'locked')
     : openBlastDoor(p),
-  breaker: (p, ask) => ask ? 'E — look' : startDialog([
+  // MID-FIGHT THE BREAKER IS THE ROOM FIGHTING WITH YOU: four seconds of black,
+  // and the Provost loses you completely. Out of the fight it is what it always
+  // was — a note on a wall about what this field has been doing for a year.
+  breaker: (p, ask) => (typeof provostInPlay === 'function' && provostInPlay())
+    ? (ask ? 'E — throw the breaker' : provostBlackout())
+    : (ask ? 'E — look' : startDialog([
     "A breaker in a steel box, and somebody has written BEACON on it in chalk.",
     (Quests.s2 || 0) >= 3
       ? "The tower crew's last tape said it runs on its own once it's lit."
       : "The handle is stiff with a year of damp. It would take some working.",
-    "Whatever it feeds is not turning at the moment." ]),
+    "Whatever it feeds is not turning at the moment." ])),
   chest: (p, ask) => ask ? (p.open ? 'empty' : 'E — open') : openChest(p),
   strongbox: (p, ask) => ask ? 'locked' : startDialog([
     "Padlocked, and the key is not in this room.",
@@ -933,14 +975,14 @@ const OBJECTIVES = [
     area: 'fringe', x: 56, y: 68,
     detail: 'A length of aluminium and a coil of coax. There is a ladder up the west front.',
     log: "Bolted the aerial to the church's west front." },
-  { id: 'northbound', title: () => 'Follow the signal north',
+  { id: 'northbound', title: () => 'Silence the muster, north',
     area: 'fringe', x: 92, y: 20,
-    detail: 'Something is still transmitting, from the night it happened, on a machine nobody told to stop. It is north of here.',
-    log: 'Followed the loop north, under the viaduct.' },
+    detail: 'The loop is a muster and it is still calling them in. Everything that has come through this ring in a year was walking to it. Shut it up and they stop coming here — here, and nowhere else.',
+    log: 'Followed the muster north, under the viaduct.' },
   { id: 'theWreck', title: () => 'Get to the top of the tower',
     area: 'field12', x: 33, y: 6,
-    detail: 'The loop is coming off the tower, not the runway. Everything this field ever saw was written to a rack up there.',
-    log: 'Got up the tower, and took the recording off the rack.' },
+    detail: 'The muster is coming off the tower, not the runway — and everything this field ever saw was written to a rack at the top of it. Wren says the ordnance bunker was never opened, either.',
+    log: 'Got up the tower, took the recording off the rack, and cut the muster.' },
   // THE HEADACHE IS NEVER MARKED. What he saw on that slate is not a place you
   // can walk to, and a dot pointing anywhere would be the game explaining it.
   { id: 'seen', title: () => 'Understand what you saw', silent: true,
@@ -1001,9 +1043,15 @@ let Prompt = null;
 
 const SPEED = 4.0;
 
+// ONE mover for everything that walks, and it asks a different question for the
+// player. A crawl tile — the culvert under the apron fence — is a wall to every
+// droid, to line of sight and to `findSafeSpot`, and a gap to a player on their
+// belly. Dispatching here rather than at the call site means knockback, shoves
+// and the boss's pushes all obey the same rule as walking.
 function tryMove(e, dx, dy) {
-  if (dx !== 0 && canStand(e.x + dx, e.y, e.r)) e.x += dx;
-  if (dy !== 0 && canStand(e.x, e.y + dy, e.r)) e.y += dy;
+  const fits = (e === player) ? playerCanStand : canStand;
+  if (dx !== 0 && fits(e.x + dx, e.y, e.r)) e.x += dx;
+  if (dy !== 0 && fits(e.x, e.y + dy, e.r)) e.y += dy;
 }
 
 function updatePlayer(dt) {
@@ -1193,6 +1241,7 @@ function updatePlayer(dt) {
     if (typeof sentryMeleeHit === 'function') sentryMeleeHit(player.x, player.y, m.range, m.dmg);
     // the same swing, and the same plate: it reaches an MP and does nothing
     if (typeof mpMeleeHit === 'function') mpMeleeHit(player.x, player.y, m.range);
+    if (typeof monitorBankHit === 'function') monitorBankHit(player.x, player.y, m.range, m.dmg);
     if (typeof provostMeleeHit === 'function') provostMeleeHit(player.x, player.y, m.range, m.dmg);
     if (typeof archivistMeleeHit === 'function') archivistMeleeHit(player.x, player.y, m.range, m.dmg);
     // one swing, every machine standing in the arc - fighting two at once is
@@ -1842,6 +1891,10 @@ function updateBullets(dt) {
         break;                          // one bullet, one machine
       }
     }
+    // THE MONITOR BANKS ARE PART OF THE PROVOST FIGHT, so they are part of the
+    // damage path rather than scenery you walk past. A round into one takes a
+    // quarter of the network off him — see js/provost.js.
+    if (!hit && typeof monitorBankHit === 'function' && monitorBankHit(b.x, b.y, 0.6, b.dmg || 10)) hit = true;
     if (!hit && typeof provostBulletHit === 'function' && provostBulletHit(b)) hit = true;
     if (!hit && typeof archivistBulletHit === 'function' && archivistBulletHit(b)) hit = true;
     // MILITARY PLATE STOPS EVERYTHING. These two consume the round and return
@@ -1863,6 +1916,20 @@ function updateBullets(dt) {
     }
     if (hit) bullets.splice(i, 1);
   }
+}
+
+// FOUR SCREENS IN ONE ROOM, and each one is worth a quarter of the boss.
+// A bank is a `monitors` prop standing inside the area the Provost is in; it
+// goes dark when it breaks and stays dark, and `p.dead` is what remembers it
+// for the rest of the fight.
+function monitorBankHit(x, y, r, dmg) {
+  if (typeof provost === 'undefined' || !provost.active || provost.state === 'dead') return false;
+  for (const p of props) {
+    if (p.type !== 'monitors' || p.dead) continue;
+    if (Math.hypot(x - (p.gx + 0.5), y - (p.gy + 0.5)) > r + 0.55) continue;
+    return breakProvostBank(p, dmg);
+  }
+  return false;
 }
 
 function killScrapper(s) {

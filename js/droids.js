@@ -198,7 +198,17 @@ function snapWaypoint(x, y) {
 // actually needs is the RECOVERY DETAIL working the wreck.
 function spawnFringeSquads() {
   clearDroids();
-  const routes = (currentAreaDef().routes) || FRINGE_ROUTES;
+  let routes = (currentAreaDef().routes) || FRINGE_ROUTES;
+  // THE MUSTER IS OFF, SO FEWER OF THEM WALK THROUGH HERE.
+  // Ivar's reason for sending you north was that everything coming through the
+  // ring was walking toward Airfield 12's beacon and the camp is on the path.
+  // If cutting it changed nothing the player could see, it was never a reason —
+  // so with the recording pulled, HALF the squads stop coming. Half, not all:
+  // the field was one base of operations, not the only one, and the game is not
+  // allowed to imply otherwise.
+  if (typeof Quests !== 'undefined' && Quests.q3 === 'done') {
+    routes = routes.filter((_, i) => i % 2 === 0);
+  }
   for (const r of routes) {
     const pts = r.pts.map(p => snapWaypoint(p[0], p[1]));
     if (pts.some(p => !p)) {

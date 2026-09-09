@@ -10,6 +10,11 @@ const groundVar = [];
 const solid = [];
 const heavy = [];         // walls & mountains — stops even the boss
 const burning = [];       // ground that is ON FIRE — walkable, and it hurts
+// CRAWL SPACE. A tile that is solid to everything in the world and passable to
+// a player who is on their belly. It stays solid in `isSolid`, so nothing that
+// walks can path through it and no cone can see down it — a culvert under a
+// fence is a pipe, not a doorway. Only `playerCanStand` knows the difference.
+const crawlable = [];
 let crushProps = {};      // "x,y" -> prop: small junk the Compactor flattens
 const props = [];         // {gx, gy, type, v, dir, front, foot}
 const decals = [];
@@ -42,6 +47,19 @@ function canStand(x, y, r) {
   return !isSolid(x - r, y - r) && !isSolid(x + r, y - r) &&
          !isSolid(x - r, y + r) && !isSolid(x + r, y + r);
 }
+function isCrawl(gx, gy) {
+  if (gx < 0 || gy < 0 || gx >= MAP_W || gy >= MAP_H) return false;
+  return !!(crawlable[gy | 0] && crawlable[gy | 0][gx | 0]);
+}
+// WHAT THE PLAYER CAN STAND ON, which is not what a droid can. Everything else
+// in the game keeps calling `canStand`, so a crawl tile stays a wall to the
+// patrols, to the boss, to line of sight and to `findSafeSpot`.
+function playerCanStand(x, y, r) {
+  if (canStand(x, y, r)) return true;
+  if (typeof player === 'undefined' || !player.crouch) return false;
+  const ok = (px, py) => !isSolid(px, py) || isCrawl(px, py);
+  return ok(x - r, y - r) && ok(x + r, y - r) && ok(x - r, y + r) && ok(x + r, y + r);
+}
 function insideShack(x, y) {
   if (!SHACK) return false;
   return x > SHACK.x0 && x < SHACK.x1 + 1 && y > SHACK.y0 && y < SHACK.y1 + 1;
@@ -61,7 +79,7 @@ function openGate() {
 function resetMap(w, h, rng) {
   MAP_W = w; MAP_H = h;
   ground.length = 0; groundVar.length = 0; solid.length = 0; heavy.length = 0;
-  burning.length = 0;
+  burning.length = 0; crawlable.length = 0;
   props.length = 0; decals.length = 0; moundSpawns.length = 0;
   boomBarrels.length = 0; patrolPoints.length = 0;
   roadblocks = [];
@@ -69,12 +87,14 @@ function resetMap(w, h, rng) {
   gateProp = null; SHACK = null;
   for (let y = 0; y < h; y++) {
     ground[y] = []; groundVar[y] = []; solid[y] = []; heavy[y] = []; burning[y] = [];
+    crawlable[y] = [];
     for (let x = 0; x < w; x++) {
       ground[y][x] = 0;
       groundVar[y][x] = (rng() * 6) | 0;
       solid[y][x] = false;
       heavy[y][x] = false;
       burning[y][x] = false;
+      crawlable[y][x] = false;
     }
   }
 }
@@ -1592,12 +1612,27 @@ function buildField12() {
   const RW_Y0 = 16, RW_Y1 = 21;
   const AP_Y0 = 10, AP_Y1 = 14;
   const FENCE_Y = 15;                            // the apron fence
-  const GAP_W = [19, 21], GAP_E = [78, 80];      // and the only two ways through it
+  // FIVE WAYS THROUGH, AND THE NEAR ONES ARE THE HARD ONES.
+  // There used to be two, both twenty tiles or more from the vehicle gate and
+  // both swept by a camera — so there was, in practice, one way in, and it was
+  // watched. Five now, and the rule is the one Laurens asked for: the closer to
+  // the gate, the harder to use. Coming in loud and cutting straight north is a
+  // real option and it costs you; walking the long way is safe and slow.
+  //
+  //   x56-57  CULVERT          2 from the gate   crouch-only, under two cones
+  //   x46-47  BOWSER SQUEEZE  11                 two tiles, between the fuel bowsers
+  //   x78-80  SERVICE GAP     20                 the old east opening
+  //   x33-36  FLATTENED WIRE  23                 four wide, a hulk went through
+  //   x19-21  WEST GAP        37                 the old quiet end
+  const GAP_W = [19, 21], GAP_E = [78, 79];      // the two original openings
+  const GAP_FLAT = [33, 36];                     // where the hulk went through
+  const GAP_SQUEEZE = [46, 47];                  // two tiles, between the bowsers
+  const CULVERT = [56, 57];                      // crouch-only, under the wire
   for (let y = 0; y < H; y++) for (let x = 4; x < W - 4; x++) {
     if (y >= RW_Y0 && y <= RW_Y1) ground[y][x] = 17;
     else if (y >= AP_Y0 && y <= AP_Y1) ground[y][x] = 18;
   }
-  for (const g of [GAP_W, GAP_E]) for (let x = g[0]; x <= g[1]; x++) ground[FENCE_Y][x] = 18;
+  for (const g of [GAP_W, GAP_E, GAP_FLAT, GAP_SQUEEZE]) for (let x = g[0]; x <= g[1]; x++) ground[FENCE_Y][x] = 18;
   for (let y = RW_Y1 + 1; y <= 27; y++) for (let x = 80; x < 88; x++) ground[y][x] = 18;
   for (let x = 2; x < W - 2; x++) ground[33][x] = 18;
   for (let y = 3; y < H - 2; y++) { ground[y][2] = 18; ground[y][W - 3] = 18; }
@@ -1678,13 +1713,36 @@ function buildField12() {
   // FULL WIDTH, fence to fence. Running it x4..W-5 left the ends open and you
   // could simply walk round it: measured, a thousand tiles north of the fence
   // were still reachable with both gaps sealed.
-  run(rowX(FENCE_Y, 1, GAP_W[0] - 1), 'x');
-  run(rowX(FENCE_Y, GAP_W[1] + 1, GAP_E[0] - 1), 'x');
-  run(rowX(FENCE_Y, GAP_E[1] + 1, W - 2), 'x');
-  for (const g of [GAP_W, GAP_E]) {
+  // The wire runs between the openings. The culvert is NOT an opening in it —
+  // the fence goes straight over the top and the pipe goes under.
+  const OPENINGS = [GAP_W, GAP_FLAT, GAP_SQUEEZE, GAP_E]
+    .slice().sort((a, b) => a[0] - b[0]);
+  let cx0 = 1;
+  for (const g of OPENINGS) {
+    run(rowX(FENCE_Y, cx0, g[0] - 1), 'x');
     props.push({ gx: g[0] - 1, gy: FENCE_Y, type: 'post', big: true });
     props.push({ gx: g[1] + 1, gy: FENCE_Y, type: 'post', big: true });
+    cx0 = g[1] + 1;
   }
+  run(rowX(FENCE_Y, cx0, W - 2), 'x');
+
+  // THE FLATTENED SECTION. Something drove through it and nobody came out to
+  // fix it — so the opening is wide and obvious, and it is twenty-three tiles
+  // from the gate. The hulk that did it is still lying in the gap.
+  props.push({ gx: GAP_FLAT[0], gy: FENCE_Y + 1, type: 'razorDown', dir: 'x' });
+  props.push({ gx: GAP_FLAT[1] - 1, gy: FENCE_Y - 1, type: 'razorDown', dir: 'x' });
+
+  // THE CULVERT. A storm drain under the apron fence, two tiles from the gate
+  // road. The fence is unbroken above it: these tiles stay solid to everything
+  // that walks and to every cone, and open only to a player on their belly.
+  for (const x of CULVERT) {
+    crawlable[FENCE_Y][x] = true;
+    ground[FENCE_Y][x] = 20;
+    ground[FENCE_Y - 1][x] = 20;
+    ground[FENCE_Y + 1][x] = 20;
+  }
+  props.push({ gx: CULVERT[0], gy: FENCE_Y + 1, type: 'culvert' });
+  props.push({ gx: CULVERT[1], gy: FENCE_Y - 1, type: 'culvert' });
 
   // ---- THE STRUCTURES ----
   const box = (x0, y0, w, h, kind) => {
@@ -1722,8 +1780,29 @@ function buildField12() {
   if (Quests && Quests.bunker === 'open') door(BUNK_DOOR[0], BUNK_DOOR[1], BUNK_Y);
   props.push({ gx: BUNK_DOOR[0], gy: BUNK_Y, type: 'blastDoor',
                foot: [BUNK_DOOR[0], BUNK_Y, 2, 1] });
-  // one blast pen, west end, three-sided and open to the north
-  box(6, 28, 8, 2, 'W'); box(6, 24, 2, 4, 'W'); box(12, 24, 2, 4, 'W');
+  // ---- THE BLAST PEN, west end: three walls and NO ROOF ----
+  // It was three `box(...,'W')` volumes — three windowless sheds with roofs on
+  // them, the size of a hangar between them — and the interceptor that was
+  // meant to be sheltering inside was drawn STANDING ON TOP OF ONE. That is the
+  // "plane in a house" that survived every footprint check, because footprints
+  // never overlapped: the sprites did.
+  //
+  // A revetment is earth-filled concrete, open to the sky, and you can see over
+  // it. It is a `hardware` prop like everything else parked out here, so it is
+  // one pre-rendered volume and it can never grow a roof.
+  const penWall = (x0, y0, w, h, kind) => {
+    for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) {
+      if (x < 0 || y < 0 || x >= W || y >= H) continue;
+      solid[y][x] = true; heavy[y][x] = true;
+    }
+    props.push({ gx: x0, gy: y0, type: 'hardware', kind, foot: [x0, y0, w, h] });
+  };
+  // Ten wide, not eight: the interceptor's WINGS have to clear the arms, and a
+  // 4-tile footprint carries a 7-tile wingspan. A pen an aeroplane touches on
+  // both sides is a pen it was reversed into by accident.
+  penWall(5, 29, 10, 1, 'penWallX10');   // the back wall, south
+  penWall(5, 24, 1, 6, 'penWallY6');     // the west arm
+  penWall(14, 24, 1, 6, 'penWallY6');    // the east arm — open north, to the runway
 
   Areas.field12.roofs = ROOFS;
 
@@ -1780,16 +1859,20 @@ function buildField12() {
     props.push({ gx: x0, gy: y0, type: 'hardware', kind, foot: [x0, y0, w, h] });
   };
   hardware(11, 10, 6, 5, 'acProp');              // the light prop, west end
-  hardware(21, 10, 9, 4, 'acTransport');         // the transport, clear of the tower
+  hardware(21, 11, 9, 4, 'acTransport');         // the transport, clear of the tower
   hardware(79, 10, 5, 4, 'heli');                // the helicopter on its pad
-  hardware(8, 24, 4, 3, 'acJet');                // an interceptor, inside the pen's arms
+  hardware(8, 24, 4, 3, 'acJet');                // an interceptor, INSIDE the open pen
   hardware(85, 4, 6, 4, 'acJetBurnt');           // and one that did not get away
-  hardware(82, 23, 5, 3, 'tank');                // the vehicle park
+  hardware(81, 23, 5, 3, 'tank');                // the vehicle park
   hardware(88, 23, 5, 3, 'tank');
   hardware(82, 28, 5, 3, 'tank');
   hardware(63, 30, 5, 3, 'tankHulk');            // beside the gate, never across it
   if (!solid[12][45]) { solid[12][45] = true; props.push({ gx: 45, gy: 12, type: 'radarMast' }); }
-  for (const bx of [70, 75]) {
+  // THE FUEL, and it is what makes the squeeze a squeeze. Two bowsers stand
+  // either side of the one-tile gap at x47, so the crossing eleven tiles from
+  // the gate is a corridor you can only take head-on — and they are explosive,
+  // which is the one thing on this field that can go wrong loudly.
+  for (const bx of [42, 49]) {
     for (let k = 0; k < 4; k++) solid[12][bx + k] = true;
     props.push({ gx: bx, gy: 12, type: 'hardware', kind: 'bowser', foot: [bx, 12, 4, 2] });
     boomBarrels.push({ gx: bx + 1, gy: 12, dead: false, r: 3 });
@@ -1811,15 +1894,36 @@ function buildField12() {
   // Placed ALONG THE ROUTE, not scattered: the gate approach, the runway you
   // have to cross, both gaps in the apron fence, and the long apron run west to
   // the tower door. NONE at the west breach — that is still Wren's way.
+  // THE CAMERAS ARE THE GRADING. Five ways through the fence is a label until
+  // the near ones are actually the hard ones, and what makes a crossing hard is
+  // how much of the time a cone is sitting on it.
+  //
+  // Every camera shares one sweep PERIOD (WATCH.camSweep), so the fourth number
+  // — the sweep amplitude — is the dial: a narrow sweep is nearly a stare and
+  // is almost always on its crossing; a wide one covers more ground but spends
+  // only a moment of each pass on any given tile, which is a gap you can time.
+  // So the near crossings get narrow cones and two of them; the far ones get
+  // one wide slow cone each.
   const CAMS = [
     [61, 30, -Math.PI / 2, 0.45],              // the gate approach
-    [58, 19, -Math.PI / 2, 0.45],              // the runway crossing off the gate
-    [79, 13,  Math.PI / 2, 0.45],              // the EAST gap in the apron fence
-    [20, 13,  Math.PI / 2, 0.45],              // the WEST gap
-    [52, 12,  Math.PI,     0.45],              // the apron run, looking west
-    [40, 12,  Math.PI,     0.45],              // the last stretch to the tower door
+    [57, 19, -Math.PI / 2, 0.30],              // the CULVERT's south mouth — aimed AT it, not near it
+    [56, 12,  Math.PI / 2, 0.30],              // and its north mouth. TWO cones, one tile from the gate road.
+    [47, 11,  Math.PI / 2, 0.34],              // the BOWSER SQUEEZE, 11 tiles out
+    [68, 12,  Math.PI,     0.45],              // the apron run, a long look west
+    [78, 11,  Math.PI / 2, 0.62],              // the EAST service gap, 20 out
+    [40, 12,  Math.PI,     1.00],              // the FLATTENED section and the tower approach, 22 out
+    [20, 13,  Math.PI / 2, 0.80],              // the WEST gap, 37 out — the widest sweep on the field
     [84, 27,  Math.PI,     0.45],              // the vehicle park
   ];
+  // A CAMERA STANDING INSIDE A BOWSER SEES THE INSIDE OF A BOWSER. Moving the
+  // fuel to flank the squeeze put one camera inside a tank of it and another
+  // inside the helicopter, and both went blind — a fault that reads, in play,
+  // as a cone that simply is not there. The sites are checked at build time now.
+  for (const c of CAMS) {
+    if (solid[c[1]] && solid[c[1]][c[0]]) {
+      console.warn('AIRFIELD 12: camera site ' + c[0] + ',' + c[1] + ' is inside something solid');
+    }
+  }
   Areas.field12.cameras = CAMS;
 
   // ---- THE DESERT ----
