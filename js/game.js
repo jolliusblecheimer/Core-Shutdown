@@ -3054,7 +3054,11 @@ function drawProp(p, x, y) {
   // THE MONITORS go out with the Provost. Every screen in the room is a camera
   // feed, so their going dark is how the player learns the network was HIS.
   else if (T === 'monitors')  {
-    img = (typeof Watch !== 'undefined' && Watch.networkDown) ? Sprites.monitorsOff : Sprites.monitors;
+    // A BROKEN BANK STAYS BROKEN, and it has to look it — the pips on the boss
+    // bar say how many are left, but the room is where you should be able to
+    // see it without reading anything.
+    const off = p.dead || (typeof Watch !== 'undefined' && Watch.networkDown);
+    img = off ? Sprites.monitorsOff : Sprites.monitors;
     oyOff = -24; drawShadow(x, y, 12);
   }
   else if (T === 'cradle')    { img = Sprites.cradle;   oyOff = -10; drawShadow(x, y, 16); }
@@ -4054,6 +4058,18 @@ function drawHUD() {
     uiRect(VIEW_W / 2 - 86, 17, 172, 7, 'rgba(0,0,0,0.6)');
     uiRect(VIEW_W / 2 - 84, 19, 168, 3, '#3a1410');
     uiRect(VIEW_W / 2 - 84, 19, Math.round(168 * Math.max(0, provost.hp) / provost.maxHp), 3, '#ff5040');
+    // WHY YOUR SHOT DID NOT LAND. A fight whose one rule is a timing window has
+    // to say, every frame, whether the window is open — otherwise the player
+    // learns "sometimes it works", which is not a rule, it is noise.
+    const guard = provostGuardWhy();
+    ptext(guard, VIEW_W / 2, 26, 7,
+          provost.open > 0 ? '#ffb84a' : provost.state === 'dock' ? '#ff7a5a' : '#9aa4ad', 'center');
+    // and the four screens, as four pips — the other half of its health
+    for (let i = 0; i < 4; i++) {
+      const lit = i < provost.banks;
+      uiRect(VIEW_W / 2 - 20 + i * 11, 34, 8, 4, lit ? '#5ad2ff' : 'rgba(80,90,100,0.55)');
+    }
+    if (provost.dark > 0) ptext('DARK', VIEW_W / 2, 45, 7, '#5ad2ff', 'center');
   }
 
   // ---- THE DETECTION METER ----

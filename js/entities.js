@@ -730,12 +730,17 @@ const USABLE = {
     ? (Quests.bunker === 'open' ? 'open'
        : player.inv.bunkerKey ? 'E — unlock the bunker' : 'locked')
     : openBlastDoor(p),
-  breaker: (p, ask) => ask ? 'E — look' : startDialog([
+  // MID-FIGHT THE BREAKER IS THE ROOM FIGHTING WITH YOU: four seconds of black,
+  // and the Provost loses you completely. Out of the fight it is what it always
+  // was — a note on a wall about what this field has been doing for a year.
+  breaker: (p, ask) => (typeof provostInPlay === 'function' && provostInPlay())
+    ? (ask ? 'E — throw the breaker' : provostBlackout())
+    : (ask ? 'E — look' : startDialog([
     "A breaker in a steel box, and somebody has written BEACON on it in chalk.",
     (Quests.s2 || 0) >= 3
       ? "The tower crew's last tape said it runs on its own once it's lit."
       : "The handle is stiff with a year of damp. It would take some working.",
-    "Whatever it feeds is not turning at the moment." ]),
+    "Whatever it feeds is not turning at the moment." ])),
   chest: (p, ask) => ask ? (p.open ? 'empty' : 'E — open') : openChest(p),
   strongbox: (p, ask) => ask ? 'locked' : startDialog([
     "Padlocked, and the key is not in this room.",
@@ -1199,6 +1204,7 @@ function updatePlayer(dt) {
     if (typeof sentryMeleeHit === 'function') sentryMeleeHit(player.x, player.y, m.range, m.dmg);
     // the same swing, and the same plate: it reaches an MP and does nothing
     if (typeof mpMeleeHit === 'function') mpMeleeHit(player.x, player.y, m.range);
+    if (typeof monitorBankHit === 'function') monitorBankHit(player.x, player.y, m.range, m.dmg);
     if (typeof provostMeleeHit === 'function') provostMeleeHit(player.x, player.y, m.range, m.dmg);
     if (typeof archivistMeleeHit === 'function') archivistMeleeHit(player.x, player.y, m.range, m.dmg);
     // one swing, every machine standing in the arc - fighting two at once is
@@ -1848,6 +1854,10 @@ function updateBullets(dt) {
         break;                          // one bullet, one machine
       }
     }
+    // THE MONITOR BANKS ARE PART OF THE PROVOST FIGHT, so they are part of the
+    // damage path rather than scenery you walk past. A round into one takes a
+    // quarter of the network off him — see js/provost.js.
+    if (!hit && typeof monitorBankHit === 'function' && monitorBankHit(b.x, b.y, 0.6, b.dmg || 10)) hit = true;
     if (!hit && typeof provostBulletHit === 'function' && provostBulletHit(b)) hit = true;
     if (!hit && typeof archivistBulletHit === 'function' && archivistBulletHit(b)) hit = true;
     // MILITARY PLATE STOPS EVERYTHING. These two consume the round and return
@@ -1869,6 +1879,20 @@ function updateBullets(dt) {
     }
     if (hit) bullets.splice(i, 1);
   }
+}
+
+// FOUR SCREENS IN ONE ROOM, and each one is worth a quarter of the boss.
+// A bank is a `monitors` prop standing inside the area the Provost is in; it
+// goes dark when it breaks and stays dark, and `p.dead` is what remembers it
+// for the rest of the fight.
+function monitorBankHit(x, y, r, dmg) {
+  if (typeof provost === 'undefined' || !provost.active || provost.state === 'dead') return false;
+  for (const p of props) {
+    if (p.type !== 'monitors' || p.dead) continue;
+    if (Math.hypot(x - (p.gx + 0.5), y - (p.gy + 0.5)) > r + 0.55) continue;
+    return breakProvostBank(p, dmg);
+  }
+  return false;
 }
 
 function killScrapper(s) {

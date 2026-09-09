@@ -281,6 +281,33 @@ fight — not a health bar with a facing condition.
 That gives a fight that is about staying out of a light in a room whose furniture
 is the puzzle — the area's whole lesson — and nothing like the Compactor.
 
+### BUILT — and played, 2026-09-09
+`scratchpad/pfight.js` drives the real loop with a bot that plays the design
+(break the screens, then punish the recoil, slide off the beam) and a bot that
+does not (walk at it and hold the trigger):
+
+| | outcome | rounds | damage taken | worst lock |
+|---|---|---|---|---|
+| **played well** | killed in **17.9s** | 24 | 21 | 85% of the swarm |
+| **played badly** | **SWARMED at 27.8s** | 99 | 90 | 99% |
+
+Playing badly does not merely take longer — it does not work at all. Ninety-nine
+rounds into a shut plate is ninety-nine rounds wasted, and the cone gets you.
+
+**Numbers, after two rounds of tuning against that simulation:** hp 420, of which
+**180 (43%) comes off with the four monitor banks** and 240 with bullets. A bank
+takes 60 — three rifle rounds — because one-shotting them made the whole fight
+*eleven rounds long*: four to strip the network and seven to finish him. The
+amber window is 0.5s against a 1.6s fire cycle, so it is open about a third of
+the time; at 0.8s against 1.1s it was open 73%, which is not a window, it is a
+formality.
+
+**Two harness faults found on the way**, both of which would have passed as
+results: a cutscene left running from the previous run returns `updateProvost`
+early on every frame, so the second measurement was of a boss that never took a
+step; and the first bot held station off the *boss* rather than going to the
+*screens*, so it was not playing this fight at all.
+
 ---
 
 ## Order of work
