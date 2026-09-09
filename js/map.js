@@ -1722,8 +1722,29 @@ function buildField12() {
   if (Quests && Quests.bunker === 'open') door(BUNK_DOOR[0], BUNK_DOOR[1], BUNK_Y);
   props.push({ gx: BUNK_DOOR[0], gy: BUNK_Y, type: 'blastDoor',
                foot: [BUNK_DOOR[0], BUNK_Y, 2, 1] });
-  // one blast pen, west end, three-sided and open to the north
-  box(6, 28, 8, 2, 'W'); box(6, 24, 2, 4, 'W'); box(12, 24, 2, 4, 'W');
+  // ---- THE BLAST PEN, west end: three walls and NO ROOF ----
+  // It was three `box(...,'W')` volumes — three windowless sheds with roofs on
+  // them, the size of a hangar between them — and the interceptor that was
+  // meant to be sheltering inside was drawn STANDING ON TOP OF ONE. That is the
+  // "plane in a house" that survived every footprint check, because footprints
+  // never overlapped: the sprites did.
+  //
+  // A revetment is earth-filled concrete, open to the sky, and you can see over
+  // it. It is a `hardware` prop like everything else parked out here, so it is
+  // one pre-rendered volume and it can never grow a roof.
+  const penWall = (x0, y0, w, h, kind) => {
+    for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) {
+      if (x < 0 || y < 0 || x >= W || y >= H) continue;
+      solid[y][x] = true; heavy[y][x] = true;
+    }
+    props.push({ gx: x0, gy: y0, type: 'hardware', kind, foot: [x0, y0, w, h] });
+  };
+  // Ten wide, not eight: the interceptor's WINGS have to clear the arms, and a
+  // 4-tile footprint carries a 7-tile wingspan. A pen an aeroplane touches on
+  // both sides is a pen it was reversed into by accident.
+  penWall(5, 29, 10, 1, 'penWallX10');   // the back wall, south
+  penWall(5, 24, 1, 6, 'penWallY6');     // the west arm
+  penWall(14, 24, 1, 6, 'penWallY6');    // the east arm — open north, to the runway
 
   Areas.field12.roofs = ROOFS;
 
@@ -1780,11 +1801,11 @@ function buildField12() {
     props.push({ gx: x0, gy: y0, type: 'hardware', kind, foot: [x0, y0, w, h] });
   };
   hardware(11, 10, 6, 5, 'acProp');              // the light prop, west end
-  hardware(21, 10, 9, 4, 'acTransport');         // the transport, clear of the tower
+  hardware(21, 11, 9, 4, 'acTransport');         // the transport, clear of the tower
   hardware(79, 10, 5, 4, 'heli');                // the helicopter on its pad
-  hardware(8, 24, 4, 3, 'acJet');                // an interceptor, inside the pen's arms
+  hardware(8, 24, 4, 3, 'acJet');                // an interceptor, INSIDE the open pen
   hardware(85, 4, 6, 4, 'acJetBurnt');           // and one that did not get away
-  hardware(82, 23, 5, 3, 'tank');                // the vehicle park
+  hardware(81, 23, 5, 3, 'tank');                // the vehicle park
   hardware(88, 23, 5, 3, 'tank');
   hardware(82, 28, 5, 3, 'tank');
   hardware(63, 30, 5, 3, 'tankHulk');            // beside the gate, never across it

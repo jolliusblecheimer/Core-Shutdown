@@ -4081,27 +4081,90 @@ function outlined(src) {
       return R.finish();
     };
 
+    // A TANK. Rendered alone at 3x it used to be a green loaf: a flat slab with
+    // one small lump on it. Every part was in the code and none of it read.
+    //
+    // Three separate faults, all of them about ORDER AND SILHOUETTE:
+    //  1. THE TRACKS WERE INSIDE THE HULL. The hull spanned v 0.4..2.2 and the
+    //     near track v 1.85..2.45, so the hull's own near flank was drawn over
+    //     the top of the track it was supposed to be sitting on. Nothing below
+    //     the hull line survived. The tracks stand PROUD of the hull now — the
+    //     hull is narrower than they are, which is also how a tank is built.
+    //  2. THE BARREL WAS 0.24 TILES THICK, four pixels, and it left the turret
+    //     BELOW the turret's own roofline, so it read as a tab on the side. It
+    //     is thicker, it comes out of a mantlet, and it carries a muzzle brake
+    //     so the far end terminates in something instead of tapering into sand.
+    //  3. NO TONE. Track, hull, turret and every top face were four shades of
+    //     one green. There is a ramp now — near-black track, mid hull, lighter
+    //     turret, lightest tops — because in this projection tone is the only
+    //     thing that separates one volume from the next.
     const tank = (gunless) => {
-      // 5.2, NOT 4.2. The barrel is drawn out to u = 4.9 and the rig was sized
-      // for 4.2, so the gun was clipped off the edge of its own canvas and
-      // every tank on the field read as a featureless green slab.
-      const R = isoRig(5.2, 2.6, 30);
-      const HULL = '#4f5346', HULL_D = '#383b31', TOP = '#5c6053';
-      R.box(0.2, 0.15, 4.0, 0.75, 0, 9, '#262822', '#1a1c17', '#1a1c17');   // tracks
-      R.box(0.2, 1.85, 4.0, 2.45, 0, 9, '#2c2e27', '#1a1c17', '#1a1c17');
-      for (let i = 0; i < 7; i++) {                                          // road wheels
-        R.flat(0.5 + i * 0.5, 1.86, 0.8 + i * 0.5, 2.44, 9.5, '#33362e');
+      const R = isoRig(6.5, 2.9, 34);
+      const TRK = '#22241d', TRK_D = '#121309';
+      const HULL = gunless ? '#464538' : '#4f5346';
+      const HULL_D = gunless ? '#2e2d24' : '#383b31';
+      const TOP = gunless ? '#525043' : '#616656';
+      const TUR = gunless ? '#4b4a3d' : '#565b4b', TUR_T = gunless ? '#575647' : '#6a7059';
+      // 1. FAR track (smaller v draws first — screen depth is u+v)
+      R.box(0.20, 0.00, 5.15, 0.62, 0, 8, TRK, TRK_D, TRK_D);
+      for (let i = 0; i < 6; i++) R.flat(0.5 + i * 0.75, 0.02, 1.06 + i * 0.75, 0.60, 8.3, '#2e3128');
+      // 2. the hull, NARROWER than the tracks so both of them stay visible
+      R.box(0.10, 0.62, 5.25, 2.24, 8, 16, TOP, HULL, HULL_D);
+      R.flat(0.45, 0.75, 4.60, 2.10, 16.4, gunless ? '#5b5a4b' : '#6b7060');   // deck
+      R.box(4.55, 0.70, 5.30, 2.16, 13, 16.2, TOP, HULL, HULL_D);              // glacis
+      // stowage on the rear deck — the thing that says "this was used"
+      R.box(0.35, 0.78, 1.30, 1.32, 16, 19, '#5a5f4d', '#41453a', '#33362c');
+      R.box(0.35, 1.55, 1.15, 2.05, 16, 18.4, '#54594a', '#3c4035', '#2f3229');
+      // 3. NEAR track, over the hull's near flank
+      R.box(0.20, 2.24, 5.15, 2.86, 0, 8, '#282a22', TRK_D, TRK_D);
+      for (let i = 0; i < 6; i++) R.flat(0.5 + i * 0.75, 2.26, 1.06 + i * 0.75, 2.84, 8.3, '#34382d');
+      R.box(0.20, 2.24, 0.62, 2.86, 0, 9.6, '#31352b', '#1c1e17', '#1c1e17');  // idler
+      R.box(4.72, 2.24, 5.15, 2.86, 0, 9.6, '#31352b', '#1c1e17', '#1c1e17');  // sprocket
+      // 4. the turret, well inboard of the hull so the deck reads round it
+      R.box(1.55, 0.92, 3.65, 2.00, 16, 25, TUR_T, TUR, HULL_D);
+      R.flat(1.80, 1.05, 3.45, 1.88, 25.4, gunless ? '#5f5e4e' : '#767c63');
+      if (!gunless) {
+        R.box(2.05, 1.20, 2.70, 1.74, 25, 28.6, '#666b55', '#4a4e40', '#3a3d32'); // cupola
+        R.flat(2.10, 1.25, 2.65, 1.69, 28.9, '#23251d');
+        R.box(3.10, 1.85, 3.45, 2.05, 25, 27.4, '#4e5343', '#383c31', '#2e3128'); // the pintle
+      } else {
+        R.flat(2.05, 1.15, 2.85, 1.80, 25.5, '#171612');                         // burnt out
       }
-      R.box(0.35, 0.4, 3.9, 2.2, 9, 17, TOP, HULL, HULL_D);                  // hull
-      R.flat(0.6, 0.5, 3.6, 2.1, 17.5, '#666a5b');
-      R.box(1.3, 0.85, 3.0, 1.75, 17, 25, '#5f6355', HULL, HULL_D);          // turret
-      R.flat(1.5, 0.95, 2.8, 1.65, 25.5, '#6d7162');
-      if (!gunless) R.box(2.9, 1.18, 4.9, 1.42, 20, 23, '#4a4e42', '#33362d', '#2a2c25');
-      else { R.box(2.9, 1.2, 3.3, 1.4, 20, 23, '#2a2c25', '#1c1e18', '#1c1e18');
-             R.flat(3.2, 1.15, 3.5, 1.45, 22, '#141210'); }
-      R.flat(1.7, 1.0, 2.2, 1.3, 26, '#3a3e34');                              // hatch
+      // 5. mantlet and gun, ABOVE the deck line and thick enough to read
+      if (!gunless) {
+        R.box(3.55, 1.14, 3.98, 1.80, 18.4, 24.0, '#535847', '#3c4034', '#30332a');
+        R.box(3.92, 1.30, 5.95, 1.66, 20.0, 22.9, '#5a5f4d', '#3f4337', '#33362c');
+        R.box(5.85, 1.22, 6.30, 1.74, 19.4, 23.4, '#4a4e40', '#34372d', '#2a2d25');
+      } else {
+        R.box(3.55, 1.20, 4.00, 1.74, 18.4, 23.2, '#2b2a22', '#1b1a15', '#1b1a15');
+        R.flat(3.90, 1.24, 4.25, 1.70, 22.0, '#100f0c');                         // a torn stub
+      }
       return R.finish();
     };
+
+    // A BLAST-PEN REVETMENT. Not a building: earth-filled concrete, waist-high
+    // to a droid and OPEN TO THE SKY. The pens were three `makeBuilding`
+    // volumes with roofs on them — three windowless sheds, and the interceptor
+    // that was supposed to be sheltering between them was drawn standing on
+    // top of one. A revetment has no roof, which is the whole point of it.
+    const penWall = (len, axis) => {
+      const L = axis === 'x' ? len : 1, Wd = axis === 'x' ? 1 : len;
+      const R = isoRig(L, Wd, 26);
+      const FACE = '#8e8878', DARK = '#5f5b4f', CAP = '#a49d8a', EARTH = '#7a6f57';
+      const u1 = axis === 'x' ? len : 1, v1 = axis === 'x' ? 1 : len;
+      R.box(0, 0, u1, v1, 0, 17, CAP, FACE, DARK);
+      R.flat(0.12, 0.12, u1 - 0.12, v1 - 0.12, 17.3, EARTH);       // the fill, seen from above
+      // buttresses, so a long run is not one flat panel
+      const n = Math.max(2, Math.round(len / 2));
+      for (let i = 0; i < n; i++) {
+        const t = 0.25 + i * (len - 0.5) / Math.max(1, n - 1);
+        if (axis === 'x') R.box(t, 0.86, t + 0.28, 1.14, 0, 15, DARK, '#7d7768', '#6a6558');
+        else              R.box(0.86, t, 1.14, t + 0.28, 0, 15, DARK, '#7d7768', '#6a6558');
+      }
+      return R.finish();
+    };
+    Sprites.penWallX10 = penWall(10, 'x');
+    Sprites.penWallY6 = penWall(6, 'y');
 
     // THE RADAR. A lattice tower with a dish that does not turn any more.
     const radar = () => {
@@ -4115,12 +4178,35 @@ function outlined(src) {
         for (let k = 0; k < 6; k++) px(g, 11 + k * 2, 23 + i * 6 + k, 1, 1, '#43474b');
       }
       px(g, 6, 64, 22, 4, '#3f4347');
-      px(g, 14, 12, 6, 8, '#54585c');                    // the pedestal
-      g.fillStyle = '#8d9195';                           // and the dish, face on
-      g.beginPath(); g.ellipse(17, 9, 12, 8, -0.35, 0, Math.PI * 2); g.fill();
-      g.fillStyle = '#6a6e72';
-      g.beginPath(); g.ellipse(17, 9, 9, 6, -0.35, 0, Math.PI * 2); g.fill();
-      px(g, 16, 6, 2, 6, '#b0b4b8');
+      // THE DISH. It was two flat ellipses, one inside the other, and it read as
+      // a lollipop on a stick — a white disc with no thickness and no idea which
+      // way it was pointing. A dish is a BOWL: you see the inside of it, its rim
+      // stands proud of that, and the feed hangs in front on legs. So: the rim
+      // ring, then the bowl inset up-left of it so one edge of the ring survives
+      // as thickness, then a shadow across the lower half, then the feed.
+      px(g, 15, 13, 4, 7, '#54585c');                    // the yoke
+      px(g, 12, 16, 10, 3, '#4a4e52');                   // the trunnion
+      g.fillStyle = '#7e838a';                           // the rim, all the way round
+      g.beginPath(); g.ellipse(17, 10, 13, 9, -0.32, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#b9c0c6';                           // the bowl, lit from up-left
+      g.beginPath(); g.ellipse(16, 9, 11, 7.4, -0.32, 0, Math.PI * 2); g.fill();
+      g.save();                                          // and the half of it in shade
+      g.beginPath(); g.ellipse(16, 9, 11, 7.4, -0.32, 0, Math.PI * 2); g.clip();
+      g.fillStyle = 'rgba(40,48,56,0.42)';
+      g.beginPath(); g.moveTo(0, 11); g.lineTo(34, 5); g.lineTo(34, 26); g.lineTo(0, 26);
+      g.closePath(); g.fill();
+      g.restore();
+      // ONE seam, not three. Three ribs plus the feed legs turned the bowl into
+      // a scribble — at 34 pixels across, every extra line is noise.
+      g.strokeStyle = '#6a7076'; g.lineWidth = 1;
+      g.beginPath();
+      g.moveTo(16 - Math.cos(-0.32) * 10, 9 - Math.sin(-0.32) * 6.8);
+      g.lineTo(16 + Math.cos(-0.32) * 10, 9 + Math.sin(-0.32) * 6.8);
+      g.stroke();
+      px(g, 15, 3, 1, 7, '#41454a');                     // the feed, on two legs
+      px(g, 19, 2, 1, 7, '#41454a');
+      px(g, 15, 1, 5, 3, '#c6ccd2');
+      px(g, 16, 2, 3, 1, '#83898e');
       return outlined(c);
     };
     // A LIGHT PROP at the west threshold — high wing, one engine, fixed gear.
