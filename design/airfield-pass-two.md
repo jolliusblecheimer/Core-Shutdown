@@ -64,6 +64,26 @@ wanting something, not just curious.
   Fringe's roaming machines thin out, and Ivar and Wren both have a new line
   about it. The reason has to pay off or it was never a reason.
 
+### BUILT — and it pays, 2026-09-09
+Ivar's deduction lands at the moment the loop is heard, where it used to end on
+*"it's north, and that's all I have"* — a direction, not a reason. And he says
+the limit out loud, twice: **"Shut it up and they stop coming HERE. Here, and
+nowhere else."**
+
+Wren gets the want as well as the fear: the ordnance bunker nobody has ever had
+open, the duty officer who still has the key, and the storm drain she once got
+in through on her belly.
+
+**Measured payoff:** squads walking the Fringe go from **8 (23 machines) to 4
+(11)** once the muster is cut. Halved, not emptied — the field was one base of
+operations, not the only one, and nothing in the game is allowed to imply
+otherwise. Ivar afterwards:
+
+> *"The set's been quiet for two days. Two days, traveller. Whatever you did up
+> there, they've stopped walking through us. Don't mistake it for winning.
+> There'll be a dozen more of those, still shouting, in districts I'll never
+> see. This one's just ours again. That's the size of it. It's enough."*
+
 ---
 
 ## 2. Pressing M has to show where the next quest is
@@ -97,6 +117,23 @@ The map still must not draw unexplored ground. But it can point at it.
    NORTH OF THE RING" rather than a blank.
 4. **A HUD chevron during play**, at the screen edge, pointing at the objective —
    so the player does not have to open the map to know which way to walk.
+
+### BUILT, 2026-09-09
+The marker is placed whether or not the area is known, clamped **to the map's
+own region** — not to `inMapView`, whose cull box allows eight pixels of slop
+off every edge, so an objective just off the top counted as "in view" and was
+drawn above the panel where there is nothing to see it against. A dotted lead
+line runs from the YOU marker to it, unknown destinations get a **bearing and a
+distance** instead of a place, and the objective column says **NEVER BEEN
+THERE** on its own row rather than running off the end of a 150px column.
+
+In play there is a green chevron at the screen edge with the distance under it,
+nudged clear of the minimap — the ring puts it at the top right, which is where
+the minimap already is, so the arrow read as part of it.
+
+Verified on a run that has done the aerial and is being sent north for the first
+time: `mapThumbs.field12` is absent, and `MapUI.questHit` is now set instead of
+null.
 
 ---
 

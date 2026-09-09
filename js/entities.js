@@ -298,6 +298,16 @@ const FOLK = {
          "Crouch, keep something between you and the lights, and don't be greedy."],
         "Two of them. Out the roof, not the doors. I was under the wing before I heard the second one.",
         "Stair's on the north face of the tower. Outside. The inside one's under water.",
+        // THE WANT, not just the fear. Her warning already existed; without
+        // something the player actively wants at the far end, the walk north is
+        // still only curiosity with a hazard attached.
+        ["There's an ordnance bunker on the south side with a blast door on it.",
+         "Nobody has ever had that open. Not us, not the ones before us.",
+         "Whatever they left in there, it's still in there.",
+         "The duty officer had the key on him. He's still at his desk."],
+        ["And there's a drain under the wire by the vehicle gate. Storm drain.",
+         "I got in that way once. On my belly, and I did not enjoy it.",
+         "It comes up right under their noses, mind. Your choice which you'd rather."],
         "I'd go back for the pack. I'm not going back for the pack." ] },
     // OSGOOD. He keeps the fire, and S3 is the one thing he ever asks for —
     // GAME_PLAN §6's "survivors improve the camp" in its smallest provable
@@ -382,8 +392,19 @@ const FOLK = {
         if (Quests.q2 === 'mast') return [
           "That's the one. Get it up high — the west front has a ladder on it.",
           "Higher than the roof, or it hears nothing but the roof." ];
+        // THE PAYOFF. A reason has to be paid or it was never a reason: the
+        // ring gets quieter, and the man who worked out why says so — and says,
+        // again, exactly how far it goes.
+        if (Quests.q3 === 'done') return [
+          "The set's been quiet for two days. Two days, traveller.",
+          "Whatever you did up there, they've stopped walking through us.",
+          "Don't mistake it for winning. There'll be a dozen more of those,",
+          "still shouting, in districts I'll never see. This one's just ours again.",
+          "That's the size of it. It's enough." ];
         if (Quests.q2 === 'done') return [
-          "That's not a person. That's a machine that never got told to stop.",
+          "It's a muster and it's still calling them in. Every one that came",
+          "through here was walking to it, and we're only in the way.",
+          "Shut it up and they stop coming HERE. Here, and nowhere else.",
           "It's north. That's the whole of what I can give you. North.",
           "Don't thank me for it." ];
         return [
@@ -533,6 +554,22 @@ function mountAerial(p) {
     "\"...REMAIN WHERE YOU ARE. DO NOT ATTEMPT—\"",
     "\"...ALL STATIONS. THE CORRECTION IS IN—\"",
     "IVAR: That's not a person. That's a machine that never got told to stop.",
+    // THE REASON TO GO NORTH. It used to end here, on "it is north, and that is
+    // all I have" — which is a direction, not a reason. Nobody's is at stake in
+    // a noise. What Ivar works out is a CAUSE: the loop is a muster, and the
+    // machines that have been walking into the ring for a year have been
+    // walking TOWARD IT. Candlelight is on the path. That is why the camp keeps
+    // losing people, and it is something the player can go and switch off.
+    "IVAR: But listen to what it's saying. ALL STATIONS. That's not a warning.",
+    "IVAR: That's a muster. It's still calling them in.",
+    "IVAR: Every machine that's come through here in a year was walking to it.",
+    "IVAR: We're not on anybody's list, traveller. We're just in the way.",
+    // AND IT ONLY FIXES THE FRINGE. Said out loud, by the person who worked it
+    // out, so the player never believes they have won a war by switching off
+    // one rack in one tower.
+    "IVAR: Shut it up and they stop coming HERE. Here. Not anywhere else.",
+    "IVAR: There'll be a dozen more of those still shouting, and I can't reach them.",
+    "IVAR: But I can get this district back, and that's more than I had yesterday.",
     "IVAR: It's north. Strong enough that it's close. North, and that's all I have." ]);
   saveGame();
 }
@@ -938,14 +975,14 @@ const OBJECTIVES = [
     area: 'fringe', x: 56, y: 68,
     detail: 'A length of aluminium and a coil of coax. There is a ladder up the west front.',
     log: "Bolted the aerial to the church's west front." },
-  { id: 'northbound', title: () => 'Follow the signal north',
+  { id: 'northbound', title: () => 'Silence the muster, north',
     area: 'fringe', x: 92, y: 20,
-    detail: 'Something is still transmitting, from the night it happened, on a machine nobody told to stop. It is north of here.',
-    log: 'Followed the loop north, under the viaduct.' },
+    detail: 'The loop is a muster and it is still calling them in. Everything that has come through this ring in a year was walking to it. Shut it up and they stop coming here — here, and nowhere else.',
+    log: 'Followed the muster north, under the viaduct.' },
   { id: 'theWreck', title: () => 'Get to the top of the tower',
     area: 'field12', x: 33, y: 6,
-    detail: 'The loop is coming off the tower, not the runway. Everything this field ever saw was written to a rack up there.',
-    log: 'Got up the tower, and took the recording off the rack.' },
+    detail: 'The muster is coming off the tower, not the runway — and everything this field ever saw was written to a rack at the top of it. Wren says the ordnance bunker was never opened, either.',
+    log: 'Got up the tower, took the recording off the rack, and cut the muster.' },
   // THE HEADACHE IS NEVER MARKED. What he saw on that slate is not a place you
   // can walk to, and a dot pointing anywhere would be the game explaining it.
   { id: 'seen', title: () => 'Understand what you saw', silent: true,
