@@ -4030,3 +4030,50 @@ crouch-only culvert, the blast pen rebuilt as an open revetment with no
 interceptor standing on its roof, the tanks and the radar dish rebuilt, and the
 Provost fight that is about staying out of a light rather than a health bar with
 a facing rule.
+
+---
+
+## 2026-09-16 — respawn grace, and nothing walks through an aeroplane
+
+**Laurens:** "Make sure the player inst instantly spoted when respawining" and,
+mid-work, "The robots can walk through the planes they are to big remove this
+feature".
+
+**The respawn.** I could not reproduce it: measured, the gate apron is inside a
+camera cone 0% of a sweep and a patrol's cone 0% of 24 seconds, the Provost
+retry never re-locks you at the tower door in ten seconds, the Archivist takes
+5.5s to reach you, and a bed respawn in the Fringe with 23 machines about never
+sees you at all. The first version of that harness reported all-clear for the
+wrong reason — setting `Quests.provost='dead'` to keep the boss out of the
+measurement also sets `Watch.networkDown`, which blinds every camera and stops
+every patrol, so it was measuring a field with nothing watching it.
+
+Built the guarantee anyway, because it is cheap and it makes the whole class
+impossible wherever a future spawn or patrol route lands: `player.respawnGrace`,
+2.5 seconds in which nothing may build a case against you. One function,
+`detectable()`, read by the cameras, the military police, the Provost, the
+scrappers, the droids and the raiders alike — so a respawn cannot be safe from
+one of them and not the others. It ends (parked in a cone, the swarm comes at
+3.35s instead of 0.83s) and firing spends it: it is for getting off the spot you
+woke up on, not a free opening move.
+
+**The aeroplanes.** He was right. The alpha mask asked whether the sprite
+painted near a tile's CENTRE, so a wing that overhung a tile without crossing
+its middle left a hole — the transport had six of them and a droid could walk
+clean through the freighter side to side. The mask samples the whole tile now
+and fills anything enclosed, so every tile the sprite covers is solid. Nothing
+walks through a plane, and nothing walks under a wing either, which is the bit
+he asked to have removed.
+
+That broke the apron patrol, which ran [[18,14],[68,14]] — straight through the
+transport. It had only ever worked BECAUSE of the holes. With them closed it
+walked into the nose and stayed there: three tiles of travel in ninety seconds.
+Rerouted east of the transport; all four patrols now cover 44, 35, 44, 44 tiles
+and none ever stands inside an aircraft.
+
+Two harness bugs on the way, both of which produced confident wrong answers:
+`(x0+dx)|0 === x|0` parses as `(x0+dx) | (0===x) | 0` and matched almost every
+tile, reporting 960 frames of MPs inside aircraft when it was only detecting
+MPs inside footprint rectangles; and a "can a droid cross the plane" flood that
+was allowed to leave the aircraft's rows and walk round the nose, which every
+parked aeroplane allows and is not the question.

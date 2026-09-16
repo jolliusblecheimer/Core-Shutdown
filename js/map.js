@@ -1554,11 +1554,24 @@ function buildUnderpass() {
 // ---------------------------------------------------------------------
 // WHICH TILES A PIECE OF HARDWARE ACTUALLY STANDS ON.
 // The footprint rectangle is what the sprite is DRAWN from; it is not what the
-// thing occupies. Aircraft are mostly air. This walks the footprint, asks the
-// sprite's own alpha whether anything is painted over each tile's centre, and
-// returns only the tiles that are — so the hitbox is the aeroplane and not the
-// box the aeroplane was delivered in. Cached per kind and size; the answer
-// cannot change without the art changing.
+// thing occupies. Aircraft are mostly air, so the mask is read off the sprite's
+// own alpha and the hitbox is the aeroplane rather than the box it was
+// delivered in. Cached per kind and size; it cannot drift from the art.
+//
+// IT ASKS WHAT THE SPRITE COVERS, NOT WHAT IT PAINTS AT THE CENTRE.
+// The first version sampled a small stub around each tile's middle, which left
+// holes wherever a wing overhung a tile without crossing its centre point.
+// Measured, the transport had SIX such tiles and a droid could walk clean
+// through its footprint side to side — a nine-tile freighter with military
+// police strolling through the middle of it. So: sample across the whole tile,
+// and count it occupied if a decent part of it is under paint.
+//
+// AND THEN CLOSE WHAT IS LEFT. Even by coverage, a cross-shaped aircraft can
+// leave a notch between wing root and tailplane that is enclosed on the tiles
+// that matter; anything unpainted that cannot be reached from outside the
+// footprint is inside the aeroplane and is filled. Nothing walks through a
+// plane now — which also means nothing walks UNDER a wing, and that is the
+// point: a droid is too big to be there and it looked wrong.
 const HW_MASK = {};
 function hardwareTiles(kind, w, h) {
   const key = kind + ':' + w + 'x' + h;
@@ -1573,21 +1586,46 @@ function hardwareTiles(kind, w, h) {
   g.drawImage(im, 0, 0);
   const d = g.getImageData(0, 0, im.width, im.height).data;
   const anchor = isoToScreen(0, 0);
-  const out = [];
+  const on = [];
+  for (let y = 0; y < h; y++) on.push(new Uint8Array(w));
   for (const [dx, dy] of all) {
-    const s = isoToScreen(dx + 0.5, dy + 0.5);
-    const px = Math.round(s.x - (anchor.x - im.ox));
-    const py = Math.round(s.y - (anchor.y - im.oy));
-    let hit = false;
-    // a tile counts as occupied if the sprite paints anything just above its
-    // centre — that band is where a body standing on the tile would be
-    for (let oy = -6; oy <= 2 && !hit; oy++) for (let ox = -3; ox <= 3 && !hit; ox++) {
-      const qx = px + ox, qy = py + oy;
-      if (qx < 0 || qy < 0 || qx >= im.width || qy >= im.height) continue;
-      if (d[(qy * im.width + qx) * 4 + 3] > 40) hit = true;
+    let hit = 0, tried = 0;
+    for (let sy = 0.12; sy < 1; sy += 0.18) for (let sx = 0.12; sx < 1; sx += 0.18) {
+      tried++;
+      const s = isoToScreen(dx + sx, dy + sy);
+      const px = Math.round(s.x - (anchor.x - im.ox));
+      const py = Math.round(s.y - (anchor.y - im.oy));
+      // look a little way UP the column: a body standing on this tile occupies
+      // that band, so that is the band the sprite has to be clear of
+      for (let oy = -5; oy <= 1; oy++) {
+        const qy = py + oy;
+        if (px < 0 || qy < 0 || px >= im.width || qy >= im.height) continue;
+        if (d[(qy * im.width + px) * 4 + 3] > 40) { hit++; break; }
+      }
     }
-    if (hit) out.push([dx, dy]);
+    if (hit >= 3) on[dy][dx] = 1;
   }
+  // flood the clear tiles from outside the footprint; whatever it cannot reach
+  // is enclosed by the aircraft, so it belongs to the aircraft
+  const reach = [];
+  for (let y = 0; y < h; y++) reach.push(new Uint8Array(w));
+  const st = [];
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++)
+    if (!on[y][x] && (x === 0 || y === 0 || x === w - 1 || y === h - 1)) {
+      reach[y][x] = 1; st.push([x, y]);
+    }
+  while (st.length) {
+    const [x, y] = st.pop();
+    for (const [ox, oy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + ox, ny = y + oy;
+      if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+      if (on[ny][nx] || reach[ny][nx]) continue;
+      reach[ny][nx] = 1; st.push([nx, ny]);
+    }
+  }
+  const out = [];
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++)
+    if (on[y][x] || !reach[y][x]) out.push([x, y]);
   HW_MASK[key] = out.length ? out : all;      // never let a thing become walk-through
   return HW_MASK[key];
 }
@@ -2498,7 +2536,14 @@ const Areas = {
     // that cannot walk cannot see you. `wtest` asserts all of it now.
     mpRoutes: [
       [[8, 18], [88, 18]],                  // the whole length of the runway
-      [[18, 14], [68, 14]],                 // the apron run, past every hangar
+      // EAST OF THE TRANSPORT. This used to run [[18,14],[68,14]] — straight
+      // through the freighter's footprint. It worked only because the old
+      // alpha mask left holes under the wings, so the patrol squeezed through
+      // the aeroplane, which is what a droid walking through a plane looks
+      // like. With the mask closed it walked into the nose and stayed there:
+      // measured, three tiles of travel in ninety seconds. It starts east of
+      // the transport now and the whole run is clear.
+      [[32, 13], [68, 13]],                 // the apron run, past every hangar
       [[10, 20], [76, 20]],                 // the runway's south edge
       [[6, 33], [90, 33]],                  // the perimeter road, south side
     ],

@@ -7,6 +7,13 @@ const player = {
   fireCd: 0, muzzle: 0,
   swing: 0, swingCd: 0,
   iframes: 0, flash: 0, dead: 0,
+  // SECONDS OF GRACE AFTER COMING BACK. `iframes` only stops bullets; this
+  // stops being SEEN, which on Airfield 12 is the thing that actually kills
+  // you. Without it, any respawn that happens to land under a cone — now, or
+  // after some future patrol route or deathSpawn moves — is a death loop the
+  // player cannot break out of, because the meter fills in 0.85s and they wake
+  // up standing still. Every detector in the game reads it; see `beingWatched`.
+  respawnGrace: 0,
   combatT: 99,                 // seconds since last combat — passive regen after 20
   melee: null,                 // EQUIPPED melee: null | 'pipe' | 'knife'
   hasGun: false,               // hasGun = a gun is EQUIPPED
@@ -116,6 +123,7 @@ function finishReload() {
 // off the aim line and is zero for everything except the second and third
 // rounds of a burst — the first one always goes exactly where you pointed it.
 function fireRound(G, spread) {
+  player.respawnGrace = 0;      // spent: you are announcing yourself
   const A = magsOf(player.gun);
   if (A.loaded <= 0) return false;
   A.loaded--;
@@ -1048,6 +1056,18 @@ const SPEED = 4.0;
 // droid, to line of sight and to `findSafeSpot`, and a gap to a player on their
 // belly. Dispatching here rather than at the call site means knockback, shoves
 // and the boss's pushes all obey the same rule as walking.
+// CAN ANYTHING BUILD A CASE AGAINST THE PLAYER RIGHT NOW?
+// One question, asked by the cameras, the military police, the Provost, the
+// scrappers, the droids and the raiders alike — so a respawn cannot be made
+// safe from one of them and not the others. It is false for a couple of
+// seconds after any respawn, and the grace is spent the moment the player
+// takes a shot or a swing: it is there to let you get off the spot you woke
+// up on, not to hand you a free opening move.
+function detectable() {
+  return !(player.respawnGrace > 0);
+}
+function grantRespawnGrace(t) { player.respawnGrace = t || 2.5; }
+
 function tryMove(e, dx, dy) {
   const fits = (e === player) ? playerCanStand : canStand;
   if (dx !== 0 && fits(e.x + dx, e.y, e.r)) e.x += dx;
@@ -1063,6 +1083,7 @@ function updatePlayer(dt) {
       if (typeof resetProvostFight === 'function' && resetProvostFight()) return;
       if (typeof resetArchivistFight === 'function' && resetArchivistFight()) return;
       player.hp = player.maxHp; player.iframes = 1.2;
+      grantRespawnGrace(2.5);
       // WHERE YOU WAKE UP AFTER DYING HERE. Respawn is normally the last bed
       // you slept in, which for the airfield is two areas away — you were
       // killed on the field and woke up back in the Fringe, having lost the
@@ -1109,6 +1130,7 @@ function updatePlayer(dt) {
   if (len > 0) { wx /= len; wy /= len; }
   player.moving = len > 0;
 
+  if (player.respawnGrace > 0) player.respawnGrace -= dt;
   // crouch: slower, but much harder for machines to spot at range
   player.crouch = !!(Input.keys['ShiftLeft'] || Input.keys['ShiftRight'] || Input.keys['KeyC']);
 
@@ -1969,7 +1991,7 @@ function updateScrapper(dt, s) {
     return;
   }
 
-  const playerSafe = insideShack(player.x, player.y);
+  const playerSafe = insideShack(player.x, player.y) || !detectable();
   const distP = Math.hypot(player.x - s.x, player.y - s.y);
   s.animT += dt;
   if (s.animT > 0.22) { s.animT = 0; s.frame = 1 - s.frame; }
@@ -2371,8 +2393,8 @@ function updateBandit(dt, b) {
     const sight = player.crouch ? cfg.sight * 0.45 : cfg.sight;
     // They already had cover; now they have a FACING too, and the sweep below
     // turns it. A man watching the road is not watching the whole world.
-    if (canSpot(b, 1.8)) b.alert = 1;
-    else if (canSpot(b, sight)) b.alert += dt * (0.55 + 1.5 * (1 - dist / sight));
+    if (detectable() && canSpot(b, 1.8)) b.alert = 1;
+    else if (detectable() && canSpot(b, sight)) b.alert += dt * (0.55 + 1.5 * (1 - dist / sight));
     else b.alert = Math.max(0, b.alert - dt * 0.7);
     // NOT tutStealth() — that one says "a machine noticed movement", and
     // these are not machines. It also freezes the world the moment the bar

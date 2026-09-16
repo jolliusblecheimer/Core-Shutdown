@@ -267,7 +267,7 @@ function updateSquad(sq, dt) {
   const canBeSeen = player.dead <= 0 && !insideShack(player.x, player.y);
   for (const d of alive) {
     if (sq.alert >= 1) break;                 // already hunting; skip the meter
-    if (canBeSeen && droidSees(d)) {
+    if (canBeSeen && detectable() && droidSees(d)) {
       const dist = Math.hypot(player.x - d.x, player.y - d.y);
       const range = player.crouch ? DROID_TYPES[d.type].sightCrouch : DROID_TYPES[d.type].sight;
       d.alert += dt * (0.5 + 1.6 * (1 - dist / range));
@@ -290,7 +290,7 @@ function updateSquad(sq, dt) {
     player.combatT = 0;                       // being hunted counts as combat
     let anySees = false;
     for (const d of alive) {
-      if (canBeSeen && droidSees(d)) { anySees = true; break; }
+      if (canBeSeen && detectable() && droidSees(d)) { anySees = true; break; }
     }
     if (anySees) {
       sq.memory = MEMORY;

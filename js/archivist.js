@@ -182,6 +182,7 @@ function resetArchivistFight() {
   player.x = s.x; player.y = s.y;
   player.hp = player.maxHp;
   player.iframes = 2.5;
+  if (typeof grantRespawnGrace === 'function') grantRespawnGrace(2.5);
   spawnArchivist(archivist.homeX, archivist.homeY);
   showMsg('It plugs itself back in. Again.', 3);
   addShake(3);

@@ -195,6 +195,12 @@ function updateProvost(dt) {
   if (provost.state === 'dead') { provost.deadT += dt; return; }
   if (typeof Cine !== 'undefined' && Cine.active) return;
   if (player.dead > 0) { provost.lock = 0; return; }
+  // and it does not get to start again on somebody who has just stood up. The
+  // retry puts you back at the door with it re-docked and sweeping; without
+  // this, its cone can have the lock started before you have taken a step.
+  if (typeof detectable === 'function' && !detectable()) {
+    provost.lock = 0; provost.fireCd = Math.max(provost.fireCd, 0.6);
+  }
 
   provost.t += dt;
   provost.anim += dt;
@@ -296,7 +302,7 @@ function updateProvost(dt) {
   // on every single frame. Cameras and patrols saw you perfectly well and the
   // meter could never rise. The HUD takes the larger of the two instead; see
   // `seenLevel()`.
-  if (inCone) {
+  if (inCone && (typeof detectable !== 'function' || detectable())) {
     provost.lock += dt;
     if (provost.lock >= PROV.lockTime) {
       provost.lock = 0;
@@ -311,7 +317,7 @@ function updateProvost(dt) {
   // THE RECOIL IS THE WHOLE FIGHT: the plate cracks open for 0.8s after every
   // burst, and that is the only time anything lands on it.
   provost.fireCd -= dt;
-  if (provost.fireCd <= 0 && inCone) {
+  if (provost.fireCd <= 0 && inCone && (typeof detectable !== 'function' || detectable())) {
     provost.fireCd = provost.state === 'dock' ? 1.5 : provost.state === 'blind' ? 1.0 : 1.6;
     const n = provost.state === 'dock' ? 3 : PROV.burst;
     for (let i = 0; i < n; i++) {
@@ -423,6 +429,7 @@ function resetProvostFight() {
   player.x = 32.5; player.y = 11.5;          // back through the door
   player.hp = player.maxHp;
   player.iframes = 2.5;
+  if (typeof grantRespawnGrace === 'function') grantRespawnGrace(2.5);
   if (typeof Watch !== 'undefined') { Watch.seen = 0; Watch.swarm = false; }
   spawnProvost(provost.homeX, provost.homeY);
   showMsg('It settles back onto the cradle. Again.', 3.2);

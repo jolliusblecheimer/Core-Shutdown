@@ -189,6 +189,14 @@ function updateWatch(dt) {
     return;
   }
   if (Watch.swarm) return;             // the cutscene owns everything now
+  // JUST RESPAWNED. Nothing on this field may build a case against a player who
+  // is still getting to their feet: the meter fills in 0.85s and a respawn that
+  // lands under a cone would be a loop with no way out of it. The cones still
+  // sweep and still draw — you can see what is about to see you.
+  if (typeof detectable === 'function' && !detectable()) {
+    Watch.seen = 0; Watch.by = null;
+    for (const m of mps) m.state = m.state === 'look' ? 'walk' : m.state;
+  }
 
   let held = null;
 
@@ -275,7 +283,7 @@ function updateWatch(dt) {
   // second, instant detection is a coin toss rather than stealth — you would
   // be killed by a cone you never had a frame to see. 0.85s is long enough to
   // get back behind a blast pen and short enough that it never feels safe.
-  if (held) {
+  if (held && (typeof detectable !== 'function' || detectable())) {
     Watch.by = held;
     Watch.seen = Math.min(1, Watch.seen + WATCH.fill * dt);
     if (Watch.seen >= 1) triggerSwarm();
