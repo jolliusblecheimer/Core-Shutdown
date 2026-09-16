@@ -1,7 +1,8 @@
 # AIRFIELD 12 — pass two
 ### A reason to go, a map that points, five ways through, and a boss worth the room
 
-*Status: **APPROVED** 2026-09-09 — all six, in the order below.*
+*Status: **BUILT AND LIVE.** Approved 2026-09-09, all six built, merged to `main`
+2026-09-16 (PR #6).*
 *Written 2026-09-09, against `bdf42cd`.*
 
 Six asks from Laurens. Everything below that states a fault was **measured**, not

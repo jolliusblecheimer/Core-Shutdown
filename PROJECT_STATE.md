@@ -788,7 +788,7 @@ Frame cost **13.6–14.8 ms → 9.8–11.0 ms**. Two ways in, both sealed → 0.
   pending. Nothing of it has been built.
 
 ## AIRFIELD 12, PASS TWO — a reason, a map that points, five ways in, a real boss, 2026-09-09
-`design/airfield-pass-two.md`. **On the branch, going to `main`.**
+`design/airfield-pass-two.md`. **Merged to `main` 2026-09-16 (PR #6) — live.**
 
 - **A REASON TO GO.** The loop is a **muster**, still calling units in, and
   everything that has come through the ring for a year was walking toward it.

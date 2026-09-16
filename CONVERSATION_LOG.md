@@ -4007,3 +4007,26 @@ Airfield 12 before you have ever been there, which it flatly could not do
 before — the objective marker was gated on having a thumbnail of the area.
 
 All suites green, no console errors.
+
+---
+
+## 2026-09-16 — pass two goes live
+
+**Laurens:** "Report, what were we last working on" → then "Do it".
+
+Pass two had been sitting on the branch for a week, held back on purpose: it
+carried a lot of new art and a whole boss redesign, and big visual changes get
+looked at before they reach the live site. Laurens said go.
+
+Re-ran `smoke`, `quests`, `cross` and `ptest` first — a week is long enough that
+"it passed last time" is not a claim worth making — all green, no console errors.
+Fast-forwarded `main` from `bdf42cd` to `40b94d1` and pushed. PR #6 closed as
+merged.
+
+So the live link now has: the muster as a reason to go north (and Ivar saying
+twice that it only fixes this district), a map that points at Airfield 12 before
+you have ever been there, five graded ways through the apron fence including the
+crouch-only culvert, the blast pen rebuilt as an open revetment with no
+interceptor standing on its roof, the tanks and the radar dish rebuilt, and the
+Provost fight that is about staying out of a light rather than a health bar with
+a facing rule.
