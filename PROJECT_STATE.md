@@ -822,3 +822,22 @@ Frame cost **13.6–14.8 ms → 9.8–11.0 ms**. Two ways in, both sealed → 0.
 - The rust drones (E4) and the beacon sweep (E5) are still not built.
 - `design/map-redesign.md` — the Fringe density plan — is written and approved-
   pending. Nothing of it has been built.
+
+## AIRFIELD 12 ON ONE SIDE — matched to the reference, 2026-09-18
+`design/airfield-pass-two.md` §9. **On `main`.**
+
+- **Six buildings, all north of the wire**, in the order you meet them: ordnance
+  bunker, squadron block, CONTROL TOWER, crash tender shed, two hangars, helipad,
+  vehicle hardstand. The south is sand, the blast pen and the wreck — low cover
+  only, per the reference picture's empty side.
+- **Two buildings gone** because nothing in the story was ever in them: hangar 1
+  (a crate, a pallet, a tug, a barrel) and the guard post (a duty desk). Hangar
+  1's shell is the crash tender shed now.
+- **The bunker moved west** beside the squadron block whose duty officer carries
+  its key — and it had to, because sited east it blocked the only stretch of
+  apron with room for the vehicle hardstand.
+- **The helicopter's footprint was a row too tall**, which left an empty strip
+  under its tail that a droid could walk down. 5×3 now.
+- **`tools/field12.js`, `tools/quests.js`, `tools/plan.js`** — the harnesses live
+  in the repo instead of a scratch directory that is wiped between sessions.
+  Run `python3 serve.py`, then `node tools/field12.js`.

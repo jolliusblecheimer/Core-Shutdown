@@ -4077,3 +4077,36 @@ tile, reporting 960 frames of MPs inside aircraft when it was only detecting
 MPs inside footprint rectangles; and a "can a droid cross the plane" flood that
 was allowed to leave the aircraft's rows and walk round the nose, which every
 parked aeroplane allows and is not the question.
+
+---
+
+## 2026-09-18 — one side of the runway
+
+**Laurens:** "We have 2 buildings that are not needed for the story pls make the
+map like the pic i have already given you, it is a mess rn."
+
+Right on both counts, and the count was exact. Audited, two of eight buildings
+held nothing the story used: hangar 1 (crate, pallet, tug, barrel) and the guard
+post (a duty desk). The mess was that the reference is a strip with everything
+built along one edge and desert along the other, and this field had grown five
+buildings north and three south — a village with a runway through it.
+
+Six buildings now, all north: ordnance bunker, squadron block, control tower,
+crash tender shed, two hangars, then the helipad and the vehicle hardstand at
+the far end. South is sand, the blast pen with its interceptor, and the wreck —
+low cover, so the walk in is not a shooting gallery. Hangar 1's shell became the
+tender shed, which is where a crash tender lives anyway and which removed a
+south building without losing the dead crew or the tape. The bunker moved west
+beside the squadron block whose duty officer has its key — and had to, because
+sited east it blocked the only apron with room for the vehicles.
+
+The checker caught four things I would not have seen by eye: both tanks drawn
+into two buildings each at the first east site; the helicopter walkable through
+because its footprint declared a fourth row the sprite never paints; a hole-fill
+that only floods from outside missing channels along the footprint's own edge
+rows; and the east gap briefly grading harder than the bowser squeeze because a
+re-aimed camera was sweeping across the wire.
+
+The harnesses are in the repo now — `tools/field12.js`, `tools/quests.js`,
+`tools/plan.js`. They had been rebuilt from memory four times, and this round
+alone the rebuilds produced four confident false answers before I trusted them.

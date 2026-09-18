@@ -359,3 +359,67 @@ step; and the first bot held station off the *boss* rather than going to the
 
 Every stage ends the way they all do: the suites green, screenshots taken, the
 docs updated, committed.
+
+
+---
+
+## 9. ONE SIDE OF THE RUNWAY — matching the reference, 2026-09-18
+
+Laurens, with the reference picture again: *"We have 2 buildings that are not
+needed for the story pls make the map like the pic i have already given you, it
+is a mess rn."*
+
+He was right on both counts, and the count was exact. Audited, two of the eight
+buildings held nothing the story ever used:
+
+| building | what was in it |
+|---|---|
+| **HANGAR 1** | a crate, a pallet, a tug, a barrel |
+| **GUARD POST** | a duty desk |
+
+And the mess: the reference is a strip with **everything built along one edge**
+and open desert along the other. This field had grown five buildings north and
+three south, so it read as a village with a runway through it, and the approach
+from the gate was a street.
+
+### What it is now
+Six buildings, **all north of the wire**, west to east — which is also the order
+you meet them: ordnance bunker, squadron block, **CONTROL TOWER**, crash tender
+shed, two hangars, then the helipad and the vehicle hardstand at the far end.
+The south side is sand, cacti, the blast pen with its interceptor, and the
+wreck: low cover only, so the walk in is not a shooting gallery.
+
+- **Hangar 1's shell became the crash tender shed**, which is where a crash
+  tender lives anyway — that removed a south building without losing the dead
+  crew or the tape that were in it.
+- **The bunker moved west, hard against the squadron block** whose duty officer
+  is still carrying its key. Better geography than having the two at opposite
+  ends of a ninety-tile strip — and it was forced: sited east it blocked the one
+  stretch of apron with room for the vehicle hardstand. Measured, there was *no*
+  position out there whose tank sprite missed every building.
+
+### Four faults the checker caught, none of which I would have seen by eye
+1. **Both tanks were drawn into two buildings each** at the first east site.
+2. **The helicopter could be walked through.** Its footprint declared a fourth
+   row the sprite never paints — an empty strip the full width of the machine,
+   under the tail. Filling it would have made solid ground out of sky; the
+   footprint was simply a row too tall. It is 5×3 now.
+3. **A hole-fill that only floods from outside is not enough.** A channel
+   running along the footprint's own top or bottom row has nothing above or
+   below it inside the rectangle. The test that matters is paint to the LEFT and
+   RIGHT in the same row, because left-to-right is how anything walks through.
+4. **The east service gap briefly became harder than the bowser squeeze**,
+   because the camera that used to watch the old south vehicle park had been
+   re-aimed across the wire. It looks at the new hardstand and away from the
+   fence now, and the grading holds again: 81 / 66 / 24 / 21 / 3.
+
+### The harnesses live in the repo now
+`tools/field12.js`, `tools/quests.js` and `tools/plan.js`. They used to sit in a
+scratch directory that is wiped between sessions, and they had been rebuilt from
+memory four times — each rebuild a fresh chance to get a test subtly wrong, and
+a subtly wrong test reports success. This round alone the rebuilt versions
+produced four confident false answers before they were trusted: a bunker
+identified by a hard-coded x that had moved, a reachability probe aimed at the
+tile the bunker's own chest stands on, a tape count that was simply wrong, and
+an archivist set dead *after* area entry rather than before, so it was still
+alive on the rack and `takeSlate` correctly refused.

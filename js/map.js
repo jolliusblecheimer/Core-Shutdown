@@ -1605,6 +1605,29 @@ function hardwareTiles(kind, w, h) {
     }
     if (hit >= 3) on[dy][dx] = 1;
   }
+  // CLOSE CHANNELS AS WELL AS POCKETS. A flood from outside only fills what is
+  // fully enclosed, and a helicopter's thin tail boom leaves an open lane a
+  // droid could walk down — measured, the heli could be crossed side to side.
+  // A tile with paint on both sides of it AND above and below it is inside the
+  // machine, whether or not the outside can reach it. A cross-shaped aircraft's
+  // outer notches have paint on two sides only, so they stay clear and the
+  // hitbox still follows the silhouette rather than the bounding box.
+  // Requiring paint on all four sides is not enough: a channel that runs along
+  // the footprint's own top or bottom row has nothing above or below it inside
+  // the rectangle, so it survived — measured, the helicopter could still be
+  // crossed along its tail boom. Paint to the LEFT and to the RIGHT in the same
+  // row is the test that matters, because left-to-right is the way anything
+  // would walk through. A row that only clips one wingtip has paint on one side
+  // and stays clear, so the silhouette still holds.
+  const span = [];
+  for (let y = 0; y < h; y++) span.push(new Uint8Array(w));
+  for (let y = 0; y < h; y++) {
+    let first = -1, last = -1;
+    for (let x = 0; x < w; x++) if (on[y][x]) { if (first < 0) first = x; last = x; }
+    if (first < 0) continue;
+    for (let x = first; x <= last; x++) span[y][x] = 1;
+  }
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (span[y][x]) on[y][x] = on[y][x] || 2;
   // flood the clear tiles from outside the footprint; whatever it cannot reach
   // is enclosed by the aircraft, so it belongs to the aircraft
   const reach = [];
@@ -1802,19 +1825,38 @@ function buildField12() {
     const vol = props[props.length - 1];
     if (vol && vol.type === 'building') vol.enterable = true;
   };
-  // EVERY BUILDING ON THIS FIELD OPENS. They stand clear of the fence line now:
-  // the first version put them across the inner concrete row, which left blocks
-  // standing inside the rooms.
+  // EVERY BUILDING ON THIS FIELD OPENS, AND THEY ARE ALL ON ONE SIDE OF IT.
+  //
+  // The reference picture is a strip with EVERYTHING built along one edge of
+  // the runway and open desert along the other. This field had grown buildings
+  // on both sides — five north and three south — so it read as a village with
+  // a runway through it rather than an airfield, and the approach from the gate
+  // was a street. Every structure is on the north side now; the south is sand,
+  // the blast pen, the wreck and cacti.
+  //
+  // TWO BUILDINGS ARE GONE because nothing in the story was ever in them:
+  //   HANGAR 1  held a crate, a pallet, a tug and a barrel.
+  //   GUARD POST held a duty desk.
+  // Hangar 1's shell is not wasted — it is the crash tender shed now, which is
+  // where a crash tender lives anyway, and that removes a south building
+  // without losing the dead crew or the tape that were in it.
+  //
+  // West to east, which is also the order you meet them: squadron block, the
+  // TOWER, the tender shed, two hangars, the helipad, the vehicle hardstand,
+  // and the bunker on its own at the far end.
   box(10, 3, 12, 6, 'O');  hollow(10, 3, 12, 6);  door(15, 16, 8);   // squadron block
   box(30, 2, 14, 9, 'O');  hollow(30, 2, 14, 9);  door(35, 36, 10);  // CONTROL TOWER
-  box(46, 3, 11, 7, 'A');  hollow(46, 3, 11, 7);  door(50, 52, 9);   // hangar 1
-  box(58, 3, 10, 7, 'A');  hollow(58, 3, 10, 7);  door(62, 64, 9);   // hangar 2
-  box(69, 3, 10, 7, 'A');  hollow(69, 3, 10, 7);  door(73, 75, 9);   // hangar 3
-  box(38, 25, 10, 6, 'G'); hollow(38, 25, 10, 6); door(42, 43, 30);  // crash tender shed
-  box(50, 27, 5, 4, 'W');  hollow(50, 27, 5, 4);  door(51, 52, 30);  // guard post
-  // THE ORDNANCE BUNKER — the only shut door on the field
-  box(22, 25, 9, 6, 'W');  hollow(22, 25, 9, 6);
-  const BUNK_DOOR = [25, 26], BUNK_Y = 30;
+  box(46, 3, 11, 7, 'G');  hollow(46, 3, 11, 7);  door(50, 52, 9);   // crash tender shed
+  box(58, 3, 10, 7, 'A');  hollow(58, 3, 10, 7);  door(62, 64, 9);   // hangar 1
+  box(69, 3, 10, 7, 'A');  hollow(69, 3, 10, 7);  door(73, 75, 9);   // hangar 2
+  // THE ORDNANCE BUNKER — the only shut door on the field. It sits at the WEST
+  // end, hard against the squadron block whose duty officer is still carrying
+  // its key, which is a better piece of geography than having the two at
+  // opposite ends of a ninety-tile strip. Putting it east blocked the one part
+  // of the apron with room for the vehicle hardstand: measured, there was no
+  // position out there whose tank sprite missed every building.
+  box(4, 3, 6, 6, 'W');  hollow(4, 3, 6, 6);
+  const BUNK_DOOR = [6, 7], BUNK_Y = 8;
   if (Quests && Quests.bunker === 'open') door(BUNK_DOOR[0], BUNK_DOOR[1], BUNK_Y);
   props.push({ gx: BUNK_DOOR[0], gy: BUNK_Y, type: 'blastDoor',
                foot: [BUNK_DOOR[0], BUNK_Y, 2, 1] });
@@ -1860,24 +1902,24 @@ function buildField12() {
   // THE SQUADRON BLOCK — the duty officer and the standing order board
   put(12, 5, 'deadOfficer'); put(16, 4, 'orderBoard');
   put(19, 6, 'dutyDesk'); put(20, 5, 'crate'); put(11, 6, 'bedroll');
-  // HANGAR 1 — the nest, deliberately almost empty
-  put(48, 5, 'crate'); put(50, 6, 'pallet'); put(54, 5, 'tug'); put(55, 7, 'barrel');
-  // HANGAR 2 — the store. Somebody camped here and left in a hurry.
+  // THE CRASH TENDER SHED — the appliance and the man who stayed with it.
+  // This was a separate building on the south side; it is hangar 1's shell now,
+  // which is where a crash tender is kept anyway. The dead crew and the tape
+  // came with it.
+  props.push({ gx: 49, gy: 5, type: 'tender', foot: [47, 4, 5, 2] });
+  for (let x = 47; x <= 51; x++) for (let y = 4; y <= 5; y++) solid[y][x] = true;
+  put(48, 7, 'deadCrew'); put(54, 7, 'tape', { tape: 'shed' });
+  put(55, 5, 'tug'); put(53, 4, 'barrel');
+  // HANGAR 1 — the store. Somebody camped here and left in a hurry.
   put(61, 6, 'wrensPack');
   put(59, 5, 'chest', { open: false, loot: 'mre' });
   put(63, 7, 'bedroll'); put(66, 6, 'coldFire'); put(60, 7, 'pallet');
-  // HANGAR 3 — and the second tape, dropped by somebody who was listening
+  // HANGAR 2 — and the second tape, dropped by somebody who was listening
   put(71, 5, 'tape', { tape: 'pen' });
   put(74, 7, 'crate'); put(77, 5, 'barrel');
-  // THE CRASH TENDER SHED — the appliance and the man who stayed with it
-  props.push({ gx: 41, gy: 27, type: 'tender', foot: [39, 26, 5, 2] });
-  for (let x = 39; x <= 43; x++) for (let y = 26; y <= 27; y++) solid[y][x] = true;
-  put(40, 29, 'deadCrew'); put(45, 29, 'tape', { tape: 'shed' }); put(46, 27, 'barrel');
-  // THE GUARD POST
-  put(51, 28, 'crate'); put(53, 28, 'dutyDesk');
   // THE ORDNANCE BUNKER — the best loot on the field, behind the only shut door
-  put(24, 27, 'chest', { open: false, loot: 'crypt', part: 'optGunCam' });
-  put(28, 27, 'crate'); put(29, 28, 'barrel'); put(23, 28, 'pallet');
+  put(6, 5, 'chest', { open: false, loot: 'crypt', part: 'optGunCam' });
+  put(8, 4, 'crate'); put(8, 6, 'barrel'); put(5, 6, 'pallet');
   // THE SCAVENGER, on the approach from the gate where it cannot be missed
   put(58, 29, 'deadScav');
 
@@ -1898,12 +1940,25 @@ function buildField12() {
   };
   hardware(11, 10, 6, 5, 'acProp');              // the light prop, west end
   hardware(21, 11, 9, 4, 'acTransport');         // the transport, clear of the tower
-  hardware(79, 10, 5, 4, 'heli');                // the helicopter on its pad
+  // 5x3, NOT 5x4. The sprite never paints the fourth row, so that row was a
+  // declared-but-empty strip of footprint running the full width under the tail
+  // — an open lane a droid could walk straight down, and the reason the
+  // helicopter could be crossed side to side. Filling it would have made solid
+  // ground out of sky; the footprint was just a row too tall.
+  hardware(79, 10, 5, 3, 'heli');                // the helicopter on its pad
   hardware(8, 24, 4, 3, 'acJet');                // an interceptor, INSIDE the open pen
-  hardware(85, 4, 6, 4, 'acJetBurnt');           // and one that did not get away
-  hardware(81, 23, 5, 3, 'tank');                // the vehicle park
-  hardware(88, 23, 5, 3, 'tank');
-  hardware(82, 28, 5, 3, 'tank');
+  // THE BURNT JET, on the OPEN side. The picture puts an aircraft out on the
+  // sand away from the buildings, and the open half of the plot needs one thing
+  // in it that is not a cactus — otherwise it is a blank forty tiles.
+  hardware(20, 24, 6, 4, 'acJetBurnt');          // and one that did not get away
+  // THE VEHICLE HARDSTAND, at the far east end past the helipad — which is
+  // where the reference picture puts it, and with the bunker moved west it is
+  // the one stretch with room for something this size. The first attempt wedged
+  // them between hangar 2 and the bunker and both tanks were drawn into both
+  // buildings; there was no position out here that worked until the bunker moved.
+  hardware(84, 2, 5, 3, 'tank');
+  hardware(84, 6, 5, 3, 'tank');
+  hardware(89, 4, 5, 3, 'tank');
   hardware(63, 30, 5, 3, 'tankHulk');            // beside the gate, never across it
   if (!solid[12][45]) { solid[12][45] = true; props.push({ gx: 45, gy: 12, type: 'radarMast' }); }
   // THE FUEL, and it is what makes the squeeze a squeeze. Two bowsers stand
@@ -1951,7 +2006,7 @@ function buildField12() {
     [78, 11,  Math.PI / 2, 0.62],              // the EAST service gap, 20 out
     [40, 12,  Math.PI,     1.00],              // the FLATTENED section and the tower approach, 22 out
     [20, 13,  Math.PI / 2, 0.80],              // the WEST gap, 37 out — the widest sweep on the field
-    [84, 27,  Math.PI,     0.45],              // the vehicle park
+    [88, 9,  -Math.PI / 2, 0.45],              // the vehicle hardstand, looking away from the wire
   ];
   // A CAMERA STANDING INSIDE A BOWSER SEES THE INSIDE OF A BOWSER. Moving the
   // fuel to flank the squeeze put one camera inside a tank of it and another
